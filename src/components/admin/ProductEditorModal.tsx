@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
-  Upload,
-  Trash2,
   Loader2,
   Plus,
-  Image as ImageIcon,
   DollarSign,
   Package,
   Tag,
@@ -15,6 +12,8 @@ import {
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
+import RichTextEditor from './RichTextEditor';
+import ImageDropzone from './ImageDropzone';
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
 
@@ -40,7 +39,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -379,12 +377,11 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     <label className="block text-sm font-medium text-charcoal mb-1.5">
                       Full Description
                     </label>
-                    <textarea
+                    <RichTextEditor
                       value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      rows={4}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan resize-none"
+                      onChange={(description) => setFormData(prev => ({ ...prev, description }))}
                       placeholder="Detailed product description..."
+                      minHeight={200}
                     />
                   </div>
 
@@ -694,79 +691,15 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
               {/* Images Tab */}
               {activeTab === 'images' && (
-                <div className="space-y-5">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e.target.files)}
-                    className="hidden"
-                  />
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center cursor-pointer hover:border-himalayan/50 hover:bg-himalayan/5 transition-all"
-                  >
-                    {uploadingImage ? (
-                      <Loader2 size={32} className="animate-spin text-himalayan mx-auto mb-2" />
-                    ) : (
-                      <Upload size={32} className="text-gray-300 mx-auto mb-2" />
-                    )}
-                    <p className="text-charcoal font-medium">Click to upload images</p>
-                    <p className="text-sm text-charcoal-light mt-1">
-                      PNG, JPG, WebP up to 5MB each
-                    </p>
-                  </div>
-
-                  {formData.images.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {formData.images.map((image, index) => (
-                        <div
-                          key={index}
-                          className={`relative group aspect-square rounded-xl overflow-hidden border-2 ${
-                            formData.thumbnail === image
-                              ? 'border-himalayan'
-                              : 'border-gray-200'
-                          }`}
-                        >
-                          <img
-                            src={image}
-                            alt={`Product ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setAsThumbnail(image)}
-                              className={`p-2 rounded-lg ${
-                                formData.thumbnail === image
-                                  ? 'bg-himalayan text-white'
-                                  : 'bg-white text-charcoal hover:bg-gray-100'
-                              }`}
-                              title="Set as thumbnail"
-                            >
-                              <ImageIcon size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="p-2 bg-white text-red-600 rounded-lg hover:bg-red-50"
-                              title="Remove image"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                          {formData.thumbnail === image && (
-                            <span className="absolute top-2 left-2 px-2 py-0.5 bg-himalayan text-white text-xs rounded-full">
-                              Thumbnail
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ImageDropzone
+                  images={formData.images}
+                  thumbnail={formData.thumbnail}
+                  uploading={uploadingImage}
+                  onUpload={handleImageUpload}
+                  onRemove={removeImage}
+                  onSetThumbnail={setAsThumbnail}
+                  onReorder={(images) => setFormData(prev => ({ ...prev, images }))}
+                />
               )}
 
               {/* SEO Tab */}

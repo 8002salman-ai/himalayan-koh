@@ -40,6 +40,8 @@ const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminBlog = lazy(() => import('./pages/admin/AdminBlog'));
+const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
+const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
 
 function PageLoader() {
   return (
@@ -151,6 +153,22 @@ function App() {
             element={
               <AdminRoute>
                 <AdminLayout><AdminBlog /></AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/customers"
+            element={
+              <AdminRoute>
+                <AdminLayout><AdminCustomers /></AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/analytics"
+            element={
+              <AdminRoute>
+                <AdminLayout><AdminAnalytics /></AdminLayout>
               </AdminRoute>
             }
           />

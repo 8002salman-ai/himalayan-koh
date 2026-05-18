@@ -5,7 +5,7 @@ import { products as fallbackProducts, Product } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import { productsApi } from '../lib/supabase/api';
-import { isSupabaseConfigured } from '../lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import type { ProductWithCategory } from '../lib/supabase/database.types';
 
 const filterTabs = ['All', 'Edible Cooking Salt', 'Salt Lick for Horses', 'Salt for Cattle'];
@@ -37,6 +37,18 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
+
+    if (!isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel('shop-products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchProducts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchProducts())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -45,7 +57,7 @@ export default function ProductsPage() {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, searchQuery, products]);
 
   return (
     <div className="min-h-screen bg-warm-white">

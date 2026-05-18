@@ -282,13 +282,34 @@ export const adminApi = {
   async updateProduct(id: string, data: Partial<ProductFormData>): Promise<Product> {
     const { quantity, low_stock_threshold, track_inventory, allow_backorder, ...productData } = data;
 
-    // Update product
+    const productUpdate: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (productData.name !== undefined) productUpdate.name = productData.name;
+    if (productData.slug !== undefined) productUpdate.slug = productData.slug;
+    if (productData.description !== undefined) productUpdate.description = productData.description || null;
+    if (productData.short_description !== undefined) productUpdate.short_description = productData.short_description || null;
+    if (productData.price !== undefined) productUpdate.price = productData.price;
+    if (productData.compare_at_price !== undefined) productUpdate.compare_at_price = productData.compare_at_price || null;
+    if (productData.cost_price !== undefined) productUpdate.cost_price = productData.cost_price || null;
+    if (productData.sku !== undefined) productUpdate.sku = productData.sku || null;
+    if (productData.barcode !== undefined) productUpdate.barcode = productData.barcode || null;
+    if (productData.weight !== undefined) productUpdate.weight = productData.weight || null;
+    if (productData.weight_unit !== undefined) productUpdate.weight_unit = productData.weight_unit;
+    if (productData.category_id !== undefined) productUpdate.category_id = productData.category_id || null;
+    if (productData.images !== undefined) productUpdate.images = productData.images;
+    if (productData.thumbnail !== undefined) productUpdate.thumbnail = productData.thumbnail || null;
+    if (productData.is_active !== undefined) productUpdate.is_active = productData.is_active;
+    if (productData.is_featured !== undefined) productUpdate.is_featured = productData.is_featured;
+    if (productData.grain_sizes !== undefined) productUpdate.grain_sizes = productData.grain_sizes;
+    if (productData.tags !== undefined) productUpdate.tags = productData.tags;
+    if (productData.meta_title !== undefined) productUpdate.meta_title = productData.meta_title || null;
+    if (productData.meta_description !== undefined) productUpdate.meta_description = productData.meta_description || null;
+
     const { data: product, error: productError } = await supabase
       .from('products')
-      .update({
-        ...productData,
-        updated_at: new Date().toISOString(),
-      } as never)
+      .update(productUpdate as never)
       .eq('id', id)
       .select()
       .single();
@@ -462,6 +483,66 @@ export const adminApi = {
       .getPublicUrl(filePath);
 
     return publicUrl;
+  },
+
+  async getProductManagementStats(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    featured: number;
+    lowStock: number;
+    outOfStock: number;
+  }> {
+    const { count: total } = await supabase.from('products').select('*', { count: 'exact', head: true });
+    const { count: active } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true);
+    const { count: featured } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_featured', true);
+
+    const lowStockProducts = await this.getLowStockProducts();
+    const { data: inventoryRows } = await supabase.from('inventory').select('quantity').eq('track_inventory', true);
+    const outOfStock = (inventoryRows || []).filter((row) => (row as { quantity: number }).quantity <= 0).length;
+
+    const totalCount = total || 0;
+    const activeCount = active || 0;
+
+    return {
+      total: totalCount,
+      active: activeCount,
+      inactive: totalCount - activeCount,
+      featured: featured || 0,
+      lowStock: lowStockProducts.length,
+      outOfStock,
+    };
+  },
+
+  async getCustomers(filters: { search?: string; page?: number; limit?: number } = {}): Promise<{
+    customers: Profile[];
+    count: number;
+    totalPages: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 12;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from('profiles')
+      .select('*', { count: 'exact' })
+      .eq('role', 'customer')
+      .order('created_at', { ascending: false });
+
+    if (filters.search) {
+      query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      customers: (data || []) as Profile[],
+      count: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+    };
   },
 
   // ==================== DASHBOARD STATS ====================

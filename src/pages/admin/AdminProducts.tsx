@@ -15,14 +15,39 @@ import {
   ChevronRight,
   Package,
   AlertTriangle,
+  Layers,
+  Archive,
 } from 'lucide-react';
 import { adminApi, AdminProductFilters } from '../../lib/supabase/api/admin';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import { products as fallbackProducts, categories as fallbackCategories } from '../../data/products';
 import ProductEditorModal from '../../components/admin/ProductEditorModal';
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
+
+type ProductStats = {
+  total: number;
+  active: number;
+  inactive: number;
+  featured: number;
+  lowStock: number;
+  outOfStock: number;
+};
+
+function inventoryBadge(product: ProductWithRelations) {
+  const inv = product.inventory;
+  if (!inv?.track_inventory) {
+    return { label: 'Not tracked', className: 'bg-gray-100 text-gray-600' };
+  }
+  if (inv.quantity <= 0) {
+    return { label: 'Out of stock', className: 'bg-red-100 text-red-700' };
+  }
+  if (inv.quantity <= inv.low_stock_threshold) {
+    return { label: 'Low stock', className: 'bg-amber-100 text-amber-700' };
+  }
+  return { label: 'In stock', className: 'bg-green-100 text-green-700' };
+}
 
 export default function AdminProducts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,9 +60,10 @@ export default function AdminProducts() {
   // Filters
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || searchParams.get('filter') || '');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
-  
+  const [sortBy, setSortBy] = useState<'newest' | 'name' | 'price_asc' | 'price_desc'>('newest');
+  const [productStats, setProductStats] = useState<ProductStats | null>(null);
 
   // Selected items for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -116,14 +142,18 @@ export default function AdminProducts() {
         is_active: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined,
         is_featured: statusFilter === 'featured' ? true : undefined,
         low_stock: statusFilter === 'low_stock' ? true : undefined,
+        sortBy: sortBy === 'name' ? 'name' : sortBy === 'price_asc' || sortBy === 'price_desc' ? 'price' : 'created_at',
+        sortOrder: sortBy === 'price_asc' || sortBy === 'name' ? 'asc' : 'desc',
         page,
         limit: 10,
       };
 
-      const [productsResult, categoriesResult] = await Promise.all([
+      const [productsResult, categoriesResult, statsResult] = await Promise.all([
         adminApi.getProducts(filters),
         adminApi.getCategories(),
+        adminApi.getProductManagementStats(),
       ]);
+      setProductStats(statsResult);
 
       setProducts(productsResult.products);
       setTotalCount(productsResult.count);
@@ -134,10 +164,35 @@ export default function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter, statusFilter, page]);
+  }, [search, categoryFilter, statusFilter, page, sortBy]);
 
   useEffect(() => {
     fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'new') {
+      setEditingProduct(null);
+      setEditorOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      setSearchParams(next);
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel('admin-products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchProducts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchProducts())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [fetchProducts]);
 
   // Update URL params
@@ -234,14 +289,8 @@ export default function AdminProducts() {
     }
   };
 
-  const handleSaveProduct = (product: Product) => {
-    if (editingProduct) {
-      setProducts(prev => prev.map(p => 
-        p.id === product.id ? { ...p, ...product } : p
-      ));
-    } else {
-      fetchProducts();
-    }
+  const handleSaveProduct = () => {
+    fetchProducts();
     setEditorOpen(false);
     setEditingProduct(null);
   };
@@ -270,6 +319,27 @@ export default function AdminProducts() {
           Add Product
         </button>
       </div>
+
+      {productStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: 'Total', value: productStats.total, icon: Package },
+            { label: 'Active', value: productStats.active, icon: Eye },
+            { label: 'Inactive', value: productStats.inactive, icon: EyeOff },
+            { label: 'Featured', value: productStats.featured, icon: Star },
+            { label: 'Low Stock', value: productStats.lowStock, icon: AlertTriangle },
+            { label: 'Out of Stock', value: productStats.outOfStock, icon: Archive },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white rounded-xl shadow-sm p-4">
+              <div className="flex items-center gap-2 text-charcoal-light mb-1">
+                <stat.icon size={14} />
+                <span className="text-xs font-medium uppercase tracking-wide">{stat.label}</span>
+              </div>
+              <p className="text-xl font-bold text-charcoal">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters Bar */}
       <div className="bg-white rounded-2xl shadow-sm p-4">
@@ -309,6 +379,17 @@ export default function AdminProducts() {
             <option value="inactive">Inactive</option>
             <option value="featured">Featured</option>
             <option value="low_stock">Low Stock</option>
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setPage(1); }}
+            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
+          >
+            <option value="newest">Newest</option>
+            <option value="name">Name A–Z</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
           </select>
 
           {/* Reset */}
@@ -465,17 +546,28 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-4 py-3">
                         {product.inventory ? (
-                          <div className="flex items-center gap-2">
-                            <span className={`font-medium ${
-                              product.inventory.quantity <= product.inventory.low_stock_threshold
-                                ? 'text-red-600'
-                                : 'text-charcoal'
-                            }`}>
-                              {product.inventory.quantity}
-                            </span>
-                            {product.inventory.quantity <= product.inventory.low_stock_threshold && (
-                              <AlertTriangle size={14} className="text-red-500" />
-                            )}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${
+                                product.inventory.quantity <= product.inventory.low_stock_threshold
+                                  ? 'text-red-600'
+                                  : 'text-charcoal'
+                              }`}>
+                                {product.inventory.quantity}
+                              </span>
+                              {product.inventory.quantity <= product.inventory.low_stock_threshold && (
+                                <AlertTriangle size={14} className="text-red-500" />
+                              )}
+                            </div>
+                            {(() => {
+                              const badge = inventoryBadge(product);
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge.className}`}>
+                                  <Layers size={10} />
+                                  {badge.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <span className="text-charcoal-light">—</span>

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import AIChatWidget from '../AIChatWidget';
 
 interface AdminAlert {
   id: string;
@@ -388,6 +389,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           onClick={() => setNotificationOpen(false)}
         />
       )}
+
+      <AIChatWidget />
     </div>
   );
 }

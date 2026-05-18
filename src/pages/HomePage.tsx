@@ -1,6 +1,12 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, MapPin, Phone, Star, Truck, Shield, Award, Quote, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ProductCard from '../components/ProductCard';
+import { productsApi } from '../lib/supabase/api';
+import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import type { ProductWithCategory } from '../lib/supabase/database.types';
+import type { Product } from '../data/products';
 
 const heroCards = [
   {
@@ -109,7 +115,52 @@ const testimonials = [
   },
 ];
 
+function mapFeaturedProduct(product: ProductWithCategory): Product {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.compare_at_price
+      ? `$${product.price.toFixed(2)} - $${product.compare_at_price.toFixed(2)}`
+      : `$${product.price.toFixed(2)}`,
+    priceRange: Boolean(product.compare_at_price),
+    priceMin: product.price,
+    priceMax: product.compare_at_price || undefined,
+    image: product.thumbnail || product.images?.[0] || '',
+    category: product.category?.name || 'Uncategorized',
+    description: product.description || product.short_description || undefined,
+    grainSizes: product.grain_sizes,
+    inStock: product.inventory ? product.inventory.quantity > product.inventory.reserved_quantity : true,
+  };
+}
+
 export default function HomePage() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const loadFeatured = async () => {
+      if (!isSupabaseConfigured()) return;
+      try {
+        const items = await productsApi.getFeaturedProducts(4);
+        setFeaturedProducts(items.map(mapFeaturedProduct));
+      } catch (err) {
+        console.error('Failed to load featured products:', err);
+      }
+    };
+
+    loadFeatured();
+
+    if (!isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel('home-featured-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => loadFeatured())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
+
   return (
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
       {/* Hero Section - Full Height */}
@@ -381,6 +432,30 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {featuredProducts.length > 0 && (
+        <section className="py-16 md:py-20 bg-warm-white border-t border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-10">
+              <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+                Featured Products
+              </span>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal">Shop Our Favorites</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+            <div className="text-center mt-10">
+              <Link to="/products" className="btn-hk-primary inline-flex items-center gap-2">
+                View All Products
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Livestock Salt Story */}
       <section className="py-16 md:py-24 bg-white">
