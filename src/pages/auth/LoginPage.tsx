@@ -4,17 +4,39 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 
+const demoAccounts = {
+  customer: {
+    label: 'Use Demo Customer',
+    email: 'customer@himalayankoh.com',
+    password: 'Customer123!',
+    redirectTo: '/account',
+  },
+  admin: {
+    label: 'Use Demo Admin',
+    email: 'admin@himalayankoh.com',
+    password: 'Admin123!',
+    redirectTo: '/admin',
+  },
+};
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(demoAccounts.customer.email);
+  const [password, setPassword] = useState(demoAccounts.customer.password);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
+  const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
   
   const { signIn, loading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as { from?: string })?.from || '/';
+
+  useEffect(() => {
+    if (from.startsWith('/admin')) {
+      fillDemoAccount('admin');
+    }
+  }, [from]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -28,10 +50,18 @@ export default function LoginPage() {
 
     try {
       await signIn({ email, password });
-      navigate(from, { replace: true });
+      navigate(demoRedirect || from, { replace: true });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     }
+  };
+
+  const fillDemoAccount = (type: keyof typeof demoAccounts) => {
+    const account = demoAccounts[type];
+    setEmail(account.email);
+    setPassword(account.password);
+    setDemoRedirect(account.redirectTo);
+    setFormError('');
   };
 
   return (
@@ -59,7 +89,29 @@ export default function LoginPage() {
               className="h-14 mx-auto mb-4"
             />
             <h1 className="font-serif text-2xl font-bold text-charcoal">Welcome Back</h1>
-            <p className="text-charcoal-light text-sm mt-1">Sign in to your account</p>
+            <p className="text-charcoal-light text-sm mt-1">Sign in to your account or use a demo login</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => fillDemoAccount('customer')}
+              className="p-3 rounded-xl bg-himalayan-lighter text-himalayan text-sm font-semibold hover:bg-himalayan/15 transition-colors"
+            >
+              {demoAccounts.customer.label}
+            </button>
+            <button
+              type="button"
+              onClick={() => fillDemoAccount('admin')}
+              className="p-3 rounded-xl bg-charcoal text-white text-sm font-semibold hover:bg-charcoal-light transition-colors"
+            >
+              {demoAccounts.admin.label}
+            </button>
+          </div>
+
+          <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
+            <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer123!</p>
+            <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin123!</p>
           </div>
 
           {/* Form */}

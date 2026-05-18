@@ -12,12 +12,23 @@ interface Props {
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
+const demoAccounts = {
+  customer: {
+    email: 'customer@himalayankoh.com',
+    password: 'Customer123!',
+  },
+  admin: {
+    email: 'admin@himalayankoh.com',
+    password: 'Admin123!',
+  },
+};
+
 export default function AuthModal({ isOpen, onClose }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: demoAccounts.customer.email,
+    password: demoAccounts.customer.password,
     fullName: '',
   });
   const [formError, setFormError] = useState('');
@@ -64,6 +75,17 @@ export default function AuthModal({ isOpen, onClose }: Props) {
   const goToFullPage = (page: 'login' | 'signup') => {
     onClose();
     navigate(`/${page}`);
+  };
+
+  const fillDemoAccount = (type: keyof typeof demoAccounts) => {
+    setMode('login');
+    setFormData({
+      ...formData,
+      email: demoAccounts[type].email,
+      password: demoAccounts[type].password,
+    });
+    setFormError('');
+    setSuccess('');
   };
 
   return (
@@ -123,6 +145,25 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm flex items-center gap-2">
                   <Check size={16} />
                   {success}
+                </div>
+              )}
+
+              {mode === 'login' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fillDemoAccount('customer')}
+                    className="p-2.5 rounded-lg bg-himalayan-lighter text-himalayan text-xs font-semibold hover:bg-himalayan/15 transition-colors"
+                  >
+                    Demo Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fillDemoAccount('admin')}
+                    className="p-2.5 rounded-lg bg-charcoal text-white text-xs font-semibold hover:bg-charcoal-light transition-colors"
+                  >
+                    Demo Admin
+                  </button>
                 </div>
               )}
 

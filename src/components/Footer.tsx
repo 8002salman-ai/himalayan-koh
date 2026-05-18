@@ -6,6 +6,8 @@ import { MapPin, Mail, Phone, ArrowRight, Send } from 'lucide-react';
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
   { label: 'Shop Products', to: '/products' },
+  { label: 'Customer Login', to: '/login' },
+  { label: 'Admin Login', to: '/login', state: { from: '/admin' } },
   { label: 'Blog Posts', to: '/blog' },
   { label: 'Contact Us', to: '/contact' },
   { label: 'FAQ', to: '/contact' },
@@ -126,7 +128,7 @@ export default function Footer() {
             <ul className="space-y-3">
               {aboutLinks.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.to} className="text-white/60 text-sm hover:text-himalayan transition-colors flex items-center gap-1 group">
+                  <Link to={link.to} state={'state' in link ? link.state : undefined} className="text-white/60 text-sm hover:text-himalayan transition-colors flex items-center gap-1 group">
                     <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
                     {link.label}
                   </Link>
