@@ -16,6 +16,7 @@ import {
   Plus,
   ChevronDown,
   BarChart3,
+  Home,
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
@@ -43,6 +44,13 @@ const navItems = [
   { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
+];
+
+const mobileNavItems = [
+  { label: 'Home', path: '/admin', icon: LayoutDashboard },
+  { label: 'Products', path: '/admin/products', icon: Package },
+  { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
+  { label: 'More', path: 'menu', icon: Menu },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -194,7 +202,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              className="fixed left-0 top-0 bottom-0 w-64 bg-charcoal text-white z-50 lg:hidden"
+              className="fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-charcoal text-white z-50 lg:hidden flex flex-col"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
                 <Link to="/admin" className="flex items-center gap-2">
@@ -211,9 +219,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <X size={20} />
                 </button>
               </div>
-              <nav className="py-4 px-3 space-y-1">
+              <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
                 {navItems.map((item) => {
-                  const isActive = location.pathname === item.path;
+                  const isActive = location.pathname === item.path ||
+                    (item.path !== '/admin' && location.pathname.startsWith(item.path));
                   return (
                     <Link
                       key={item.path}
@@ -231,6 +240,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   );
                 })}
               </nav>
+              <div className="p-4 border-t border-white/10">
+                <Link
+                  to="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all"
+                >
+                  <Home size={20} />
+                  <span className="font-medium">Back to Site</span>
+                </Link>
+              </div>
             </motion.aside>
           </>
         )}
@@ -380,10 +399,61 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-4 pb-28 lg:p-6 overflow-auto">
           {children}
         </main>
       </div>
+
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+        <div className="grid grid-cols-4 gap-1">
+          {mobileNavItems.map((item) => {
+            const isMenu = item.path === 'menu';
+            const isActive = !isMenu && (
+              location.pathname === item.path ||
+              (item.path !== '/admin' && location.pathname.startsWith(item.path))
+            );
+            const content = (
+              <>
+                <item.icon size={20} />
+                <span className="text-[11px] font-semibold">{item.label}</span>
+              </>
+            );
+
+            if (isMenu) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="min-h-[54px] rounded-xl flex flex-col items-center justify-center gap-1 text-charcoal-light hover:bg-gray-50"
+                >
+                  {content}
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`min-h-[54px] rounded-xl flex flex-col items-center justify-center gap-1 ${
+                  isActive ? 'bg-himalayan text-white' : 'text-charcoal-light hover:bg-gray-50'
+                }`}
+              >
+                {content}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      <Link
+        to="/admin/products?action=new"
+        className="lg:hidden fixed right-4 bottom-24 z-50 w-14 h-14 rounded-full bg-himalayan text-white shadow-xl flex items-center justify-center"
+        aria-label="Quick add product"
+      >
+        <Plus size={24} />
+      </Link>
 
       {/* Click outside to close user menu */}
       {userMenuOpen && (

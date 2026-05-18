@@ -12,6 +12,8 @@ import {
   Loader2,
   Users,
   BarChart3,
+  Plus,
+  FileText,
 } from 'lucide-react';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
@@ -149,6 +151,14 @@ export default function AdminDashboard() {
 
   const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
   const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
+  const mobileActions = [
+    { label: 'Add Product', path: '/admin/products?action=new', icon: Plus, color: 'bg-himalayan text-white' },
+    { label: 'Products', path: '/admin/products', icon: Package, color: 'bg-white text-charcoal' },
+    { label: 'Orders', path: '/admin/orders', icon: ShoppingCart, color: 'bg-white text-charcoal' },
+    { label: 'Blog', path: '/admin/blog', icon: FileText, color: 'bg-white text-charcoal' },
+    { label: 'Customers', path: '/admin/customers', icon: Users, color: 'bg-white text-charcoal' },
+    { label: 'Analytics', path: '/admin/analytics', icon: BarChart3, color: 'bg-white text-charcoal' },
+  ];
 
   if (loading) {
     return (
@@ -173,6 +183,19 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="lg:hidden grid grid-cols-2 gap-3">
+        {mobileActions.map((action) => (
+          <Link
+            key={action.label}
+            to={action.path}
+            className={`min-h-[72px] rounded-2xl shadow-sm p-4 flex items-center gap-3 ${action.color}`}
+          >
+            <action.icon size={20} />
+            <span className="font-semibold text-sm">{action.label}</span>
+          </Link>
+        ))}
       </div>
 
       {/* Stats Grid */}

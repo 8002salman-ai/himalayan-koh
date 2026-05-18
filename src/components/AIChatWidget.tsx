@@ -23,6 +23,7 @@ export default function AIChatWidget() {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState('');
+  const [lastPrompt, setLastPrompt] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function AIChatWidget() {
     setMessages(nextMessages);
     setInput('');
     setError('');
+    setLastPrompt(trimmed);
     setIsStreaming(true);
 
     try {
@@ -78,7 +80,7 @@ export default function AIChatWidget() {
 
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(body?.error || 'AI assistant is unavailable right now.');
+        throw new Error(body?.error || 'AI assistant is busy right now. Please try again.');
       }
 
       const reader = response.body.getReader();
@@ -122,7 +124,7 @@ export default function AIChatWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-5 right-5 z-[80] w-14 h-14 bg-himalayan hover:bg-himalayan-dark text-white rounded-full shadow-xl shadow-himalayan/30 flex items-center justify-center"
+        className="fixed bottom-20 right-5 sm:bottom-5 z-[80] w-14 h-14 bg-himalayan hover:bg-himalayan-dark text-white rounded-full shadow-xl shadow-himalayan/30 flex items-center justify-center"
         aria-label="Open AI assistant"
       >
         <MessageCircle size={24} />
@@ -142,7 +144,7 @@ export default function AIChatWidget() {
               initial={{ opacity: 0, y: 30, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.96 }}
-              className="fixed bottom-4 right-4 left-4 md:left-auto md:bottom-24 md:right-5 z-[105] md:w-[420px] h-[620px] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed left-3 right-3 top-4 bottom-20 md:top-auto md:left-auto md:bottom-24 md:right-5 z-[105] md:w-[420px] md:h-[620px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -222,7 +224,17 @@ export default function AIChatWidget() {
 
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-                    {error}
+                    <p>{error}</p>
+                    {lastPrompt && (
+                      <button
+                        type="button"
+                        onClick={() => sendMessage(lastPrompt)}
+                        disabled={isStreaming}
+                        className="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-60"
+                      >
+                        Retry
+                      </button>
+                    )}
                   </div>
                 )}
                 <div ref={scrollRef} />
