@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { Product, Category, Inventory } from '../database.types';
+import type { Product, Category, Inventory, Order, OrderWithItems, Profile } from '../database.types';
 
 export interface ProductFormData {
   name: string;
@@ -49,6 +49,31 @@ export interface AdminProductFilters {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+}
+
+export interface AdminOrderFilters {
+  search?: string;
+  status?: Order['status'];
+  paymentStatus?: Order['payment_status'];
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export type AdminOrder = OrderWithItems & {
+  profile: Profile | null;
+};
+
+export interface AdminOrderAnalytics {
+  totalOrders: number;
+  pendingOrders: number;
+  processingOrders: number;
+  shippedOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  refundRequests: number;
+  totalRevenue: number;
 }
 
 export const adminApi = {
@@ -433,5 +458,128 @@ export const adminApi = {
       recentOrders: recentOrders || 0,
       totalRevenue,
     };
+  },
+
+  // ==================== ORDERS ====================
+
+  async getOrders(filters: AdminOrderFilters = {}): Promise<{
+    orders: AdminOrder[];
+    count: number;
+    totalPages: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from('orders')
+      .select(`
+        *,
+        profile:profiles(*),
+        order_items(*)
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (filters.search) {
+      query = query.or(`order_number.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
+    }
+
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    if (filters.paymentStatus) {
+      query = query.eq('payment_status', filters.paymentStatus);
+    }
+
+    if (filters.startDate) {
+      query = query.gte('created_at', filters.startDate);
+    }
+
+    if (filters.endDate) {
+      query = query.lte('created_at', filters.endDate);
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      orders: data as AdminOrder[],
+      count: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+    };
+  },
+
+  async getOrderAnalytics(): Promise<AdminOrderAnalytics> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('status,payment_status,total');
+
+    if (error) throw error;
+
+    const orders = data as Pick<Order, 'status' | 'payment_status' | 'total'>[];
+
+    return {
+      totalOrders: orders.length,
+      pendingOrders: orders.filter((order) => order.status === 'pending').length,
+      processingOrders: orders.filter((order) => order.status === 'processing').length,
+      shippedOrders: orders.filter((order) => order.status === 'shipped').length,
+      deliveredOrders: orders.filter((order) => order.status === 'delivered').length,
+      cancelledOrders: orders.filter((order) => order.status === 'cancelled').length,
+      refundRequests: orders.filter((order) => order.payment_status === 'refunded' || order.status === 'refunded').length,
+      totalRevenue: orders
+        .filter((order) => order.status !== 'cancelled' && order.status !== 'refunded')
+        .reduce((sum, order) => sum + (order.total || 0), 0),
+    };
+  },
+
+  async updateOrderStatus(
+    orderId: string,
+    status: Order['status'],
+    trackingNumber?: string,
+  ): Promise<Order> {
+    const updates: Partial<Order> = {
+      status,
+      tracking_number: trackingNumber || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === 'shipped') {
+      updates.shipped_at = new Date().toISOString();
+    }
+
+    if (status === 'delivered') {
+      updates.delivered_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updates as never)
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Order;
+  },
+
+  async updateOrderPaymentStatus(
+    orderId: string,
+    paymentStatus: Order['payment_status'],
+  ): Promise<Order> {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        payment_status: paymentStatus,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Order;
   },
 };

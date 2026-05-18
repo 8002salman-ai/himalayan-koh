@@ -34,6 +34,7 @@ import WishlistPage from './pages/WishlistPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
+import AdminOrders from './pages/admin/AdminOrders';
 
 function App() {
   return (
@@ -115,6 +116,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminLayout><AdminCategories /></AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <AdminRoute>
+                <AdminLayout><AdminOrders /></AdminLayout>
               </AdminRoute>
             }
           />

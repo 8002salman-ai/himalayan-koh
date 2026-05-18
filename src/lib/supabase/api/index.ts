@@ -14,5 +14,12 @@ export type { ProductFilters } from './products';
 export type { CreateOrderData, OrderFilters } from './orders';
 export type { WishlistWithProduct } from './wishlist';
 export type { BlogPostWithAuthor, BlogFilters } from './blog';
-export type { ProductFormData, CategoryFormData, AdminProductFilters } from './admin';
+export type {
+  ProductFormData,
+  CategoryFormData,
+  AdminProductFilters,
+  AdminOrderFilters,
+  AdminOrder,
+  AdminOrderAnalytics,
+} from './admin';
 export type { AddressFormData } from './addresses';
