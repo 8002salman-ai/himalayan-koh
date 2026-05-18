@@ -8,9 +8,10 @@ interface ChatMessage {
 }
 
 const stableFreeModels = [
-  'deepseek/deepseek-chat-v3-0324:free',
-  'qwen/qwen3-32b:free',
+  'deepseek/deepseek-v4-flash:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
   'meta-llama/llama-3.3-70b-instruct:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
 ];
 
 const modelCandidates = Array.from(new Set([
