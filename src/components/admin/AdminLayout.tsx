@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,6 +17,16 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+
+interface AdminAlert {
+  id: string;
+  title: string;
+  message: string;
+  type: 'order' | 'customer' | 'inventory';
+  createdAt: string;
+  read: boolean;
+}
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -37,14 +47,73 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuthContext();
+  const unreadCount = alerts.filter((alert) => !alert.read).length;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const addAlert = (alert: Omit<AdminAlert, 'id' | 'createdAt' | 'read'>) => {
+      setAlerts((current) => [
+        {
+          ...alert,
+          id: `${alert.type}-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          read: false,
+        },
+        ...current,
+      ].slice(0, 10));
+    };
+
+    const channel = supabase
+      .channel('admin-layout-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        const order = payload.new as { order_number?: string; total?: number; email?: string };
+        addAlert({
+          type: 'order',
+          title: 'New order received',
+          message: `${order.order_number || 'Order'} from ${order.email || 'customer'}${order.total ? ` · $${Number(order.total).toFixed(2)}` : ''}`,
+        });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
+        const customer = payload.new as { full_name?: string; email?: string; role?: string };
+        if (customer.role === 'admin') return;
+        addAlert({
+          type: 'customer',
+          title: 'New customer activity',
+          message: customer.full_name || customer.email || 'A customer joined',
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory' }, (payload) => {
+        const inventory = payload.new as { quantity?: number; low_stock_threshold?: number };
+        if (
+          typeof inventory.quantity === 'number' &&
+          typeof inventory.low_stock_threshold === 'number' &&
+          inventory.quantity > inventory.low_stock_threshold
+        ) {
+          return;
+        }
+        addAlert({
+          type: 'inventory',
+          title: 'Inventory alert',
+          message: `Stock changed to ${inventory.quantity ?? 0}`,
+        });
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -183,10 +252,69 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
           <div className="flex items-center gap-3">
             {/* Notifications */}
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-              <Bell size={20} className="text-charcoal-light" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setNotificationOpen(!notificationOpen);
+                  setAlerts((current) => current.map((alert) => ({ ...alert, read: true })));
+                }}
+                className="relative p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <Bell size={20} className="text-charcoal-light" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {notificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                  >
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <h3 className="font-semibold text-charcoal">Notifications</h3>
+                      <p className="text-xs text-charcoal-light">Realtime admin alerts</p>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {alerts.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-sm text-charcoal-light">
+                          No alerts yet
+                        </div>
+                      ) : (
+                        alerts.map((alert) => (
+                          <div key={alert.id} className="px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${alertColor(alert.type)}`}>
+                                {alert.type === 'order' ? <ShoppingCart size={15} /> : alert.type === 'customer' ? <Users size={15} /> : <Package size={15} />}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-charcoal">{alert.title}</p>
+                                <p className="text-xs text-charcoal-light line-clamp-2">{alert.message}</p>
+                                <p className="text-[11px] text-charcoal-light mt-1">
+                                  {new Date(alert.createdAt).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <Link
+                      to="/admin"
+                      onClick={() => setNotificationOpen(false)}
+                      className="block px-4 py-3 text-sm font-semibold text-himalayan hover:bg-gray-50 border-t border-gray-100"
+                    >
+                      View Dashboard
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* User Menu */}
             <div className="relative">
@@ -254,6 +382,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           onClick={() => setUserMenuOpen(false)}
         />
       )}
+      {notificationOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setNotificationOpen(false)}
+        />
+      )}
     </div>
   );
+}
+
+function alertColor(type: AdminAlert['type']) {
+  if (type === 'order') return 'text-green-600 bg-green-50';
+  if (type === 'customer') return 'text-purple-600 bg-purple-50';
+  return 'text-amber-600 bg-amber-50';
 }

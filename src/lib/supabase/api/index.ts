@@ -23,5 +23,9 @@ export type {
   AdminOrder,
   AdminOrderAnalytics,
   AdminBlogFilters,
+  AdminDashboardAnalytics,
+  AnalyticsPoint,
+  ProductAnalytics,
+  InventoryAlert,
 } from './admin';
 export type { AddressFormData } from './addresses';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -10,9 +10,11 @@ import {
   TrendingUp,
   ArrowUpRight,
   Loader2,
+  Users,
+  BarChart3,
 } from 'lucide-react';
-import { adminApi } from '../../lib/supabase/api/admin';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 
 interface DashboardStats {
   totalProducts: number;
@@ -25,10 +27,11 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [realtimeNotice, setRealtimeNotice] = useState('');
 
-  useEffect(() => {
-    const fetchStats = async () => {
+  const fetchDashboard = useCallback(async () => {
       if (!isSupabaseConfigured()) {
         setStats({
           totalProducts: 6,
@@ -38,22 +41,52 @@ export default function AdminDashboard() {
           recentOrders: 15,
           totalRevenue: 2450.50,
         });
+        setAnalytics(null);
         setLoading(false);
         return;
       }
 
       try {
-        const data = await adminApi.getDashboardStats();
+        const [data, analyticsData] = await Promise.all([
+          adminApi.getDashboardStats(),
+          adminApi.getDashboardAnalytics(),
+        ]);
         setStats(data);
+        setAnalytics(analyticsData);
       } catch (err) {
-        console.error('Failed to fetch stats:', err);
+        console.error('Failed to fetch dashboard:', err);
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
 
-    fetchStats();
-  }, []);
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        setRealtimeNotice('New order received');
+        fetchDashboard();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
+        setRealtimeNotice('New customer activity');
+        fetchDashboard();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory' }, () => {
+        setRealtimeNotice('Inventory updated');
+        fetchDashboard();
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [fetchDashboard]);
 
   const statCards = [
     {
@@ -84,7 +117,38 @@ export default function AdminDashboard() {
       color: 'bg-himalayan',
       link: '/admin/analytics',
     },
+    {
+      label: 'Customers',
+      value: analytics?.totalCustomers || 0,
+      icon: Users,
+      color: 'bg-indigo-500',
+      link: '/admin/customers',
+    },
+    {
+      label: 'New Customers',
+      value: analytics?.newCustomers || 0,
+      icon: TrendingUp,
+      color: 'bg-emerald-500',
+      link: '/admin/customers',
+    },
+    {
+      label: 'Repeat Customers',
+      value: analytics?.repeatCustomers || 0,
+      icon: Users,
+      color: 'bg-purple-500',
+      link: '/admin/customers',
+    },
+    {
+      label: 'Inventory Alerts',
+      value: analytics?.inventoryAlerts.length || stats?.lowStockCount || 0,
+      icon: AlertTriangle,
+      color: 'bg-amber-500',
+      link: '/admin/products?filter=low_stock',
+    },
   ];
+
+  const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
+  const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
 
   if (loading) {
     return (
@@ -98,8 +162,17 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dashboard</h1>
-        <p className="text-charcoal-light">Welcome back! Here's what's happening.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal">Dashboard</h1>
+            <p className="text-charcoal-light">Welcome back! Here's what's happening.</p>
+          </div>
+          {realtimeNotice && (
+            <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium">
+              {realtimeNotice}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -127,6 +200,115 @@ export default function AdminDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Analytics Charts */}
+      {analytics && (
+        <div className="grid xl:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-charcoal">Revenue Analytics</h3>
+                <p className="text-sm text-charcoal-light">Last 7 days revenue and order volume</p>
+              </div>
+              <BarChart3 size={20} className="text-himalayan" />
+            </div>
+            <div className="h-64 flex items-end gap-3">
+              {analytics.revenueSeries.map((point) => (
+                <div key={point.label} className="flex-1 flex flex-col items-center gap-2">
+                  <div className="w-full flex items-end justify-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                    <div
+                      className="w-full bg-himalayan rounded-t-xl min-h-2 transition-all"
+                      style={{ height: `${Math.max(6, (point.revenue / maxRevenue) * 100)}%` }}
+                      title={`$${point.revenue.toFixed(2)} · ${point.orders} orders`}
+                    />
+                  </div>
+                  <span className="text-xs text-charcoal-light">{point.label}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl p-6 shadow-sm"
+          >
+            <h3 className="font-semibold text-charcoal mb-4">Orders Analytics</h3>
+            <div className="space-y-3">
+              {Object.entries(analytics.orderStatusCounts).map(([status, count]) => (
+                <div key={status}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-charcoal capitalize">{status}</span>
+                    <span className="font-semibold text-charcoal">{count}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-himalayan rounded-full"
+                      style={{ width: `${stats?.recentOrders ? Math.min(100, (count / stats.recentOrders) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm"
+          >
+            <h3 className="font-semibold text-charcoal mb-4">Product Analytics</h3>
+            <div className="space-y-4">
+              {analytics.topProducts.length === 0 ? (
+                <p className="text-sm text-charcoal-light">No product sales yet.</p>
+              ) : analytics.topProducts.map((product) => (
+                <div key={product.productName}>
+                  <div className="flex justify-between gap-4 text-sm mb-1">
+                    <span className="font-medium text-charcoal truncate">{product.productName}</span>
+                    <span className="text-charcoal-light">${product.revenue.toFixed(2)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full"
+                      style={{ width: `${Math.max(5, (product.revenue / maxProductRevenue) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-charcoal-light mt-1">{product.quantity} units sold</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl p-6 shadow-sm"
+          >
+            <h3 className="font-semibold text-charcoal mb-4">Inventory Alerts</h3>
+            <div className="space-y-3">
+              {analytics.inventoryAlerts.length === 0 ? (
+                <p className="text-sm text-charcoal-light">No low-stock alerts.</p>
+              ) : analytics.inventoryAlerts.map((alert) => (
+                <Link
+                  key={alert.productId}
+                  to="/admin/products?filter=low_stock"
+                  className="block p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+                >
+                  <p className="text-sm font-medium text-amber-800 line-clamp-1">{alert.productName}</p>
+                  <p className="text-xs text-amber-700">Qty {alert.quantity} · threshold {alert.threshold}</p>
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Alerts & Quick Actions */}
       <div className="grid lg:grid-cols-2 gap-6">
@@ -200,7 +382,7 @@ export default function AdminDashboard() {
         </motion.div>
       </div>
 
-      {/* Recent Activity Placeholder */}
+      {/* Recent Activity */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -209,18 +391,16 @@ export default function AdminDashboard() {
       >
         <h3 className="font-semibold text-charcoal mb-4">Recent Activity</h3>
         <div className="space-y-4">
-          {[
-            { action: 'New order received', time: '2 minutes ago', icon: ShoppingCart, color: 'text-green-600 bg-green-50' },
-            { action: 'Product inventory updated', time: '15 minutes ago', icon: Package, color: 'text-blue-600 bg-blue-50' },
-            { action: 'New customer registered', time: '1 hour ago', icon: TrendingUp, color: 'text-purple-600 bg-purple-50' },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.color}`}>
-                <item.icon size={18} />
+          {(analytics?.recentActivity || []).length === 0 ? (
+            <p className="text-sm text-charcoal-light">No recent activity yet.</p>
+          ) : analytics?.recentActivity.map((item) => (
+            <div key={`${item.type}-${item.id}`} className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${activityColor(item.type)}`}>
+                {item.type === 'order' ? <ShoppingCart size={18} /> : item.type === 'inventory' ? <Package size={18} /> : <Users size={18} />}
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-charcoal">{item.action}</p>
-                <p className="text-xs text-charcoal-light">{item.time}</p>
+                <p className="text-xs text-charcoal-light">{new Date(item.time).toLocaleString()}</p>
               </div>
             </div>
           ))}
@@ -228,4 +408,10 @@ export default function AdminDashboard() {
       </motion.div>
     </div>
   );
+}
+
+function activityColor(type: 'order' | 'customer' | 'inventory') {
+  if (type === 'order') return 'text-green-600 bg-green-50';
+  if (type === 'customer') return 'text-purple-600 bg-purple-50';
+  return 'text-amber-600 bg-amber-50';
 }

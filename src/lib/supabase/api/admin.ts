@@ -100,6 +100,41 @@ export interface AdminBlogFilters {
   limit?: number;
 }
 
+export interface AnalyticsPoint {
+  label: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface ProductAnalytics {
+  productName: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface InventoryAlert {
+  productId: string;
+  productName: string;
+  quantity: number;
+  threshold: number;
+}
+
+export interface AdminDashboardAnalytics {
+  revenueSeries: AnalyticsPoint[];
+  orderStatusCounts: Record<string, number>;
+  topProducts: ProductAnalytics[];
+  totalCustomers: number;
+  newCustomers: number;
+  repeatCustomers: number;
+  inventoryAlerts: InventoryAlert[];
+  recentActivity: {
+    id: string;
+    action: string;
+    time: string;
+    type: 'order' | 'customer' | 'inventory';
+  }[];
+}
+
 export const adminApi = {
   // ==================== PRODUCTS ====================
 
@@ -481,6 +516,123 @@ export const adminApi = {
       totalCategories: totalCategories || 0,
       recentOrders: recentOrders || 0,
       totalRevenue,
+    };
+  },
+
+  async getDashboardAnalytics(): Promise<AdminDashboardAnalytics> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [ordersResult, orderItemsResult, customersResult, newCustomersResult, lowStockProducts] = await Promise.all([
+      supabase
+        .from('orders')
+        .select('id,order_number,total,status,created_at,user_id,email')
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(300),
+      supabase
+        .from('order_items')
+        .select('product_name,quantity,total_price')
+        .limit(500),
+      supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'customer'),
+      supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'customer')
+        .gte('created_at', thirtyDaysAgo.toISOString()),
+      this.getLowStockProducts(),
+    ]);
+
+    if (ordersResult.error) throw ordersResult.error;
+    if (orderItemsResult.error) throw orderItemsResult.error;
+    if (customersResult.error) throw customersResult.error;
+    if (newCustomersResult.error) throw newCustomersResult.error;
+
+    const orders = (ordersResult.data || []) as Pick<Order, 'id' | 'order_number' | 'total' | 'status' | 'created_at' | 'user_id' | 'email'>[];
+    const orderItems = (orderItemsResult.data || []) as { product_name: string; quantity: number; total_price: number }[];
+
+    const revenueByDay = new Map<string, AnalyticsPoint>();
+    for (let i = 6; i >= 0; i -= 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = date.toISOString().slice(0, 10);
+      revenueByDay.set(key, {
+        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: 0,
+        orders: 0,
+      });
+    }
+
+    const orderStatusCounts: Record<string, number> = {
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+    const customerOrderCounts = new Map<string, number>();
+
+    orders.forEach((order) => {
+      const key = order.created_at.slice(0, 10);
+      const point = revenueByDay.get(key);
+      if (point) {
+        point.revenue += order.total || 0;
+        point.orders += 1;
+      }
+
+      orderStatusCounts[order.status] = (orderStatusCounts[order.status] || 0) + 1;
+      const customerKey = order.user_id || order.email;
+      customerOrderCounts.set(customerKey, (customerOrderCounts.get(customerKey) || 0) + 1);
+    });
+
+    const productMap = new Map<string, ProductAnalytics>();
+    orderItems.forEach((item) => {
+      const current = productMap.get(item.product_name) || {
+        productName: item.product_name,
+        quantity: 0,
+        revenue: 0,
+      };
+      current.quantity += item.quantity;
+      current.revenue += item.total_price;
+      productMap.set(item.product_name, current);
+    });
+
+    const inventoryAlerts = lowStockProducts.slice(0, 5).map((product) => ({
+      productId: product.id,
+      productName: product.name,
+      quantity: product.inventory.quantity,
+      threshold: product.inventory.low_stock_threshold,
+    }));
+
+    return {
+      revenueSeries: Array.from(revenueByDay.values()),
+      orderStatusCounts,
+      topProducts: Array.from(productMap.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5),
+      totalCustomers: customersResult.count || 0,
+      newCustomers: newCustomersResult.count || 0,
+      repeatCustomers: Array.from(customerOrderCounts.values()).filter((count) => count > 1).length,
+      inventoryAlerts,
+      recentActivity: [
+        ...orders.slice(0, 5).map((order) => ({
+          id: order.id,
+          action: `Order ${order.order_number} received`,
+          time: order.created_at,
+          type: 'order' as const,
+        })),
+        ...inventoryAlerts.map((alert) => ({
+          id: alert.productId,
+          action: `${alert.productName} is low on stock`,
+          time: new Date().toISOString(),
+          type: 'inventory' as const,
+        })),
+      ]
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 6),
     };
   },
 
