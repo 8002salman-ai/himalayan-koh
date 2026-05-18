@@ -7,6 +7,7 @@ import { useAuthContext } from '../context/AuthContext';
 import CartDrawer from './CartDrawer';
 import SearchModal from './SearchModal';
 import AuthModal from './AuthModal';
+import AIChatWidget from './AIChatWidget';
 import Footer from './Footer';
 import ScrollToTop from './ScrollToTop';
 
@@ -297,6 +298,7 @@ export default function Layout({ children }: LayoutProps) {
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+      <AIChatWidget />
       <ScrollToTop />
     </div>
   );
