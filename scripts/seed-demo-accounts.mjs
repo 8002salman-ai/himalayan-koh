@@ -1,4 +1,11 @@
+import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+dotenv.config({ path: path.join(root, '.env.local') });
+dotenv.config({ path: path.join(root, '.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -29,7 +36,7 @@ if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     'Required:',
     '- SUPABASE_URL or VITE_SUPABASE_URL',
     '- SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY',
-    '- SUPABASE_SERVICE_ROLE_KEY',
+    '- SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)',
   ].join('\n'));
   process.exit(1);
 }

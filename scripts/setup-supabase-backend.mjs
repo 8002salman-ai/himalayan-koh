@@ -23,6 +23,7 @@ const migrations = [
   '002_row_level_security.sql',
   '003_storage_buckets.sql',
   '004_auth_profile_roles.sql',
+  '005_fix_auth_user_trigger.sql',
 ];
 
 function requireEnv() {
