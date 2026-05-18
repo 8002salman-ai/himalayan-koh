@@ -13,6 +13,8 @@ import BlogPage from './pages/BlogPage';
 import GalleryPage from './pages/GalleryPage';
 import ContactPage from './pages/ContactPage';
 import LegalPage from './pages/LegalPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Auth Pages
@@ -53,6 +55,8 @@ function App() {
           <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
           <Route path="/terms" element={<Layout><LegalPage type="terms" /></Layout>} />
           <Route path="/privacy" element={<Layout><LegalPage type="privacy" /></Layout>} />
+          <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+          <Route path="/order-confirmation" element={<Layout><OrderConfirmationPage /></Layout>} />
 
           {/* Protected Routes */}
           <Route

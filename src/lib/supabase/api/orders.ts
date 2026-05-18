@@ -1,6 +1,34 @@
 import { supabase } from '../client';
-import type { Order, OrderWithItems, Json } from '../database.types';
+import type { Order, OrderItem, OrderWithItems, Json } from '../database.types';
 import { cartApi } from './cart';
+
+export const TAX_RATE = 0.0825;
+export const FREE_SHIPPING_THRESHOLD = 50;
+export const STANDARD_SHIPPING_COST = 9.95;
+
+export interface OrderTotals {
+  subtotal: number;
+  shippingCost: number;
+  taxAmount: number;
+  total: number;
+}
+
+export interface TotalsLineItem {
+  quantity: number;
+  unitPrice: number;
+}
+
+export function calculateOrderTotals(items: TotalsLineItem[]): OrderTotals {
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0
+  );
+  const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
+  const taxAmount = subtotal * TAX_RATE;
+  const total = subtotal + shippingCost + taxAmount;
+
+  return { subtotal, shippingCost, taxAmount, total };
+}
 
 export interface CreateOrderData {
   email: string;
@@ -38,22 +66,17 @@ export interface OrderFilters {
 
 export const ordersApi = {
   // Create a new order from cart
-  async createOrder(data: CreateOrderData, userId?: string): Promise<Order> {
+  async createOrder(data: CreateOrderData, userId?: string): Promise<OrderWithItems> {
     const cart = await cartApi.getCartWithItems(userId);
 
     if (!cart || cart.cart_items.length === 0) {
       throw new Error('Cart is empty');
     }
 
-    // Calculate totals
-    const subtotal = cart.cart_items.reduce(
-      (sum, item) => sum + item.unit_price * item.quantity,
-      0
-    );
-    const shippingCost = subtotal >= 50 ? 0 : 9.95; // Free shipping over $50
-    const taxRate = 0.0825; // Texas tax rate
-    const taxAmount = subtotal * taxRate;
-    const total = subtotal + shippingCost + taxAmount;
+    const totals = calculateOrderTotals(cart.cart_items.map((item) => ({
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+    })));
 
     // Create order
     const { data: order, error: orderError } = await supabase
@@ -62,10 +85,11 @@ export const ordersApi = {
         user_id: userId || null,
         email: data.email,
         phone: data.phone || null,
-        subtotal,
-        shipping_cost: shippingCost,
-        tax_amount: taxAmount,
-        total,
+        status: 'pending',
+        subtotal: totals.subtotal,
+        shipping_cost: totals.shippingCost,
+        tax_amount: totals.taxAmount,
+        total: totals.total,
         shipping_address: data.shippingAddress as unknown as Json,
         billing_address: (data.billingAddress || data.shippingAddress) as unknown as Json,
         payment_method: data.paymentMethod || null,
@@ -88,16 +112,20 @@ export const ordersApi = {
       total_price: item.unit_price * item.quantity,
     }));
 
-    const { error: itemsError } = await supabase
+    const { data: createdItems, error: itemsError } = await supabase
       .from('order_items')
-      .insert(orderItems as never);
+      .insert(orderItems as never)
+      .select();
 
     if (itemsError) throw itemsError;
 
     // Clear the cart
     await cartApi.clearCart(userId);
 
-    return order as Order;
+    return {
+      ...(order as Order),
+      order_items: createdItems as OrderItem[],
+    };
   },
 
   // Get user's orders

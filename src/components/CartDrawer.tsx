@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../store/cartStore';
 
 interface Props {
@@ -125,10 +126,14 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                   <span className="font-bold text-xl text-charcoal">${totalPrice.toFixed(2)}</span>
                 </div>
                 <p className="text-xs text-charcoal-light">Shipping calculated at checkout</p>
-                <button className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25">
+                <Link
+                  to="/checkout"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
+                >
                   Proceed to Checkout
                   <ArrowRight size={18} />
-                </button>
+                </Link>
                 <button
                   onClick={clearCart}
                   className="w-full py-2 text-sm text-charcoal-light hover:text-red-500 transition-colors"

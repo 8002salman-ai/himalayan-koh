@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
-import { products, Product } from '../data/products';
+import { Loader2, Search } from 'lucide-react';
+import { products as fallbackProducts, Product } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
+import { productsApi } from '../lib/supabase/api';
+import { isSupabaseConfigured } from '../lib/supabase/client';
+import type { ProductWithCategory } from '../lib/supabase/database.types';
 
 const filterTabs = ['All', 'Edible Cooking Salt', 'Salt Lick for Horses', 'Salt for Cattle'];
 
@@ -11,6 +14,30 @@ export default function ProductsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [loading, setLoading] = useState(isSupabaseConfigured());
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!isSupabaseConfigured()) {
+        setProducts(fallbackProducts);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { products: supabaseProducts } = await productsApi.getProducts();
+        setProducts(supabaseProducts.map(mapProduct));
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+        setProducts(fallbackProducts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -92,18 +119,24 @@ export default function ProductsPage() {
         </motion.div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {filteredProducts.map((product, i) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              index={i}
-              onQuickView={setQuickViewProduct}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 size={40} className="animate-spin text-himalayan" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {filteredProducts.map((product, i) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                index={i}
+                onQuickView={setQuickViewProduct}
+              />
+            ))}
+          </div>
+        )}
 
-        {filteredProducts.length === 0 && (
+        {!loading && filteredProducts.length === 0 && (
           <div className="text-center py-16 text-charcoal-light">
             <p className="text-lg">No products found matching your criteria.</p>
           </div>
@@ -119,4 +152,22 @@ export default function ProductsPage() {
       )}
     </div>
   );
+}
+
+function mapProduct(product: ProductWithCategory): Product {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.compare_at_price
+      ? `$${product.price.toFixed(2)} - $${product.compare_at_price.toFixed(2)}`
+      : `$${product.price.toFixed(2)}`,
+    priceRange: Boolean(product.compare_at_price),
+    priceMin: product.price,
+    priceMax: product.compare_at_price || undefined,
+    image: product.thumbnail || product.images?.[0] || '',
+    category: product.category?.name || 'Uncategorized',
+    description: product.description || product.short_description || undefined,
+    grainSizes: product.grain_sizes,
+    inStock: product.inventory ? product.inventory.quantity > product.inventory.reserved_quantity : true,
+  };
 }

@@ -86,13 +86,17 @@ export const cartApi = {
     const cart = await this.getOrCreateCart(userId);
 
     // Check if item already exists
-    const { data: existingItem } = await supabase
+    let existingItemQuery = supabase
       .from('cart_items')
       .select('*')
       .eq('cart_id', cart.id)
-      .eq('product_id', productId)
-      .eq('grain_size', grainSize || '')
-      .maybeSingle();
+      .eq('product_id', productId);
+
+    existingItemQuery = grainSize
+      ? existingItemQuery.eq('grain_size', grainSize)
+      : existingItemQuery.is('grain_size', null);
+
+    const { data: existingItem } = await existingItemQuery.maybeSingle();
 
     if (existingItem) {
       // Update quantity

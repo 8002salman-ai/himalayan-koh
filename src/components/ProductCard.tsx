@@ -17,9 +17,9 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useCart();
 
-  const handleAddToCart = () => {
-    addItem({
-      id: product.id,
+  const handleAddToCart = async () => {
+    await addItem({
+      id: String(product.id),
       name: product.name,
       price: product.priceMin,
       image: product.image,
