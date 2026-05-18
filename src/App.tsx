@@ -10,6 +10,7 @@ import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import AboutPage from './pages/AboutPage';
 import BlogPage from './pages/BlogPage';
+import BlogDetailPage from './pages/BlogDetailPage';
 import GalleryPage from './pages/GalleryPage';
 import ContactPage from './pages/ContactPage';
 import LegalPage from './pages/LegalPage';
@@ -35,6 +36,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminBlog from './pages/admin/AdminBlog';
 
 function App() {
   return (
@@ -53,6 +55,7 @@ function App() {
           <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
           <Route path="/about" element={<Layout><AboutPage /></Layout>} />
           <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
+          <Route path="/blog/:slug" element={<Layout><BlogDetailPage /></Layout>} />
           <Route path="/gallery" element={<Layout><GalleryPage /></Layout>} />
           <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
           <Route path="/terms" element={<Layout><LegalPage type="terms" /></Layout>} />
@@ -124,6 +127,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminLayout><AdminOrders /></AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/blog"
+            element={
+              <AdminRoute>
+                <AdminLayout><AdminBlog /></AdminLayout>
               </AdminRoute>
             }
           />

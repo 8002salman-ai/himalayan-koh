@@ -17,9 +17,11 @@ export type { BlogPostWithAuthor, BlogFilters } from './blog';
 export type {
   ProductFormData,
   CategoryFormData,
+  BlogPostFormData,
   AdminProductFilters,
   AdminOrderFilters,
   AdminOrder,
   AdminOrderAnalytics,
+  AdminBlogFilters,
 } from './admin';
 export type { AddressFormData } from './addresses';

@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { Product, Category, Inventory, Order, OrderWithItems, Profile } from '../database.types';
+import type { Product, Category, Inventory, Order, OrderWithItems, Profile, BlogPost } from '../database.types';
 
 export interface ProductFormData {
   name: string;
@@ -39,6 +39,22 @@ export interface CategoryFormData {
   is_active: boolean;
 }
 
+export interface BlogPostFormData {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content?: string;
+  featured_image?: string;
+  author_id?: string;
+  category?: string;
+  tags: string[];
+  is_published: boolean;
+  published_at?: string;
+  meta_title?: string;
+  meta_description?: string;
+  read_time: number;
+}
+
 export interface AdminProductFilters {
   search?: string;
   category_id?: string;
@@ -74,6 +90,14 @@ export interface AdminOrderAnalytics {
   cancelledOrders: number;
   refundRequests: number;
   totalRevenue: number;
+}
+
+export interface AdminBlogFilters {
+  search?: string;
+  category?: string;
+  is_published?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 export const adminApi = {
@@ -581,5 +605,124 @@ export const adminApi = {
 
     if (error) throw error;
     return data as Order;
+  },
+
+  // ==================== BLOG POSTS ====================
+
+  async getBlogPosts(filters: AdminBlogFilters = {}): Promise<{
+    posts: BlogPost[];
+    count: number;
+    totalPages: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from('blog_posts')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (filters.search) {
+      query = query.or(`title.ilike.%${filters.search}%,excerpt.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
+    }
+
+    if (filters.category) {
+      query = query.eq('category', filters.category);
+    }
+
+    if (filters.is_published !== undefined) {
+      query = query.eq('is_published', filters.is_published);
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      posts: data as BlogPost[],
+      count: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+    };
+  },
+
+  async createBlogPost(data: BlogPostFormData): Promise<BlogPost> {
+    const { data: post, error } = await supabase
+      .from('blog_posts')
+      .insert({
+        title: data.title,
+        slug: data.slug,
+        excerpt: data.excerpt || null,
+        content: data.content || null,
+        featured_image: data.featured_image || null,
+        author_id: data.author_id || null,
+        category: data.category || null,
+        tags: data.tags || [],
+        is_published: data.is_published,
+        published_at: data.is_published ? data.published_at || new Date().toISOString() : data.published_at || null,
+        meta_title: data.meta_title || null,
+        meta_description: data.meta_description || null,
+        read_time: data.read_time || 5,
+      } as never)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return post as BlogPost;
+  },
+
+  async updateBlogPost(id: string, data: Partial<BlogPostFormData>): Promise<BlogPost> {
+    const updates = {
+      ...data,
+      excerpt: data.excerpt || null,
+      content: data.content || null,
+      featured_image: data.featured_image || null,
+      category: data.category || null,
+      meta_title: data.meta_title || null,
+      meta_description: data.meta_description || null,
+      published_at: data.is_published && !data.published_at ? new Date().toISOString() : data.published_at,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: post, error } = await supabase
+      .from('blog_posts')
+      .update(updates as never)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return post as BlogPost;
+  },
+
+  async deleteBlogPost(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('blog_posts')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  async uploadBlogImage(file: File, postId?: string): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${postId || 'new'}-${Date.now()}.${fileExt}`;
+    const filePath = `blog/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('blog')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('blog')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
   },
 };
