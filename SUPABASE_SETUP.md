@@ -14,7 +14,10 @@ Create a `.env` file in the project root:
 ```env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is server-side only and is required for privileged seed scripts. Never expose it in client code or commit real values.
 
 ### 3. Run Database Migrations
 
@@ -24,6 +27,21 @@ In your Supabase SQL Editor, run these files in order:
 2. `supabase/migrations/002_row_level_security.sql` - Enables RLS policies
 3. `supabase/migrations/003_storage_buckets.sql` - Creates storage buckets
 4. `supabase/seed.sql` - Adds sample data (optional)
+
+### 4. Seed Demo Authentication Accounts
+
+After migrations are applied and environment variables are configured, run:
+
+```bash
+npm run seed:demo-accounts
+```
+
+This idempotently creates or updates:
+
+- Admin: `admin@himalayankoh.com` / `Admin123!`
+- Customer: `customer@himalayankoh.com` / `Customer123!`
+
+The script also upserts matching `profiles` rows and verifies both accounts can sign in with the existing Supabase auth flow and expected role.
 
 ---
 
