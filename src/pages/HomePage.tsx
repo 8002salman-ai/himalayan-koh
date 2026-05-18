@@ -154,7 +154,7 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                <span className="inline-block px-4 py-2 bg-himalayan/20 backdrop-blur-sm border border-himalayan/30 rounded-full text-himalayan-light text-sm font-medium tracking-wider uppercase mb-6">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-hk-green/15 backdrop-blur-sm border border-hk-green/30 rounded-md text-hk-green text-xs font-extrabold tracking-[0.14em] uppercase mb-6">
                   All Natural Himalayan salt for horses, cattle and deer
                 </span>
               </motion.div>
@@ -166,7 +166,7 @@ export default function HomePage() {
                 className="font-serif text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-bold text-white leading-[0.95] mb-5 tracking-tight"
               >
                 Rich All Natural{' '}
-                <span className="text-himalayan">Himalayan Pink Salt</span>
+                <span className="text-hk-rose">Himalayan Pink Salt</span>
               </motion.h1>
 
               <motion.p
@@ -195,7 +195,7 @@ export default function HomePage() {
               >
                 <Link
                   to="/products"
-                  className="group flex items-center justify-center gap-2 px-8 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-himalayan/30 hover:shadow-xl hover:shadow-himalayan/40 hover:-translate-y-0.5"
+                  className="btn-hk-primary group gap-2 hover:-translate-y-0.5 transition-transform"
                 >
                   Shop Products
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />

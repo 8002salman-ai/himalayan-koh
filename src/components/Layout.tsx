@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MapPin, Calculator, LogOut } from 'lucide-react';
@@ -43,63 +43,64 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen flex flex-col">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[120] focus:px-4 focus:py-2 focus:bg-himalayan focus:text-white focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[120] focus:px-4 focus:py-2 focus:bg-hk-green focus:text-hk-panel focus:rounded-lg"
       >
         Skip to main content
       </a>
       {/* Announcement Bar */}
-      <div className="bg-charcoal text-white text-sm">
-        <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-center sm:text-left font-light tracking-wide">
-            🏔️ All Natural Himalayan salt for horses, cattle and deer
+      <div className="bg-hk-paper border-b border-hk-line text-sm text-hk-ink">
+        <motion.div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-center sm:text-left tracking-wide">
+            <strong className="font-extrabold text-hk-green">All Natural</strong>{' '}
+            Himalayan salt for horses, cattle and deer
           </p>
-          <div className="flex items-center gap-4 text-xs sm:text-sm">
-            <Link to="/contact" className="flex items-center gap-1 hover:text-himalayan transition-colors">
+          <div className="flex items-center gap-4 text-xs sm:text-sm font-semibold">
+            <Link to="/contact" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
               <MapPin size={14} />
               <span className="hidden md:inline">Product Locator</span>
             </Link>
-            <Link to="/contact" className="flex items-center gap-1 hover:text-himalayan transition-colors">
+            <Link to="/contact" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
               <Calculator size={14} />
               <span className="hidden md:inline">Calculate Shipping</span>
             </Link>
-            <a href="tel:8322246466" className="flex items-center gap-1 hover:text-himalayan transition-colors">
+            <a href="tel:8322246466" className="flex items-center gap-1 text-hk-green hover:text-hk-rose-dark transition-colors">
               <Phone size={14} />
-              <span>(832) 224-6466</span>
+              <strong>Call: (832) 224-6466</strong>
             </a>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Navbar */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl shadow-sm">
+      <header className="sticky top-0 z-50 bg-hk-panel/95 backdrop-blur-xl border-b border-hk-line shadow-[0_10px_30px_rgba(33,29,24,0.07)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
                 src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
-                alt="Himalayan Koh"
-                className="h-10 md:h-14 w-auto"
+                alt="Himalayan Koh â€” Salt that Heals"
+                className="h-11 md:h-[3.75rem] w-auto"
               />
             </Link>
 
             {/* Desktop Nav */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-0.5">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`relative px-4 py-2 text-sm font-medium tracking-wide transition-colors ${
+                  className={`relative px-3 py-2 text-[0.82rem] font-extrabold uppercase tracking-[0.035em] transition-colors rounded-lg ${
                     location.pathname === link.path
-                      ? 'text-himalayan'
-                      : 'text-charcoal hover:text-himalayan'
+                      ? 'text-hk-rose-dark'
+                      : 'text-hk-ink hover:text-hk-rose-dark'
                   }`}
                 >
                   {link.label}
                   {location.pathname === link.path && (
                     <motion.div
                       layoutId="navIndicator"
-                      className="absolute bottom-0 left-4 right-4 h-0.5 bg-himalayan rounded-full"
+                      className="absolute bottom-0 left-3 right-3 h-0.5 bg-hk-rose rounded-full"
                     />
                   )}
                 </Link>
@@ -112,25 +113,25 @@ export default function Layout({ children }: LayoutProps) {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-full hover:bg-himalayan-lighter transition-colors"
+                className="p-2 rounded-lg border border-hk-line hover:border-hk-rose/40 hover:bg-hk-paper transition-colors"
                 aria-label="Search"
               >
-                <Search size={20} className="text-charcoal" />
+                <Search size={20} className="text-hk-ink" />
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setCartOpen(true)}
-                className="p-2 rounded-full hover:bg-himalayan-lighter transition-colors relative"
+                className="p-2 rounded-lg border border-hk-line hover:border-hk-rose/40 hover:bg-hk-paper transition-colors relative"
                 aria-label="Cart"
               >
-                <ShoppingCart size={20} className="text-charcoal" />
+                <ShoppingCart size={20} className="text-hk-ink" />
                 {totalItems > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 bg-himalayan text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold"
+                    className="absolute -top-1 -right-1 bg-hk-green text-hk-panel text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
                   >
                     {totalItems}
                   </motion.span>
@@ -145,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="p-2 rounded-full bg-himalayan-lighter transition-colors"
+                      className="p-2 rounded-lg border border-hk-line bg-hk-paper transition-colors"
                     >
                       {profile?.avatar_url ? (
                         <img
@@ -154,7 +155,7 @@ export default function Layout({ children }: LayoutProps) {
                           className="w-5 h-5 rounded-full object-cover"
                         />
                       ) : (
-                        <User size={20} className="text-himalayan" />
+                        <User size={20} className="text-hk-green" />
                       )}
                     </motion.button>
 
@@ -204,10 +205,11 @@ export default function Layout({ children }: LayoutProps) {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setAuthOpen(true)}
-                    className="p-2 rounded-full hover:bg-himalayan-lighter transition-colors"
+                    className="btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
                     aria-label="Login"
                   >
-                    <User size={20} className="text-charcoal" />
+                    <User size={18} className="mr-1.5" />
+                    Login
                   </motion.button>
                 )}
               </div>
@@ -233,7 +235,7 @@ export default function Layout({ children }: LayoutProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden fixed top-[104px] left-0 right-0 z-40 bg-white border-t border-gray-100 shadow-xl overflow-hidden"
+            className="lg:hidden fixed top-[104px] left-0 right-0 z-40 bg-hk-panel border-t border-hk-line shadow-xl overflow-hidden"
           >
             <nav className="max-w-7xl mx-auto px-4 py-4 space-y-1">
               {navLinks.map((link, i) => (
@@ -246,10 +248,10 @@ export default function Layout({ children }: LayoutProps) {
                   <Link
                     to={link.path}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${
+                    className={`block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide transition-colors ${
                       location.pathname === link.path
-                        ? 'bg-himalayan-lighter text-himalayan'
-                        : 'text-charcoal hover:bg-gray-50'
+                        ? 'bg-hk-paper text-hk-rose-dark'
+                        : 'text-hk-ink hover:bg-hk-paper'
                     }`}
                   >
                     {link.label}

@@ -39,7 +39,7 @@ export default function Footer() {
   };
 
   return (
-    <footer id="contact" className="bg-charcoal text-white">
+    <footer id="contact" className="bg-hk-ink text-hk-panel">
       {/* Newsletter Strip */}
       <div className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14">
@@ -70,8 +70,8 @@ export default function Footer() {
                 type="submit"
                 className={`px-6 py-3.5 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 ${
                   subscribed
-                    ? 'bg-green-500 text-white'
-                    : 'bg-himalayan hover:bg-himalayan-dark text-white'
+                    ? 'bg-hk-green text-hk-panel'
+                    : 'bg-hk-rose hover:bg-hk-rose-dark text-hk-panel'
                 }`}
               >
                 {subscribed ? (

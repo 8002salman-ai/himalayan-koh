@@ -1,16 +1,29 @@
 @import "tailwindcss";
 
+/* Himalayan Koh staging theme — https://himalayankoh.com/staging/ */
 @theme {
-  --color-himalayan: #D98C8C;
-  --color-himalayan-dark: #C47777;
-  --color-himalayan-light: #F5E0E0;
-  --color-himalayan-lighter: #FBF2F2;
-  --color-charcoal: #2D2D2D;
-  --color-charcoal-light: #4A4A4A;
-  --color-warm-white: #FDFBF9;
-  --color-cream: #F8F4F0;
-  --font-serif: 'Playfair Display', serif;
-  --font-sans: 'Inter', sans-serif;
+  --color-hk-ink: #26211c;
+  --color-hk-muted: #6d6258;
+  --color-hk-paper: #faf7f1;
+  --color-hk-panel: #fffdf8;
+  --color-hk-line: #e0d6c8;
+  --color-hk-rose: #b86452;
+  --color-hk-rose-dark: #8d4133;
+  --color-hk-green: #3f6550;
+  --color-hk-gold: #c98745;
+
+  /* Legacy aliases used across the app */
+  --color-himalayan: #b86452;
+  --color-himalayan-dark: #8d4133;
+  --color-himalayan-light: #f3e4de;
+  --color-himalayan-lighter: #faf0eb;
+  --color-charcoal: #26211c;
+  --color-charcoal-light: #6d6258;
+  --color-warm-white: #faf7f1;
+  --color-cream: #fffdf8;
+
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-sans: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
 
 * {
@@ -23,9 +36,71 @@ html {
 
 body {
   font-family: var(--font-sans);
-  color: var(--color-charcoal);
-  background: #ffffff;
+  color: var(--color-hk-ink);
+  background: var(--color-hk-paper);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+  color: var(--color-hk-ink);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Staging-style primary CTA */
+.btn-hk-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-hk-green);
+  background: var(--color-hk-green);
+  color: var(--color-hk-panel);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  box-shadow: 0 12px 24px rgba(63, 101, 80, 0.16);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-hk-primary:hover {
+  background: var(--color-hk-rose-dark);
+  border-color: var(--color-hk-rose-dark);
+  color: var(--color-hk-panel);
+}
+
+.btn-hk-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid #bcae9b;
+  background: rgba(255, 253, 248, 0.86);
+  color: var(--color-hk-ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.btn-hk-ghost:hover {
+  border-color: rgba(177, 110, 51, 0.58);
+  background: #fffefa;
 }
 
 /* Custom scrollbar */
@@ -33,10 +108,10 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-hk-paper);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-himalayan);
+  background: var(--color-hk-rose);
   border-radius: 4px;
 }
 
