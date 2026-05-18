@@ -19,18 +19,27 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 `SUPABASE_SERVICE_ROLE_KEY` is server-side only and is required for privileged seed scripts. Never expose it in client code or commit real values.
 
-### 3. Run Database Migrations
+### 3. Initialize Database (recommended)
 
-In your Supabase SQL Editor, run these files in order:
+With `.env` configured (including `SUPABASE_DB_URL`), run one command:
 
-1. `supabase/migrations/001_initial_schema.sql` - Creates all tables
-2. `supabase/migrations/002_row_level_security.sql` - Enables RLS policies
-3. `supabase/migrations/003_storage_buckets.sql` - Creates storage buckets
-4. `supabase/seed.sql` - Adds sample data (optional)
+```bash
+npm run setup:supabase
+```
+
+This applies all migrations in order, seeds demo products/categories/blog data, and creates demo auth accounts.
+
+Manual alternative: run these SQL files in the Supabase SQL Editor:
+
+1. `supabase/migrations/001_initial_schema.sql`
+2. `supabase/migrations/002_row_level_security.sql`
+3. `supabase/migrations/003_storage_buckets.sql`
+4. `supabase/migrations/004_auth_profile_roles.sql`
+5. `supabase/seed.sql`
 
 ### 4. Seed Demo Authentication Accounts
 
-After migrations are applied and environment variables are configured, run:
+Included in `npm run setup:supabase`. To run auth seeding only:
 
 ```bash
 npm run seed:demo-accounts

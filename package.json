@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "setup:supabase": "node scripts/setup-supabase-backend.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs"
   },
   "dependencies": {
@@ -20,6 +21,8 @@
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
+    "dotenv": "^16.4.7",
+    "pg": "^8.14.1",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",

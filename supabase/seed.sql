@@ -2,14 +2,21 @@
 -- SEED DATA FOR HIMALAYAN KOH
 -- =============================================
 
--- Insert Categories
+-- Insert Categories (idempotent)
 INSERT INTO categories (id, name, slug, description, image_url, sort_order) VALUES
   ('c1000000-0000-0000-0000-000000000001', 'Salt Lick for Horses', 'salt-lick-horses', 'Natural Himalayan salt licks specially designed for horses. Rich in 84 trace minerals.', 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg', 1),
   ('c1000000-0000-0000-0000-000000000002', 'Salt Lumps for Cattle', 'salt-lumps-cattle', 'Essential minerals in natural salt lumps for cattle health.', 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg', 2),
   ('c1000000-0000-0000-0000-000000000003', 'Salt Blocks for Deer', 'salt-blocks-deer', 'Premium salt blocks attract and nourish deer naturally.', 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg', 3),
-  ('c1000000-0000-0000-0000-000000000004', 'Edible Cooking Salt', 'edible-cooking-salt', 'Premium pink salt for gourmet cooking and everyday use.', 'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg', 4);
+  ('c1000000-0000-0000-0000-000000000004', 'Edible Cooking Salt', 'edible-cooking-salt', 'Premium pink salt for gourmet cooking and everyday use.', 'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg', 4)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  image_url = EXCLUDED.image_url,
+  sort_order = EXCLUDED.sort_order,
+  updated_at = NOW();
 
--- Insert Products
+-- Insert Products (idempotent)
 INSERT INTO products (id, name, slug, description, short_description, price, compare_at_price, category_id, images, thumbnail, is_featured, grain_sizes, tags) VALUES
   (
     'p1000000-0000-0000-0000-000000000001',
@@ -100,18 +107,36 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     false,
     ARRAY[],
     ARRAY['cattle', 'salt rock', '18lbs', 'farm']
-  );
+  )
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  short_description = EXCLUDED.short_description,
+  price = EXCLUDED.price,
+  compare_at_price = EXCLUDED.compare_at_price,
+  category_id = EXCLUDED.category_id,
+  images = EXCLUDED.images,
+  thumbnail = EXCLUDED.thumbnail,
+  is_featured = EXCLUDED.is_featured,
+  grain_sizes = EXCLUDED.grain_sizes,
+  tags = EXCLUDED.tags,
+  updated_at = NOW();
 
--- Insert Inventory for each product
+-- Insert Inventory for each product (idempotent)
 INSERT INTO inventory (product_id, quantity, low_stock_threshold) VALUES
   ('p1000000-0000-0000-0000-000000000001', 500, 50),
   ('p1000000-0000-0000-0000-000000000002', 300, 30),
   ('p1000000-0000-0000-0000-000000000003', 250, 25),
   ('p1000000-0000-0000-0000-000000000004', 100, 10),
   ('p1000000-0000-0000-0000-000000000005', 400, 40),
-  ('p1000000-0000-0000-0000-000000000006', 150, 15);
+  ('p1000000-0000-0000-0000-000000000006', 150, 15)
+ON CONFLICT (product_id) DO UPDATE SET
+  quantity = EXCLUDED.quantity,
+  low_stock_threshold = EXCLUDED.low_stock_threshold,
+  updated_at = NOW();
 
--- Insert Blog Posts
+-- Insert Blog Posts (idempotent)
 INSERT INTO blog_posts (id, title, slug, excerpt, content, featured_image, category, tags, is_published, published_at, read_time) VALUES
   (
     'b1000000-0000-0000-0000-000000000001',
@@ -151,4 +176,16 @@ INSERT INTO blog_posts (id, title, slug, excerpt, content, featured_image, categ
     true,
     NOW() - INTERVAL '20 days',
     6
-  );
+  )
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  slug = EXCLUDED.slug,
+  excerpt = EXCLUDED.excerpt,
+  content = EXCLUDED.content,
+  featured_image = EXCLUDED.featured_image,
+  category = EXCLUDED.category,
+  tags = EXCLUDED.tags,
+  is_published = EXCLUDED.is_published,
+  published_at = EXCLUDED.published_at,
+  read_time = EXCLUDED.read_time,
+  updated_at = NOW();
