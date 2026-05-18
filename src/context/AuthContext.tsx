@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import { authApi, SignUpData, SignInData } from '../lib/supabase/api';
@@ -21,22 +21,109 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const PROFILE_FETCH_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label} timed out. Check your connection and try again.`));
+    }, ms);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+/** Supabase can deadlock if other client calls run inside onAuthStateChange. */
+function runAfterAuthCallback(task: () => void) {
+  window.setTimeout(task, 0);
+}
+
+function roleFromUser(user: User | null): 'admin' | 'customer' | null {
+  const metaRole = user?.user_metadata?.role;
+  if (metaRole === 'admin' || metaRole === 'customer') return metaRole;
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const profileRequestId = useRef(0);
 
-  // Fetch profile for a user
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, currentUser?: User | null) => {
+    const requestId = ++profileRequestId.current;
+
     try {
-      const profileData = await authApi.getProfile(userId);
-      setProfile(profileData);
+      const profileData = await withTimeout(
+        authApi.getProfile(userId),
+        PROFILE_FETCH_TIMEOUT_MS,
+        'Profile load'
+      );
+
+      if (requestId !== profileRequestId.current) return;
+
+      if (profileData) {
+        setProfile(profileData);
+        return;
+      }
+
+      const fallbackRole = roleFromUser(currentUser ?? user) || 'customer';
+      setProfile({
+        id: userId,
+        email: currentUser?.email ?? user?.email ?? '',
+        full_name: (currentUser?.user_metadata?.full_name as string) || null,
+        phone: null,
+        avatar_url: null,
+        role: fallbackRole,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
     } catch (err) {
+      if (requestId !== profileRequestId.current) return;
       console.error('Failed to fetch profile:', err);
+
+      const sessionUser = currentUser ?? user;
+      if (!sessionUser) {
+        setProfile(null);
+        return;
+      }
+
+      const fallbackRole = roleFromUser(sessionUser) || 'customer';
+      setProfile({
+        id: userId,
+        email: sessionUser.email ?? '',
+        full_name: (sessionUser.user_metadata?.full_name as string) || null,
+        phone: null,
+        avatar_url: null,
+        role: fallbackRole,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
     }
-  }, []);
+  }, [user]);
+
+  const loadProfileForSession = useCallback(
+    (sessionUser: User | null) => {
+      if (!sessionUser) {
+        profileRequestId.current += 1;
+        setProfile(null);
+        return Promise.resolve();
+      }
+
+      return fetchProfile(sessionUser.id, sessionUser);
+    },
+    [fetchProfile]
+  );
 
   // Initialize auth state
   useEffect(() => {
@@ -45,37 +132,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
-      } else {
+    let mounted = true;
+
+    const applySession = (nextSession: Session | null, loadProfile: boolean) => {
+      if (!mounted) return;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
+        profileRequestId.current += 1;
+        setProfile(null);
         setLoading(false);
+        return;
       }
+
+      if (!loadProfile) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      void loadProfileForSession(nextSession.user).finally(() => {
+        if (mounted) setLoading(false);
+      });
+    };
+
+    void (async () => {
+      try {
+        const { data, error } = await withTimeout(
+          supabase.auth.getSession(),
+          PROFILE_FETCH_TIMEOUT_MS,
+          'Session check'
+        );
+        if (error) throw error;
+        applySession(data.session, true);
+      } catch (err) {
+        console.error('Auth initialization failed:', err);
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      runAfterAuthCallback(() => {
+        applySession(nextSession, Boolean(nextSession?.user));
+      });
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [loadProfileForSession]);
 
   const signUp = useCallback(async (data: SignUpData) => {
     setLoading(true);
@@ -92,27 +200,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (data: SignInData) => {
-    setLoading(true);
     setError(null);
     try {
-      const result = await authApi.signIn(data);
-      if (result.user) {
-        await fetchProfile(result.user.id);
-      }
+      await authApi.signIn(data);
+      // Profile refresh is handled by onAuthStateChange (deferred).
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Sign in failed';
       setError(errorMsg);
       throw err;
-    } finally {
-      setLoading(false);
     }
-  }, [fetchProfile]);
+  }, []);
 
   const signOut = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       await authApi.signOut();
+      profileRequestId.current += 1;
       setUser(null);
       setProfile(null);
       setSession(null);
@@ -141,9 +244,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      await fetchProfile(user.id);
+      setLoading(true);
+      try {
+        await fetchProfile(user.id, user);
+      } finally {
+        setLoading(false);
+      }
     }
   }, [user, fetchProfile]);
+
+  const metadataRole = roleFromUser(user);
+  const isAdmin = profile?.role === 'admin' || metadataRole === 'admin';
 
   const value: AuthContextType = {
     user,
@@ -152,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     isAuthenticated: !!user,
-    isAdmin: profile?.role === 'admin',
+    isAdmin,
     signUp,
     signIn,
     signOut,

@@ -27,7 +27,8 @@ export default function LoginPage() {
   const [formError, setFormError] = useState('');
   const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
   
-  const { signIn, loading, isAuthenticated } = useAuthContext();
+  const { signIn, isAuthenticated } = useAuthContext();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const supabaseReady = isSupabaseConfigured();
@@ -49,14 +50,19 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    setIsSubmitting(true);
 
     try {
       await signIn({ email, password });
       navigate(demoRedirect || from, { replace: true });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const isSigningIn = isSubmitting;
 
   const fillDemoAccount = (type: keyof typeof demoAccounts) => {
     const account = demoAccounts[type];
@@ -195,10 +201,10 @@ export default function LoginPage() {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
-              disabled={loading}
+              disabled={isSigningIn}
               className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-himalayan/25"
             >
-              {loading && <Loader2 size={18} className="animate-spin" />}
+              {isSigningIn && <Loader2 size={18} className="animate-spin" />}
               Sign In
             </motion.button>
           </form>
