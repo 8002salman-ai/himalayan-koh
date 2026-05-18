@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
 import { Product } from '../data/products';
 import { useCart } from '../store/cartStore';
+import { useAuthContext } from '../context/AuthContext';
+import { wishlistApi } from '../lib/supabase/api';
+import { isSupabaseConfigured } from '../lib/supabase/client';
 
 interface Props {
   product: Product;
@@ -16,6 +19,7 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
   const [wishlisted, setWishlisted] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useCart();
+  const { user } = useAuthContext();
 
   const handleAddToCart = async () => {
     await addItem({
@@ -27,6 +31,16 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
     }, qty);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
+  };
+
+  const handleWishlist = async () => {
+    if (!user?.id || !isSupabaseConfigured()) {
+      setWishlisted(!wishlisted);
+      return;
+    }
+
+    const nextState = await wishlistApi.toggleWishlist(user.id, String(product.id));
+    setWishlisted(nextState);
   };
 
   return (
@@ -59,7 +73,7 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setWishlisted(!wishlisted)}
+            onClick={handleWishlist}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
               wishlisted ? 'bg-himalayan text-white' : 'bg-white hover:bg-himalayan hover:text-white'
             }`}

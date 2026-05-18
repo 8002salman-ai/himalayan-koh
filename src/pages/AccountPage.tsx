@@ -1,18 +1,44 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Camera, Loader2, Check, Shield, Bell, Package, Heart, MapPin } from 'lucide-react';
+import { User, Mail, Phone, Loader2, Check, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
+import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
-import { supabase } from '../lib/supabase/client';
+import { addressesApi, notificationsApi, ordersApi, wishlistApi } from '../lib/supabase/api';
+import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
+import type { Address, Notification, OrderWithItems } from '../lib/supabase/database.types';
 
-type TabType = 'profile' | 'security' | 'notifications' | 'addresses';
+type TabType = 'dashboard' | 'profile' | 'security' | 'notifications' | 'addresses';
+
+const validTabs: TabType[] = ['dashboard', 'profile', 'security', 'notifications', 'addresses'];
 
 export default function AccountPage() {
   const { profile, updateProfile, user, loading: authLoading } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tab = searchParams.get('tab') as TabType | null;
+    return tab && validTabs.includes(tab) ? tab : 'dashboard';
+  });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    label: '',
+    full_name: profile?.full_name || '',
+    phone: profile?.phone || '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'United States',
+  });
 
   const [formData, setFormData] = useState({
     fullName: profile?.full_name || '',
@@ -24,6 +50,76 @@ export default function AccountPage() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as TabType | null;
+    setActiveTab(tab && validTabs.includes(tab) ? tab : 'dashboard');
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id || !isSupabaseConfigured()) {
+        setDashboardLoading(false);
+        return;
+      }
+
+      try {
+        const [{ orders }, wishlistCount, notifications, addresses] = await Promise.all([
+          ordersApi.getUserOrders(user.id, { limit: 3 }),
+          wishlistApi.getWishlistCount(user.id),
+          notificationsApi.getNotifications(user.id),
+          addressesApi.getUserAddresses(user.id),
+        ]);
+
+        setOrders(orders);
+        setWishlistCount(wishlistCount);
+        setNotifications(notifications);
+        setAddresses(addresses);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user?.id]);
+
+  useEffect(() => {
+    setAddressForm((current) => ({
+      ...current,
+      full_name: current.full_name || profile?.full_name || '',
+      phone: current.phone || profile?.phone || '',
+    }));
+  }, [profile?.full_name, profile?.phone]);
+
+  const recentActivity = useMemo(() => {
+    return [
+      ...orders.map((order) => ({
+        id: order.id,
+        label: `Order ${order.order_number} is ${order.status}`,
+        date: order.created_at,
+      })),
+      ...notifications.slice(0, 3).map((notification) => ({
+        id: notification.id,
+        label: notification.title,
+        date: notification.created_at,
+      })),
+    ]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [notifications, orders]);
+
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
+
+  const setTab = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === 'dashboard') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab });
+    }
+  };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +175,74 @@ export default function AccountPage() {
     }
   };
 
+  const handleAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const address = await addressesApi.createAddress(user.id, {
+        label: addressForm.label || undefined,
+        full_name: addressForm.full_name,
+        phone: addressForm.phone || undefined,
+        address_line1: addressForm.address_line1,
+        address_line2: addressForm.address_line2 || undefined,
+        city: addressForm.city,
+        state: addressForm.state,
+        postal_code: addressForm.postal_code,
+        country: addressForm.country,
+      });
+
+      setAddresses((current) => [address, ...current]);
+      setAddressForm({
+        label: '',
+        full_name: profile?.full_name || '',
+        phone: profile?.phone || '',
+        address_line1: '',
+        address_line2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: 'United States',
+      });
+      setShowAddressForm(false);
+      setSuccess('Address saved successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save address');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    setError('');
+    try {
+      await addressesApi.deleteAddress(addressId);
+      setAddresses((current) => current.filter((address) => address.id !== addressId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete address');
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await notificationsApi.markAsRead(notificationId);
+      setNotifications((current) => current.map((notification) => (
+        notification.id === notificationId
+          ? { ...notification, is_read: true, read_at: new Date().toISOString() }
+          : notification
+      )));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update notification');
+    }
+  };
+
   const tabs = [
+    { id: 'dashboard' as TabType, label: 'Dashboard', icon: Package },
     { id: 'profile' as TabType, label: 'Profile', icon: User },
     { id: 'security' as TabType, label: 'Security', icon: Shield },
     { id: 'notifications' as TabType, label: 'Notifications', icon: Bell },
@@ -111,79 +274,7 @@ export default function AccountPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-1"
-          >
-            {/* User Card */}
-            <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-full bg-himalayan-lighter flex items-center justify-center">
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt={profile.full_name || 'User'}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <User size={28} className="text-himalayan" />
-                    )}
-                  </div>
-                  <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-himalayan text-white rounded-full flex items-center justify-center hover:bg-himalayan-dark transition-colors">
-                    <Camera size={14} />
-                  </button>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-charcoal">
-                    {profile?.full_name || 'User'}
-                  </h3>
-                  <p className="text-sm text-charcoal-light">{user?.email}</p>
-                  <span className="inline-block mt-1 px-2 py-0.5 bg-himalayan-lighter text-himalayan text-xs font-medium rounded-full capitalize">
-                    {profile?.role || 'customer'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <nav className="bg-white rounded-2xl p-3 shadow-md space-y-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-himalayan text-white'
-                      : 'text-charcoal hover:bg-gray-50'
-                  }`}
-                >
-                  <tab.icon size={18} />
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-
-            {/* Quick Links */}
-            <div className="mt-6 space-y-2">
-              <Link
-                to="/orders"
-                className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl text-charcoal hover:bg-gray-50 transition-colors shadow-sm"
-              >
-                <Package size={18} />
-                My Orders
-              </Link>
-              <Link
-                to="/wishlist"
-                className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl text-charcoal hover:bg-gray-50 transition-colors shadow-sm"
-              >
-                <Heart size={18} />
-                Wishlist
-              </Link>
-            </div>
-          </motion.div>
+          <DashboardSidebar profile={profile} user={user} />
 
           {/* Main Content */}
           <motion.div
@@ -192,6 +283,23 @@ export default function AccountPage() {
             className="lg:col-span-3"
           >
             <div className="bg-white rounded-2xl shadow-md p-6 md:p-8">
+              <div className="flex flex-wrap gap-2 mb-6">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-himalayan text-white'
+                        : 'bg-gray-50 text-charcoal hover:bg-gray-100'
+                    }`}
+                  >
+                    <tab.icon size={16} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Success/Error Messages */}
               {success && (
                 <motion.div
@@ -211,6 +319,71 @@ export default function AccountPage() {
                 >
                   {error}
                 </motion.div>
+              )}
+
+              {/* Dashboard Tab */}
+              {activeTab === 'dashboard' && (
+                <div>
+                  <h2 className="font-serif text-xl font-bold text-charcoal mb-6">
+                    Dashboard Summary
+                  </h2>
+                  {dashboardLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 size={36} className="animate-spin text-himalayan" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <SummaryCard icon={<Package size={20} />} label="Recent Orders" value={orders.length} />
+                        <SummaryCard icon={<Heart size={20} />} label="Wishlist" value={wishlistCount} />
+                        <SummaryCard icon={<Bell size={20} />} label="Unread Alerts" value={unreadCount} />
+                        <SummaryCard icon={<MapPin size={20} />} label="Addresses" value={addresses.length} />
+                      </div>
+
+                      <div className="grid lg:grid-cols-2 gap-6">
+                        <div className="bg-gray-50 rounded-2xl p-5">
+                          <h3 className="font-semibold text-charcoal mb-4">Orders History</h3>
+                          {orders.length === 0 ? (
+                            <p className="text-sm text-charcoal-light">No orders yet.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {orders.map((order) => (
+                                <div key={order.id} className="flex items-center justify-between gap-3 bg-white rounded-xl p-3">
+                                  <div>
+                                    <p className="font-medium text-charcoal text-sm">{order.order_number}</p>
+                                    <p className="text-xs text-charcoal-light capitalize">{order.status}</p>
+                                  </div>
+                                  <span className="font-semibold text-himalayan">${order.total.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-gray-50 rounded-2xl p-5">
+                          <h3 className="font-semibold text-charcoal mb-4">Recent Activity</h3>
+                          {recentActivity.length === 0 ? (
+                            <p className="text-sm text-charcoal-light">No recent activity yet.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {recentActivity.map((activity) => (
+                                <div key={activity.id} className="flex gap-3 bg-white rounded-xl p-3">
+                                  <Clock size={16} className="text-himalayan mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-charcoal">{activity.label}</p>
+                                    <p className="text-xs text-charcoal-light">
+                                      {new Date(activity.date).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
               {/* Profile Tab */}
@@ -351,30 +524,40 @@ export default function AccountPage() {
               {activeTab === 'notifications' && (
                 <div>
                   <h2 className="font-serif text-xl font-bold text-charcoal mb-6">
-                    Notification Preferences
+                    Notifications
                   </h2>
                   <div className="space-y-4">
-                    {[
-                      { label: 'Order Updates', desc: 'Get notified about your order status' },
-                      { label: 'Promotions', desc: 'Receive special offers and discounts' },
-                      { label: 'New Products', desc: 'Be the first to know about new arrivals' },
-                      { label: 'Newsletter', desc: 'Weekly tips and livestock health insights' },
-                    ].map((item, i) => (
-                      <label
-                        key={i}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium text-charcoal">{item.label}</p>
-                          <p className="text-sm text-charcoal-light">{item.desc}</p>
+                    {notifications.length === 0 ? (
+                      <div className="text-center py-12 text-charcoal-light">
+                        <Bell size={48} className="mx-auto mb-4 opacity-30" />
+                        <p>No notifications yet</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`flex items-start justify-between gap-4 p-4 rounded-xl transition-colors ${
+                            notification.is_read ? 'bg-gray-50' : 'bg-himalayan-lighter'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-medium text-charcoal">{notification.title}</p>
+                            <p className="text-sm text-charcoal-light">{notification.message}</p>
+                            <p className="text-xs text-charcoal-light mt-1">
+                              {new Date(notification.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <button
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              className="text-sm font-semibold text-himalayan hover:text-himalayan-dark"
+                            >
+                              Mark read
+                            </button>
+                          )}
                         </div>
-                        <input
-                          type="checkbox"
-                          defaultChecked={i < 2}
-                          className="w-5 h-5 rounded border-gray-300 text-himalayan focus:ring-himalayan"
-                        />
-                      </label>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               )}
@@ -386,21 +569,81 @@ export default function AccountPage() {
                     <h2 className="font-serif text-xl font-bold text-charcoal">
                       Saved Addresses
                     </h2>
-                    <button className="px-4 py-2 bg-himalayan text-white rounded-lg text-sm font-semibold hover:bg-himalayan-dark transition-colors">
-                      Add New Address
+                    <button
+                      onClick={() => setShowAddressForm((current) => !current)}
+                      className="px-4 py-2 bg-himalayan text-white rounded-lg text-sm font-semibold hover:bg-himalayan-dark transition-colors"
+                    >
+                      {showAddressForm ? 'Cancel' : 'Add New Address'}
                     </button>
                   </div>
-                  <div className="text-center py-12 text-charcoal-light">
-                    <MapPin size={48} className="mx-auto mb-4 opacity-30" />
-                    <p>No saved addresses yet</p>
-                    <p className="text-sm mt-1">Add an address for faster checkout</p>
-                  </div>
+                  {showAddressForm && (
+                    <form onSubmit={handleAddressSubmit} className="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-2xl p-5 mb-6">
+                      <input value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} placeholder="Label (Home, Ranch, Office)" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.full_name} onChange={(e) => setAddressForm({ ...addressForm, full_name: e.target.value })} placeholder="Full name" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input value={addressForm.phone} onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })} placeholder="Phone" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.address_line1} onChange={(e) => setAddressForm({ ...addressForm, address_line1: e.target.value })} placeholder="Address line 1" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input value={addressForm.address_line2} onChange={(e) => setAddressForm({ ...addressForm, address_line2: e.target.value })} placeholder="Address line 2" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} placeholder="City" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} placeholder="State" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.postal_code} onChange={(e) => setAddressForm({ ...addressForm, postal_code: e.target.value })} placeholder="Postal code" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <input required value={addressForm.country} onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })} placeholder="Country" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                      <button disabled={saving} className="flex items-center justify-center gap-2 px-4 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors disabled:opacity-70">
+                        {saving && <Loader2 size={18} className="animate-spin" />}
+                        Save Address
+                      </button>
+                    </form>
+                  )}
+
+                  {addresses.length === 0 ? (
+                    <div className="text-center py-12 text-charcoal-light">
+                      <MapPin size={48} className="mx-auto mb-4 opacity-30" />
+                      <p>No saved addresses yet</p>
+                      <p className="text-sm mt-1">Add an address for faster checkout</p>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {addresses.map((address) => (
+                        <div key={address.id} className="p-5 bg-gray-50 rounded-2xl">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              <p className="font-semibold text-charcoal">{address.label || 'Saved Address'}</p>
+                              <p className="text-sm text-charcoal-light">{address.full_name}</p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteAddress(address.id)}
+                              className="text-sm font-semibold text-red-600 hover:text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                          <div className="text-sm text-charcoal-light leading-6">
+                            <p>{address.address_line1}</p>
+                            {address.address_line2 && <p>{address.address_line2}</p>}
+                            <p>{address.city}, {address.state} {address.postal_code}</p>
+                            <p>{address.country}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </motion.div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="bg-gray-50 rounded-2xl p-5">
+      <div className="w-10 h-10 rounded-xl bg-himalayan-lighter text-himalayan flex items-center justify-center mb-3">
+        {icon}
+      </div>
+      <p className="text-2xl font-bold text-charcoal">{value}</p>
+      <p className="text-sm text-charcoal-light">{label}</p>
     </div>
   );
 }

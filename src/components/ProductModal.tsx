@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, Heart, Star, Check, Minus, Plus } from 'lucide-react';
 import { Product } from '../data/products';
 import { useCart } from '../store/cartStore';
+import { useAuthContext } from '../context/AuthContext';
+import { wishlistApi } from '../lib/supabase/api';
+import { isSupabaseConfigured } from '../lib/supabase/client';
 
 interface Props {
   product: Product | null;
@@ -13,7 +16,9 @@ export default function ProductModal({ product, onClose }: Props) {
   const [qty, setQty] = useState(1);
   const [selectedGrain, setSelectedGrain] = useState(product?.grainSizes?.[0] || '');
   const [addedToCart, setAddedToCart] = useState(false);
+  const [wishlisted, setWishlisted] = useState(false);
   const { addItem } = useCart();
+  const { user } = useAuthContext();
 
   if (!product) return null;
 
@@ -27,6 +32,16 @@ export default function ProductModal({ product, onClose }: Props) {
     }, qty);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
+  };
+
+  const handleWishlist = async () => {
+    if (!user?.id || !isSupabaseConfigured()) {
+      setWishlisted(!wishlisted);
+      return;
+    }
+
+    const nextState = await wishlistApi.toggleWishlist(user.id, String(product.id));
+    setWishlisted(nextState);
   };
 
   return (
@@ -164,9 +179,10 @@ export default function ProductModal({ product, onClose }: Props) {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={handleWishlist}
                   className="w-14 h-14 border-2 border-gray-200 rounded-xl flex items-center justify-center hover:border-himalayan hover:text-himalayan transition-colors"
                 >
-                  <Heart size={20} />
+                  <Heart size={20} fill={wishlisted ? 'currentColor' : 'none'} />
                 </motion.button>
               </div>
             </div>

@@ -27,6 +27,7 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 // Protected Pages
 import AccountPage from './pages/AccountPage';
 import OrdersPage from './pages/OrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
 import WishlistPage from './pages/WishlistPage';
 
 // Admin Pages
@@ -72,6 +73,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout><OrdersPage /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:orderId"
+            element={
+              <ProtectedRoute>
+                <Layout><OrderDetailPage /></Layout>
               </ProtectedRoute>
             }
           />

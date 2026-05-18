@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Package, ChevronRight, Truck, Check, Clock, XCircle, Loader2 } from 'lucide-react';
+import { Package, ChevronRight, Truck, Check, Clock, XCircle, Loader2, ShoppingCart } from 'lucide-react';
+import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
 import { ordersApi } from '../lib/supabase/api';
 import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { useCart } from '../store/cartStore';
 
 const statusIcons: Record<string, React.ReactNode> = {
   pending: <Clock size={16} />,
@@ -26,7 +28,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  const { user } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const { addItem } = useCart();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -50,6 +53,18 @@ export default function OrdersPage() {
 
     fetchOrders();
   }, [user?.id]);
+
+  const handleReorder = async (order: OrderWithItems) => {
+    for (const item of order.order_items) {
+      await addItem({
+        id: item.product_id,
+        name: item.product_name,
+        price: item.unit_price,
+        image: item.product_image || '',
+        grainSize: item.grain_size || undefined,
+      }, item.quantity);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-warm-white">
@@ -75,6 +90,9 @@ export default function OrdersPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        <div className="grid lg:grid-cols-4 gap-8">
+          <DashboardSidebar profile={profile} user={user} />
+          <div className="lg:col-span-3">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={40} className="animate-spin text-himalayan" />
@@ -160,6 +178,24 @@ export default function OrdersPage() {
                       <p className="font-bold text-charcoal">${order.total.toFixed(2)}</p>
                       <ChevronRight size={18} className="text-gray-300 ml-auto" />
                     </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <Link
+                      to={`/orders/${order.id}`}
+                      className="px-4 py-2 bg-himalayan text-white rounded-lg text-sm font-semibold hover:bg-himalayan-dark transition-colors"
+                    >
+                      View Details
+                    </Link>
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleReorder(order);
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-charcoal rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      <ShoppingCart size={14} />
+                      Reorder
+                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -252,6 +288,12 @@ export default function OrdersPage() {
                       Cancel Order
                     </button>
                   )}
+                  <button
+                    onClick={() => handleReorder(selectedOrder)}
+                    className="w-full mt-3 px-4 py-3 bg-himalayan text-white rounded-xl hover:bg-himalayan-dark transition-colors font-medium"
+                  >
+                    Reorder Items
+                  </button>
                 </motion.div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-md p-6 text-center">
@@ -262,6 +304,8 @@ export default function OrdersPage() {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
