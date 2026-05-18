@@ -8,6 +8,8 @@ interface ChatMessage {
 }
 
 const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct:free';
+const maxMessages = 12;
+const maxMessageLength = 2000;
 
 const systemPrompt = `You are the Himalayan Koh customer support assistant.
 Help customers with product recommendations, livestock salt guidance, product comparisons, FAQs, and order/support questions.
@@ -16,35 +18,46 @@ Relevant product categories include edible Himalayan pink cooking salt, horse sa
 When unsure about inventory, pricing, shipping, order status, or account details, tell the customer to contact support or check their account.`;
 
 export default async function handler(request: Request): Promise<Response> {
+  const responseHeaders = corsHeaders(request);
+
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders(),
+      headers: responseHeaders,
     });
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return jsonResponse({ error: 'Method not allowed' }, 405, responseHeaders);
+  }
+
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return jsonResponse({ error: 'Content-Type must be application/json' }, 415, responseHeaders);
   }
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    return jsonResponse({ error: 'OpenRouter API key is not configured' }, 500);
+    return jsonResponse({ error: 'OpenRouter API key is not configured' }, 500, responseHeaders);
   }
 
   let body: { messages?: ChatMessage[] };
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+    return jsonResponse({ error: 'Invalid JSON body' }, 400, responseHeaders);
   }
 
   const messages = (body.messages || [])
     .filter((message) => ['user', 'assistant'].includes(message.role) && message.content?.trim())
-    .slice(-12);
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim().slice(0, maxMessageLength),
+    }))
+    .slice(-maxMessages);
 
   if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
-    return jsonResponse({ error: 'A user message is required' }, 400);
+    return jsonResponse({ error: 'A user message is required' }, 400, responseHeaders);
   }
 
   const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -69,7 +82,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   if (!upstream.ok || !upstream.body) {
     const errorText = await upstream.text();
-    return jsonResponse({ error: errorText || 'OpenRouter request failed' }, upstream.status || 502);
+    return jsonResponse({ error: errorText || 'OpenRouter request failed' }, upstream.status || 502, responseHeaders);
   }
 
   const encoder = new TextEncoder();
@@ -122,26 +135,28 @@ export default async function handler(request: Request): Promise<Response> {
 
   return new Response(stream, {
     headers: {
-      ...corsHeaders(),
+      ...responseHeaders,
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
     },
   });
 }
 
-function jsonResponse(body: unknown, status: number) {
+function jsonResponse(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      ...corsHeaders(),
+      ...headers,
       'Content-Type': 'application/json',
     },
   });
 }
 
-function corsHeaders() {
+function corsHeaders(request: Request) {
+  const origin = request.headers.get('origin') || 'https://himalayankoh.com';
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
