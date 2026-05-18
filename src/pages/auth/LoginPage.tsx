@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { isSupabaseConfigured } from '../../lib/supabase/client';
 
 const demoAccounts = {
   customer: {
@@ -29,6 +30,7 @@ export default function LoginPage() {
   const { signIn, loading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const supabaseReady = isSupabaseConfigured();
 
   const from = (location.state as { from?: string })?.from || '/';
 
@@ -113,6 +115,12 @@ export default function LoginPage() {
             <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer123!</p>
             <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin123!</p>
           </div>
+
+          {!supabaseReady && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+              Supabase environment variables are missing. Demo login will work after `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel and the demo accounts are seeded.
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">

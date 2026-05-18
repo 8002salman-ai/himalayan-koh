@@ -1,5 +1,14 @@
-import { supabase } from '../client';
+import { isSupabaseConfigured, supabase } from '../client';
 import type { Profile } from '../database.types';
+
+const supabaseConfigError =
+  'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel/local environment variables, then redeploy.';
+
+function ensureSupabaseConfigured() {
+  if (!isSupabaseConfigured()) {
+    throw new Error(supabaseConfigError);
+  }
+}
 
 export interface SignUpData {
   email: string;
@@ -15,6 +24,8 @@ export interface SignInData {
 export const authApi = {
   // Sign up with email and password
   async signUp({ email, password, fullName }: SignUpData) {
+    ensureSupabaseConfigured();
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -31,6 +42,8 @@ export const authApi = {
 
   // Sign in with email and password
   async signIn({ email, password }: SignInData) {
+    ensureSupabaseConfigured();
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -93,6 +106,8 @@ export const authApi = {
 
   // Send password reset email
   async resetPassword(email: string) {
+    ensureSupabaseConfigured();
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -102,6 +117,8 @@ export const authApi = {
 
   // Update password
   async updatePassword(newPassword: string) {
+    ensureSupabaseConfigured();
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -111,6 +128,8 @@ export const authApi = {
 
   // OAuth sign in
   async signInWithOAuth(provider: 'google' | 'facebook') {
+    ensureSupabaseConfigured();
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {

@@ -4,6 +4,7 @@ import { X, Mail, Lock, User, Eye, EyeOff, Loader2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { authApi } from '../lib/supabase/api';
+import { isSupabaseConfigured } from '../lib/supabase/client';
 
 interface Props {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
 
   const { signIn, signUp } = useAuthContext();
   const navigate = useNavigate();
+  const supabaseReady = isSupabaseConfigured();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +147,12 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm flex items-center gap-2">
                   <Check size={16} />
                   {success}
+                </div>
+              )}
+
+              {!supabaseReady && mode === 'login' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                  Supabase is not configured. Add Vercel env vars before demo login will work.
                 </div>
               )}
 
