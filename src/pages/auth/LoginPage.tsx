@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
   
   const { signIn, isAuthenticated } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,18 +44,26 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      navigate(redirectTarget || from, { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, redirectTarget]);
+
+  const getRedirectForEmail = (loginEmail: string) => {
+    if (demoRedirect) return demoRedirect;
+    if (loginEmail.trim().toLowerCase() === demoAccounts.admin.email) return '/admin';
+    return from;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     setIsSubmitting(true);
+    const nextRedirect = getRedirectForEmail(email);
+    setRedirectTarget(nextRedirect);
 
     try {
       await signIn({ email, password });
-      navigate(demoRedirect || from, { replace: true });
+      navigate(nextRedirect, { replace: true });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -69,6 +78,7 @@ export default function LoginPage() {
     setEmail(account.email);
     setPassword(account.password);
     setDemoRedirect(account.redirectTo);
+    setRedirectTarget(account.redirectTo);
     setFormError('');
   };
 

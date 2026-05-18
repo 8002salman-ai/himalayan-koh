@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Loader2, Check, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
 import DashboardSidebar from '../components/account/DashboardSidebar';
@@ -13,7 +13,7 @@ type TabType = 'dashboard' | 'profile' | 'security' | 'notifications' | 'address
 const validTabs: TabType[] = ['dashboard', 'profile', 'security', 'notifications', 'addresses'];
 
 export default function AccountPage() {
-  const { profile, updateProfile, user, loading: authLoading } = useAuthContext();
+  const { profile, updateProfile, user, loading: authLoading, isAdmin } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tab = searchParams.get('tab') as TabType | null;
@@ -339,6 +339,31 @@ export default function AccountPage() {
                         <SummaryCard icon={<Bell size={20} />} label="Unread Alerts" value={unreadCount} />
                         <SummaryCard icon={<MapPin size={20} />} label="Addresses" value={addresses.length} />
                       </div>
+
+                      {isAdmin && (
+                        <div className="mb-8 rounded-2xl border border-himalayan/20 bg-himalayan-lighter p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                            <h3 className="font-serif text-lg font-bold text-charcoal">Admin Management</h3>
+                            <p className="text-sm text-charcoal-light mt-1">
+                              Manage products, orders, customers, blog posts, analytics, and inventory alerts.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              to="/admin"
+                              className="inline-flex items-center justify-center px-4 py-2 bg-charcoal text-white rounded-xl text-sm font-semibold hover:bg-charcoal-light transition-colors"
+                            >
+                              Open Admin
+                            </Link>
+                            <Link
+                              to="/admin/products?action=new"
+                              className="inline-flex items-center justify-center px-4 py-2 bg-himalayan text-white rounded-xl text-sm font-semibold hover:bg-himalayan-dark transition-colors"
+                            >
+                              Quick Add Product
+                            </Link>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid lg:grid-cols-2 gap-6">
                         <div className="bg-gray-50 rounded-2xl p-5">

@@ -25,17 +25,17 @@ const PROFILE_FETCH_TIMEOUT_MS = 12_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       reject(new Error(`${label} timed out. Check your connection and try again.`));
     }, ms);
 
     promise
       .then((value) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         resolve(value);
       })
       .catch((err) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         reject(err);
       });
   });
@@ -43,7 +43,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 /** Supabase can deadlock if other client calls run inside onAuthStateChange. */
 function runAfterAuthCallback(task: () => void) {
-  window.setTimeout(task, 0);
+  globalThis.setTimeout(task, 0);
 }
 
 function roleFromUser(user: User | null): 'admin' | 'customer' | null {
@@ -77,10 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const fallbackRole = roleFromUser(currentUser ?? user) || 'customer';
+      const fallbackRole = roleFromUser(currentUser ?? null) || 'customer';
       setProfile({
         id: userId,
-        email: currentUser?.email ?? user?.email ?? '',
+        email: currentUser?.email ?? '',
         full_name: (currentUser?.user_metadata?.full_name as string) || null,
         phone: null,
         avatar_url: null,
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (requestId !== profileRequestId.current) return;
       console.error('Failed to fetch profile:', err);
 
-      const sessionUser = currentUser ?? user;
+      const sessionUser = currentUser ?? null;
       if (!sessionUser) {
         setProfile(null);
         return;
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       });
     }
-  }, [user]);
+  }, []);
 
   const loadProfileForSession = useCallback(
     (sessionUser: User | null) => {
@@ -201,15 +201,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (data: SignInData) => {
     setError(null);
+    setLoading(true);
     try {
-      await authApi.signIn(data);
-      // Profile refresh is handled by onAuthStateChange (deferred).
+      const result = await authApi.signIn(data);
+      setSession(result.session);
+      setUser(result.user);
+
+      if (result.user) {
+        await fetchProfile(result.user.id, result.user);
+      } else {
+        setProfile(null);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Sign in failed';
       setError(errorMsg);
       throw err;
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
     setError(null);

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Heart, LayoutDashboard, MapPin, Package, Shield, User } from 'lucide-react';
+import { Bell, Heart, LayoutDashboard, MapPin, Package, Shield, User, BarChart3 } from 'lucide-react';
 import type { Profile } from '../../lib/supabase/database.types';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -49,7 +49,12 @@ export default function DashboardSidebar({ profile, user }: DashboardSidebarProp
       </div>
 
       <nav className="bg-white rounded-2xl p-3 shadow-md space-y-1">
-        {navItems.map((item) => {
+        {[
+          ...(profile?.role === 'admin'
+            ? [{ label: 'Admin Panel', path: '/admin', icon: BarChart3 }]
+            : []),
+          ...navItems,
+        ].map((item) => {
           const isActive = item.path === '/account'
             ? location.pathname === '/account' && !location.search
             : currentPath === item.path || (item.path === '/orders' && location.pathname.startsWith('/orders'));

@@ -156,6 +156,38 @@ export interface Database {
           updated_at?: string;
         };
       };
+      product_images: {
+        Row: {
+          id: string;
+          product_id: string;
+          image_url: string;
+          alt_text: string | null;
+          sort_order: number;
+          is_thumbnail: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          image_url: string;
+          alt_text?: string | null;
+          sort_order?: number;
+          is_thumbnail?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          image_url?: string;
+          alt_text?: string | null;
+          sort_order?: number;
+          is_thumbnail?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       inventory: {
         Row: {
           id: string;
@@ -591,6 +623,7 @@ export type UpdateTables<T extends keyof Database['public']['Tables']> =
 export type Profile = Tables<'profiles'>;
 export type Category = Tables<'categories'>;
 export type Product = Tables<'products'>;
+export type ProductImage = Tables<'product_images'>;
 export type Inventory = Tables<'inventory'>;
 export type Address = Tables<'addresses'>;
 export type Cart = Tables<'carts'>;
@@ -606,6 +639,7 @@ export type Review = Tables<'reviews'>;
 export type ProductWithCategory = Product & {
   category: Category | null;
   inventory: Inventory | null;
+  product_images?: ProductImage[];
   reviews?: Review[];
 };
 

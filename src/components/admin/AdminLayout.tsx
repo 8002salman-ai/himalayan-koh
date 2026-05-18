@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Bell,
+  Plus,
   ChevronDown,
   BarChart3,
 } from 'lucide-react';
@@ -252,6 +253,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              to="/admin/products?action=new"
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 bg-himalayan text-white rounded-xl text-sm font-semibold hover:bg-himalayan-dark transition-colors"
+            >
+              <Plus size={16} />
+              Quick Add
+            </Link>
+
             {/* Notifications */}
             <div className="relative">
               <button

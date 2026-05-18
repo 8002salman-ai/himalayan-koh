@@ -275,6 +275,12 @@ export const adminApi = {
       throw inventoryError;
     }
 
+    await this.syncProductImages(
+      (product as Product).id,
+      productData.images || [],
+      productData.thumbnail || productData.images?.[0] || null
+    );
+
     return product as Product;
   },
 
@@ -330,6 +336,14 @@ export const adminApi = {
         .eq('product_id', id);
     }
 
+    if (productData.images !== undefined || productData.thumbnail !== undefined) {
+      await this.syncProductImages(
+        id,
+        (product as Product).images || [],
+        (product as Product).thumbnail
+      );
+    }
+
     return product as Product;
   },
 
@@ -337,6 +351,8 @@ export const adminApi = {
   async deleteProduct(id: string): Promise<void> {
     // Delete inventory first (cascade should handle this, but being explicit)
     await supabase.from('inventory').delete().eq('product_id', id);
+    const { error: imageError } = await supabase.from('product_images').delete().eq('product_id', id);
+    if (imageError && imageError.code !== '42P01') throw imageError;
     
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw error;
@@ -355,6 +371,8 @@ export const adminApi = {
   // Bulk delete products
   async bulkDeleteProducts(ids: string[]): Promise<void> {
     await supabase.from('inventory').delete().in('product_id', ids);
+    const { error: imageError } = await supabase.from('product_images').delete().in('product_id', ids);
+    if (imageError && imageError.code !== '42P01') throw imageError;
     const { error } = await supabase.from('products').delete().in('id', ids);
     if (error) throw error;
   },
@@ -462,6 +480,35 @@ export const adminApi = {
       .remove([filePath]);
 
     if (error) console.error('Failed to delete image:', error);
+  },
+
+  async syncProductImages(productId: string, images: string[], thumbnail?: string | null): Promise<void> {
+    const uniqueImages = Array.from(new Set(images.filter(Boolean)));
+
+    const { error: deleteError } = await supabase
+      .from('product_images')
+      .delete()
+      .eq('product_id', productId);
+
+    if (deleteError) {
+      if (deleteError.code === '42P01') {
+        console.warn('product_images table is not available yet; skipping normalized image sync.');
+        return;
+      }
+      throw deleteError;
+    }
+
+    if (uniqueImages.length === 0) return;
+
+    const rows = uniqueImages.map((imageUrl, index) => ({
+      product_id: productId,
+      image_url: imageUrl,
+      sort_order: index,
+      is_thumbnail: thumbnail ? imageUrl === thumbnail : index === 0,
+    }));
+
+    const { error } = await supabase.from('product_images').insert(rows as never);
+    if (error) throw error;
   },
 
   async uploadCategoryImage(file: File, categoryId?: string): Promise<string> {
