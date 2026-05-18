@@ -131,6 +131,7 @@ async function requestOpenRouter({
     if (response.ok) {
       const parsed = await parseOpenRouterResponse(response);
       if (parsed.content) {
+        console.info('OpenRouter model succeeded', { model, status: response.status });
         return { content: parsed.content, model, status: response.status };
       }
 
@@ -138,6 +139,12 @@ async function requestOpenRouter({
     } else {
       lastError = await readableOpenRouterError(response);
     }
+
+    console.warn('OpenRouter model failed', {
+      model,
+      status: response.status,
+      error: lastError,
+    });
 
     if (isConfigurationError(response.status, lastError)) {
       return { content: '', model, status: response.status, error: lastError };
