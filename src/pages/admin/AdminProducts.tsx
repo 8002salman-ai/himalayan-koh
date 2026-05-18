@@ -35,6 +35,15 @@ type ProductStats = {
   outOfStock: number;
 };
 
+function asNumber(value: unknown, fallback = 0) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+function productImages(product: ProductWithRelations) {
+  return Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+}
+
 function inventoryBadge(product: ProductWithRelations) {
   const inv = product.inventory;
   if (!inv?.track_inventory) {
@@ -64,6 +73,7 @@ export default function AdminProducts() {
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'price_asc' | 'price_desc'>('newest');
   const [productStats, setProductStats] = useState<ProductStats | null>(null);
+  const [loadError, setLoadError] = useState('');
 
   // Selected items for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -79,6 +89,7 @@ export default function AdminProducts() {
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
 
     if (!isSupabaseConfigured()) {
       // Use fallback data
@@ -155,12 +166,16 @@ export default function AdminProducts() {
       ]);
       setProductStats(statsResult);
 
-      setProducts(productsResult.products);
+      setProducts((productsResult.products || []).filter(Boolean));
       setTotalCount(productsResult.count);
       setTotalPages(productsResult.totalPages);
       setCategories(categoriesResult);
     } catch (err) {
       console.error('Failed to fetch products:', err);
+      setLoadError(err instanceof Error ? err.message : 'Unable to load products. Please refresh and try again.');
+      setProducts([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -232,7 +247,7 @@ export default function AdminProducts() {
 
   const handleToggleActive = async (product: ProductWithRelations) => {
     if (!isSupabaseConfigured()) {
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.id === product.id ? { ...p, is_active: !p.is_active } : p
       ));
       return;
@@ -240,7 +255,7 @@ export default function AdminProducts() {
 
     try {
       await adminApi.updateProduct(product.id, { is_active: !product.is_active });
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.id === product.id ? { ...p, is_active: !p.is_active } : p
       ));
     } catch (err) {
@@ -251,7 +266,7 @@ export default function AdminProducts() {
 
   const handleToggleFeatured = async (product: ProductWithRelations) => {
     if (!isSupabaseConfigured()) {
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
       ));
       return;
@@ -259,7 +274,7 @@ export default function AdminProducts() {
 
     try {
       await adminApi.updateProduct(product.id, { is_featured: !product.is_featured });
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
       ));
     } catch (err) {
@@ -431,6 +446,20 @@ export default function AdminProducts() {
         )}
       </div>
 
+      {loadError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Products could not be loaded.</p>
+          <p className="mt-1">{loadError}</p>
+          <button
+            type="button"
+            onClick={fetchProducts}
+            className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Products Table */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
@@ -491,7 +520,13 @@ export default function AdminProducts() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {products.map((product) => (
+                  {products.map((product) => {
+                    const images = productImages(product);
+                    const price = asNumber(product.price);
+                    const compareAtPrice = product.compare_at_price == null ? null : asNumber(product.compare_at_price);
+                    const productName = product.name || 'Untitled product';
+
+                    return (
                     <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <input
@@ -510,13 +545,13 @@ export default function AdminProducts() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <img
-                            src={product.thumbnail || product.images?.[0] || ''}
-                            alt={product.name}
+                            src={product.thumbnail || images[0] || ''}
+                            alt={productName}
                             className="w-12 h-12 rounded-lg object-cover bg-gray-100"
                           />
                           <div className="min-w-0">
                             <p className="font-medium text-charcoal truncate max-w-[200px]">
-                              {product.name}
+                              {productName}
                             </p>
                             <p className="text-xs text-charcoal-light">
                               SKU: {product.sku || 'N/A'}
@@ -535,11 +570,11 @@ export default function AdminProducts() {
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-medium text-charcoal">
-                            ${product.price.toFixed(2)}
+                            ${price.toFixed(2)}
                           </p>
-                          {product.compare_at_price && (
+                          {compareAtPrice && (
                             <p className="text-xs text-charcoal-light line-through">
-                              ${product.compare_at_price.toFixed(2)}
+                              ${compareAtPrice.toFixed(2)}
                             </p>
                           )}
                         </div>
@@ -644,7 +679,8 @@ export default function AdminProducts() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

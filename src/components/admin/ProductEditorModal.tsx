@@ -4,6 +4,7 @@ import {
   X,
   Loader2,
   Plus,
+  Image as ImageIcon,
   DollarSign,
   Package,
   Tag,
@@ -72,12 +73,16 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
   useEffect(() => {
     if (product) {
+      const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+      const grainSizes = Array.isArray(product.grain_sizes) ? product.grain_sizes : [];
+      const tags = Array.isArray(product.tags) ? product.tags : [];
+
       setFormData({
-        name: product.name,
-        slug: product.slug,
+        name: product.name || '',
+        slug: product.slug || '',
         description: product.description || '',
         short_description: product.short_description || '',
-        price: product.price,
+        price: Number(product.price) || 0,
         compare_at_price: product.compare_at_price || undefined,
         cost_price: product.cost_price || undefined,
         sku: product.sku || '',
@@ -85,12 +90,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         weight: product.weight || undefined,
         weight_unit: product.weight_unit || 'lbs',
         category_id: product.category_id || '',
-        images: product.images || [],
-        thumbnail: product.thumbnail || '',
+        images,
+        thumbnail: product.thumbnail || images[0] || '',
         is_active: product.is_active,
         is_featured: product.is_featured,
-        grain_sizes: product.grain_sizes || [],
-        tags: product.tags || [],
+        grain_sizes: grainSizes,
+        tags,
         meta_title: product.meta_title || '',
         meta_description: product.meta_description || '',
         quantity: product.inventory?.quantity || 0,

@@ -23,6 +23,7 @@ export default function ImageDropzone({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const safeImages = Array.isArray(images) ? images.filter(Boolean) : [];
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
@@ -34,7 +35,7 @@ export default function ImageDropzone({
 
   const handleReorderDrop = (targetIndex: number) => {
     if (dragIndex === null || dragIndex === targetIndex) return;
-    const next = [...images];
+    const next = [...safeImages];
     const [moved] = next.splice(dragIndex, 1);
     next.splice(targetIndex, 0, moved);
     onReorder(next);
@@ -70,9 +71,9 @@ export default function ImageDropzone({
         <p className="text-sm text-charcoal-light mt-1">or click to browse · PNG, JPG, WebP</p>
       </div>
 
-      {images.length > 0 && (
+      {safeImages.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {images.map((image, index) => (
+          {safeImages.map((image, index) => (
             <div
               key={`${image}-${index}`}
               draggable
