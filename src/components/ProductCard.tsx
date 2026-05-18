@@ -1,0 +1,146 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
+import { Product } from '../data/products';
+import { useCart } from '../store/cartStore';
+
+interface Props {
+  product: Product;
+  index: number;
+  onQuickView: (product: Product) => void;
+}
+
+export default function ProductCard({ product, index, onQuickView }: Props) {
+  const [qty, setQty] = useState(1);
+  const [selectedGrain, setSelectedGrain] = useState(product.grainSizes?.[0] || '');
+  const [wishlisted, setWishlisted] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const { addItem } = useCart();
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.priceMin,
+      image: product.image,
+      grainSize: selectedGrain || undefined,
+    }, qty);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: index * 0.08 }}
+      className="group bg-white rounded-2xl overflow-hidden shadow-md shadow-black/5 hover:shadow-xl hover:shadow-himalayan/10 transition-all duration-500"
+    >
+      {/* Image */}
+      <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+          loading="lazy"
+        />
+
+        {/* Overlay buttons */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onQuickView(product)}
+            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-himalayan hover:text-white transition-colors"
+          >
+            <Eye size={18} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setWishlisted(!wishlisted)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+              wishlisted ? 'bg-himalayan text-white' : 'bg-white hover:bg-himalayan hover:text-white'
+            }`}
+          >
+            <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
+          </motion.button>
+        </div>
+
+        {/* Badge */}
+        {product.priceRange && (
+          <div className="absolute top-3 left-3 px-3 py-1 bg-himalayan text-white text-xs font-bold rounded-full">
+            Best Seller
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4 md:p-5">
+        {/* Rating */}
+        <div className="flex items-center gap-1 mb-2">
+          {[...Array(5)].map((_, i) => (
+            <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
+          ))}
+          <span className="text-xs text-gray-400 ml-1">(4.9)</span>
+        </div>
+
+        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-[2.5rem] group-hover:text-himalayan transition-colors">
+          {product.name}
+        </h3>
+
+        <p className="text-himalayan font-bold text-lg mb-3">
+          {product.price}
+        </p>
+
+        {/* Grain Size Selector */}
+        {product.grainSizes && product.grainSizes.length > 0 && (
+          <select
+            value={selectedGrain}
+            onChange={(e) => setSelectedGrain(e.target.value)}
+            className="w-full mb-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
+          >
+            {product.grainSizes.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Quantity + Add to Cart */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setQty(Math.max(1, qty - 1))}
+              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold"
+            >
+              −
+            </button>
+            <span className="px-3 py-2 text-sm font-medium min-w-[2rem] text-center border-x border-gray-200">
+              {qty}
+            </span>
+            <button
+              onClick={() => setQty(qty + 1)}
+              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold"
+            >
+              +
+            </button>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleAddToCart}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 ${
+              addedToCart
+                ? 'bg-green-500 text-white'
+                : 'bg-himalayan hover:bg-himalayan-dark text-white'
+            }`}
+          >
+            <ShoppingCart size={16} />
+            {addedToCart ? 'Added!' : 'Add to Cart'}
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
