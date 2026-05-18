@@ -5,10 +5,18 @@ import { cartApi } from './cart';
 export const TAX_RATE = 0.0825;
 export const FREE_SHIPPING_THRESHOLD = 50;
 export const STANDARD_SHIPPING_COST = 9.95;
+export const EXPEDITED_SHIPPING_COST = 18.95;
+
+export type ShippingMethod = 'standard' | 'expedited';
+
+export const supportedCoupons: Record<string, { label: string; percentage: number }> = {
+  HKWELCOME10: { label: '10% welcome discount', percentage: 0.1 },
+};
 
 export interface OrderTotals {
   subtotal: number;
   shippingCost: number;
+  discountAmount: number;
   taxAmount: number;
   total: number;
 }
@@ -18,16 +26,30 @@ export interface TotalsLineItem {
   unitPrice: number;
 }
 
-export function calculateOrderTotals(items: TotalsLineItem[]): OrderTotals {
+export interface CalculateOrderOptions {
+  couponCode?: string;
+  shippingMethod?: ShippingMethod;
+}
+
+export function calculateOrderTotals(items: TotalsLineItem[], options: CalculateOrderOptions = {}): OrderTotals {
   const subtotal = items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0
   );
-  const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
-  const taxAmount = subtotal * TAX_RATE;
-  const total = subtotal + shippingCost + taxAmount;
+  const normalizedCoupon = options.couponCode?.trim().toUpperCase() || '';
+  const coupon = supportedCoupons[normalizedCoupon];
+  const discountAmount = coupon ? subtotal * coupon.percentage : 0;
+  const taxableSubtotal = Math.max(0, subtotal - discountAmount);
+  const shippingMethod = options.shippingMethod || 'standard';
+  const shippingCost = shippingMethod === 'expedited'
+    ? EXPEDITED_SHIPPING_COST
+    : subtotal >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : STANDARD_SHIPPING_COST;
+  const taxAmount = taxableSubtotal * TAX_RATE;
+  const total = taxableSubtotal + shippingCost + taxAmount;
 
-  return { subtotal, shippingCost, taxAmount, total };
+  return { subtotal, shippingCost, discountAmount, taxAmount, total };
 }
 
 export interface CreateOrderData {
@@ -52,6 +74,11 @@ export interface CreateOrderData {
     country: string;
   };
   paymentMethod?: string;
+  paymentProvider?: 'invoice' | 'stripe';
+  paymentIntentId?: string;
+  paymentStatus?: Order['payment_status'];
+  couponCode?: string;
+  shippingMethod?: ShippingMethod;
   notes?: string;
 }
 
@@ -73,10 +100,17 @@ export const ordersApi = {
       throw new Error('Cart is empty');
     }
 
-    const totals = calculateOrderTotals(cart.cart_items.map((item) => ({
-      quantity: item.quantity,
-      unitPrice: item.unit_price,
-    })));
+    const totals = calculateOrderTotals(
+      cart.cart_items.map((item) => ({
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+      })),
+      {
+        couponCode: data.couponCode,
+        shippingMethod: data.shippingMethod,
+      }
+    );
+    const normalizedCoupon = data.couponCode?.trim().toUpperCase();
 
     // Create order
     const { data: order, error: orderError } = await supabase
@@ -86,14 +120,23 @@ export const ordersApi = {
         email: data.email,
         phone: data.phone || null,
         status: 'pending',
+        payment_status: data.paymentStatus || 'pending',
         subtotal: totals.subtotal,
         shipping_cost: totals.shippingCost,
         tax_amount: totals.taxAmount,
+        discount_amount: totals.discountAmount,
         total: totals.total,
         shipping_address: data.shippingAddress as unknown as Json,
-        billing_address: (data.billingAddress || data.shippingAddress) as unknown as Json,
-        payment_method: data.paymentMethod || null,
-        notes: data.notes || null,
+        billing_address: {
+          ...(data.billingAddress || data.shippingAddress),
+          shippingMethod: data.shippingMethod || 'standard',
+        } as unknown as Json,
+        payment_method: data.paymentMethod || data.paymentProvider || null,
+        notes: [
+          data.notes,
+          normalizedCoupon && supportedCoupons[normalizedCoupon] ? `Coupon: ${normalizedCoupon}` : null,
+          data.paymentIntentId ? `Stripe payment intent: ${data.paymentIntentId}` : null,
+        ].filter(Boolean).join('\n') || null,
       } as never)
       .select()
       .single();

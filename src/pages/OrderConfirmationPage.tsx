@@ -99,12 +99,23 @@ export default function OrderConfirmationPage() {
               <h3 className="font-serif text-lg font-bold text-charcoal mb-4">Invoice Summary</h3>
               <div className="space-y-2">
                 <SummaryRow label="Subtotal" value={order.subtotal} />
+                {order.discount_amount > 0 && <SummaryRow label="Discount" value={-order.discount_amount} />}
                 <SummaryRow label="Shipping" value={order.shipping_cost} />
                 <SummaryRow label="Tax" value={order.tax_amount} />
                 <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-100">
                   <span className="text-charcoal">Total</span>
                   <span className="text-himalayan">${order.total.toFixed(2)}</span>
                 </div>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h3 className="font-serif text-lg font-bold text-charcoal mb-4">Payment Status</h3>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-charcoal-light">{order.payment_method || 'invoice'}</span>
+                <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium capitalize">
+                  {order.payment_status}
+                </span>
               </div>
             </section>
 
@@ -133,7 +144,9 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between text-sm">
       <span className="text-charcoal-light">{label}</span>
-      <span className="text-charcoal">${value.toFixed(2)}</span>
+      <span className={value < 0 ? 'text-green-700' : 'text-charcoal'}>
+        {value < 0 ? '-' : ''}${Math.abs(value).toFixed(2)}
+      </span>
     </div>
   );
 }

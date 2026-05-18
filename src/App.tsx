@@ -7,6 +7,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import SEO from './components/SEO';
+import RouteScrollRestoration from './components/RouteScrollRestoration';
 
 // Public Pages
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -58,6 +59,7 @@ function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <RouteScrollRestoration />
         <SEO />
         <Suspense fallback={<PageLoader />}>
           <Routes>

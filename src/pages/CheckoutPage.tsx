@@ -1,13 +1,20 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, PackageCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, CreditCard, Loader2, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { useAuthContext } from '../context/AuthContext';
-import { calculateOrderTotals, ordersApi } from '../lib/supabase/api/orders';
+import {
+  calculateOrderTotals,
+  ordersApi,
+  supportedCoupons,
+  type ShippingMethod,
+} from '../lib/supabase/api/orders';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { useCart } from '../store/cartStore';
+import { buildPaymentIntentDraft, isStripeConfigured } from '../lib/payments/stripe';
 
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
+const labelClass = 'block text-sm font-semibold text-charcoal mb-1.5';
 
 const initialForm = {
   email: '',
@@ -19,8 +26,19 @@ const initialForm = {
   state: '',
   postalCode: '',
   country: 'United States',
+  billingFullName: '',
+  billingAddressLine1: '',
+  billingAddressLine2: '',
+  billingCity: '',
+  billingState: '',
+  billingPostalCode: '',
+  billingCountry: 'United States',
   notes: '',
 };
+
+type CheckoutForm = typeof initialForm;
+type FieldErrors = Partial<Record<keyof CheckoutForm | 'coupon', string>>;
+type PaymentMethod = 'invoice' | 'stripe';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -34,17 +52,93 @@ export default function CheckoutPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [couponInput, setCouponInput] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('standard');
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('invoice');
 
   const totals = useMemo(
-    () => calculateOrderTotals(items.map((item) => ({
-      quantity: item.quantity,
-      unitPrice: item.price,
-    }))),
-    [items]
+    () => calculateOrderTotals(
+      items.map((item) => ({
+        quantity: item.quantity,
+        unitPrice: item.price,
+      })),
+      { couponCode, shippingMethod }
+    ),
+    [couponCode, items, shippingMethod]
   );
+
+  const paymentDraft = useMemo(() => buildPaymentIntentDraft({
+    email: form.email,
+    amount: totals.total,
+    couponCode,
+    items,
+  }), [couponCode, form.email, items, totals.total]);
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  const applyCoupon = () => {
+    const nextCoupon = couponInput.trim().toUpperCase();
+    if (!nextCoupon) {
+      setCouponCode('');
+      setFieldErrors((current) => ({ ...current, coupon: undefined }));
+      return;
+    }
+
+    if (!supportedCoupons[nextCoupon]) {
+      setFieldErrors((current) => ({ ...current, coupon: 'Coupon code is not valid.' }));
+      setCouponCode('');
+      return;
+    }
+
+    setCouponCode(nextCoupon);
+    setFieldErrors((current) => ({ ...current, coupon: undefined }));
+  };
+
+  const validateForm = () => {
+    const nextErrors: FieldErrors = {};
+    const requiredFields: (keyof CheckoutForm)[] = [
+      'email',
+      'fullName',
+      'addressLine1',
+      'city',
+      'state',
+      'postalCode',
+      'country',
+    ];
+
+    requiredFields.forEach((field) => {
+      if (!form[field].trim()) nextErrors[field] = 'Required';
+    });
+
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      nextErrors.email = 'Enter a valid email.';
+    }
+
+    if (!billingSameAsShipping) {
+      ([
+        'billingFullName',
+        'billingAddressLine1',
+        'billingCity',
+        'billingState',
+        'billingPostalCode',
+        'billingCountry',
+      ] as (keyof CheckoutForm)[]).forEach((field) => {
+        if (!form[field].trim()) nextErrors[field] = 'Required';
+      });
+    }
+
+    if (paymentMethod === 'stripe' && !isStripeConfigured) {
+      nextErrors.coupon = 'Card payments are prepared but not active yet. Please use invoice checkout.';
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,6 +155,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!validateForm()) {
+      setError('Please fix the highlighted checkout fields.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const shippingAddress = {
@@ -72,13 +171,28 @@ export default function CheckoutPage() {
         postalCode: form.postalCode,
         country: form.country,
       };
+      const billingAddress = billingSameAsShipping
+        ? shippingAddress
+        : {
+            fullName: form.billingFullName,
+            addressLine1: form.billingAddressLine1,
+            addressLine2: form.billingAddressLine2 || undefined,
+            city: form.billingCity,
+            state: form.billingState,
+            postalCode: form.billingPostalCode,
+            country: form.billingCountry,
+          };
 
       const order = await ordersApi.createOrder({
         email: form.email,
         phone: form.phone || undefined,
         shippingAddress,
-        billingAddress: shippingAddress,
-        paymentMethod: 'invoice',
+        billingAddress,
+        paymentProvider: paymentMethod,
+        paymentMethod: paymentMethod === 'stripe' ? 'stripe_card_prepared' : 'invoice',
+        paymentStatus: 'pending',
+        couponCode,
+        shippingMethod,
         notes: form.notes || undefined,
       }, user?.id);
 
@@ -123,6 +237,9 @@ export default function CheckoutPage() {
           >
             Checkout
           </motion.h1>
+          <p className="text-white/70 mt-2 max-w-2xl">
+            Secure order review, shipping details, and payment preparation for Himalayan Koh products.
+          </p>
         </div>
       </div>
 
@@ -132,29 +249,148 @@ export default function CheckoutPage() {
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Contact Information</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                <input required type="email" value={form.email} onChange={(event) => handleChange('email', event.target.value)} placeholder="Email address" className={inputClass} />
-                <input value={form.phone} onChange={(event) => handleChange('phone', event.target.value)} placeholder="Phone number" className={inputClass} />
+                <Field label="Email address" error={fieldErrors.email}>
+                  <input required type="email" value={form.email} onChange={(event) => handleChange('email', event.target.value)} placeholder="you@example.com" className={inputClass} />
+                </Field>
+                <Field label="Phone number">
+                  <input value={form.phone} onChange={(event) => handleChange('phone', event.target.value)} placeholder="(832) 224-6466" className={inputClass} />
+                </Field>
               </div>
             </section>
 
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Shipping Address</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                <input required value={form.fullName} onChange={(event) => handleChange('fullName', event.target.value)} placeholder="Full name" className={inputClass} />
-                <input required value={form.addressLine1} onChange={(event) => handleChange('addressLine1', event.target.value)} placeholder="Address line 1" className={inputClass} />
-                <input value={form.addressLine2} onChange={(event) => handleChange('addressLine2', event.target.value)} placeholder="Address line 2" className={inputClass} />
-                <input required value={form.city} onChange={(event) => handleChange('city', event.target.value)} placeholder="City" className={inputClass} />
-                <input required value={form.state} onChange={(event) => handleChange('state', event.target.value)} placeholder="State" className={inputClass} />
-                <input required value={form.postalCode} onChange={(event) => handleChange('postalCode', event.target.value)} placeholder="Postal code" className={inputClass} />
-                <input required value={form.country} onChange={(event) => handleChange('country', event.target.value)} placeholder="Country" className={inputClass} />
+              <div className="flex items-center gap-2 mb-5">
+                <Truck size={20} className="text-himalayan" />
+                <h2 className="font-serif text-xl font-bold text-charcoal">Shipping Address</h2>
               </div>
-              <textarea value={form.notes} onChange={(event) => handleChange('notes', event.target.value)} placeholder="Order notes (optional)" className={`${inputClass} mt-4 min-h-24 resize-none`} />
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Full name" error={fieldErrors.fullName}>
+                  <input required value={form.fullName} onChange={(event) => handleChange('fullName', event.target.value)} placeholder="Full name" className={inputClass} />
+                </Field>
+                <Field label="Address line 1" error={fieldErrors.addressLine1}>
+                  <input required value={form.addressLine1} onChange={(event) => handleChange('addressLine1', event.target.value)} placeholder="Street address" className={inputClass} />
+                </Field>
+                <Field label="Address line 2">
+                  <input value={form.addressLine2} onChange={(event) => handleChange('addressLine2', event.target.value)} placeholder="Suite, building, ranch name" className={inputClass} />
+                </Field>
+                <Field label="City" error={fieldErrors.city}>
+                  <input required value={form.city} onChange={(event) => handleChange('city', event.target.value)} placeholder="City" className={inputClass} />
+                </Field>
+                <Field label="State" error={fieldErrors.state}>
+                  <input required value={form.state} onChange={(event) => handleChange('state', event.target.value)} placeholder="State" className={inputClass} />
+                </Field>
+                <Field label="Postal code" error={fieldErrors.postalCode}>
+                  <input required value={form.postalCode} onChange={(event) => handleChange('postalCode', event.target.value)} placeholder="Postal code" className={inputClass} />
+                </Field>
+                <Field label="Country" error={fieldErrors.country}>
+                  <input required value={form.country} onChange={(event) => handleChange('country', event.target.value)} placeholder="Country" className={inputClass} />
+                </Field>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Shipping Method</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <ShippingOption
+                  active={shippingMethod === 'standard'}
+                  title={totals.subtotal >= 50 ? 'Standard Shipping (Free)' : 'Standard Shipping'}
+                  detail={totals.subtotal >= 50 ? 'Free over $50' : '3-7 business days'}
+                  price={totals.subtotal >= 50 ? '$0.00' : '$9.95'}
+                  onClick={() => setShippingMethod('standard')}
+                />
+                <ShippingOption
+                  active={shippingMethod === 'expedited'}
+                  title="Expedited Shipping"
+                  detail="2-4 business days"
+                  price="$18.95"
+                  onClick={() => setShippingMethod('expedited')}
+                />
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Billing Details</h2>
+              <label className="flex items-center gap-2 cursor-pointer mb-5">
+                <input
+                  type="checkbox"
+                  checked={billingSameAsShipping}
+                  onChange={(event) => setBillingSameAsShipping(event.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                />
+                <span className="text-sm text-charcoal">Billing address is the same as shipping</span>
+              </label>
+
+              {!billingSameAsShipping && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label="Billing full name" error={fieldErrors.billingFullName}>
+                    <input value={form.billingFullName} onChange={(event) => handleChange('billingFullName', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing address line 1" error={fieldErrors.billingAddressLine1}>
+                    <input value={form.billingAddressLine1} onChange={(event) => handleChange('billingAddressLine1', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing address line 2">
+                    <input value={form.billingAddressLine2} onChange={(event) => handleChange('billingAddressLine2', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing city" error={fieldErrors.billingCity}>
+                    <input value={form.billingCity} onChange={(event) => handleChange('billingCity', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing state" error={fieldErrors.billingState}>
+                    <input value={form.billingState} onChange={(event) => handleChange('billingState', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing postal code" error={fieldErrors.billingPostalCode}>
+                    <input value={form.billingPostalCode} onChange={(event) => handleChange('billingPostalCode', event.target.value)} className={inputClass} />
+                  </Field>
+                  <Field label="Billing country" error={fieldErrors.billingCountry}>
+                    <input value={form.billingCountry} onChange={(event) => handleChange('billingCountry', event.target.value)} className={inputClass} />
+                  </Field>
+                </div>
+              )}
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Payment</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('invoice')}
+                  className={`text-left rounded-2xl border p-4 transition-colors ${paymentMethod === 'invoice' ? 'border-himalayan bg-himalayan/10' : 'border-gray-200 hover:border-himalayan/40'}`}
+                >
+                  <PackageCheck size={22} className="text-himalayan mb-2" />
+                  <p className="font-semibold text-charcoal">Request Invoice</p>
+                  <p className="text-sm text-charcoal-light mt-1">Place the order now. Payment can be completed manually after confirmation.</p>
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="text-left rounded-2xl border border-gray-200 bg-gray-50 p-4 cursor-not-allowed opacity-80"
+                >
+                  <CreditCard size={22} className="text-charcoal-light mb-2" />
+                  <p className="font-semibold text-charcoal">Stripe Card Payment</p>
+                  <p className="text-sm text-charcoal-light mt-1">
+                    Prepared for test/live Stripe. Not active yet.
+                  </p>
+                </button>
+              </div>
+              <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-4 text-xs text-charcoal-light">
+                <p className="font-semibold text-charcoal mb-1">Stripe-ready structure</p>
+                <p>Payment intent draft: {(paymentDraft.amount / 100).toFixed(2)} {paymentDraft.currency.toUpperCase()} · {isStripeConfigured ? 'publishable key configured' : 'publishable key pending'}</p>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Delivery Notes</h2>
+              <textarea
+                value={form.notes}
+                onChange={(event) => handleChange('notes', event.target.value)}
+                placeholder="Gate code, delivery instructions, ranch drop-off notes, or product preferences"
+                className={`${inputClass} min-h-28 resize-none`}
+              />
             </section>
           </div>
 
           <aside className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-md p-6 sticky top-24">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Invoice Summary</h2>
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Order Summary</h2>
               <div className="space-y-4 mb-5">
                 {items.map((item) => (
                   <div key={`${item.id}-${item.grainSize || ''}`} className="flex gap-3">
@@ -168,14 +404,42 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              <div className="border-t border-gray-100 pt-4 mb-4">
+                <label className={labelClass}>Coupon Code</label>
+                <div className="flex gap-2">
+                  <input
+                    value={couponInput}
+                    onChange={(event) => setCouponInput(event.target.value)}
+                    placeholder="HKWELCOME10"
+                    className={inputClass}
+                  />
+                  <button type="button" onClick={applyCoupon} className="px-4 bg-charcoal text-white rounded-xl text-sm font-semibold hover:bg-charcoal-light">
+                    Apply
+                  </button>
+                </div>
+                {fieldErrors.coupon && <p className="text-xs text-red-600 mt-1">{fieldErrors.coupon}</p>}
+                {couponCode && (
+                  <p className="text-xs text-green-700 mt-2 flex items-center gap-1">
+                    <CheckCircle size={13} />
+                    {supportedCoupons[couponCode].label} applied
+                  </p>
+                )}
+              </div>
+
               <div className="border-t border-gray-100 pt-4 space-y-2">
                 <SummaryRow label="Subtotal" value={totals.subtotal} />
+                {totals.discountAmount > 0 && <SummaryRow label="Discount" value={-totals.discountAmount} />}
                 <SummaryRow label="Shipping" value={totals.shippingCost} />
                 <SummaryRow label="Tax" value={totals.taxAmount} />
                 <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-100">
                   <span className="text-charcoal">Total</span>
                   <span className="text-himalayan">${totals.total.toFixed(2)}</span>
                 </div>
+              </div>
+
+              <div className="mt-5 flex items-start gap-2 text-xs text-charcoal-light">
+                <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
+                <p>Your order is saved securely in Supabase. Stripe card processing is prepared but not enabled.</p>
               </div>
 
               {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -196,11 +460,47 @@ export default function CheckoutPage() {
   );
 }
 
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className={labelClass}>{label}</span>
+      {children}
+      {error && <span className="text-xs text-red-600 mt-1 block">{error}</span>}
+    </label>
+  );
+}
+
+function ShippingOption({ active, title, detail, price, onClick }: {
+  active: boolean;
+  title: string;
+  detail: string;
+  price: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-2xl border p-4 transition-colors ${active ? 'border-himalayan bg-himalayan/10' : 'border-gray-200 hover:border-himalayan/40'}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-semibold text-charcoal">{title}</p>
+          <p className="text-sm text-charcoal-light mt-1">{detail}</p>
+        </div>
+        <span className="font-bold text-himalayan">{price}</span>
+      </div>
+    </button>
+  );
+}
+
 function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between text-sm">
       <span className="text-charcoal-light">{label}</span>
-      <span className="text-charcoal">${value.toFixed(2)}</span>
+      <span className={value < 0 ? 'text-green-700' : 'text-charcoal'}>
+        {value < 0 ? '-' : ''}${Math.abs(value).toFixed(2)}
+      </span>
     </div>
   );
 }
