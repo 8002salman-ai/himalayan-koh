@@ -17,6 +17,14 @@ const quickPrompts = [
   'Help me choose cooking salt',
 ];
 
+const friendlyChatError = (message: string) => {
+  if (/provider returned error/i.test(message)) {
+    return 'The AI assistant is temporarily busy. Please try again in a moment.';
+  }
+
+  return message || 'AI assistant is unavailable right now.';
+};
+
 export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -98,7 +106,8 @@ export default function AIChatWidget() {
         )));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI assistant is unavailable right now.');
+      const message = err instanceof Error ? err.message : 'AI assistant is unavailable right now.';
+      setError(friendlyChatError(message));
       setMessages((current) => current.filter((message) => message.id !== assistantId));
     } finally {
       setIsStreaming(false);

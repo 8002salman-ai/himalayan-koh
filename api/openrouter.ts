@@ -7,14 +7,16 @@ interface ChatMessage {
   content: string;
 }
 
-const modelCandidates = [
-  process.env.OPENROUTER_MODEL,
+const stableFreeModels = [
   'deepseek/deepseek-chat-v3-0324:free',
-  'deepseek/deepseek-r1-0528:free',
-  'qwen/qwen-2.5-72b-instruct:free',
   'qwen/qwen3-32b:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-].filter(Boolean) as string[];
+  'meta-llama/llama-3.3-70b-instruct:free',
+];
+
+const modelCandidates = Array.from(new Set([
+  ...stableFreeModels,
+  process.env.OPENROUTER_MODEL,
+].filter(Boolean))) as string[];
 const maxMessages = 12;
 const maxMessageLength = 2000;
 
@@ -73,67 +75,19 @@ export default async function handler(request: Request): Promise<Response> {
     messages,
   });
 
-  if (!upstream.response.ok || !upstream.response.body) {
+  if (!upstream.content) {
     return jsonResponse(
-      { error: upstream.error || 'AI assistant is temporarily unavailable. Please try again.' },
-      upstream.response.status || 502,
+      { error: friendlyAiError(upstream.error) },
+      upstream.status || 502,
       responseHeaders
     );
   }
 
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const reader = upstream.response.body!.getReader();
-      let buffer = '';
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-
-            const payload = trimmed.replace(/^data:\s*/, '');
-            if (payload === '[DONE]') {
-              controller.close();
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(payload) as {
-                choices?: { delta?: { content?: string } }[];
-              };
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                controller.enqueue(encoder.encode(content));
-              }
-            } catch {
-              // Ignore malformed SSE keepalive chunks.
-            }
-          }
-        }
-
-        controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
-
-  return new Response(stream, {
+  return new Response(upstream.content, {
     headers: {
       ...responseHeaders,
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'no-store',
       'X-OpenRouter-Model': upstream.model,
     },
   });
@@ -147,8 +101,9 @@ async function requestOpenRouter({
   apiKey: string;
   origin: string;
   messages: { role: 'user' | 'assistant'; content: string }[];
-}): Promise<{ response: Response; model: string; error?: string }> {
+}): Promise<{ content: string; model: string; status: number; error?: string }> {
   let lastError = '';
+  let lastStatus = 502;
 
   for (const model of modelCandidates) {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -161,7 +116,7 @@ async function requestOpenRouter({
       },
       body: JSON.stringify({
         model,
-        stream: true,
+        stream: false,
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages,
@@ -171,21 +126,60 @@ async function requestOpenRouter({
       }),
     });
 
-    if (response.ok && response.body) {
-      return { response, model };
+    lastStatus = response.status || 502;
+
+    if (response.ok) {
+      const parsed = await parseOpenRouterResponse(response);
+      if (parsed.content) {
+        return { content: parsed.content, model, status: response.status };
+      }
+
+      lastError = parsed.error || `OpenRouter returned an empty response for ${model}`;
+    } else {
+      lastError = await readableOpenRouterError(response);
     }
 
-    lastError = await readableOpenRouterError(response);
-    if (![400, 401, 402, 403, 404, 429, 500, 502, 503].includes(response.status)) {
-      return { response, model, error: lastError };
+    if (isConfigurationError(response.status, lastError)) {
+      return { content: '', model, status: response.status, error: lastError };
     }
   }
 
   return {
-    response: new Response(null, { status: 502 }),
+    content: '',
     model: modelCandidates[modelCandidates.length - 1],
+    status: lastStatus,
     error: lastError || 'No OpenRouter model is available right now.',
   };
+}
+
+async function parseOpenRouterResponse(response: Response) {
+  try {
+    const parsed = await response.json() as {
+      choices?: { message?: { content?: string } }[];
+      error?: { message?: string } | string;
+      message?: string;
+    };
+
+    const content = parsed.choices?.[0]?.message?.content?.trim();
+    if (content) return { content };
+
+    if (typeof parsed.error === 'string') return { error: parsed.error };
+    return { error: parsed.error?.message || parsed.message || 'OpenRouter returned no message content.' };
+  } catch {
+    return { error: 'OpenRouter returned an invalid response.' };
+  }
+}
+
+function isConfigurationError(status: number, error: string) {
+  if ([401, 402, 403].includes(status)) return true;
+  return /api key|auth|credit|quota|billing/i.test(error);
+}
+
+function friendlyAiError(error?: string) {
+  if (!error) return 'The AI assistant is temporarily busy. Please try again in a moment.';
+  if (/api key|auth/i.test(error)) return 'The AI assistant is not configured correctly yet. Please contact support.';
+  if (/credit|quota|billing/i.test(error)) return 'The AI assistant is temporarily unavailable due to provider limits. Please try again later.';
+  return 'The AI assistant is temporarily busy. Please try again in a moment.';
 }
 
 async function readableOpenRouterError(response: Response) {
