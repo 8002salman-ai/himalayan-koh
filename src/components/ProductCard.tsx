@@ -11,7 +11,7 @@ import { isSupabaseConfigured } from '../lib/supabase/client';
 interface Props {
   product: Product;
   index: number;
-  onQuickView: (product: Product) => void;
+  onQuickView?: (product: Product) => void;
 }
 
 export default function ProductCard({ product, index, onQuickView }: Props) {

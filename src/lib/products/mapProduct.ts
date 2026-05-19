@@ -1,11 +1,19 @@
 import type { Product } from '../../data/products';
 import { products as fallbackProducts } from '../../data/products';
-import type { ProductWithCategory } from '../supabase/database.types';
+import type { Inventory, ProductWithCategory } from '../supabase/database.types';
+import { getFallbackProductBySlug as findFallbackBySlug, normalizeProductSlug, productSlugFromName, slugsMatch } from './slug';
+
+function inventoryRow(inventory: ProductWithCategory['inventory']) {
+  if (!inventory) return null;
+  return Array.isArray(inventory) ? inventory[0] : inventory;
+}
 
 export function mapSupabaseProduct(product: ProductWithCategory): Product {
+  const inventory = inventoryRow(product.inventory) as Inventory | null;
+
   return {
     id: product.id,
-    slug: product.slug,
+    slug: productSlugFromName(product.name, product.slug),
     name: product.name,
     price: product.compare_at_price
       ? `$${product.price.toFixed(2)} - $${product.compare_at_price.toFixed(2)}`
@@ -17,8 +25,8 @@ export function mapSupabaseProduct(product: ProductWithCategory): Product {
     category: product.category?.name || 'Uncategorized',
     description: product.description || product.short_description || undefined,
     grainSizes: product.grain_sizes,
-    inStock: product.inventory
-      ? product.inventory.quantity > product.inventory.reserved_quantity
+    inStock: inventory
+      ? inventory.quantity > inventory.reserved_quantity
       : true,
     metaTitle: product.meta_title || undefined,
     metaDescription: product.meta_description || undefined,
@@ -26,29 +34,9 @@ export function mapSupabaseProduct(product: ProductWithCategory): Product {
 }
 
 export function getFallbackProductBySlug(slug: string): Product | undefined {
-  return fallbackProducts.find((product) => product.slug === slug);
+  return findFallbackBySlug(fallbackProducts, slug);
 }
 
-export function buildProductJsonLd(product: Product) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    description: product.metaDescription || product.description || product.name,
-    image: product.image,
-    sku: String(product.id),
-    brand: {
-      '@type': 'Brand',
-      name: 'Himalayan Koh',
-    },
-    offers: {
-      '@type': 'Offer',
-      url: `https://himalayankoh.com/products/${product.slug}`,
-      priceCurrency: 'USD',
-      price: product.priceMin,
-      availability: product.inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-    },
-  };
-}
+export { normalizeProductSlug, productSlugFromName, slugsMatch };
+
+export { buildProductStructuredData as buildProductJsonLd } from './productSchema';

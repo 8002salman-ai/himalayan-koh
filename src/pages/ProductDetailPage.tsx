@@ -5,73 +5,71 @@ import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
 import JsonLd from '../components/JsonLd';
 import { usePageSeo } from '../hooks/usePageSeo';
-import { products as fallbackProducts, type Product } from '../data/products';
-import { productsApi } from '../lib/supabase/api';
-import { isSupabaseConfigured } from '../lib/supabase/client';
-import {
-  buildProductJsonLd,
-  getFallbackProductBySlug,
-  mapSupabaseProduct,
-} from '../lib/products/mapProduct';
+import type { Product } from '../data/products';
+import { DEFAULT_DESCRIPTION } from '../lib/seo/constants';
+import { buildProductStructuredData } from '../lib/products/productSchema';
+import { buildProductPageSeo } from '../lib/products/productSeo';
+import { normalizeProductSlug } from '../lib/products/slug';
+import { resolveProductBySlug } from '../lib/products/resolveProduct';
+import ProductDetailSections from '../components/product/ProductDetailSections';
 
 export default function ProductDetailPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug: routeSlug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) {
+    if (!routeSlug) {
+      setProduct(null);
+      setRelated([]);
       setLoading(false);
       return;
     }
 
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
-      try {
-        if (!isSupabaseConfigured()) {
-          const fallback = getFallbackProductBySlug(slug);
-          setProduct(fallback || null);
-          setRelated(fallbackProducts.filter((p) => p.slug !== slug).slice(0, 3));
-          return;
-        }
+      const result = await resolveProductBySlug(routeSlug);
+      if (cancelled) return;
 
-        const data = await productsApi.getProductBySlug(slug);
-        if (!data) {
-          setProduct(getFallbackProductBySlug(slug) || null);
-          setRelated([]);
-          return;
-        }
-
-        const mapped = mapSupabaseProduct(data);
-        setProduct(mapped);
-
-        const relatedData = await productsApi.getRelatedProducts(data.id, data.category_id, 3);
-        setRelated(relatedData.map(mapSupabaseProduct));
-      } catch (err) {
-        console.error('Failed to load product:', err);
-        setProduct(getFallbackProductBySlug(slug) || null);
-      } finally {
-        setLoading(false);
-      }
+      setProduct(result.product);
+      setRelated(result.related);
+      setLoading(false);
     };
 
     void load();
-  }, [slug]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [routeSlug]);
 
   const seo = useMemo(() => {
-    if (!product) return null;
+    const slug = product?.slug ?? (routeSlug ? normalizeProductSlug(routeSlug) : '');
+    if (!slug) return null;
+
+    const canonicalPath = `/products/${slug}`;
+
+    if (product) {
+      const { title, description } = buildProductPageSeo(product);
+      return {
+        title,
+        description,
+        canonicalPath,
+        ogImage: product.image,
+        ogType: 'product',
+      };
+    }
+
     return {
-      title: product.metaTitle || `${product.name} | Himalayan Koh`,
-      description:
-        product.metaDescription ||
-        product.description ||
-        `Shop ${product.name} — premium Himalayan pink salt from Himalayan Koh.`,
-      canonicalPath: `/products/${product.slug}`,
-      ogImage: product.image,
+      title: 'Product | Himalayan Koh',
+      description: DEFAULT_DESCRIPTION,
+      canonicalPath,
       ogType: 'product',
     };
-  }, [product]);
+  }, [product, routeSlug]);
 
   usePageSeo(seo);
 
@@ -92,6 +90,11 @@ export default function ProductDetailPage() {
             <p className="text-charcoal-light mb-6">
               This product may have been removed or the link is incorrect.
             </p>
+            {import.meta.env.DEV && routeSlug && (
+              <p className="text-xs text-charcoal-light/80 mb-4 font-mono">
+                slug param: {routeSlug}
+              </p>
+            )}
             <Link
               to="/products"
               className="inline-flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
@@ -106,10 +109,11 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-warm-white py-8 md:py-12">
-      <JsonLd id="product" data={buildProductJsonLd(product)} />
+      <JsonLd id="product" data={buildProductStructuredData(product)} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <ProductDetailView product={product} variant="page" />
+        <ProductDetailSections product={product} />
 
         {related.length > 0 && (
           <section className="mt-14">

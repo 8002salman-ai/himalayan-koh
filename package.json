@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
-    "verify:rls": "node scripts/verify-rls.mjs"
+    "verify:rls": "node scripts/verify-rls.mjs",
+    "verify:phase0": "node scripts/verify-phase0.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
@@ -30,7 +31,6 @@
     "@vitejs/plugin-react": "5.1.1",
     "dotenv": "^16.4.7",
     "pg": "^8.14.1",
-    "playwright": "^1.52.0",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.3.2",

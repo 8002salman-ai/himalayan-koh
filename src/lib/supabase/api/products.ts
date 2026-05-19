@@ -1,3 +1,4 @@
+import { normalizeProductSlug, productSlugFromName, slugsMatch } from '../../products/slug';
 import { supabase } from '../client';
 import type { Product, Category, ProductWithCategory } from '../database.types';
 
@@ -96,6 +97,9 @@ export const productsApi = {
 
   // Get single product by slug
   async getProductBySlug(slug: string): Promise<ProductWithCategory | null> {
+    const normalizedSlug = normalizeProductSlug(slug);
+    if (!normalizedSlug) return null;
+
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -103,15 +107,26 @@ export const productsApi = {
         category:categories(*),
         inventory(*)
       `)
-      .eq('slug', slug)
+      .eq('slug', normalizedSlug)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data as ProductWithCategory;
+
+    if (data) return data as ProductWithCategory;
+
+    // Slug in URL may come from productSlugFromName while DB slug differs or is stale.
+    const { products } = await this.getProducts({ limit: 100 });
+    return (
+      products.find(
+        (row) =>
+          slugsMatch(row.slug, normalizedSlug) ||
+          slugsMatch(productSlugFromName(row.name, row.slug), normalizedSlug)
+      ) ?? null
+    );
   },
 
   // Get single product by ID

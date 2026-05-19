@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, Heart, Star, Check, Minus, Plus, ChevronRight } from 'lucide-react';
 import type { Product } from '../data/products';
+import { getProductDisplayName } from '../lib/products/productSeo';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import { wishlistApi } from '../lib/supabase/api';
@@ -25,6 +26,7 @@ export default function ProductDetailView({
   const [wishlisted, setWishlisted] = useState(false);
   const { addItem } = useCart();
   const { user } = useAuthContext();
+  const displayName = getProductDisplayName(product);
 
   useEffect(() => {
     setQty(1);
@@ -82,7 +84,7 @@ export default function ProductDetailView({
               </Link>
             </li>
             <ChevronRight size={14} className="mx-0.5 shrink-0" />
-            <li className="text-charcoal font-medium line-clamp-1">{product.name}</li>
+            <li className="text-charcoal font-medium line-clamp-1">{displayName}</li>
           </ol>
         </nav>
       )}
@@ -91,7 +93,7 @@ export default function ProductDetailView({
         <div className="relative aspect-square md:aspect-auto bg-gray-50 min-h-[280px]">
           <img
             src={product.image}
-            alt={product.name}
+            alt={displayName}
             className={`w-full h-full object-cover ${variant === 'modal' ? 'md:rounded-l-3xl' : ''}`}
           />
           {variant === 'modal' && onClose && (
@@ -129,7 +131,7 @@ export default function ProductDetailView({
           </div>
 
           <h1 className="font-serif text-xl md:text-2xl font-bold text-charcoal mb-3 leading-snug pr-8">
-            {product.name}
+            {displayName}
           </h1>
 
           <p className="text-himalayan font-bold text-2xl mb-4">{product.price}</p>
