@@ -1,14 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-
-const siteUrl = 'https://himalayankoh.com';
-const defaultTitle = 'Himalayan Koh - Premium Himalayan Pink Salt for Livestock & Cooking';
-const defaultDescription = 'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
+import JsonLd from './JsonLd';
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_TITLE,
+  ORGANIZATION_JSON_LD,
+  SITE_URL,
+} from '../lib/seo/constants';
+import { getPageSeo, subscribePageSeo } from '../lib/seo/pageSeo';
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   '/': {
-    title: defaultTitle,
-    description: defaultDescription,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
   },
   '/products': {
     title: 'Products - Himalayan Koh',
@@ -34,28 +38,84 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: 'Checkout - Himalayan Koh',
     description: 'Secure checkout for Himalayan Koh products.',
   },
+  '/terms': {
+    title: 'Terms of Service - Himalayan Koh',
+    description: 'Terms of service for Himalayan Koh online store and product purchases.',
+  },
+  '/privacy': {
+    title: 'Privacy Policy - Himalayan Koh',
+    description: 'Privacy policy for Himalayan Koh website, accounts, and customer data.',
+  },
+  '/wishlist': {
+    title: 'Wishlist - Himalayan Koh',
+    description: 'Your saved Himalayan Koh products.',
+  },
+  '/account': {
+    title: 'My Account - Himalayan Koh',
+    description: 'Manage your Himalayan Koh account, orders, and profile.',
+  },
+  '/orders': {
+    title: 'My Orders - Himalayan Koh',
+    description: 'View your Himalayan Koh order history.',
+  },
 };
+
+function resolveStaticMetadata(pathname: string) {
+  if (routeMetadata[pathname]) return routeMetadata[pathname];
+
+  if (pathname.startsWith('/blog/')) {
+    return {
+      title: 'Blog - Himalayan Koh',
+      description: DEFAULT_DESCRIPTION,
+    };
+  }
+
+  if (pathname.startsWith('/products/')) {
+    return {
+      title: 'Product - Himalayan Koh',
+      description: DEFAULT_DESCRIPTION,
+    };
+  }
+
+  return {
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  };
+}
 
 export default function SEO() {
   const location = useLocation();
+  const [, setRevision] = useState(0);
+
+  useEffect(() => subscribePageSeo(() => setRevision((n) => n + 1)), []);
 
   useEffect(() => {
-    const metadata = routeMetadata[location.pathname] || {
-      title: defaultTitle,
-      description: defaultDescription,
-    };
+    const override = getPageSeo();
+    const staticMeta = resolveStaticMetadata(location.pathname);
+    const metadata = override ?? staticMeta;
+    const canonicalPath = override?.canonicalPath ?? location.pathname;
+    const canonical = `${SITE_URL}${canonicalPath}`;
 
     document.title = metadata.title;
     setMeta('description', metadata.description);
     setMeta('og:title', metadata.title, 'property');
     setMeta('og:description', metadata.description, 'property');
-    setMeta('og:type', 'website', 'property');
-    setMeta('og:url', `${siteUrl}${location.pathname}`, 'property');
+    setMeta('og:type', override?.ogType || 'website', 'property');
+    setMeta('og:url', canonical, 'property');
+    if (override?.ogImage) {
+      setMeta('og:image', override.ogImage, 'property');
+    }
     setMeta('twitter:card', 'summary_large_image');
-    setCanonical(`${siteUrl}${location.pathname}`);
-  }, [location.pathname]);
+    setCanonical(canonical);
 
-  return null;
+    if (override?.noindex) {
+      setMeta('robots', 'noindex, nofollow');
+    } else {
+      removeMeta('robots');
+    }
+  }, [location.pathname, location.search]);
+
+  return location.pathname === '/' ? <JsonLd id="organization" data={ORGANIZATION_JSON_LD} /> : null;
 }
 
 function setMeta(name: string, content: string, attribute: 'name' | 'property' = 'name') {
@@ -66,6 +126,10 @@ function setMeta(name: string, content: string, attribute: 'name' | 'property' =
     document.head.appendChild(element);
   }
   element.setAttribute('content', content);
+}
+
+function removeMeta(name: string) {
+  document.querySelector(`meta[name="${name}"]`)?.remove();
 }
 
 function setCanonical(href: string) {

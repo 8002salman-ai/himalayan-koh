@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import HashUrlRedirect from './components/HashUrlRedirect';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
@@ -12,6 +13,7 @@ import RouteScrollRestoration from './components/RouteScrollRestoration';
 // Public Pages
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'));
@@ -58,7 +60,8 @@ function PageLoader() {
 function App() {
   return (
     <AuthProvider>
-      <HashRouter>
+      <BrowserRouter>
+        <HashUrlRedirect />
         <RouteScrollRestoration />
         <SEO />
         <Suspense fallback={<PageLoader />}>
@@ -72,6 +75,7 @@ function App() {
 
           {/* Public Routes with Layout */}
           <Route path="/" element={<Layout><HomePage /></Layout>} />
+          <Route path="/products/:slug" element={<Layout><ProductDetailPage /></Layout>} />
           <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
           <Route path="/about" element={<Layout><AboutPage /></Layout>} />
           <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
@@ -192,7 +196,7 @@ function App() {
             <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
           </Routes>
         </Suspense>
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
   );
 }

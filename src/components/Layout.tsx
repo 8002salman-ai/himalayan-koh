@@ -79,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
             <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
                 src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
-                alt="Himalayan Koh â€” Salt that Heals"
+                alt="Himalayan Koh — Salt that Heals"
                 className="h-11 md:h-[3.75rem] w-auto"
               />
             </Link>

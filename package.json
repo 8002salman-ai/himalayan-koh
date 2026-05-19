@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "build": "npm run generate:sitemap && vite build",
     "preview": "vite preview",
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
-    "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs"
+    "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
+    "verify:rls": "node scripts/verify-rls.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
@@ -21,13 +23,14 @@
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
-    "dotenv": "^16.4.7",
-    "pg": "^8.14.1",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "dotenv": "^16.4.7",
+    "pg": "^8.14.1",
+    "playwright": "^1.52.0",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.3.2",

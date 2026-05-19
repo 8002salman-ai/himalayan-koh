@@ -5,8 +5,9 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productsApi } from '../lib/supabase/api';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
-import type { ProductWithCategory } from '../lib/supabase/database.types';
 import type { Product } from '../data/products';
+import { products as fallbackProducts } from '../data/products';
+import { mapSupabaseProduct } from '../lib/products/mapProduct';
 
 const heroCards = [
   {
@@ -115,35 +116,22 @@ const testimonials = [
   },
 ];
 
-function mapFeaturedProduct(product: ProductWithCategory): Product {
-  return {
-    id: product.id,
-    name: product.name,
-    price: product.compare_at_price
-      ? `$${product.price.toFixed(2)} - $${product.compare_at_price.toFixed(2)}`
-      : `$${product.price.toFixed(2)}`,
-    priceRange: Boolean(product.compare_at_price),
-    priceMin: product.price,
-    priceMax: product.compare_at_price || undefined,
-    image: product.thumbnail || product.images?.[0] || '',
-    category: product.category?.name || 'Uncategorized',
-    description: product.description || product.short_description || undefined,
-    grainSizes: product.grain_sizes,
-    inStock: product.inventory ? product.inventory.quantity > product.inventory.reserved_quantity : true,
-  };
-}
 
 export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const loadFeatured = async () => {
-      if (!isSupabaseConfigured()) return;
+      if (!isSupabaseConfigured()) {
+        setFeaturedProducts(fallbackProducts.filter((p) => p.inStock).slice(0, 4));
+        return;
+      }
       try {
         const items = await productsApi.getFeaturedProducts(4);
-        setFeaturedProducts(items.map(mapFeaturedProduct));
+        setFeaturedProducts(items.map(mapSupabaseProduct));
       } catch (err) {
         console.error('Failed to load featured products:', err);
+        setFeaturedProducts(fallbackProducts.slice(0, 4));
       }
     };
 

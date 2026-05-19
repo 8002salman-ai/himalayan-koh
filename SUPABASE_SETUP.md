@@ -1,5 +1,17 @@
 # Supabase Backend Setup Guide
 
+## Deployment
+
+For Vercel environment variables, build settings, smoke tests, and monitoring, see **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+
+Verify order isolation (RLS) after seeding:
+
+```bash
+npm run verify:rls
+```
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Create Supabase Project

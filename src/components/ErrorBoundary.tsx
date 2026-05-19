@@ -1,18 +1,24 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { reportClientError } from '../lib/monitoring';
 
 interface ErrorBoundaryState {
   hasError: boolean;
+  errorId: string | null;
 }
 
 export default class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+  state: ErrorBoundaryState = { hasError: false, errorId: null };
 
-  static getDerivedStateFromError(): ErrorBoundaryState {
+  static getDerivedStateFromError(): Partial<ErrorBoundaryState> {
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Application error:', error, errorInfo);
+    const errorId = reportClientError(error, {
+      componentStack: errorInfo.componentStack?.slice(0, 500) ?? '',
+      boundary: 'root',
+    });
+    this.setState({ errorId });
   }
 
   render() {
@@ -25,6 +31,11 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, Er
             </h1>
             <p className="text-charcoal-light mb-6">
               Please refresh the page or contact support if the issue continues.
+              {this.state.errorId && (
+                <span className="block mt-2 text-xs text-charcoal-light/80">
+                  Reference: {this.state.errorId}
+                </span>
+              )}
             </p>
             <button
               onClick={() => window.location.reload()}

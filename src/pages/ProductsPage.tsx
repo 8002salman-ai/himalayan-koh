@@ -6,7 +6,7 @@ import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import { productsApi } from '../lib/supabase/api';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
-import type { ProductWithCategory } from '../lib/supabase/database.types';
+import { mapSupabaseProduct } from '../lib/products/mapProduct';
 
 const filterTabs = ['All', 'Edible Cooking Salt', 'Salt Lick for Horses', 'Salt for Cattle'];
 
@@ -27,7 +27,7 @@ export default function ProductsPage() {
 
       try {
         const { products: supabaseProducts } = await productsApi.getProducts();
-        setProducts(supabaseProducts.map(mapProduct));
+        setProducts(supabaseProducts.map(mapSupabaseProduct));
       } catch (err) {
         console.error('Failed to fetch products:', err);
         setProducts(fallbackProducts);
@@ -166,20 +166,3 @@ export default function ProductsPage() {
   );
 }
 
-function mapProduct(product: ProductWithCategory): Product {
-  return {
-    id: product.id,
-    name: product.name,
-    price: product.compare_at_price
-      ? `$${product.price.toFixed(2)} - $${product.compare_at_price.toFixed(2)}`
-      : `$${product.price.toFixed(2)}`,
-    priceRange: Boolean(product.compare_at_price),
-    priceMin: product.price,
-    priceMax: product.compare_at_price || undefined,
-    image: product.thumbnail || product.images?.[0] || '',
-    category: product.category?.name || 'Uncategorized',
-    description: product.description || product.short_description || undefined,
-    grainSizes: product.grain_sizes,
-    inStock: product.inventory ? product.inventory.quantity > product.inventory.reserved_quantity : true,
-  };
-}

@@ -1,5 +1,6 @@
 export interface Product {
   id: number | string;
+  slug: string;
   name: string;
   price: string;
   priceRange?: boolean;
@@ -10,6 +11,8 @@ export interface Product {
   description?: string;
   grainSizes?: string[];
   inStock: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
 }
 
 // Demo fallback catalog used when Supabase environment variables are not configured.
@@ -34,6 +37,7 @@ export interface GalleryImage {
 export const products: Product[] = [
   {
     id: 1,
+    slug: 'himalayan-edible-pink-salt-fine',
     name: "Himalayan Koh Authentic Pure Natural Halal Unprocessed Himalayan Edible Pink Cooking Salt, Fine Grain (0.5mm to 1mm)",
     price: "$9.95 – $17.95",
     priceRange: true,
@@ -47,6 +51,7 @@ export const products: Product[] = [
   },
   {
     id: 2,
+    slug: 'himalayan-pink-salt-16oz-jar',
     name: "Himalayan Edible Pink Salt – 16 oz Jar",
     price: "$9.95",
     priceMin: 9.95,
@@ -58,6 +63,7 @@ export const products: Product[] = [
   },
   {
     id: 3,
+    slug: 'himalayan-rock-salt-6lbs-pouch',
     name: "Himalayan Rock Salt Pouches in Fine and Coarse Grain Sizes – 6 lbs",
     price: "$17.95",
     priceMin: 17.95,
@@ -69,6 +75,7 @@ export const products: Product[] = [
   },
   {
     id: 4,
+    slug: 'himalayan-livestock-salt-45lbs',
     name: "Bag of Himalayan Pink Salt for Livestock (45 lbs.)",
     price: "$99.95",
     priceMin: 99.95,
@@ -79,6 +86,7 @@ export const products: Product[] = [
   },
   {
     id: 5,
+    slug: 'himalayan-salt-licks-horses',
     name: "Himalayan Pink Salt Licks for Horses",
     price: "$9.95 – $14.95",
     priceRange: true,
@@ -91,6 +99,7 @@ export const products: Product[] = [
   },
   {
     id: 6,
+    slug: 'himalayan-salt-cattle-18lbs',
     name: "Himalayan Salt Rock for Cattle 18 Lbs Bag",
     price: "$49.95",
     priceMin: 49.95,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
 import { Product } from '../data/products';
@@ -53,20 +54,23 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-          loading="lazy"
-        />
+        <Link to={`/products/${product.slug}`} className="block w-full h-full">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+            loading="lazy"
+          />
+        </Link>
 
         {/* Overlay buttons */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => onQuickView(product)}
+            onClick={() => onQuickView?.(product)}
             className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-himalayan hover:text-white transition-colors"
+            aria-label="Quick view"
           >
             <Eye size={18} />
           </motion.button>
@@ -100,8 +104,13 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
           <span className="text-xs text-gray-400 ml-1">(4.9)</span>
         </div>
 
-        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-[2.5rem] group-hover:text-himalayan transition-colors">
-          {product.name}
+        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-[2.5rem]">
+          <Link
+            to={`/products/${product.slug}`}
+            className="group-hover:text-himalayan transition-colors"
+          >
+            {product.name}
+          </Link>
         </h3>
 
         <p className="text-himalayan font-bold text-lg mb-3">

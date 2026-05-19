@@ -28,9 +28,9 @@ export default function SearchModal({ isOpen, onClose }: Props) {
     );
   }, [query]);
 
-  const handleProductClick = () => {
+  const handleProductClick = (slug: string) => {
     onClose();
-    navigate('/products');
+    navigate(`/products/${slug}`);
   };
 
   return (
@@ -83,7 +83,7 @@ export default function SearchModal({ isOpen, onClose }: Props) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0"
-                  onClick={handleProductClick}
+                  onClick={() => handleProductClick(product.slug)}
                 >
                   <img
                     src={product.image}

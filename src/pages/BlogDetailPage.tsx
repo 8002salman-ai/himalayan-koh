@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Clock, Loader2, Tag, User } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
+import { usePageSeo } from '../hooks/usePageSeo';
+import { SITE_URL } from '../lib/seo/constants';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 
@@ -23,9 +26,6 @@ export default function BlogDetailPage() {
         setPost(post);
 
         if (post) {
-          document.title = post.meta_title || `${post.title} | Himalayan Koh`;
-          const description = document.querySelector('meta[name="description"]');
-          description?.setAttribute('content', post.meta_description || post.excerpt || '');
           setRelatedPosts(await blogApi.getRelatedPosts(post.id, post.category, 3));
         }
       } catch (err) {
@@ -37,6 +37,41 @@ export default function BlogDetailPage() {
 
     fetchPost();
   }, [slug]);
+
+  const seo = useMemo(() => {
+    if (!post) return null;
+    return {
+      title: post.meta_title || `${post.title} | Himalayan Koh`,
+      description: post.meta_description || post.excerpt || '',
+      canonicalPath: `/blog/${post.slug}`,
+      ogImage: post.featured_image || undefined,
+      ogType: 'article',
+    };
+  }, [post]);
+
+  usePageSeo(seo);
+
+  const blogJsonLd = useMemo(() => {
+    if (!post) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.meta_description || post.excerpt || '',
+      image: post.featured_image || undefined,
+      datePublished: post.published_at || undefined,
+      author: {
+        '@type': 'Person',
+        name: post.author?.full_name || 'Himalayan Koh',
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'Himalayan Koh',
+        url: SITE_URL,
+      },
+      mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
+    };
+  }, [post]);
 
   if (loading) {
     return (
@@ -64,6 +99,7 @@ export default function BlogDetailPage() {
 
   return (
     <div className="min-h-screen bg-warm-white">
+      {blogJsonLd && <JsonLd id="blog-post" data={blogJsonLd} />}
       <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-12 md:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <Link to="/blog" className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-6 text-sm">
