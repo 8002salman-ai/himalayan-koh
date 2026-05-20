@@ -12,9 +12,21 @@ import {
 } from 'lucide-react';
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import {
+  ALLOWED_PRODUCT_IMAGE_TYPES,
+  MAX_PRODUCT_IMAGE_BYTES,
+  MAX_PRODUCT_IMAGES,
+} from '../../lib/images/productImageConstants';
+import { optimizeProductImage } from '../../lib/images/optimizeImage';
+import { isSupabaseProductImageUrl } from '../../lib/images/productImageStorage';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import RichTextEditor from './RichTextEditor';
 import ImageDropzone from './ImageDropzone';
+import {
+  adminImagesToUrls,
+  createAdminProductImage,
+  type AdminProductImage,
+} from './productImageTypes';
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
 
@@ -39,6 +51,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
+  const [imageValidation, setImageValidation] = useState('');
+  const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -72,38 +87,76 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
-    if (product) {
-      const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-      const grainSizes = Array.isArray(product.grain_sizes) ? product.grain_sizes : [];
-      const tags = Array.isArray(product.tags) ? product.tags : [];
+    if (!isOpen) return;
 
-      setFormData({
-        name: product.name || '',
-        slug: product.slug || '',
-        description: product.description || '',
-        short_description: product.short_description || '',
-        price: Number(product.price) || 0,
-        compare_at_price: product.compare_at_price || undefined,
-        cost_price: product.cost_price || undefined,
-        sku: product.sku || '',
-        barcode: product.barcode || '',
-        weight: product.weight || undefined,
-        weight_unit: product.weight_unit || 'lbs',
-        category_id: product.category_id || '',
-        images,
-        thumbnail: product.thumbnail || images[0] || '',
-        is_active: product.is_active,
-        is_featured: product.is_featured,
-        grain_sizes: grainSizes,
-        tags,
-        meta_title: product.meta_title || '',
-        meta_description: product.meta_description || '',
-        quantity: product.inventory?.quantity || 0,
-        low_stock_threshold: product.inventory?.low_stock_threshold || 10,
-        track_inventory: product.inventory?.track_inventory !== false,
-        allow_backorder: product.inventory?.allow_backorder || false,
-      });
-    } else {
+    let cancelled = false;
+
+    const resetEditor = async () => {
+      setActiveTab('basic');
+      setError('');
+      setImageValidation('');
+      setUploadProgress({ completed: 0, total: 0 });
+
+      if (product) {
+        const grainSizes = Array.isArray(product.grain_sizes) ? product.grain_sizes : [];
+        const tags = Array.isArray(product.tags) ? product.tags : [];
+        let images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+        let thumbnail = product.thumbnail || images[0] || '';
+
+        if (isSupabaseConfigured()) {
+          try {
+            const resolved = await adminApi.resolveProductImageList(
+              product.id,
+              images,
+              product.thumbnail
+            );
+            images = resolved.images;
+            thumbnail = resolved.thumbnail;
+          } catch (err) {
+            console.warn('Could not load normalized product images:', err);
+          }
+        }
+
+        if (cancelled) return;
+
+        const imageSlots = images.map((url) =>
+          createAdminProductImage(url, {
+            storageUrl: url.startsWith('http') ? url : undefined,
+            status: 'uploaded',
+          })
+        );
+
+        setAdminImages(imageSlots);
+        setFormData({
+          name: product.name || '',
+          slug: product.slug || '',
+          description: product.description || '',
+          short_description: product.short_description || '',
+          price: Number(product.price) || 0,
+          compare_at_price: product.compare_at_price || undefined,
+          cost_price: product.cost_price || undefined,
+          sku: product.sku || '',
+          barcode: product.barcode || '',
+          weight: product.weight || undefined,
+          weight_unit: product.weight_unit || 'lbs',
+          category_id: product.category_id || '',
+          images,
+          thumbnail,
+          is_active: product.is_active,
+          is_featured: product.is_featured,
+          grain_sizes: grainSizes,
+          tags,
+          meta_title: product.meta_title || '',
+          meta_description: product.meta_description || '',
+          quantity: product.inventory?.quantity || 0,
+          low_stock_threshold: product.inventory?.low_stock_threshold || 10,
+          track_inventory: product.inventory?.track_inventory !== false,
+          allow_backorder: product.inventory?.allow_backorder || false,
+        });
+        return;
+      }
+
+      setAdminImages([]);
       setFormData({
         name: '',
         slug: '',
@@ -130,9 +183,13 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         track_inventory: true,
         allow_backorder: false,
       });
-    }
-    setActiveTab('basic');
-    setError('');
+    };
+
+    void resetEditor();
+
+    return () => {
+      cancelled = true;
+    };
   }, [product, isOpen]);
 
   const handleNameChange = (name: string) => {
@@ -143,53 +200,254 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }));
   };
 
+  const syncImagesToForm = (images: AdminProductImage[], thumbnailOverride?: string) => {
+    const urls = adminImagesToUrls(images);
+    setFormData((prev) => ({
+      ...prev,
+      images: urls,
+      thumbnail: thumbnailOverride
+        ?? (prev.thumbnail && urls.includes(prev.thumbnail) ? prev.thumbnail : urls[0] || ''),
+    }));
+  };
+
+  const validateImageFile = (file: File): string | null => {
+    if (!ALLOWED_PRODUCT_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_PRODUCT_IMAGE_TYPES)[number])) {
+      return `${file.name}: use JPG, PNG, WebP, or GIF.`;
+    }
+
+    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+      return `${file.name}: must be 5 MB or smaller.`;
+    }
+
+    return null;
+  };
+
+  const uploadImageSlot = async (imageId: string, file: File) => {
+    setAdminImages((current) =>
+      current.map((image) =>
+        image.id === imageId
+          ? { ...image, status: 'uploading', error: undefined }
+          : image
+      )
+    );
+
+    try {
+      const optimized = await optimizeProductImage(file);
+
+      if (!isSupabaseConfigured()) {
+        const demoUrl = URL.createObjectURL(optimized.file);
+        setAdminImages((current) => {
+          const next = current.map((image) => {
+            if (image.id !== imageId) return image;
+            if (image.previewUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(image.previewUrl);
+            }
+            return {
+              ...image,
+              previewUrl: demoUrl,
+              storageUrl: demoUrl,
+              status: 'uploaded' as const,
+              file: undefined,
+              error: undefined,
+            };
+          });
+          syncImagesToForm(next);
+          return next;
+        });
+        return;
+      }
+
+      const remoteUrl = await adminApi.uploadProductImage(optimized.file, product?.id);
+
+      setAdminImages((current) => {
+        const next = current.map((image) => {
+          if (image.id !== imageId) return image;
+          if (image.previewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(image.previewUrl);
+          }
+          return {
+            ...image,
+            previewUrl: remoteUrl,
+            storageUrl: remoteUrl,
+            status: 'uploaded' as const,
+            file: undefined,
+            error: undefined,
+          };
+        });
+        syncImagesToForm(next);
+        return next;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setAdminImages((current) =>
+        current.map((image) =>
+          image.id === imageId
+            ? { ...image, status: 'error', error: message }
+            : image
+        )
+      );
+      throw err;
+    }
+  };
+
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    setUploadingImage(true);
-    const newImages: string[] = [];
+    const remainingSlots = MAX_PRODUCT_IMAGES - adminImages.length;
+    if (remainingSlots <= 0) {
+      setImageValidation(`You can upload up to ${MAX_PRODUCT_IMAGES} images per product.`);
+      return;
+    }
 
-    try {
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith('image/')) continue;
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+    const validationErrors: string[] = [];
+    const pendingSlots: AdminProductImage[] = [];
 
-        if (isSupabaseConfigured()) {
-          const url = await adminApi.uploadProductImage(file, product?.id);
-          newImages.push(url);
-        } else {
-          // For demo, use local URL
-          const url = URL.createObjectURL(file);
-          newImages.push(url);
-        }
+    for (const file of selectedFiles) {
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        validationErrors.push(validationError);
+        continue;
       }
 
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...newImages],
-        thumbnail: prev.thumbnail || newImages[0] || '',
-      }));
+      pendingSlots.push(
+        createAdminProductImage(URL.createObjectURL(file), {
+          file,
+          status: 'local',
+        })
+      );
+    }
+
+    if (pendingSlots.length === 0) {
+      setImageValidation(validationErrors.join(' ') || 'No valid images were selected.');
+      return;
+    }
+
+    setImageValidation(validationErrors.join(' '));
+    setUploadingImage(true);
+    setUploadProgress({ completed: 0, total: pendingSlots.length });
+
+    const nextImages = [...adminImages, ...pendingSlots];
+    setAdminImages(nextImages);
+    syncImagesToForm(nextImages);
+
+    const uploadErrors: string[] = [...validationErrors];
+    let completed = 0;
+
+    for (const slot of pendingSlots) {
+      if (!slot.file) continue;
+      try {
+        await uploadImageSlot(slot.id, slot.file);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed';
+        uploadErrors.push(`${slot.file.name}: ${message}`);
+      } finally {
+        completed += 1;
+        setUploadProgress({ completed, total: pendingSlots.length });
+      }
+    }
+
+    if (uploadErrors.length > 0) {
+      setImageValidation(uploadErrors.join(' '));
+    }
+
+    setUploadingImage(false);
+  };
+
+  const removeImage = async (imageId: string) => {
+    const target = adminImages.find((image) => image.id === imageId);
+    if (!target) return;
+
+    if (target.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(target.previewUrl);
+    }
+
+    if (isSupabaseConfigured() && target.storageUrl && isSupabaseProductImageUrl(target.storageUrl)) {
+      try {
+        await adminApi.deleteProductImage(target.storageUrl);
+      } catch (err) {
+        console.warn('Could not delete image from storage:', err);
+      }
+    }
+
+    setAdminImages((current) => {
+      const next = current.filter((image) => image.id !== imageId);
+      const removedUrl = target.storageUrl || target.previewUrl;
+      const thumbnail = formData.thumbnail === removedUrl
+        ? adminImagesToUrls(next)[0] || ''
+        : formData.thumbnail;
+      syncImagesToForm(next, thumbnail);
+      return next;
+    });
+  };
+
+  const replaceImage = async (imageId: string, file: File) => {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setImageValidation(validationError);
+      return;
+    }
+
+    const existing = adminImages.find((image) => image.id === imageId);
+    if (!existing) return;
+
+    if (existing.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(existing.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAdminImages((current) =>
+      current.map((image) =>
+        image.id === imageId
+          ? {
+              ...image,
+              previewUrl,
+              storageUrl: undefined,
+              status: 'local',
+              file,
+              error: undefined,
+            }
+          : image
+      )
+    );
+
+    setUploadingImage(true);
+    try {
+      await uploadImageSlot(imageId, file);
     } catch (err) {
-      setError('Failed to upload images');
+      const message = err instanceof Error ? err.message : 'Replace failed';
+      setImageValidation(message);
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const removeImage = (index: number) => {
-    setFormData(prev => {
-      const newImages = prev.images.filter((_, i) => i !== index);
-      return {
-        ...prev,
-        images: newImages,
-        thumbnail: prev.thumbnail === prev.images[index] 
-          ? newImages[0] || '' 
-          : prev.thumbnail,
-      };
-    });
+  const retryImageUpload = async (imageId: string) => {
+    const target = adminImages.find((image) => image.id === imageId);
+    if (!target?.file) {
+      setImageValidation('Original file is no longer available. Replace the image instead.');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      await uploadImageSlot(imageId, target.file);
+      setImageValidation('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Retry failed';
+      setImageValidation(message);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const setAsThumbnail = (url: string) => {
-    setFormData(prev => ({ ...prev, thumbnail: url }));
+    setFormData((prev) => ({ ...prev, thumbnail: url }));
+  };
+
+  const reorderImages = (images: AdminProductImage[]) => {
+    setAdminImages(images);
+    syncImagesToForm(images);
   };
 
   const addGrainSize = () => {
@@ -239,6 +497,25 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
+    if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
+      setError('Please wait for image uploads to finish before saving.');
+      setActiveTab('images');
+      return;
+    }
+
+    if (adminImages.some((image) => image.status === 'error')) {
+      setError('Remove or retry failed image uploads before saving.');
+      setActiveTab('images');
+      return;
+    }
+
+    const persistedImages = adminImagesToUrls(adminImages);
+    const savePayload: ProductFormData = {
+      ...formData,
+      images: persistedImages,
+      thumbnail: formData.thumbnail || persistedImages[0] || '',
+    };
+
     setLoading(true);
     setError('');
 
@@ -249,7 +526,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         // Demo mode
         savedProduct = {
           id: product?.id || Date.now().toString(),
-          ...formData,
+          ...savePayload,
           category_id: formData.category_id || null,
           compare_at_price: formData.compare_at_price || null,
           cost_price: formData.cost_price || null,
@@ -258,9 +535,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
           updated_at: new Date().toISOString(),
         } as Product;
       } else if (product) {
-        savedProduct = await adminApi.updateProduct(product.id, formData);
+        savedProduct = await adminApi.updateProduct(product.id, savePayload);
       } else {
-        savedProduct = await adminApi.createProduct(formData);
+        savedProduct = await adminApi.createProduct(savePayload);
       }
 
       onSave(savedProduct);
@@ -697,13 +974,17 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {/* Images Tab */}
               {activeTab === 'images' && (
                 <ImageDropzone
-                  images={formData.images}
-                  thumbnail={formData.thumbnail}
+                  images={adminImages}
+                  thumbnail={formData.thumbnail || ''}
                   uploading={uploadingImage}
+                  uploadProgress={uploadProgress}
+                  validationMessage={imageValidation}
                   onUpload={handleImageUpload}
                   onRemove={removeImage}
+                  onReplace={replaceImage}
+                  onRetry={retryImageUpload}
                   onSetThumbnail={setAsThumbnail}
-                  onReorder={(images) => setFormData(prev => ({ ...prev, images }))}
+                  onReorder={reorderImages}
                 />
               )}
 

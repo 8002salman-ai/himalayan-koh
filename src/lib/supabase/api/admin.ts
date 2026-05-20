@@ -1,5 +1,11 @@
+import { extractProductStoragePath } from '../../images/productImageStorage';
+import {
+  ALLOWED_PRODUCT_IMAGE_TYPES,
+  MAX_PRODUCT_IMAGE_BYTES,
+  MAX_PRODUCT_IMAGES,
+} from '../../images/productImageConstants';
 import { supabase } from '../client';
-import type { Product, Category, Inventory, Order, OrderWithItems, Profile, BlogPost } from '../database.types';
+import type { Product, Category, Inventory, Order, OrderWithItems, Profile, BlogPost, ProductImage } from '../database.types';
 
 export interface ProductFormData {
   name: string;
@@ -224,6 +230,46 @@ export const adminApi = {
     return data as Product & { category: Category | null; inventory: Inventory | null };
   },
 
+  /** Merge normalized `product_images` rows with legacy `products.images` for admin editing. */
+  async resolveProductImageList(
+    productId: string,
+    fallbackImages: string[] = [],
+    fallbackThumbnail?: string | null
+  ): Promise<{ images: string[]; thumbnail: string }> {
+    const legacyImages = Array.isArray(fallbackImages) ? fallbackImages.filter(Boolean) : [];
+
+    const { data, error } = await supabase
+      .from('product_images')
+      .select('image_url, sort_order, is_thumbnail')
+      .eq('product_id', productId)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      if (error.code === '42P01') {
+        return {
+          images: legacyImages.slice(0, MAX_PRODUCT_IMAGES),
+          thumbnail: fallbackThumbnail || legacyImages[0] || '',
+        };
+      }
+      throw error;
+    }
+
+    const rows = (data || []) as Pick<ProductImage, 'image_url' | 'sort_order' | 'is_thumbnail'>[];
+    if (rows.length === 0) {
+      return {
+        images: legacyImages.slice(0, MAX_PRODUCT_IMAGES),
+        thumbnail: fallbackThumbnail || legacyImages[0] || '',
+      };
+    }
+
+    const images = rows.map((row) => row.image_url).filter(Boolean).slice(0, MAX_PRODUCT_IMAGES);
+    const thumbnailRow = rows.find((row) => row.is_thumbnail);
+    return {
+      images,
+      thumbnail: thumbnailRow?.image_url || fallbackThumbnail || images[0] || '',
+    };
+  },
+
   // Create product
   async createProduct(data: ProductFormData): Promise<Product> {
     const { quantity, low_stock_threshold, track_inventory, allow_backorder, ...productData } = data;
@@ -339,8 +385,8 @@ export const adminApi = {
     if (productData.images !== undefined || productData.thumbnail !== undefined) {
       await this.syncProductImages(
         id,
-        (product as Product).images || [],
-        (product as Product).thumbnail
+        productData.images ?? (product as Product).images ?? [],
+        productData.thumbnail ?? (product as Product).thumbnail
       );
     }
 
@@ -448,15 +494,24 @@ export const adminApi = {
   // ==================== IMAGE UPLOAD ====================
 
   async uploadProductImage(file: File, productId?: string): Promise<string> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${productId || 'new'}-${Date.now()}.${fileExt}`;
-    const filePath = `products/${fileName}`;
+    if (!ALLOWED_PRODUCT_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_PRODUCT_IMAGE_TYPES)[number])) {
+      throw new Error('Unsupported image type. Use JPG, PNG, WebP, or GIF.');
+    }
+
+    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+      throw new Error('Image must be 5 MB or smaller.');
+    }
+
+    const extension = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const folder = productId || 'draft';
+    const filePath = `${folder}/${crypto.randomUUID()}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from('products')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
+        contentType: file.type,
       });
 
     if (uploadError) throw uploadError;
@@ -468,13 +523,30 @@ export const adminApi = {
     return publicUrl;
   },
 
-  async deleteProductImage(imageUrl: string): Promise<void> {
-    // Extract file path from URL
-    const urlParts = imageUrl.split('/products/');
-    if (urlParts.length < 2) return;
+  async uploadProductImages(
+    files: File[],
+    productId?: string
+  ): Promise<{ uploaded: string[]; errors: string[] }> {
+    const uploaded: string[] = [];
+    const errors: string[] = [];
 
-    const filePath = `products/${urlParts[1]}`;
-    
+    for (const file of files) {
+      try {
+        const url = await this.uploadProductImage(file, productId);
+        uploaded.push(url);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Upload failed';
+        errors.push(`${file.name}: ${message}`);
+      }
+    }
+
+    return { uploaded, errors };
+  },
+
+  async deleteProductImage(imageUrl: string): Promise<void> {
+    const filePath = extractProductStoragePath(imageUrl);
+    if (!filePath) return;
+
     const { error } = await supabase.storage
       .from('products')
       .remove([filePath]);
@@ -483,7 +555,7 @@ export const adminApi = {
   },
 
   async syncProductImages(productId: string, images: string[], thumbnail?: string | null): Promise<void> {
-    const uniqueImages = Array.from(new Set(images.filter(Boolean)));
+    const uniqueImages = Array.from(new Set(images.filter(Boolean))).slice(0, MAX_PRODUCT_IMAGES);
 
     const { error: deleteError } = await supabase
       .from('product_images')
