@@ -16,7 +16,9 @@ export interface CategoryArticleCard {
   image: string;
   readTime: string;
   tag: string;
-  /** Future CMS/blog slug; optional link target. */
+  /** Longer copy for show more / show less on category hub. */
+  body?: string;
+  /** Blog slug path, e.g. /blog/my-post */
   href?: string;
 }
 

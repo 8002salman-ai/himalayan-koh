@@ -8,9 +8,15 @@ interface Props {
   resources: PdpPdfResource[];
   /** Dev/admin preview: show hidden resources with a badge. */
   showHidden?: boolean;
+  /** Category hub: no duplicate heading / outer card chrome. */
+  embedded?: boolean;
 }
 
-export default function ProductPdfLibrary({ resources, showHidden = false }: Props) {
+export default function ProductPdfLibrary({
+  resources,
+  showHidden = false,
+  embedded = false,
+}: Props) {
   const [activeResource, setActiveResource] = useState<PdpPdfResource | null>(null);
 
   const visibleResources = showHidden
@@ -21,18 +27,11 @@ export default function ProductPdfLibrary({ resources, showHidden = false }: Pro
     return null;
   }
 
-  return (
-    <>
-      <section
-        className="mt-8 bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8"
-        aria-label="PDF resources"
-      >
-        <div className="flex items-center gap-2 mb-5">
-          <FileText size={20} className="text-himalayan" />
-          <h2 className="font-serif text-xl font-bold text-charcoal">Resources</h2>
-        </div>
-
-        <ul className="grid gap-3 sm:grid-cols-2" role="list">
+  const list = (
+        <ul
+          className={`grid gap-3 ${embedded ? 'grid-cols-1' : 'sm:grid-cols-2'}`}
+          role="list"
+        >
           {visibleResources.map((resource) => {
             const isHidden = resource.visible === false;
             return (
@@ -65,7 +64,24 @@ export default function ProductPdfLibrary({ resources, showHidden = false }: Pro
             );
           })}
         </ul>
-      </section>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        <div aria-label="PDF resources">{list}</div>
+      ) : (
+        <section
+          className="mt-8 bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8"
+          aria-label="PDF resources"
+        >
+          <div className="flex items-center gap-2 mb-5">
+            <FileText size={20} className="text-himalayan" />
+            <h2 className="font-serif text-xl font-bold text-charcoal">Resources</h2>
+          </div>
+          {list}
+        </section>
+      )}
 
       <PdfViewerModal resource={activeResource} onClose={() => setActiveResource(null)} />
     </>

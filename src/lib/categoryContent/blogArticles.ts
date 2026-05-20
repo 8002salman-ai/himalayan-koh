@@ -2,6 +2,7 @@ import { blogApi, type BlogPostWithAuthor } from '../supabase/api/blog';
 import { isSupabaseConfigured } from '../supabase/client';
 import { blogPosts as demoBlogPosts } from '../../data/products';
 import { CATEGORY_BLOG_MAPPING } from './blogMapping';
+import { enrichArticleList, stripHtmlToText } from './enrichArticle';
 import type { CategoryContentKey } from './keys';
 import type { CategoryArticleCard } from './types';
 
@@ -19,30 +20,39 @@ const DEMO_BLOG_SLUGS: Record<number, string> = {
 };
 
 export function mapBlogPostToCategoryArticle(post: BlogPostWithAuthor): CategoryArticleCard {
-  return {
-    id: post.id,
-    title: post.title,
-    excerpt: post.excerpt?.trim() || 'Read the full article on the Himalayan Koh blog.',
-    image: post.featured_image || DEFAULT_ARTICLE_IMAGE,
-    readTime: `${post.read_time} min read`,
-    tag: post.category || 'Article',
-    href: `/blog/${post.slug}`,
-  };
+  const excerpt = post.excerpt?.trim() || 'Read the full article on the Himalayan Koh blog.';
+  const fromContent = post.content ? stripHtmlToText(post.content) : '';
+  const body = fromContent.length > excerpt.length ? fromContent.slice(0, 520) : undefined;
+
+  return enrichArticleList([
+    {
+      id: post.id,
+      title: post.title,
+      excerpt,
+      body,
+      image: post.featured_image || DEFAULT_ARTICLE_IMAGE,
+      readTime: `${post.read_time} min read`,
+      tag: post.category || 'Article',
+      href: `/blog/${post.slug}`,
+    },
+  ])[0];
 }
 
 function mapDemoPostToCategoryArticle(
   post: (typeof demoBlogPosts)[number]
 ): CategoryArticleCard {
   const slug = DEMO_BLOG_SLUGS[post.id] || `post-${post.id}`;
-  return {
-    id: String(post.id),
-    title: post.title,
-    excerpt: post.excerpt,
-    image: post.image,
-    readTime: post.readTime,
-    tag: post.category,
-    href: `/blog/${slug}`,
-  };
+  return enrichArticleList([
+    {
+      id: String(post.id),
+      title: post.title,
+      excerpt: post.excerpt,
+      image: post.image,
+      readTime: post.readTime,
+      tag: post.category,
+      href: `/blog/${slug}`,
+    },
+  ])[0];
 }
 
 function demoPostsForCategory(key: CategoryContentKey): CategoryArticleCard[] {
@@ -99,10 +109,8 @@ export async function loadCategoryArticles(
       if (posts.length > 0) {
         const blogCards = posts.map(mapBlogPostToCategoryArticle);
         return {
-          articles: mergeWithPlaceholders(
-            blogCards,
-            placeholderArticles,
-            mapping.maxArticles
+          articles: enrichArticleList(
+            mergeWithPlaceholders(blogCards, placeholderArticles, mapping.maxArticles)
           ),
           source: 'blog',
         };
@@ -115,13 +123,15 @@ export async function loadCategoryArticles(
   const demoArticles = demoPostsForCategory(key);
   if (demoArticles.length > 0) {
     return {
-      articles: mergeWithPlaceholders(demoArticles, placeholderArticles, mapping.maxArticles),
+      articles: enrichArticleList(
+        mergeWithPlaceholders(demoArticles, placeholderArticles, mapping.maxArticles)
+      ),
       source: 'demo',
     };
   }
 
   return {
-    articles: placeholderArticles.slice(0, mapping.maxArticles),
+    articles: enrichArticleList(placeholderArticles.slice(0, mapping.maxArticles)),
     source: 'placeholder',
   };
 }

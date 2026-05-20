@@ -18,6 +18,7 @@ export { CATEGORY_CONTENT_REGISTRY } from './registry';
 export { CATEGORY_BLOG_MAPPING } from './blogMapping';
 export { loadCategoryArticles, mapBlogPostToCategoryArticle } from './blogArticles';
 export { applyCategoryHubOverride } from './cmsMerge';
+export { enrichArticleBody, enrichArticleList } from './enrichArticle';
 export { getCategoryAvailability, getCategoryContent } from './resolve';
 export type { CategoryHubOverrideForm, CategoryHubOverrideRow } from './cmsTypes';
 export type {

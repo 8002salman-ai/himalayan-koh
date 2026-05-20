@@ -1,14 +1,14 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { CategoryContentBundle } from '../../lib/categoryContent';
-import { getCategoryAvailability } from '../../lib/categoryContent';
-import ProductAccordionArticles from '../product/ProductAccordionArticles';
+import { enrichArticleList, getCategoryAvailability } from '../../lib/categoryContent';
 import CategoryHubGallery from './CategoryHubGallery';
-import ProductPdfLibrary from '../product/ProductPdfLibrary';
-import PdpEmptyState from '../product/PdpEmptyState';
 import type { CategoryArticleSource } from '../../hooks/useCategoryBlogArticles';
 import type { CategoryArticleCard } from '../../lib/categoryContent';
-import CategoryArticleCards from './CategoryArticleCards';
+import CategoryArticlesSection from './CategoryArticlesSection';
+import CategoryPdfResources from './CategoryPdfResources';
 import CategoryTrustStrip from './CategoryTrustStrip';
+import PdpEmptyState from '../product/PdpEmptyState';
 
 interface Props {
   content: CategoryContentBundle;
@@ -23,7 +23,11 @@ export default function CategoryEducationPanel({
   articlesLoading,
   articlesSource,
 }: Props) {
-  const resolvedArticles = articles ?? content.articles;
+  const resolvedArticles = useMemo(
+    () => enrichArticleList(articles ?? content.articles),
+    [articles, content.articles]
+  );
+
   const availability = getCategoryAvailability({
     ...content,
     articles: resolvedArticles,
@@ -36,23 +40,11 @@ export default function CategoryEducationPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className="space-y-8 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1 pb-4"
+      className="space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1 pb-4"
       aria-label={`${content.hero.title} education and resources`}
     >
-      <div className="rounded-2xl border border-himalayan/20 bg-gradient-to-br from-himalayan-lighter/90 via-white to-warm-white p-5 sm:p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wider text-himalayan mb-2">
-          {content.hero.eyebrow}
-        </p>
-        <h2 className="font-serif text-xl sm:text-2xl font-bold text-charcoal leading-tight">
-          {content.hero.title}
-        </h2>
-        <p className="text-sm text-charcoal-light mt-2 leading-relaxed">{content.hero.subtitle}</p>
-      </div>
-
-      <CategoryTrustStrip points={content.trustPoints} />
-
       <section aria-labelledby={`${content.key}-gallery-heading`}>
-        <h3 id={`${content.key}-gallery-heading`} className="font-serif text-lg font-bold text-charcoal mb-3">
+        <h3 id={`${content.key}-gallery-heading`} className="font-serif text-base font-bold text-charcoal mb-2">
           Lifestyle gallery
         </h3>
         {availability.gallery ? (
@@ -64,46 +56,28 @@ export default function CategoryEducationPanel({
             compact
           />
         )}
+        <p className="mt-2 text-xs text-charcoal-light leading-snug line-clamp-2">
+          <span className="font-semibold text-himalayan">{content.hero.eyebrow}</span>
+          {' · '}
+          {content.hero.subtitle}
+        </p>
       </section>
 
-      <CategoryArticleCards
+      <CategoryTrustStrip points={content.trustPoints} />
+
+      <CategoryArticlesSection
         articles={resolvedArticles}
         emptyMessage={content.emptyStates.articles}
         loading={articlesLoading}
         source={articlesSource}
+        categoryLabel={content.productCategoryLabel}
       />
 
-      <section aria-labelledby={`${content.key}-guides-heading`}>
-        <h3 id={`${content.key}-guides-heading`} className="font-serif text-lg font-bold text-charcoal mb-3">
-          Guides & education
-        </h3>
-        {availability.guides ? (
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm">
-            <ProductAccordionArticles articles={content.guides} />
-          </div>
-        ) : (
-          <PdpEmptyState
-            title="Guides"
-            message={content.emptyStates.guides || 'Guides for this category are being prepared.'}
-            compact
-          />
-        )}
-      </section>
-
-      <section aria-labelledby={`${content.key}-resources-heading`}>
-        <h3 id={`${content.key}-resources-heading`} className="font-serif text-lg font-bold text-charcoal mb-3">
-          Downloads
-        </h3>
-        {availability.pdfs ? (
-          <ProductPdfLibrary resources={content.pdfs} />
-        ) : (
-          <PdpEmptyState
-            title="Resources"
-            message={content.emptyStates.pdfs || 'PDF resources will appear here soon.'}
-            compact
-          />
-        )}
-      </section>
+      <CategoryPdfResources
+        resources={content.pdfs}
+        categoryLabel={content.productCategoryLabel}
+        emptyMessage={content.emptyStates.pdfs}
+      />
     </motion.aside>
   );
 }
