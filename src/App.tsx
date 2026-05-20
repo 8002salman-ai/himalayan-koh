@@ -45,6 +45,7 @@ const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminBlog = lazy(() => import('./pages/admin/AdminBlog'));
 const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminCategoryHubs = lazy(() => import('./pages/admin/AdminCategoryHubs'));
 
 function PageLoader() {
   return (
@@ -159,6 +160,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminLayout><AdminBlog /></AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/category-hubs"
+            element={
+              <AdminRoute>
+                <AdminLayout><AdminCategoryHubs /></AdminLayout>
               </AdminRoute>
             }
           />

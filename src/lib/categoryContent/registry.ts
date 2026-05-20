@@ -1,0 +1,469 @@
+import type { CategoryContentBundle } from './types';
+
+const IMG = {
+  horseLick: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+  horseLick2: 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg',
+  horsesBanner: 'https://himalayankoh.com/wp-content/uploads/2019/08/horses-1300x200.jpg',
+  cattleGrazing: 'https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg',
+  cattleBag: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+  saltBowl: 'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg',
+  pouch: 'https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp',
+  jar: 'https://himalayankoh.com/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-02-at-11.31.07-PM-500x500.jpeg',
+  rockBag: 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg',
+};
+
+export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = {
+  'edible-cooking-salt': {
+    key: 'edible-cooking-salt',
+    productCategoryLabel: 'Edible Cooking Salt',
+    hero: {
+      eyebrow: 'Kitchen & wellness',
+      title: 'Edible Himalayan Pink Salt',
+      subtitle:
+        'Unrefined cooking salt with natural trace minerals — from everyday seasoning to finishing salt and brines.',
+    },
+    seo: {
+      title: 'Edible Himalayan Pink Cooking Salt | Himalayan Koh',
+      description:
+        'Shop fine, medium, and coarse Himalayan pink cooking salt. Mineral-rich, unprocessed salt for home chefs and clean-label kitchens.',
+    },
+    trustPoints: [
+      { label: 'Unrefined crystals', detail: 'No anti-caking agents or chemical bleaching.' },
+      { label: '84+ trace minerals', detail: 'Natural iron and mineral profile from ancient deposits.' },
+      { label: 'USA family-owned', detail: 'Packed and shipped from our Texas fulfillment center.' },
+    ],
+    gallery: [
+      { id: 'edible-bowl', src: IMG.saltBowl, alt: 'Bowl of pink Himalayan cooking salt crystals', width: 600, height: 450 },
+      { id: 'edible-pouch', src: IMG.pouch, alt: 'Himalayan pink salt pouch for home kitchens', width: 600, height: 450 },
+      { id: 'edible-jar', src: IMG.jar, alt: '16 oz jar of Himalayan pink table salt', width: 500, height: 500 },
+      { id: 'edible-rock', src: IMG.rockBag, alt: 'Coarse Himalayan rock salt in retail packaging', width: 600, height: 450 },
+    ],
+    articles: [
+      {
+        id: 'edible-brining',
+        title: 'Brining with Himalayan Pink Salt',
+        excerpt:
+          'Why unrefined salt improves moisture retention in poultry and pork — and how grain size affects dissolve time.',
+        image: IMG.saltBowl,
+        readTime: '4 min read',
+        tag: 'Recipes',
+      },
+      {
+        id: 'edible-minerals',
+        title: 'Trace Minerals in Everyday Cooking',
+        excerpt:
+          'A practical look at what “84+ minerals” means on the label and how pink color reflects natural iron content.',
+        image: IMG.jar,
+        readTime: '5 min read',
+        tag: 'Wellness',
+      },
+      {
+        id: 'edible-grind',
+        title: 'Choosing Fine, Medium, or Coarse Grain',
+        excerpt:
+          'Match crystal size to your grinder, baking, or finishing routine for consistent flavor and texture.',
+        image: IMG.pouch,
+        readTime: '3 min read',
+        tag: 'Guides',
+      },
+    ],
+    guides: [
+      {
+        id: 'kitchen-use',
+        title: 'Kitchen Usage Guide',
+        bullets: [
+          'Fine grain: baking, soups, and quick dissolve applications',
+          'Medium grain: all-purpose cooking and table grinders',
+          'Coarse grain: finishing salt, rim salt, and slow-release brines',
+          'Store in a dry, airtight container away from steam',
+        ],
+        paragraphs: [
+          'Himalayan pink salt delivers a fuller mineral note than heavily refined table salt — a little goes a long way in everyday cooking.',
+        ],
+      },
+      {
+        id: 'food-safety',
+        title: 'Food Safety & Labeling',
+        bullets: [
+          'Not iodized unless separately labeled — plan iodine intake with your dietitian if needed',
+          'Inspect packaging for moisture damage before use',
+          'Use clean, dry scoops to prevent clumping in humid kitchens',
+        ],
+      },
+      {
+        id: 'edible-faq',
+        title: 'Edible Salt FAQs',
+        faqs: [
+          {
+            question: 'Is Himalayan pink salt lower in sodium?',
+            answer:
+              'Sodium chloride is still the primary component. Many cooks use slightly less volume because the mineral flavor is more pronounced.',
+          },
+          {
+            question: 'Can I use it in salt grinders?',
+            answer: 'Yes — medium and coarse grains are ideal. Avoid damp storage that can cause bridging in grinders.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'grain-size-chart',
+        title: 'Grain Size Selection Chart',
+        description: 'Quick reference for fine, medium, and coarse crystals in home and commercial kitchens.',
+        url: '/resources/edible-grain-size-chart.pdf',
+        fileSize: '142 KB',
+        publishedAt: '2026-02-10',
+      },
+      {
+        id: 'pantry-storage',
+        title: 'Pantry Storage Best Practices',
+        description: 'Humidity control, shelf life, and food-safe handling for bulk pouches and jars.',
+        url: '/resources/pantry-storage-guide.pdf',
+        fileSize: '118 KB',
+        publishedAt: '2026-01-20',
+      },
+    ],
+    emptyStates: {},
+  },
+
+  'salt-lick-horses': {
+    key: 'salt-lick-horses',
+    productCategoryLabel: 'Salt Lick for Horses',
+    hero: {
+      eyebrow: 'Equine mineral program',
+      title: 'Horse Salt Licks & Blocks',
+      subtitle:
+        'Natural Himalayan crystal licks for free-choice electrolytes, hydration support, and stall-side enrichment.',
+    },
+    seo: {
+      title: 'Himalayan Salt Licks for Horses | Himalayan Koh',
+      description:
+        'Mineral-rich horse salt licks and blocks. Ranch-trusted Himalayan pink salt for paddocks, barns, and training programs.',
+    },
+    trustPoints: [
+      { label: 'Free-choice intake', detail: 'Horses self-regulate licking based on workload and weather.' },
+      { label: 'Long-lasting crystal', detail: 'Harder than many pressed blocks — less waste in holders.' },
+      { label: 'Holder-safe guidance', detail: 'Mounting and placement resources included below.' },
+    ],
+    gallery: [
+      { id: 'horse-1', src: IMG.horseLick, alt: 'Horse licking a Himalayan salt lick in a paddock', width: 600, height: 450 },
+      { id: 'horse-2', src: IMG.horseLick2, alt: 'Horse using a natural mineral salt lick outdoors', width: 600, height: 450 },
+      { id: 'horse-3', src: IMG.horsesBanner, alt: 'Horses on open pasture at a USA ranch', width: 1300, height: 200 },
+      { id: 'horse-4', src: IMG.cattleBag, alt: 'Bulk Himalayan salt bag staged near equine barn', width: 600, height: 450 },
+    ],
+    articles: [
+      {
+        id: 'horse-electrolytes',
+        title: 'Electrolytes, Heat, and Travel Stress',
+        excerpt:
+          'How free-choice salt supports normal hydration when horses work hard or ship long distances in warm weather.',
+        image: IMG.horseLick,
+        readTime: '5 min read',
+        tag: 'Horse Care',
+      },
+      {
+        id: 'horse-holders',
+        title: 'Choosing the Right Lick Holder',
+        excerpt:
+          'Wall mounts, corner feeders, and rope kits — what to avoid so licks stay secure in high-traffic aisles.',
+        image: IMG.horseLick2,
+        readTime: '4 min read',
+        tag: 'Barn Setup',
+      },
+      {
+        id: 'horse-boredom',
+        title: 'Salt Licks as Stall Enrichment',
+        excerpt:
+          'Why natural crystal texture encourages licking behavior compared with smooth manufactured blocks.',
+        image: IMG.horsesBanner,
+        readTime: '3 min read',
+        tag: 'Wellness',
+      },
+    ],
+    guides: [
+      {
+        id: 'horse-benefits',
+        title: 'Benefits for Horses',
+        bullets: [
+          'Supports electrolyte balance during training and hot weather',
+          'Encourages natural licking — reducing boredom in stalls',
+          'Delivers calcium, magnesium, potassium, and trace minerals',
+          'Unrefined crystal structure without pressed additives',
+        ],
+      },
+      {
+        id: 'horse-safe-use',
+        title: 'Safe Mounting & Placement',
+        bullets: [
+          'Use licensed holders — never loose salt in walkways',
+          'Keep fresh water available at all times',
+          'Introduce gradually for horses new to large licks',
+          'Separate stations for dominant and subordinate horses in group turnout',
+        ],
+      },
+      {
+        id: 'horse-faq',
+        title: 'Horse Program FAQs',
+        faqs: [
+          {
+            question: 'How often should I replace a lick?',
+            answer:
+              'Replacement depends on herd size, weather, and holder type. Inspect weekly for size, cleanliness, and holder wear.',
+          },
+          {
+            question: 'Can I use cattle salt for horses?',
+            answer:
+              'Offer species-appropriate products and consult your veterinarian for horses on restricted diets or special formulations.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'horse-lick-guide',
+        title: 'Horse Salt Lick Setup Guide',
+        description: 'Mounting height, holder safety checks, and barn placement diagrams.',
+        url: '/resources/horse-salt-lick-guide.pdf',
+        fileSize: '210 KB',
+        publishedAt: '2026-03-01',
+      },
+      {
+        id: 'feeding-best-practices',
+        title: 'Feeding Best Practices',
+        description: 'Free-choice placement, water access, and intake guidelines for equine programs.',
+        url: '/resources/feeding-best-practices.pdf',
+        fileSize: '186 KB',
+        publishedAt: '2026-02-01',
+      },
+    ],
+    emptyStates: {},
+  },
+
+  'salt-cattle': {
+    key: 'salt-cattle',
+    productCategoryLabel: 'Salt for Cattle',
+    hero: {
+      eyebrow: 'Ranch & pasture',
+      title: 'Cattle Salt & Livestock Minerals',
+      subtitle:
+        'Bulk bags and rock salt for pasture herds — built for Texas ranches and nationwide livestock programs.',
+    },
+    seo: {
+      title: 'Himalayan Salt for Cattle & Livestock | Himalayan Koh',
+      description:
+        '45 lb bags and cattle salt rocks with natural trace minerals. Free-choice supplementation for beef, dairy, and mixed herds.',
+    },
+    trustPoints: [
+      { label: 'Pasture-ready', detail: 'Weather-resistant crystal salt for covered feeders.' },
+      { label: 'Bulk ranch value', detail: 'Wholesale inquiries welcome for repeat herd orders.' },
+      { label: 'Vet-aligned guidance', detail: 'Placement and water access resources for your nutritionist.' },
+    ],
+    gallery: [
+      { id: 'cattle-1', src: IMG.cattleGrazing, alt: 'Cattle herd grazing on open pasture', width: 600, height: 450 },
+      { id: 'cattle-2', src: IMG.cattleBag, alt: '45 lb Himalayan pink salt bag for livestock', width: 600, height: 450 },
+      { id: 'cattle-3', src: IMG.horseLick, alt: 'Mineral lick station shared in mixed livestock program', width: 600, height: 450 },
+      { id: 'cattle-4', src: IMG.horsesBanner, alt: 'Ranch landscape with livestock in background', width: 1300, height: 200 },
+    ],
+    articles: [
+      {
+        id: 'cattle-winter',
+        title: 'Winter Mineral Programs for Beef Herds',
+        excerpt:
+          'Adjust free-choice access when forage quality drops and water intake shifts in cold weather.',
+        image: IMG.cattleGrazing,
+        readTime: '5 min read',
+        tag: 'Seasonal Care',
+      },
+      {
+        id: 'cattle-feeders',
+        title: 'Feeder Count for Large Pastures',
+        excerpt:
+          'How many covered stations you need so subordinate cattle get equal mineral access across acreage.',
+        image: IMG.cattleBag,
+        readTime: '4 min read',
+        tag: 'Ranch Ops',
+      },
+      {
+        id: 'cattle-bulk',
+        title: 'Buying Bulk Salt for Ranch Economics',
+        excerpt:
+          'Storage tips, pallet handling, and when 45 lb bags beat smaller retail units for cow-calf operations.',
+        image: IMG.cattleGrazing,
+        readTime: '6 min read',
+        tag: 'Guides',
+      },
+    ],
+    guides: [
+      {
+        id: 'cattle-benefits',
+        title: 'Benefits for Cattle',
+        bullets: [
+          'Free-choice minerals for pasture and dry-lot herds',
+          'Supports hydration and electrolyte function in heat',
+          'Unrefined crystal — no anti-caking agents',
+          'Works in covered feeders for mixed herds',
+        ],
+      },
+      {
+        id: 'cattle-placement',
+        title: 'Pasture Placement & Feeders',
+        bullets: [
+          'Elevate salt off bare soil to reduce grit and waste',
+          'Use multiple stations on large acreage',
+          'Keep feeders shaded and drained to limit rain pooling',
+          'Rotate station locations seasonally',
+        ],
+      },
+      {
+        id: 'cattle-faq',
+        title: 'Livestock FAQs',
+        faqs: [
+          {
+            question: 'How much salt will my herd consume?',
+            answer:
+              'Intake varies with forage, water quality, and weather. Monitor stations weekly and work with your nutritionist on target intake.',
+          },
+          {
+            question: 'Do you offer ranch pricing?',
+            answer: 'Yes — contact us for bulk quotes and recurring shipment schedules.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'bulk-feeder-guide',
+        title: 'Bulk Feeder Guide (45 lb)',
+        description: 'Feeder sizing, station count, and weather protection for pasture bags.',
+        url: '/resources/bulk-feeder-guide.pdf',
+        fileSize: '198 KB',
+        publishedAt: '2026-02-20',
+      },
+      {
+        id: 'mineral-overview',
+        title: 'Trace Mineral Overview',
+        description: 'Naturally occurring minerals in Himalayan pink salt for livestock programs.',
+        url: '/resources/trace-mineral-overview.pdf',
+        fileSize: '124 KB',
+        publishedAt: '2026-01-15',
+      },
+    ],
+    emptyStates: {},
+  },
+
+  'salt-blocks-deer': {
+    key: 'salt-blocks-deer',
+    productCategoryLabel: 'Salt Blocks for Deer',
+    hero: {
+      eyebrow: 'Wildlife & land management',
+      title: 'Deer Salt Blocks & Wildlife Minerals',
+      subtitle:
+        'Outdoor mineral blocks for whitetail programs — placement strategies for trails, food plots, and low-pressure sites.',
+    },
+    seo: {
+      title: 'Himalayan Salt Blocks for Deer & Wildlife | Himalayan Koh',
+      description:
+        'Natural mineral blocks for deer and wildlife habitat programs. Placement guides, outdoor durability, and trace mineral education.',
+    },
+    trustPoints: [
+      { label: 'Outdoor durability', detail: 'Crystal salt suited to covered field stations.' },
+      { label: 'Habitat-minded', detail: 'Placement guidance for low-pressure mineral sites.' },
+      { label: 'Natural minerals', detail: 'Unrefined salt without artificial binders.' },
+    ],
+    gallery: [
+      { id: 'deer-1', src: IMG.cattleGrazing, alt: 'Open meadow habitat suitable for wildlife mineral sites', width: 600, height: 450 },
+      { id: 'deer-2', src: IMG.rockBag, alt: 'Natural rock salt block packaging for field use', width: 600, height: 450 },
+      { id: 'deer-3', src: IMG.horsesBanner, alt: 'Tree line and pasture edge on a managed property', width: 1300, height: 200 },
+      { id: 'deer-4', src: IMG.cattleBag, alt: 'Bulk mineral salt staged for land management', width: 600, height: 450 },
+    ],
+    articles: [
+      {
+        id: 'deer-placement',
+        title: 'Low-Pressure Mineral Site Placement',
+        excerpt:
+          'Set blocks where deer approach naturally — not in high human-traffic zones that pattern wildlife away.',
+        image: IMG.cattleGrazing,
+        readTime: '5 min read',
+        tag: 'Land Management',
+      },
+      {
+        id: 'deer-seasonal',
+        title: 'Seasonal Mineral Use for Whitetail',
+        excerpt:
+          'When intake typically rises and how rainfall affects covered outdoor stations.',
+        image: IMG.rockBag,
+        readTime: '4 min read',
+        tag: 'Wildlife',
+      },
+      {
+        id: 'deer-plot',
+        title: 'Coordinating Minerals with Food Plots',
+        excerpt:
+          'Separate mineral stations from bait-heavy areas to spread use across habitat zones.',
+        image: IMG.horsesBanner,
+        readTime: '4 min read',
+        tag: 'Guides',
+      },
+    ],
+    guides: [
+      {
+        id: 'deer-outdoor',
+        title: 'Outdoor Placement Guide',
+        bullets: [
+          'Use covered stations to limit direct rainfall on blocks',
+          'Place on well-drained soil — avoid low basins that flood',
+          'Refresh sites when blocks are consumed or contaminated with mud',
+          'Follow all local wildlife feeding regulations in your state',
+        ],
+      },
+      {
+        id: 'deer-minerals',
+        title: 'Mineral Composition for Wildlife',
+        paragraphs: [
+          'Himalayan pink salt provides sodium chloride plus naturally occurring trace elements that support normal wildlife mineral seeking behavior.',
+        ],
+        bullets: [
+          'Sodium drives initial attraction and repeat visits',
+          'Trace elements vary by harvest — consistent natural source',
+          'No pressed molasses binders or artificial dyes',
+        ],
+      },
+      {
+        id: 'deer-faq',
+        title: 'Wildlife Program FAQs',
+        faqs: [
+          {
+            question: 'Is this a bait product?',
+            answer:
+              'Our blocks are mineral supplements. Always comply with state and federal rules for wildlife feeding on your property.',
+          },
+          {
+            question: 'How many blocks per acre?',
+            answer:
+              'Density depends on deer population and habitat. Start with one low-pressure site per 40–80 acres and adjust based on use.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'wildlife-placement',
+        title: 'Wildlife Mineral Placement Checklist',
+        description: 'Site selection, drainage, and seasonal refresh schedule for outdoor blocks.',
+        url: '/resources/wildlife-mineral-placement.pdf',
+        fileSize: '165 KB',
+        publishedAt: '2026-02-28',
+      },
+      {
+        id: 'trace-mineral-overview',
+        title: 'Trace Mineral Overview',
+        description: 'Naturally occurring minerals in Himalayan pink salt for wildlife programs.',
+        url: '/resources/trace-mineral-overview.pdf',
+        fileSize: '124 KB',
+        publishedAt: '2026-01-15',
+      },
+    ],
+    emptyStates: {},
+  },
+};

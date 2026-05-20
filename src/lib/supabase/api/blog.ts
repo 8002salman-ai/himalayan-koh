@@ -115,6 +115,64 @@ export const blogApi = {
     return data as BlogPostWithAuthor[];
   },
 
+  /**
+   * Posts for shop category education panels (category name + tag overlap).
+   */
+  async getPostsForCategoryHub({
+    categories = [],
+    tags = [],
+    limit = 4,
+  }: {
+    categories?: string[];
+    tags?: string[];
+    limit?: number;
+  }): Promise<BlogPostWithAuthor[]> {
+    const seen = new Set<string>();
+    const merged: BlogPostWithAuthor[] = [];
+
+    const append = (posts: BlogPostWithAuthor[]) => {
+      for (const post of posts) {
+        if (seen.has(post.id) || merged.length >= limit) continue;
+        seen.add(post.id);
+        merged.push(post);
+      }
+    };
+
+    if (categories.length > 0) {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select(`
+          *,
+          author:profiles(id, full_name, avatar_url)
+        `)
+        .eq('is_published', true)
+        .in('category', categories)
+        .order('published_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      append((data || []) as BlogPostWithAuthor[]);
+    }
+
+    if (merged.length < limit && tags.length > 0) {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select(`
+          *,
+          author:profiles(id, full_name, avatar_url)
+        `)
+        .eq('is_published', true)
+        .overlaps('tags', tags)
+        .order('published_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      append((data || []) as BlogPostWithAuthor[]);
+    }
+
+    return merged.slice(0, limit);
+  },
+
   // Get all categories
   async getCategories(): Promise<string[]> {
     const { data, error } = await supabase

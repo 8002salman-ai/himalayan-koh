@@ -25,12 +25,22 @@ Without these, the app runs in **local demo mode** (static products, `localStora
 | `OPENROUTER_API_KEY` | Server (`api/openrouter`) | Without it, chat returns 503 |
 | `OPENROUTER_MODEL` | Server | Overrides default free-model chain |
 
-## Optional — payments (Phase 2+)
+## Optional — Stripe card checkout (test mode only)
 
 | Variable | Scope | Notes |
 |----------|--------|--------|
-| `STRIPE_SECRET_KEY` | Server | `api/stripe/create-payment-intent` |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Client | Enables Stripe UI when implemented |
+| `STRIPE_SECRET_KEY` | Server | `sk_test_...` — Payment Intent, verify, webhook |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Client | `pk_test_...` — enables card option on `/checkout` |
+| `STRIPE_WEBHOOK_SECRET` | Server | `whsec_...` — `api/stripe/webhook` (backup order sync) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Required for `verify-payment` + webhook order updates |
+| `VITE_SUPABASE_URL` | Server | Same project URL (used by Stripe API routes) |
+
+Live keys (`sk_live_` / `pk_live_`) are rejected in API routes. Invoice checkout works without Stripe.
+
+**Stripe webhook URL:** `https://your-domain.com/api/stripe/webhook`  
+Events: `payment_intent.succeeded`, `payment_intent.payment_failed`
+
+**Test card:** `4242 4242 4242 4242` · any future expiry · any CVC
 
 ## Optional — error monitoring
 

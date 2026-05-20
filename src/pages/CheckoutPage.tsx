@@ -3,15 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Loader2, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { useAuthContext } from '../context/AuthContext';
+import StripePaymentForm from '../components/checkout/StripePaymentForm';
 import {
   calculateOrderTotals,
   ordersApi,
   supportedCoupons,
   type ShippingMethod,
 } from '../lib/supabase/api/orders';
+import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { useCart } from '../store/cartStore';
-import { buildPaymentIntentDraft, isStripeConfigured } from '../lib/payments/stripe';
+import {
+  createStripePaymentIntent,
+  isStripeConfigured,
+  isStripeTestMode,
+  verifyStripeOrderPayment,
+} from '../lib/payments/stripe';
 
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
 const labelClass = 'block text-sm font-semibold text-charcoal mb-1.5';
@@ -40,6 +47,12 @@ type CheckoutForm = typeof initialForm;
 type FieldErrors = Partial<Record<keyof CheckoutForm | 'coupon', string>>;
 type PaymentMethod = 'invoice' | 'stripe';
 
+interface StripeCheckoutSession {
+  order: OrderWithItems;
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuthContext();
@@ -58,6 +71,7 @@ export default function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('standard');
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('invoice');
+  const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
 
   const totals = useMemo(
     () => calculateOrderTotals(
@@ -69,13 +83,6 @@ export default function CheckoutPage() {
     ),
     [couponCode, items, shippingMethod]
   );
-
-  const paymentDraft = useMemo(() => buildPaymentIntentDraft({
-    email: form.email,
-    amount: totals.total,
-    couponCode,
-    items,
-  }), [couponCode, form.email, items, totals.total]);
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -134,7 +141,7 @@ export default function CheckoutPage() {
     }
 
     if (paymentMethod === 'stripe' && !isStripeConfigured) {
-      nextErrors.coupon = 'Card payments are prepared but not active yet. Please use invoice checkout.';
+      nextErrors.coupon = 'Card payments need VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...). Use invoice checkout or add keys in Vercel.';
     }
 
     setFieldErrors(nextErrors);
@@ -162,44 +169,91 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
-      const shippingAddress = {
-        fullName: form.fullName,
-        addressLine1: form.addressLine1,
-        addressLine2: form.addressLine2 || undefined,
-        city: form.city,
-        state: form.state,
-        postalCode: form.postalCode,
-        country: form.country,
-      };
+      const shippingAddress = buildShippingAddress(form);
       const billingAddress = billingSameAsShipping
         ? shippingAddress
-        : {
-            fullName: form.billingFullName,
-            addressLine1: form.billingAddressLine1,
-            addressLine2: form.billingAddressLine2 || undefined,
-            city: form.billingCity,
-            state: form.billingState,
-            postalCode: form.billingPostalCode,
-            country: form.billingCountry,
-          };
+        : buildBillingAddress(form);
+
+      if (paymentMethod === 'invoice') {
+        const order = await ordersApi.createOrder({
+          email: form.email,
+          phone: form.phone || undefined,
+          shippingAddress,
+          billingAddress,
+          paymentProvider: 'invoice',
+          paymentMethod: 'invoice',
+          paymentStatus: 'pending',
+          couponCode,
+          shippingMethod,
+          notes: form.notes || undefined,
+        }, user?.id);
+
+        await clearCart();
+        navigate('/order-confirmation', { state: { order } });
+        return;
+      }
+
+      if (stripeSession) {
+        setError('Complete card payment below, or switch to invoice checkout.');
+        return;
+      }
 
       const order = await ordersApi.createOrder({
         email: form.email,
         phone: form.phone || undefined,
         shippingAddress,
         billingAddress,
-        paymentProvider: paymentMethod,
-        paymentMethod: paymentMethod === 'stripe' ? 'stripe_card_prepared' : 'invoice',
+        paymentProvider: 'stripe',
+        paymentMethod: 'stripe_card',
         paymentStatus: 'pending',
         couponCode,
         shippingMethod,
         notes: form.notes || undefined,
+        clearCart: false,
       }, user?.id);
 
-      await clearCart();
-      navigate('/order-confirmation', { state: { order } });
+      const paymentIntent = await createStripePaymentIntent({
+        email: form.email,
+        orderId: order.id,
+        couponCode,
+        shippingMethod,
+        items,
+      });
+
+      setStripeSession({
+        order,
+        clientSecret: paymentIntent.clientSecret,
+        paymentIntentId: paymentIntent.paymentIntentId,
+      });
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to place order.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStripePaymentSuccess = async () => {
+    if (!stripeSession) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await verifyStripeOrderPayment({
+        orderId: stripeSession.order.id,
+        paymentIntentId: stripeSession.paymentIntentId,
+      });
+
+      const paidOrder: OrderWithItems = {
+        ...stripeSession.order,
+        payment_status: 'paid',
+        payment_method: 'stripe_card',
+      };
+
+      await clearCart();
+      navigate('/order-confirmation', { state: { order: paidOrder } });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment succeeded but order confirmation failed. Contact support with your email.');
     } finally {
       setSubmitting(false);
     }
@@ -352,7 +406,10 @@ export default function CheckoutPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('invoice')}
+                  onClick={() => {
+                    setPaymentMethod('invoice');
+                    setStripeSession(null);
+                  }}
                   className={`text-left rounded-2xl border p-4 transition-colors ${paymentMethod === 'invoice' ? 'border-himalayan bg-himalayan/10' : 'border-gray-200 hover:border-himalayan/40'}`}
                 >
                   <PackageCheck size={22} className="text-himalayan mb-2" />
@@ -361,20 +418,54 @@ export default function CheckoutPage() {
                 </button>
                 <button
                   type="button"
-                  disabled
-                  className="text-left rounded-2xl border border-gray-200 bg-gray-50 p-4 cursor-not-allowed opacity-80"
+                  disabled={!isStripeConfigured}
+                  onClick={() => {
+                    setPaymentMethod('stripe');
+                    setStripeSession(null);
+                  }}
+                  className={`text-left rounded-2xl border p-4 transition-colors ${
+                    paymentMethod === 'stripe'
+                      ? 'border-himalayan bg-himalayan/10'
+                      : isStripeConfigured
+                        ? 'border-gray-200 hover:border-himalayan/40'
+                        : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-80'
+                  }`}
                 >
-                  <CreditCard size={22} className="text-charcoal-light mb-2" />
-                  <p className="font-semibold text-charcoal">Stripe Card Payment</p>
+                  <CreditCard size={22} className="text-himalayan mb-2" />
+                  <p className="font-semibold text-charcoal">Pay with Card (Stripe)</p>
                   <p className="text-sm text-charcoal-light mt-1">
-                    Prepared for test/live Stripe. Not active yet.
+                    {isStripeConfigured
+                      ? isStripeTestMode
+                        ? 'Test mode — use card 4242 4242 4242 4242.'
+                        : 'Secure card payment via Stripe.'
+                      : 'Add VITE_STRIPE_PUBLISHABLE_KEY to enable.'}
                   </p>
                 </button>
               </div>
-              <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-4 text-xs text-charcoal-light">
-                <p className="font-semibold text-charcoal mb-1">Stripe-ready structure</p>
-                <p>Payment intent draft: {(paymentDraft.amount / 100).toFixed(2)} {paymentDraft.currency.toUpperCase()} · {isStripeConfigured ? 'publishable key configured' : 'publishable key pending'}</p>
-              </div>
+
+              {paymentMethod === 'stripe' && stripeSession && (
+                <div className="mt-5 rounded-xl border border-himalayan/30 bg-himalayan/5 p-4">
+                  <p className="text-sm font-semibold text-charcoal mb-1">
+                    Order {stripeSession.order.order_number} — complete payment
+                  </p>
+                  <p className="text-xs text-charcoal-light mb-4">
+                    Your order is saved. Pay below to confirm. Cart items stay reserved until payment succeeds.
+                  </p>
+                  <StripePaymentForm
+                    clientSecret={stripeSession.clientSecret}
+                    amountLabel={`$${totals.total.toFixed(2)}`}
+                    disabled={submitting}
+                    onSuccess={handleStripePaymentSuccess}
+                    onError={(message) => setError(message)}
+                  />
+                </div>
+              )}
+
+              {paymentMethod === 'stripe' && !stripeSession && isStripeConfigured && (
+                <p className="mt-4 text-xs text-charcoal-light">
+                  Click &quot;Continue to card payment&quot; to save your order and open the secure card form.
+                </p>
+              )}
             </section>
 
             <section className="bg-white rounded-2xl shadow-md p-6">
@@ -439,18 +530,28 @@ export default function CheckoutPage() {
 
               <div className="mt-5 flex items-start gap-2 text-xs text-charcoal-light">
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
-                <p>Your order is saved securely in Supabase. Stripe card processing is prepared but not enabled.</p>
+                <p>
+                  {paymentMethod === 'stripe' && isStripeConfigured
+                    ? 'Card payments use Stripe test mode. Invoice checkout remains available without card details.'
+                    : 'Your order is saved securely. Pay by invoice or enable Stripe keys for card checkout.'}
+                </p>
               </div>
 
               {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (paymentMethod === 'stripe' && Boolean(stripeSession))}
                 className="w-full mt-6 flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
               >
                 {submitting && <Loader2 size={18} className="animate-spin" />}
-                {submitting ? 'Placing Order...' : 'Place Order'}
+                {submitting
+                  ? paymentMethod === 'stripe' ? 'Preparing payment...' : 'Placing Order...'
+                  : paymentMethod === 'stripe'
+                    ? stripeSession
+                      ? 'Complete card payment below'
+                      : 'Continue to card payment'
+                    : 'Place Order'}
               </button>
             </div>
           </aside>
@@ -492,6 +593,30 @@ function ShippingOption({ active, title, detail, price, onClick }: {
       </div>
     </button>
   );
+}
+
+function buildShippingAddress(form: CheckoutForm) {
+  return {
+    fullName: form.fullName,
+    addressLine1: form.addressLine1,
+    addressLine2: form.addressLine2 || undefined,
+    city: form.city,
+    state: form.state,
+    postalCode: form.postalCode,
+    country: form.country,
+  };
+}
+
+function buildBillingAddress(form: CheckoutForm) {
+  return {
+    fullName: form.billingFullName,
+    addressLine1: form.billingAddressLine1,
+    addressLine2: form.billingAddressLine2 || undefined,
+    city: form.billingCity,
+    state: form.billingState,
+    postalCode: form.billingPostalCode,
+    country: form.billingCountry,
+  };
 }
 
 function SummaryRow({ label, value }: { label: string; value: number }) {

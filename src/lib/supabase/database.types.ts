@@ -188,6 +188,35 @@ export interface Database {
           updated_at?: string;
         };
       };
+      category_hub_overrides: {
+        Row: {
+          category_key: string;
+          hero: Json;
+          seo: Json;
+          trust_points: Json;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          category_key: string;
+          hero?: Json;
+          seo?: Json;
+          trust_points?: Json;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          category_key?: string;
+          hero?: Json;
+          seo?: Json;
+          trust_points?: Json;
+          is_published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       inventory: {
         Row: {
           id: string;

@@ -8,31 +8,32 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import type { Product } from '../data/products';
 import { products as fallbackProducts } from '../data/products';
 import { mapSupabaseProduct } from '../lib/products/mapProduct';
+import { productsPathForCategoryTitle } from '../lib/categoryContent';
 
 const heroCards = [
   {
     title: 'Salt Blocks for Deer',
     eyebrow: 'salt lick for deer',
     image: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
-    link: '/products',
+    link: productsPathForCategoryTitle('Salt Blocks for Deer'),
   },
   {
     title: 'Salt Lumps for Cattle',
     eyebrow: 'salt lump for cattle',
     image: 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg',
-    link: '/products',
+    link: productsPathForCategoryTitle('Salt Lumps for Cattle'),
   },
   {
     title: 'Salt Lick for Horses',
     eyebrow: 'salt lick for horse',
     image: 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg',
-    link: '/products',
+    link: productsPathForCategoryTitle('Salt Lick for Horses'),
   },
   {
     title: 'Salt for Livestock',
     eyebrow: 'salt for livestock',
     image: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
-    link: '/products',
+    link: productsPathForCategoryTitle('Salt for Livestock'),
   },
 ];
 
@@ -48,21 +49,25 @@ const productCategories = [
     title: 'Salt Blocks for Deer',
     subtitle: 'salt lick for deer',
     image: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+    link: productsPathForCategoryTitle('Salt Blocks for Deer'),
   },
   {
     title: 'Salt Lumps for Cattle',
     subtitle: 'salt lump for cattle',
     image: 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg',
+    link: productsPathForCategoryTitle('Salt Lumps for Cattle'),
   },
   {
     title: 'Salt Lick for Horses',
     subtitle: 'salt lick for horse',
     image: 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg',
+    link: productsPathForCategoryTitle('Salt Lick for Horses'),
   },
   {
     title: 'Salt for Livestock',
     subtitle: 'salt for livestock',
     image: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+    link: productsPathForCategoryTitle('Salt for Livestock'),
   },
 ];
 
@@ -379,7 +384,7 @@ export default function HomePage() {
                 transition={{ delay: index * 0.08 }}
                 className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-500"
               >
-                <Link to="/products" className="block">
+                <Link to={category.link} className="block">
                   <div className="aspect-[4/3] overflow-hidden bg-gray-100">
                     <img
                       src={category.image}

@@ -14,6 +14,8 @@
     "verify:phase0": "node scripts/verify-phase0.mjs"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^3.10.0",
+    "@stripe/stripe-js": "^5.10.0",
     "@supabase/supabase-js": "^2.105.4",
     "clsx": "2.1.1",
     "framer-motion": "^12.38.0",
@@ -21,6 +23,7 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-router-dom": "^7.15.1",
+    "stripe": "^17.7.0",
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {

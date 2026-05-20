@@ -80,6 +80,8 @@ export interface CreateOrderData {
   couponCode?: string;
   shippingMethod?: ShippingMethod;
   notes?: string;
+  /** Clear cart after order insert (default true). Stripe checkout clears after payment succeeds. */
+  clearCart?: boolean;
 }
 
 export interface OrderFilters {
@@ -162,8 +164,9 @@ export const ordersApi = {
 
     if (itemsError) throw itemsError;
 
-    // Clear the cart
-    await cartApi.clearCart(userId);
+    if (data.clearCart !== false) {
+      await cartApi.clearCart(userId);
+    }
 
     return {
       ...(order as Order),

@@ -8,6 +8,11 @@ import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import { wishlistApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import {
+  buildProductsCategoryPath,
+  categoryKeyFromFilterLabel,
+  filterLabelFromKey,
+} from '../lib/categoryContent';
 
 interface ProductDetailViewProps {
   product: Product;
@@ -27,6 +32,9 @@ export default function ProductDetailView({
   const { addItem } = useCart();
   const { user } = useAuthContext();
   const displayName = getProductDisplayName(product);
+  const categoryKey = categoryKeyFromFilterLabel(product.category);
+  const categoryShopPath = categoryKey ? buildProductsCategoryPath(categoryKey) : '/products';
+  const categoryShopLabel = categoryKey ? filterLabelFromKey(categoryKey) : 'Products';
 
   useEffect(() => {
     setQty(1);
@@ -79,10 +87,23 @@ export default function ProductDetailView({
             </li>
             <ChevronRight size={14} className="mx-0.5 shrink-0" />
             <li>
-              <Link to="/products" className="hover:text-himalayan transition-colors">
+              <Link
+                to={categoryKey ? '/products' : categoryShopPath}
+                className="hover:text-himalayan transition-colors"
+              >
                 Products
               </Link>
             </li>
+            {categoryKey && (
+              <>
+                <ChevronRight size={14} className="mx-0.5 shrink-0" />
+                <li>
+                  <Link to={categoryShopPath} className="hover:text-himalayan transition-colors">
+                    {categoryShopLabel}
+                  </Link>
+                </li>
+              </>
+            )}
             <ChevronRight size={14} className="mx-0.5 shrink-0" />
             <li className="text-charcoal font-medium line-clamp-1">{displayName}</li>
           </ol>

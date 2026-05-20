@@ -17,6 +17,7 @@ import {
   ChevronDown,
   BarChart3,
   Home,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
@@ -42,6 +43,7 @@ const navItems = [
   { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
   { label: 'Customers', path: '/admin/customers', icon: Users },
   { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
+  { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ];

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Mail, Phone, ArrowRight, Send } from 'lucide-react';
+import { productsPathForCategoryTitle } from '../lib/categoryContent';
 
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
@@ -17,10 +18,10 @@ const aboutLinks = [
 ];
 
 const productLinks = [
-  { label: 'Salt Lick for Horses', to: '/products' },
-  { label: 'Salt Blocks for Deer', to: '/products' },
-  { label: 'Salt for Cattle', to: '/products' },
-  { label: 'Edible Cooking Salt', to: '/products' },
+  { label: 'Salt Lick for Horses', to: productsPathForCategoryTitle('Salt Lick for Horses') },
+  { label: 'Salt Blocks for Deer', to: productsPathForCategoryTitle('Salt Blocks for Deer') },
+  { label: 'Salt for Cattle', to: productsPathForCategoryTitle('Salt for Cattle') },
+  { label: 'Edible Cooking Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
   { label: 'Bulk Orders', to: '/contact' },
   { label: 'Gift Sets', to: '/products' },
 ];
