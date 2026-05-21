@@ -12,9 +12,11 @@ interface Props {
   product: Product;
   index: number;
   onQuickView?: (product: Product) => void;
+  /** Category hub left column — stronger shop affordance */
+  shopHighlight?: boolean;
 }
 
-export default function ProductCard({ product, index, onQuickView }: Props) {
+export default function ProductCard({ product, index, onQuickView, shopHighlight }: Props) {
   const [qty, setQty] = useState(1);
   const [selectedGrain, setSelectedGrain] = useState(product.grainSizes?.[0] || '');
   const [wishlisted, setWishlisted] = useState(false);
@@ -50,7 +52,11 @@ export default function ProductCard({ product, index, onQuickView }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.08 }}
-      className="group bg-white rounded-2xl overflow-hidden shadow-md shadow-black/5 hover:shadow-xl hover:shadow-himalayan/10 transition-all duration-500"
+      className={`group bg-white rounded-2xl overflow-hidden transition-all duration-500 ${
+        shopHighlight
+          ? 'shadow-md shadow-himalayan/10 border border-himalayan/15 hover:shadow-xl hover:shadow-himalayan/20 hover:border-himalayan/35'
+          : 'shadow-md shadow-black/5 hover:shadow-xl hover:shadow-himalayan/10'
+      }`}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">

@@ -18,17 +18,12 @@ export default function CategoryPdfResources({
   const visible = resources.filter((r) => r.visible !== false);
 
   return (
-    <section aria-labelledby="category-pdf-heading" className="pt-1 border-t border-gray-100">
-      <div className="flex items-center gap-2 mb-3 mt-4">
-        <FileText size={18} className="text-himalayan" aria-hidden />
-        <div>
-          <h3 id="category-pdf-heading" className="font-serif text-base font-bold text-charcoal">
-            PDF resources
-          </h3>
-          <p className="text-xs text-charcoal-light mt-0.5">
-            Downloads for {categoryLabel}
-          </p>
-        </div>
+    <section aria-labelledby="category-pdf-heading" className="border-t border-gray-100 pt-6">
+      <div className="flex items-center gap-2 mb-3">
+        <FileText size={16} className="text-himalayan" aria-hidden />
+        <h3 id="category-pdf-heading" className="font-serif text-base font-bold text-charcoal">
+          PDF downloads
+        </h3>
       </div>
 
       {visible.length > 0 ? (

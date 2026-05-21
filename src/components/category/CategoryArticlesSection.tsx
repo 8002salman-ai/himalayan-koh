@@ -113,21 +113,14 @@ export default function CategoryArticlesSection({
 
   return (
     <section aria-labelledby="category-articles-heading">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <BookOpen size={18} className="text-himalayan shrink-0" aria-hidden />
-            <h3 id="category-articles-heading" className="font-serif text-base font-bold text-charcoal">
-              Articles & insights
-            </h3>
-          </div>
-          {categoryLabel && (
-            <p className="text-xs text-charcoal-light mt-1 pl-7">
-              {categoryLabel} — read before you buy
-            </p>
-          )}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <BookOpen size={16} className="text-himalayan shrink-0" aria-hidden />
+          <h3 id="category-articles-heading" className="font-serif text-base font-bold text-charcoal">
+            Articles
+          </h3>
         </div>
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-himalayan bg-himalayan-lighter px-2 py-0.5 rounded-full">
+        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-charcoal-light">
           {sourceLabel}
         </span>
       </div>
@@ -140,18 +133,13 @@ export default function CategoryArticlesSection({
         ))}
       </ul>
 
-      <div className="mt-4 rounded-xl border border-himalayan/15 bg-himalayan-lighter/40 px-4 py-3">
-        <p className="text-xs text-charcoal-light leading-relaxed">
-          More ranch tips, product comparisons, and seasonal care notes on the Himalayan Koh blog.
-        </p>
-        <Link
-          to="/blog"
-          className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-himalayan hover:underline"
-        >
-          Browse all blog posts
-          <ExternalLink size={14} aria-hidden />
-        </Link>
-      </div>
+      <Link
+        to="/blog"
+        className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-himalayan hover:underline"
+      >
+        More on the blog
+        <ExternalLink size={12} aria-hidden />
+      </Link>
     </section>
   );
 }

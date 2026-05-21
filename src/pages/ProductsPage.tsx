@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { GraduationCap, Loader2, Search, ShoppingBag } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { products as fallbackProducts, Product } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import CategoryEducationPanel from '../components/category/CategoryEducationPanel';
 import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
+import CategoryShopPanel from '../components/category/CategoryShopPanel';
 import {
   buildProductsCategoryPath,
   productMatchesCategoryFilter,
@@ -107,38 +108,17 @@ export default function ProductsPage() {
     });
   }, [activeFilter, categoryKey, searchQuery, products]);
 
-  const productGrid = (
+  const productList = (
     <>
-      {hubContentLoading && isCategoryHub && (
-        <div className="flex items-center gap-2 text-sm text-charcoal-light">
-          <Loader2 size={16} className="animate-spin text-himalayan" />
-          Syncing category content…
-        </div>
-      )}
-
-      {isCategoryHub && (
-        <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-          <ShoppingBag size={20} className="text-himalayan shrink-0 mt-0.5" aria-hidden />
-          <div>
-            <p className="text-sm font-semibold text-charcoal">
-              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'} in {activeFilter}
-            </p>
-            <p className="text-xs text-charcoal-light mt-0.5">
-              Mineral-rich salt for this category — add to cart as usual. Guides and downloads are on the right.
-            </p>
-          </div>
-        </div>
-      )}
-
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 size={40} className="animate-spin text-himalayan" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 size={36} className="animate-spin text-himalayan" />
         </div>
       ) : (
         <div
           className={
             isCategoryHub
-              ? 'grid grid-cols-1 gap-5'
+              ? 'grid grid-cols-1 gap-4'
               : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8'
           }
         >
@@ -148,22 +128,36 @@ export default function ProductsPage() {
               product={product}
               index={i}
               onQuickView={setQuickViewProduct}
+              shopHighlight={isCategoryHub}
             />
           ))}
         </div>
       )}
 
       {!loading && filteredProducts.length === 0 && (
-        <div className="text-center py-16 text-charcoal-light rounded-2xl border border-dashed border-gray-200 bg-white">
-          <p className="text-lg font-medium text-charcoal">No products in this filter</p>
-          <p className="text-sm mt-2 max-w-md mx-auto">
-            {isCategoryHub
-              ? 'Educational guides, gallery, and PDFs for this category are in the learning panel. Try another filter or search.'
-              : 'No products found matching your criteria.'}
-          </p>
+        <div className="text-center py-12 text-charcoal-light rounded-xl border border-dashed border-gray-200 bg-white">
+          <p className="font-medium text-charcoal">No products match this filter</p>
+          <p className="text-sm mt-1">Try another category or clear your search.</p>
         </div>
       )}
     </>
+  );
+
+  const shopColumn = isCategoryHub && categoryContent ? (
+    <CategoryShopPanel
+      categoryLabel={activeFilter}
+      productCount={filteredProducts.length}
+    >
+      {hubContentLoading && (
+        <div className="flex items-center gap-2 text-xs text-charcoal-light">
+          <Loader2 size={14} className="animate-spin text-himalayan" />
+          Updating…
+        </div>
+      )}
+      {productList}
+    </CategoryShopPanel>
+  ) : (
+    productList
   );
 
   return (
@@ -171,36 +165,42 @@ export default function ProductsPage() {
       <div
         className={
           isCategoryHub
-            ? 'bg-gradient-to-br from-charcoal via-charcoal-light to-charcoal py-14 md:py-20'
+            ? 'bg-charcoal py-10 md:py-12 border-b border-white/10'
             : 'bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-20'
         }
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
-            {categoryContent?.hero.eyebrow ?? 'Shop Now'}
-          </span>
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-            {categoryContent?.hero.title ?? 'Premium Salt Products'}
-          </h1>
-          <p className="text-white/70 text-lg max-w-2xl mx-auto">
-            {categoryContent?.hero.subtitle
-              ?? 'Handpicked from the heart of the Himalayas — pure, natural, and mineral-rich'}
-          </p>
-          {isCategoryHub && (
-            <p className="mt-5 inline-flex items-center gap-2 text-sm text-white/80 bg-white/10 px-4 py-2 rounded-full">
-              <GraduationCap size={16} className="text-himalayan-lighter" aria-hidden />
-              Products on the left · photos, articles & guides on the right
-            </p>
+          {isCategoryHub && categoryContent ? (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-himalayan mb-2">
+                {categoryContent.hero.eyebrow}
+              </p>
+              <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+                {categoryContent.hero.title}
+              </h1>
+            </>
+          ) : (
+            <>
+              <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+                Shop Now
+              </span>
+              <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+                Premium Salt Products
+              </h1>
+              <p className="text-white/70 text-lg max-w-2xl mx-auto">
+                Handpicked from the heart of the Himalayas — pure, natural, and mineral-rich
+              </p>
+            </>
           )}
         </div>
       </div>
 
       <div
-        className={`mx-auto px-4 sm:px-6 py-12 ${
+        className={`mx-auto px-4 sm:px-6 py-10 md:py-12 ${
           isCategoryHub ? 'max-w-[100rem]' : 'max-w-7xl'
         }`}
       >
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <CategoryFilterNav activeFilter={activeFilter} />
             <div className="relative w-full md:w-72">
@@ -219,7 +219,7 @@ export default function ProductsPage() {
         {isCategoryHub && categoryContent ? (
           <CategoryHubLayout
             categoryKey={categoryKey}
-            products={productGrid}
+            products={shopColumn}
             education={
               <AnimatePresence mode="wait">
                 <CategoryEducationPanel
@@ -232,7 +232,7 @@ export default function ProductsPage() {
             }
           />
         ) : (
-          productGrid
+          productList
         )}
       </div>
 

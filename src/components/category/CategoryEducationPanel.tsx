@@ -40,10 +40,13 @@ export default function CategoryEducationPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className="space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1 pb-4"
-      aria-label={`${content.hero.title} education and resources`}
+      className="rounded-2xl border border-gray-200/80 bg-white/90 shadow-sm p-4 sm:p-5 space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto"
+      aria-label={`${content.hero.title} guides and resources`}
     >
       <section aria-labelledby={`${content.key}-gallery-heading`}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-himalayan mb-2">
+          Learn about this category
+        </p>
         <h3 id={`${content.key}-gallery-heading`} className="font-serif text-base font-bold text-charcoal mb-2">
           Lifestyle gallery
         </h3>
@@ -56,22 +59,18 @@ export default function CategoryEducationPanel({
             compact
           />
         )}
-        <p className="mt-2 text-xs text-charcoal-light leading-snug line-clamp-2">
-          <span className="font-semibold text-himalayan">{content.hero.eyebrow}</span>
-          {' · '}
-          {content.hero.subtitle}
-        </p>
       </section>
 
       <CategoryTrustStrip points={content.trustPoints} />
 
-      <CategoryArticlesSection
-        articles={resolvedArticles}
-        emptyMessage={content.emptyStates.articles}
-        loading={articlesLoading}
-        source={articlesSource}
-        categoryLabel={content.productCategoryLabel}
-      />
+      <div className="border-t border-gray-100 pt-6">
+        <CategoryArticlesSection
+          articles={resolvedArticles}
+          emptyMessage={content.emptyStates.articles}
+          loading={articlesLoading}
+          source={articlesSource}
+        />
+      </div>
 
       <CategoryPdfResources
         resources={content.pdfs}

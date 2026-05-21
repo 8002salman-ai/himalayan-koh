@@ -47,7 +47,7 @@ export default function CategoryHubGallery({ images, title }: Props) {
 
   return (
     <div aria-label={`${title} lifestyle gallery`}>
-      <p className="text-xs text-charcoal-light mb-2">Click any photo to view full size</p>
+      <p className="text-[11px] text-charcoal-light/80 mb-2">Tap to enlarge</p>
 
       <ul
         className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch] sm:grid sm:grid-cols-4 sm:overflow-visible"
