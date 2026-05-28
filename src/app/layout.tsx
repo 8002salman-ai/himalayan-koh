@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description:
     'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, 84 trace minerals.',
   metadataBase: new URL(siteOrigin),
+  icons: {
+    icon: 'https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg',
+    shortcut: 'https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
