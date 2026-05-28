@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { publicEnv } from '@/lib/env';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = publicEnv.supabaseUrl;
+const supabaseAnonKey = publicEnv.supabaseAnonKey;
 const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
 
 if (!hasSupabaseConfig) {
   console.warn(
-    'Supabase is not configured. The app will use local demo data until VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+    'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.'
   );
 }
 

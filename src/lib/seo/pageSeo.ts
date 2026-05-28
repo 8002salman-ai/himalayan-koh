@@ -23,5 +23,7 @@ export function getPageSeo(): PageSeo | null {
 
 export function subscribePageSeo(listener: Listener) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }

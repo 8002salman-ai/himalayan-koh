@@ -25,7 +25,7 @@ export interface ResolvedProduct {
 }
 
 function logResolveDebug(debug: ProductResolveDebug) {
-  if (!import.meta.env.DEV) return;
+  if (process.env.NODE_ENV !== 'development') return;
   console.debug('[PDP] product resolve', debug);
 }
 
@@ -81,7 +81,7 @@ export async function resolveProductBySlug(routeSlug: string): Promise<ResolvedP
 
     if (!row) {
       const { products } = await productsApi.getProducts({ limit: 100 });
-      row = findInList(products, normalizedSlug);
+      row = findInList(products, normalizedSlug) ?? null;
       if (row) {
         debug.listScanHit = true;
       }

@@ -1,13 +1,15 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "himalayan-koh-ecommerce",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "next dev",
+    "build": "npm run generate:sitemap && next build",
+    "start": "next start",
+    "lint": "next lint",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "build": "npm run generate:sitemap && vite build",
-    "preview": "vite preview",
+    "generate:routes": "node scripts/generate-next-routes.mjs",
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
     "verify:rls": "node scripts/verify-rls.mjs",
@@ -20,23 +22,20 @@
     "clsx": "2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.16.0",
+    "next": "^15.3.3",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "react-router-dom": "^7.15.1",
     "stripe": "^17.7.0",
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.17",
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.1",
     "dotenv": "^16.4.7",
     "pg": "^8.14.1",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3",
-    "vite": "7.3.2",
-    "vite-plugin-singlefile": "2.3.0"
+    "typescript": "5.9.3"
   }
 }

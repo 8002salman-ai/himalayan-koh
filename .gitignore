@@ -4,3 +4,8 @@ node_modules
 .env.*.local
 
 .vercel
+.next
+out
+
+# Legacy Vite build output (Next.js uses .next)
+dist

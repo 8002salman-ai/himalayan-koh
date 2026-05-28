@@ -37,8 +37,14 @@ export default async function handler(request, response) {
     });
   }
 
-  if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('sk_live_')) {
-    return response.status(503).json({ error: 'Stripe test mode is not configured on the server.' });
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return response.status(503).json({ error: 'STRIPE_SECRET_KEY is not configured on the server.' });
+  }
+  if (
+    process.env.STRIPE_SECRET_KEY.startsWith('sk_live_') &&
+    process.env.STRIPE_ALLOW_LIVE !== 'true'
+  ) {
+    return response.status(503).json({ error: 'Live Stripe keys require STRIPE_ALLOW_LIVE=true.' });
   }
 
   const signature = request.headers['stripe-signature'];

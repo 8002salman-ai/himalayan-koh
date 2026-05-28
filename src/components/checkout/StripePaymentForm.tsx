@@ -7,7 +7,8 @@ import {
 } from '@stripe/react-stripe-js';
 import { loadStripe, type StripeElementsOptions } from '@stripe/stripe-js';
 import { Loader2 } from 'lucide-react';
-import { stripePublishableKey } from '../../lib/payments/stripe';
+import { getStripeSuccessUrl } from '../../lib/payments/checkoutUrls';
+import { stripePublishableKey } from '../../lib/stripe/config';
 
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
@@ -38,7 +39,7 @@ function PaymentFormInner({
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/checkout`,
+          return_url: getStripeSuccessUrl(),
         },
         redirect: 'if_required',
       });

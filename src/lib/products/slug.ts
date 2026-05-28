@@ -1,3 +1,5 @@
+import type { Product } from '@/data/products';
+
 /**
  * Shared product slug helpers for PDP links and lookup.
  */
@@ -25,9 +27,9 @@ export function slugsMatch(a: string | undefined | null, b: string | undefined |
 }
 
 export function getFallbackProductBySlug(
-  catalog: { slug: string }[],
+  catalog: Product[],
   slug: string
-): (typeof catalog)[number] | undefined {
+): Product | undefined {
   const normalized = normalizeProductSlug(slug);
   if (!normalized) return undefined;
   return catalog.find((product) => slugsMatch(product.slug, normalized));

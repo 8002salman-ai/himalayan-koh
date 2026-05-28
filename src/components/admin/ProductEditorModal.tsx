@@ -660,7 +660,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       Full Description
                     </label>
                     <RichTextEditor
-                      value={formData.description}
+                      value={formData.description ?? ''}
                       onChange={(description) => setFormData(prev => ({ ...prev, description }))}
                       placeholder="Detailed product description..."
                       minHeight={200}

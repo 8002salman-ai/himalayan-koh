@@ -1,35 +1,29 @@
+import { parseJsonBody, rejectMethod } from './_lib/request.js';
 import { getStripeClient, assertStripeConfigured } from './_lib/stripeClient.js';
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js';
 import { markOrderPaid } from './_lib/updateOrderPayment.js';
+import { validateVerifyPaymentBody } from './_lib/validation.js';
 
-/**
- * After client-side confirmPayment, verify PI with Stripe and mark order paid (service role).
- *
- * @param {import('http').IncomingMessage} request
- * @param {import('http').ServerResponse} response
- */
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
-    response.setHeader('Allow', 'POST');
-    return response.status(405).json({ error: 'Method not allowed' });
+    return rejectMethod(request, response, ['POST']);
   }
 
   if (!assertStripeConfigured(response)) return;
 
   let body;
   try {
-    body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+    body = await parseJsonBody(request);
   } catch {
     return response.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : '';
-  const paymentIntentId =
-    typeof body?.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
-
-  if (!orderId || !paymentIntentId) {
-    return response.status(400).json({ error: 'orderId and paymentIntentId are required.' });
+  const validated = validateVerifyPaymentBody(body);
+  if (!validated.ok) {
+    return response.status(validated.status).json({ error: validated.error });
   }
+
+  const { orderId, paymentIntentId } = validated.data;
 
   try {
     const stripe = getStripeClient();

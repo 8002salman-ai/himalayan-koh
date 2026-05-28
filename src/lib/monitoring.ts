@@ -14,7 +14,8 @@ export function createErrorId(): string {
 }
 
 export async function initMonitoring(): Promise<void> {
-  if (import.meta.env.VITE_SENTRY_DSN) {
+  const { publicEnv } = await import('./env');
+  if (publicEnv.sentryDsn) {
     console.info(
       '[monitoring] VITE_SENTRY_DSN is set. Install @sentry/react and wire init in monitoring.ts to enable Sentry.'
     );
