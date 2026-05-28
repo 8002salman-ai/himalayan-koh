@@ -42,6 +42,29 @@ Events: `payment_intent.succeeded`, `payment_intent.payment_failed`
 
 **Test card:** `4242 4242 4242 4242` · any future expiry · any CVC
 
+## Optional — Shippo shipping (rates + labels)
+
+| Variable | Scope | Notes |
+|----------|--------|--------|
+| `SHIPPO_API_KEY` | Server | Test key `shippo_test_...` from [Shippo](https://apps.goshippo.com/) |
+| `NEXT_PUBLIC_SHIPPO_ENABLED` | Client | Set `true` when Shippo is configured — shows live rates on `/checkout` |
+| `SHIPPO_FROM_NAME` | Server | Warehouse / ship-from name |
+| `SHIPPO_FROM_STREET1` | Server | Ship-from street address |
+| `SHIPPO_FROM_CITY` | Server | Ship-from city |
+| `SHIPPO_FROM_STATE` | Server | Ship-from state (e.g. `TX`) |
+| `SHIPPO_FROM_ZIP` | Server | Ship-from postal code |
+| `SHIPPO_FROM_COUNTRY` | Server | Default `US` |
+| `SHIPPO_FROM_PHONE` | Server | Optional |
+| `SHIPPO_FROM_EMAIL` | Server | Optional |
+
+Run migration `008_shippo_shipping.sql` (included in `npm run setup:supabase`) before using labels.
+
+**Admin:** `/admin/orders` → select order → **Create Shippo Label** (requires admin login).
+
+**Checkout:** When enabled, customers see live carrier rates after entering a complete shipping address. Flat rates remain the fallback when Shippo is not configured.
+
+Verify locally: `npm run check:shippo`
+
 ## Optional — error monitoring
 
 | Variable | Scope | Notes |

@@ -29,6 +29,8 @@ export interface TotalsLineItem {
 export interface CalculateOrderOptions {
   couponCode?: string;
   shippingMethod?: ShippingMethod;
+  /** Live Shippo rate amount — overrides flat-rate shipping when set. */
+  shippingCostOverride?: number;
 }
 
 export function calculateOrderTotals(items: TotalsLineItem[], options: CalculateOrderOptions = {}): OrderTotals {
@@ -41,11 +43,14 @@ export function calculateOrderTotals(items: TotalsLineItem[], options: Calculate
   const discountAmount = coupon ? subtotal * coupon.percentage : 0;
   const taxableSubtotal = Math.max(0, subtotal - discountAmount);
   const shippingMethod = options.shippingMethod || 'standard';
-  const shippingCost = shippingMethod === 'expedited'
-    ? EXPEDITED_SHIPPING_COST
-    : subtotal >= FREE_SHIPPING_THRESHOLD
-      ? 0
-      : STANDARD_SHIPPING_COST;
+  const shippingCost =
+    typeof options.shippingCostOverride === 'number' && options.shippingCostOverride >= 0
+      ? options.shippingCostOverride
+      : shippingMethod === 'expedited'
+        ? EXPEDITED_SHIPPING_COST
+        : subtotal >= FREE_SHIPPING_THRESHOLD
+          ? 0
+          : STANDARD_SHIPPING_COST;
   const taxAmount = taxableSubtotal * TAX_RATE;
   const total = taxableSubtotal + shippingCost + taxAmount;
 
@@ -79,6 +84,10 @@ export interface CreateOrderData {
   paymentStatus?: Order['payment_status'];
   couponCode?: string;
   shippingMethod?: ShippingMethod;
+  shippingCostOverride?: number;
+  shippoRateId?: string;
+  shippingCarrier?: string;
+  shippingService?: string;
   notes?: string;
   /** Clear cart after order insert (default true). Stripe checkout clears after payment succeeds. */
   clearCart?: boolean;
@@ -110,6 +119,7 @@ export const ordersApi = {
       {
         couponCode: data.couponCode,
         shippingMethod: data.shippingMethod,
+        shippingCostOverride: data.shippingCostOverride,
       }
     );
     const normalizedCoupon = data.couponCode?.trim().toUpperCase();
@@ -132,7 +142,13 @@ export const ordersApi = {
         billing_address: {
           ...(data.billingAddress || data.shippingAddress),
           shippingMethod: data.shippingMethod || 'standard',
+          shippoRateId: data.shippoRateId || null,
+          shippingCarrier: data.shippingCarrier || null,
+          shippingService: data.shippingService || null,
         } as unknown as Json,
+        shippo_rate_id: data.shippoRateId || null,
+        shipping_carrier: data.shippingCarrier || null,
+        shipping_service: data.shippingService || null,
         payment_method: data.paymentMethod || data.paymentProvider || null,
         notes: [
           data.notes,

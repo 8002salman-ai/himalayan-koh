@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { calculateOrderTotals } from '@/lib/stripe/server/orderTotals';
+import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getStripeClient, getStripeMode, stripeConfigError } from '@/lib/stripe/server/stripe';
 import { validateCreatePaymentIntentBody } from '@/lib/stripe/server/validation';
 
@@ -22,8 +23,27 @@ export async function POST(request: Request) {
   }
 
   const { email, orderId, couponCode, shippingMethod, lineItems } = validated.data;
-  const totals = calculateOrderTotals(lineItems, { couponCode, shippingMethod });
-  const amountCents = Math.round(totals.total * 100);
+
+  let amountCents: number;
+
+  if (orderId) {
+    const supabase = getSupabaseAdmin();
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('total')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (orderError) throw orderError;
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+    }
+
+    amountCents = Math.round(Number((order as { total: number }).total) * 100);
+  } else {
+    const totals = calculateOrderTotals(lineItems, { couponCode, shippingMethod });
+    amountCents = Math.round(totals.total * 100);
+  }
 
   if (amountCents < MIN_AMOUNT_CENTS) {
     return NextResponse.json({ error: 'Order total is below the minimum charge amount.' }, { status: 400 });

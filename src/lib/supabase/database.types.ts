@@ -400,6 +400,11 @@ export interface Database {
           billing_address: Json;
           notes: string | null;
           tracking_number: string | null;
+          shippo_rate_id: string | null;
+          shippo_transaction_id: string | null;
+          shipping_carrier: string | null;
+          shipping_service: string | null;
+          label_url: string | null;
           shipped_at: string | null;
           delivered_at: string | null;
           created_at: string;
@@ -424,6 +429,11 @@ export interface Database {
           billing_address: Json;
           notes?: string | null;
           tracking_number?: string | null;
+          shippo_rate_id?: string | null;
+          shippo_transaction_id?: string | null;
+          shipping_carrier?: string | null;
+          shipping_service?: string | null;
+          label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
           created_at?: string;
@@ -448,6 +458,11 @@ export interface Database {
           billing_address?: Json;
           notes?: string | null;
           tracking_number?: string | null;
+          shippo_rate_id?: string | null;
+          shippo_transaction_id?: string | null;
+          shipping_carrier?: string | null;
+          shipping_service?: string | null;
+          label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
           created_at?: string;

@@ -11,8 +11,14 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(root, '.env.local') });
 dotenv.config({ path: path.join(root, '.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY;
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 
@@ -32,7 +38,7 @@ function fail(label, detail = '') {
 
 if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
   console.error(
-    'Skip: set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY in .env'
+    'Skip: set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY in .env.local'
   );
   process.exit(1);
 }

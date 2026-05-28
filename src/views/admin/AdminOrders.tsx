@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { useAuthContext } from '../../context/AuthContext';
+import { createShippoLabel } from '../../lib/shippo/client';
+import { publicEnv } from '../../lib/env';
 import type { Json, Order } from '../../lib/supabase/database.types';
 
 const orderStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -51,12 +54,16 @@ interface ShippingAddress {
 }
 
 export default function AdminOrders() {
+  const { session } = useAuthContext();
+  const shippoEnabled = publicEnv.shippoEnabled;
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [analytics, setAnalytics] = useState<AdminOrderAnalytics | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [editingOrder, setEditingOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [labelCreating, setLabelCreating] = useState(false);
+  const [labelError, setLabelError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -156,6 +163,28 @@ export default function AdminOrders() {
       console.error('Failed to update order:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateShippoLabel = async (order: AdminOrder) => {
+    const token = session?.access_token;
+    if (!token) {
+      setLabelError('Sign in again to create shipping labels.');
+      return;
+    }
+
+    setLabelCreating(true);
+    setLabelError(null);
+    try {
+      const result = await createShippoLabel(order.id, token);
+      await fetchOrders();
+      if (result.labelUrl) {
+        window.open(result.labelUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      setLabelError(err instanceof Error ? err.message : 'Unable to create Shippo label.');
+    } finally {
+      setLabelCreating(false);
     }
   };
 
@@ -392,6 +421,10 @@ export default function AdminOrders() {
           address={selectedAddress}
           onUpdate={openStatusModal}
           onInvoice={handlePrintInvoice}
+          shippoEnabled={shippoEnabled}
+          labelCreating={labelCreating}
+          labelError={labelError}
+          onCreateLabel={handleCreateShippoLabel}
         />
       </div>
 
@@ -484,11 +517,19 @@ function OrderDetailPanel({
   address,
   onUpdate,
   onInvoice,
+  shippoEnabled,
+  labelCreating,
+  labelError,
+  onCreateLabel,
 }: {
   order: AdminOrder | null;
   address: ShippingAddress;
   onUpdate: (order: AdminOrder) => void;
   onInvoice: (order: AdminOrder) => void;
+  shippoEnabled: boolean;
+  labelCreating: boolean;
+  labelError: string | null;
+  onCreateLabel: (order: AdminOrder) => void;
 }) {
   if (!order) {
     return (
@@ -517,8 +558,22 @@ function OrderDetailPanel({
         <InfoRow label="Email" value={order.email} />
         <InfoRow label="Phone" value={order.phone || 'Not provided'} />
         <InfoRow label="Payment" value={capitalize(order.payment_status)} />
+        <InfoRow label="Carrier" value={order.shipping_carrier || 'Not assigned'} />
+        <InfoRow label="Service" value={order.shipping_service || 'Not assigned'} />
         <InfoRow label="Tracking" value={order.tracking_number || 'Not assigned'} />
       </div>
+
+      {order.label_url && (
+        <a
+          href={order.label_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-himalayan hover:underline mb-5"
+        >
+          <Truck size={16} />
+          Download shipping label (PDF)
+        </a>
+      )}
 
       <div className="border-t border-gray-100 pt-4 mb-5">
         <h4 className="font-semibold text-charcoal mb-3">Shipping Address</h4>
@@ -573,6 +628,22 @@ function OrderDetailPanel({
           Invoice
         </button>
       </div>
+
+      {shippoEnabled && !order.tracking_number && order.status !== 'cancelled' && (
+        <button
+          type="button"
+          onClick={() => onCreateLabel(order)}
+          disabled={labelCreating}
+          className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 border border-himalayan text-himalayan rounded-xl font-semibold hover:bg-himalayan/5 transition-colors disabled:opacity-70"
+        >
+          {labelCreating ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />}
+          {labelCreating ? 'Creating Shippo label...' : 'Create Shippo Label'}
+        </button>
+      )}
+
+      {labelError && (
+        <p className="mt-3 text-sm text-red-600">{labelError}</p>
+      )}
     </div>
   );
 }

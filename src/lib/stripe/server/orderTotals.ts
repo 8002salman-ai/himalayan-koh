@@ -11,7 +11,11 @@ export const supportedCoupons: Record<string, { label: string; percentage: numbe
 
 export function calculateOrderTotals(
   items: { quantity: number; unitPrice: number }[],
-  options: { couponCode?: string; shippingMethod?: 'standard' | 'expedited' } = {}
+  options: {
+    couponCode?: string;
+    shippingMethod?: 'standard' | 'expedited';
+    shippingCostOverride?: number;
+  } = {}
 ) {
   const subtotal = items.reduce(
     (sum, item) => sum + Number(item.unitPrice) * Number(item.quantity),
@@ -23,11 +27,13 @@ export function calculateOrderTotals(
   const taxableSubtotal = Math.max(0, subtotal - discountAmount);
   const shippingMethod = options.shippingMethod === 'expedited' ? 'expedited' : 'standard';
   const shippingCost =
-    shippingMethod === 'expedited'
-      ? EXPEDITED_SHIPPING_COST
-      : subtotal >= FREE_SHIPPING_THRESHOLD
-        ? 0
-        : STANDARD_SHIPPING_COST;
+    typeof options.shippingCostOverride === 'number' && options.shippingCostOverride >= 0
+      ? options.shippingCostOverride
+      : shippingMethod === 'expedited'
+        ? EXPEDITED_SHIPPING_COST
+        : subtotal >= FREE_SHIPPING_THRESHOLD
+          ? 0
+          : STANDARD_SHIPPING_COST;
   const taxAmount = taxableSubtotal * TAX_RATE;
   const total = taxableSubtotal + shippingCost + taxAmount;
 

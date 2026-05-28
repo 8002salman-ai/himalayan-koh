@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Loader2, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
@@ -12,6 +12,7 @@ import {
 } from '../lib/supabase/api/orders';
 import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { publicEnv } from '../lib/env';
 import { useCart } from '../store/cartStore';
 import {
   createStripePaymentIntent,
@@ -23,7 +24,8 @@ import {
   clearPendingStripeCheckout,
   savePendingStripeCheckout,
 } from '../lib/payments/stripeSessionStorage';
-
+import { fetchShippoRates } from '../lib/shippo/client';
+import type { ShippoRate } from '../lib/shippo/types';
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
 const labelClass = 'block text-sm font-semibold text-charcoal mb-1.5';
 
@@ -73,9 +75,16 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('standard');
-  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('invoice');
+  const [shippoRates, setShippoRates] = useState<ShippoRate[]>([]);
+  const [selectedShippoRateId, setSelectedShippoRateId] = useState<string | null>(null);
+  const [shippoRatesLoading, setShippoRatesLoading] = useState(false);
+  const [shippoRatesError, setShippoRatesError] = useState<string | null>(null);
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('invoice');
   const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
+
+  const shippoEnabled = publicEnv.shippoEnabled;
+  const selectedShippoRate = shippoRates.find((rate) => rate.objectId === selectedShippoRateId) || null;
+  const useLiveShippoRates = shippoEnabled && shippoRates.length > 0 && Boolean(selectedShippoRate);
 
   const totals = useMemo(
     () => calculateOrderTotals(
@@ -83,11 +92,77 @@ export default function CheckoutPage() {
         quantity: item.quantity,
         unitPrice: item.price,
       })),
-      { couponCode, shippingMethod }
+      {
+        couponCode,
+        shippingMethod,
+        shippingCostOverride: useLiveShippoRates ? selectedShippoRate?.amount : undefined,
+      }
     ),
-    [couponCode, items, shippingMethod]
+    [couponCode, items, shippingMethod, useLiveShippoRates, selectedShippoRate?.amount]
   );
 
+  useEffect(() => {
+    if (!shippoEnabled || items.length === 0) {
+      setShippoRates([]);
+      setSelectedShippoRateId(null);
+      return;
+    }
+
+    const addressReady =
+      form.fullName.trim() &&
+      form.addressLine1.trim() &&
+      form.city.trim() &&
+      form.state.trim() &&
+      form.postalCode.trim() &&
+      form.country.trim();
+
+    if (!addressReady) {
+      setShippoRates([]);
+      setSelectedShippoRateId(null);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setShippoRatesLoading(true);
+      setShippoRatesError(null);
+      try {
+        const result = await fetchShippoRates({
+          address: buildShippingAddress(form),
+          email: form.email,
+          items: items.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+          })),
+        });
+        setShippoRates(result.rates);
+        setSelectedShippoRateId((current) => {
+          if (current && result.rates.some((rate) => rate.objectId === current)) {
+            return current;
+          }
+          return result.rates[0]?.objectId || null;
+        });
+      } catch (err) {
+        setShippoRates([]);
+        setSelectedShippoRateId(null);
+        setShippoRatesError(err instanceof Error ? err.message : 'Unable to load live shipping rates.');
+      } finally {
+        setShippoRatesLoading(false);
+      }
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    shippoEnabled,
+    items,
+    form.fullName,
+    form.addressLine1,
+    form.addressLine2,
+    form.city,
+    form.state,
+    form.postalCode,
+    form.country,
+    form.email,
+  ]);
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
@@ -179,20 +254,27 @@ export default function CheckoutPage() {
         ? shippingAddress
         : buildBillingAddress(form);
 
+      const orderPayload = {
+        email: form.email,
+        phone: form.phone || undefined,
+        shippingAddress,
+        billingAddress,
+        couponCode,
+        shippingMethod,
+        shippingCostOverride: useLiveShippoRates ? selectedShippoRate?.amount : undefined,
+        shippoRateId: useLiveShippoRates ? selectedShippoRate?.objectId : undefined,
+        shippingCarrier: useLiveShippoRates ? selectedShippoRate?.provider : undefined,
+        shippingService: useLiveShippoRates ? selectedShippoRate?.serviceName : undefined,
+        notes: form.notes || undefined,
+      };
+
       if (paymentMethod === 'invoice') {
         const order = await ordersApi.createOrder({
-          email: form.email,
-          phone: form.phone || undefined,
-          shippingAddress,
-          billingAddress,
+          ...orderPayload,
           paymentProvider: 'invoice',
           paymentMethod: 'invoice',
           paymentStatus: 'pending',
-          couponCode,
-          shippingMethod,
-          notes: form.notes || undefined,
         }, user?.id);
-
         await clearCart();
         navigate('/order-confirmation', { state: { order } });
         return;
@@ -204,19 +286,12 @@ export default function CheckoutPage() {
       }
 
       const order = await ordersApi.createOrder({
-        email: form.email,
-        phone: form.phone || undefined,
-        shippingAddress,
-        billingAddress,
+        ...orderPayload,
         paymentProvider: 'stripe',
         paymentMethod: 'stripe_card',
         paymentStatus: 'pending',
-        couponCode,
-        shippingMethod,
-        notes: form.notes || undefined,
         clearCart: false,
       }, user?.id);
-
       const paymentIntent = await createStripePaymentIntent({
         email: form.email,
         orderId: order.id,
@@ -373,6 +448,52 @@ export default function CheckoutPage() {
 
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Shipping Method</h2>
+
+              {shippoEnabled && (
+                <div className="mb-4 rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm">
+                  <p className="font-semibold text-charcoal">Live carrier rates (Shippo)</p>
+                  {shippoRatesLoading && (
+                    <p className="text-charcoal-light mt-1 flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      Fetching rates for your address...
+                    </p>
+                  )}
+                  {!shippoRatesLoading && shippoRatesError && (
+                    <p className="text-amber-800 mt-1">{shippoRatesError} Using standard flat rates below.</p>
+                  )}
+                  {!shippoRatesLoading && shippoRates.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {shippoRates.map((rate) => (
+                        <button
+                          key={rate.objectId}
+                          type="button"
+                          onClick={() => setSelectedShippoRateId(rate.objectId)}
+                          className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                            selectedShippoRateId === rate.objectId
+                              ? 'border-himalayan bg-white'
+                              : 'border-gray-200 hover:border-himalayan/40'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-charcoal">{rate.provider} — {rate.serviceName}</p>
+                              <p className="text-xs text-charcoal-light mt-0.5">
+                                {rate.estimatedDays ? `${rate.estimatedDays} business days` : 'Estimated delivery varies'}
+                              </p>
+                            </div>
+                            <span className="font-bold text-himalayan">${rate.amount.toFixed(2)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!shippoRatesLoading && shippoRates.length === 0 && !shippoRatesError && (
+                    <p className="text-charcoal-light mt-1">Complete your shipping address to see live carrier rates.</p>
+                  )}
+                </div>
+              )}
+
+              {!useLiveShippoRates && (
               <div className="grid md:grid-cols-2 gap-4">
                 <ShippingOption
                   active={shippingMethod === 'standard'}
@@ -389,8 +510,8 @@ export default function CheckoutPage() {
                   onClick={() => setShippingMethod('expedited')}
                 />
               </div>
+              )}
             </section>
-
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Billing Details</h2>
               <label className="flex items-center gap-2 cursor-pointer mb-5">

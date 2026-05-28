@@ -11,8 +11,14 @@ const root = path.join(__dirname, '..');
 dotenv.config({ path: path.join(root, '.env.local') });
 dotenv.config({ path: path.join(root, '.env') });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.SUPABASE_URL;
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY;
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY;
@@ -26,6 +32,7 @@ const migrations = [
   '005_fix_auth_user_trigger.sql',
   '006_product_images_table.sql',
   '007_category_hub_overrides.sql',
+  '008_shippo_shipping.sql',
 ];
 
 function requireEnv() {

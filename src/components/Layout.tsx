@@ -59,7 +59,7 @@ export default function Layout({ children }: LayoutProps) {
               <MapPin size={14} />
               <span className="hidden md:inline">Product Locator</span>
             </Link>
-            <Link to="/contact" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
+            <Link to="/checkout" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
               <Calculator size={14} />
               <span className="hidden md:inline">Calculate Shipping</span>
             </Link>
