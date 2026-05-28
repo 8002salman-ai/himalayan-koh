@@ -7,8 +7,14 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(root, '.env.local') });
 dotenv.config({ path: path.join(root, '.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY;
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY;
@@ -30,13 +36,16 @@ const demoAccounts = [
   },
 ];
 
-if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+const missing = [];
+if (!supabaseUrl) missing.push('SUPABASE_URL, NEXT_PUBLIC_SUPABASE_URL, or VITE_SUPABASE_URL');
+if (!supabaseAnonKey) missing.push('SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY, or VITE_SUPABASE_ANON_KEY');
+if (!serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)');
+
+if (missing.length) {
   console.error([
     'Missing Supabase environment variables.',
     'Required:',
-    '- SUPABASE_URL or VITE_SUPABASE_URL',
-    '- SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY',
-    '- SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)',
+    ...missing.map((name) => `- ${name}`),
   ].join('\n'));
   process.exit(1);
 }
