@@ -45,7 +45,7 @@ const navItems = [
   { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
   { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
-  { label: 'Settings', path: '/admin/settings', icon: Settings },
+  { label: 'Settings', path: '/admin', icon: Settings },
 ];
 
 const mobileNavItems = [
@@ -380,7 +380,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       My Profile
                     </Link>
                     <Link
-                      to="/admin/settings"
+                      to="/admin"
                       className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
                       onClick={() => setUserMenuOpen(false)}
                     >

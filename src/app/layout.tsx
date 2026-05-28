@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
 import Providers from './providers';
 import './globals.css';
+import { publicEnv } from '@/lib/env';
+
+const siteOrigin = publicEnv.siteUrl?.trim() || 'https://himalayankoh.com';
 
 export const metadata: Metadata = {
   title: 'Himalayan Koh – Premium Himalayan Pink Salt for Livestock & Cooking',
   description:
     'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, 84 trace minerals.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://himalayankoh.com'),
+  metadataBase: new URL(siteOrigin),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

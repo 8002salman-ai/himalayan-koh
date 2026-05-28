@@ -6,23 +6,22 @@ import HashUrlRedirect from '@/components/HashUrlRedirect';
 import RouteScrollRestoration from '@/components/RouteScrollRestoration';
 import SEO from '@/components/SEO';
 
-function ClientShell({ children }: { children: React.ReactNode }) {
+/** SEO / scroll helpers use search params and must suspend — keep off the main page tree. */
+function ClientEffects() {
   return (
-    <>
+    <Suspense fallback={null}>
       <HashUrlRedirect />
       <RouteScrollRestoration />
       <SEO />
-      {children}
-    </>
+    </Suspense>
   );
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <Suspense fallback={null}>
-        <ClientShell>{children}</ClientShell>
-      </Suspense>
+      <ClientEffects />
+      {children}
     </AuthProvider>
   );
 }

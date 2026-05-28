@@ -63,10 +63,11 @@ If Sentry is not configured, errors are logged to the browser console with a sup
 |----------|---------|--------|
 | `VITE_SINGLE_FILE` | unset / `false` | Set `true` only for legacy single-HTML exports. **Production should leave this unset** for normal chunked builds. |
 
-**Vercel build command:** `npm run build`  
-**Output directory:** `dist`
+**Vercel:** Framework **Next.js** (see `vercel.json`). Do **not** set output directory to `dist` — that was the legacy Vite build and causes blank pages (`index-*.js` / `index-*.css` 404).
 
-No `vercel.json` is required; `api/` routes deploy as serverless functions automatically.
+**Local dev:** `npm run dev` or `npm run dev:clean` — serves `/_next/static/...`, not `/assets/index-*.js`.
+
+**Production locally:** `npm run build` then `npm run start`.
 
 ## Routing (Phase 1)
 

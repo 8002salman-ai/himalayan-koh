@@ -33,6 +33,10 @@ function getSnapshot() {
   return cartItems;
 }
 
+function getServerSnapshot() {
+  return cartItems;
+}
+
 function saveLocalCart() {
   if (!isSupabaseConfigured()) {
     localStorage.setItem(localCartKey, JSON.stringify(cartItems));
@@ -82,7 +86,7 @@ async function loadCart(userId?: string) {
 }
 
 export function useCart() {
-  const items = useSyncExternalStore(subscribe, getSnapshot);
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const { user } = useAuthContext();
   const userId = user?.id;
 

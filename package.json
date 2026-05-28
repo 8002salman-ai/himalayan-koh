@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "node scripts/clean-next.mjs && next dev",
     "build": "npm run generate:sitemap && next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,7 +14,8 @@
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
     "verify:rls": "node scripts/verify-rls.mjs",
-    "verify:phase0": "node scripts/verify-phase0.mjs"
+    "verify:phase0": "node scripts/verify-phase0.mjs",
+    "check:stripe": "node scripts/check-stripe-setup.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",

@@ -374,14 +374,14 @@ export default function AdminDashboard() {
           <h3 className="font-semibold text-charcoal mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
             <Link
-              to="/admin/products/new"
+              to="/admin/products?action=new"
               className="flex items-center gap-3 p-3 bg-himalayan/5 rounded-xl hover:bg-himalayan/10 transition-colors"
             >
               <Package size={18} className="text-himalayan" />
               <span className="text-sm font-medium text-charcoal">Add Product</span>
             </Link>
             <Link
-              to="/admin/categories/new"
+              to="/admin/categories"
               className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
             >
               <FolderTree size={18} className="text-purple-600" />

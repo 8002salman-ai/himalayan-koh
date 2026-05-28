@@ -145,7 +145,8 @@ export default function CheckoutPage() {
     }
 
     if (paymentMethod === 'stripe' && !isStripeConfigured) {
-      nextErrors.coupon = 'Card payments need VITE_STRIPE_PUBLISHABLE_KEY or NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_test_...). Use invoice checkout or add keys in Vercel.';
+      nextErrors.coupon =
+        'Card payments need NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY in .env.local (test keys pk_test_ / sk_test_).';
     }
 
     setFieldErrors(nextErrors);
@@ -307,6 +308,25 @@ export default function CheckoutPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {(!isSupabaseConfigured() || (paymentMethod === 'stripe' && !isStripeConfigured)) && (
+          <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p className="font-semibold">Payments not configured on this machine</p>
+            <ul className="mt-2 list-disc pl-5 space-y-1">
+              {!isSupabaseConfigured() && (
+                <li>
+                  Add Supabase keys to <code className="text-xs">.env.local</code> (URL + anon key + service role).
+                </li>
+              )}
+              {paymentMethod === 'stripe' && !isStripeConfigured && (
+                <li>
+                  Add Stripe test keys to <code className="text-xs">.env.local</code>, restart with{' '}
+                  <code className="text-xs">npm run dev:clean</code>, then run{' '}
+                  <code className="text-xs">npm run check:stripe</code>.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white rounded-2xl shadow-md p-6">
