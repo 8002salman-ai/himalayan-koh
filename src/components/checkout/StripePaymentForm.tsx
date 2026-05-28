@@ -91,7 +91,7 @@ export default function StripePaymentForm({
   if (!stripePromise) {
     return (
       <p className="text-sm text-red-600">
-        Stripe publishable key is missing. Add VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...).
+        Stripe publishable key is missing. Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_test_...).
       </p>
     );
   }

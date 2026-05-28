@@ -134,7 +134,7 @@ export default function LoginPage() {
 
           {!supabaseReady && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              Supabase environment variables are missing. Demo login will work after `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel and the demo accounts are seeded.
+              Supabase environment variables are missing. Demo login will work after `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are added in Vercel and the demo accounts are seeded.
             </div>
           )}
 

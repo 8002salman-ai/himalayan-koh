@@ -145,7 +145,7 @@ export default function CheckoutPage() {
     }
 
     if (paymentMethod === 'stripe' && !isStripeConfigured) {
-      nextErrors.coupon = 'Card payments need VITE_STRIPE_PUBLISHABLE_KEY or NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_test_...). Use invoice checkout or add keys in Vercel.';
+      nextErrors.coupon = 'Card payments need NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY or VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...). Use invoice checkout or add keys in Vercel.';
     }
 
     setFieldErrors(nextErrors);
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                       ? isStripeTestMode
                         ? 'Test mode — use card 4242 4242 4242 4242.'
                         : 'Secure card payment via Stripe.'
-                      : 'Add VITE_STRIPE_PUBLISHABLE_KEY to enable.'}
+                      : 'Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to enable.'}
                   </p>
                 </button>
               </div>

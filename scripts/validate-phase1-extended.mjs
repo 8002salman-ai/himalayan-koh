@@ -11,6 +11,10 @@ dotenv.config({ path: path.join(root, '.env') });
 
 const base = process.argv[2] || 'http://127.0.0.1:4173';
 const results = [];
+const hasSupabaseEnv = Boolean(
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL) &&
+  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY)
+);
 
 function record(label, status, detail = '') {
   results.push({ label, status, detail });
@@ -31,12 +35,12 @@ async function main() {
     const blogLd = await page.locator('script#json-ld-blog-post').count();
     if (blogCanonical?.includes('/blog/why-dairy-cows-need-trace-minerals')) {
       record('Blog canonical URL', 'PASS', blogCanonical);
-    } else if (!process.env.VITE_SUPABASE_URL) {
+    } else if (!hasSupabaseEnv) {
       record('Blog canonical URL', 'WARN', 'Supabase not configured — post may not load');
     } else {
       record('Blog canonical URL', 'FAIL', blogCanonical || 'missing');
     }
-    record('Blog JSON-LD', blogLd > 0 ? 'PASS' : process.env.VITE_SUPABASE_URL ? 'FAIL' : 'WARN', `count=${blogLd}`);
+    record('Blog JSON-LD', blogLd > 0 ? 'PASS' : hasSupabaseEnv ? 'FAIL' : 'WARN', `count=${blogLd}`);
 
     await page.goto(`${base}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
     const url = page.url();
@@ -47,8 +51,7 @@ async function main() {
     }
 
     await page.goto(`${base}/login`, { waitUntil: 'networkidle' });
-    const hasSupabase = Boolean(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY);
-    if (hasSupabase) {
+    if (hasSupabaseEnv) {
       await page.fill('input[type="email"]', 'admin@himalayankoh.com');
       await page.fill('input[type="password"]', 'Admin123!');
       await page.getByRole('button', { name: /sign in|log in/i }).click();

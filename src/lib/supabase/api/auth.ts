@@ -2,7 +2,7 @@ import { isSupabaseConfigured, supabase } from '../client';
 import type { Profile } from '../database.types';
 
 const supabaseConfigError =
-  'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel/local environment variables, then redeploy.';
+  'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel/local environment variables, then redeploy.';
 
 function ensureSupabaseConfigured() {
   if (!isSupabaseConfigured()) {
