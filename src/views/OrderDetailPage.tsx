@@ -89,6 +89,7 @@ export default function OrderDetailPage() {
           >
             Order Details
           </motion.h1>
+          <p className="text-white/70 mt-2 text-sm">Your purchases, invoices, and package tracking</p>
         </div>
       </div>
 

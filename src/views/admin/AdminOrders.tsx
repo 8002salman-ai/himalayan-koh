@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Check,
@@ -56,6 +57,7 @@ interface ShippingAddress {
 
 export default function AdminOrders() {
   const { session } = useAuthContext();
+  const [searchParams] = useSearchParams();
   const shippoEnabled = publicEnv.shippoEnabled;
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [analytics, setAnalytics] = useState<AdminOrderAnalytics | null>(null);
@@ -125,6 +127,16 @@ export default function AdminOrders() {
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, paymentFilter]);
+
+  const deepLinkOrderId = searchParams.get('orderId');
+
+  useEffect(() => {
+    if (!deepLinkOrderId || orders.length === 0) return;
+    const match = orders.find((order) => order.id === deepLinkOrderId);
+    if (match) {
+      setSelectedOrder(match);
+    }
+  }, [deepLinkOrderId, orders]);
 
   const statCards = [
     { label: 'Total Orders', value: analytics?.totalOrders || 0, icon: Package, color: 'bg-blue-500' },
@@ -247,8 +259,10 @@ export default function AdminOrders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Orders</h1>
-        <p className="text-charcoal-light">Manage orders, invoices, shipping, and refunds.</p>
+        <h1 className="text-2xl font-bold text-charcoal">Manage store orders</h1>
+        <p className="text-charcoal-light">
+          All customer orders — update payment, create Shippo labels, print invoices, and ship.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

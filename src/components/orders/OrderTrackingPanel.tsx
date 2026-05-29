@@ -59,9 +59,11 @@ export default function OrderTrackingPanel({
             Shipment tracking
           </h3>
           <p className="text-sm text-charcoal-light mt-1">
-            {paymentStatus === 'paid' ? 'Payment confirmed' : 'Payment pending'}
-            {' · '}
-            Order {status}
+            {paymentStatus === 'paid'
+              ? status === 'pending'
+                ? 'Payment confirmed · Preparing shipment'
+                : `Payment confirmed · Order ${status}`
+              : `Payment pending · Order ${status}`}
           </p>
         </div>
         {onRefresh && trackingNumber && (
