@@ -30,6 +30,7 @@ export interface ShippoLabelResult {
   transactionId: string;
   trackingNumber: string;
   labelUrl: string;
+  trackingUrl: string | null;
   carrier: string;
   serviceName: string;
 }

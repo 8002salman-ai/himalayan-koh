@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { trackOrderPageUrl } from '../lib/orders/tracking';
 import { Package, ChevronRight, Truck, Check, Clock, XCircle, Loader2, ShoppingCart } from 'lucide-react';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
@@ -231,10 +232,26 @@ export default function OrdersPage() {
                       </span>
                     </div>
                     {selectedOrder.tracking_number && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-charcoal-light">Tracking</span>
-                        <span className="font-medium text-himalayan">{selectedOrder.tracking_number}</span>
+                      <div className="flex flex-col gap-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-charcoal-light">Tracking</span>
+                          <span className="font-medium text-charcoal">{selectedOrder.tracking_number}</span>
+                        </div>
+                        <Link
+                          to={trackOrderPageUrl(selectedOrder.order_number, selectedOrder.email)}
+                          className="inline-flex items-center justify-center px-3 py-2 bg-himalayan text-white rounded-lg text-xs font-semibold hover:bg-himalayan-dark transition-colors"
+                        >
+                          Track package
+                        </Link>
                       </div>
+                    )}
+                    {!selectedOrder.tracking_number && (
+                      <Link
+                        to={trackOrderPageUrl(selectedOrder.order_number, selectedOrder.email)}
+                        className="inline-flex items-center justify-center px-3 py-2 border border-himalayan text-himalayan rounded-lg text-xs font-semibold hover:bg-himalayan/5 transition-colors"
+                      >
+                        Order status
+                      </Link>
                     )}
                   </div>
 

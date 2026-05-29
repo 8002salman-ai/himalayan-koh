@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Check, Clock, Loader2, Package, ShoppingCart, Truck } from 'lucide-react';
 import DashboardSidebar from '../components/account/DashboardSidebar';
+import OrderTrackingPanel from '../components/orders/OrderTrackingPanel';
+import { trackOrderPageUrl } from '../lib/orders/tracking';
 import { useAuthContext } from '../context/AuthContext';
 import { ordersApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
@@ -140,6 +142,17 @@ export default function OrderDetailPage() {
                     ))}
                   </div>
                 </section>
+
+                <OrderTrackingPanel
+                  orderNumber={order.order_number}
+                  email={order.email}
+                  status={order.status}
+                  paymentStatus={order.payment_status}
+                  carrier={order.shipping_carrier}
+                  service={order.shipping_service}
+                  trackingNumber={order.tracking_number}
+                  trackingUrl={order.tracking_url}
+                />
 
                 <div className="grid lg:grid-cols-3 gap-6">
                   <section className="lg:col-span-2 bg-white rounded-2xl shadow-md p-6">

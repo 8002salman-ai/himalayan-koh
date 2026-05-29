@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Loader2, Package } from 'lucide-react';
+import OrderTrackingPanel from '../components/orders/OrderTrackingPanel';
 import { useAuthContext } from '../context/AuthContext';
 import { getErrorMessage } from '../lib/errors';
+import { trackOrderPageUrl } from '../lib/orders/tracking';
 import { ordersApi } from '../lib/supabase/api/orders';
 import type { Json, OrderWithItems } from '../lib/supabase/database.types';
 
@@ -71,6 +73,12 @@ export default function OrderConfirmationPage() {
   }, [orderId, user?.id, stateOrder]);
 
   const shippingAddress = toShippingAddress(order?.shipping_address);
+  const activeStep =
+    order?.payment_status === 'paid' && order.status === 'pending'
+      ? 1
+      : order
+        ? Math.max(0, ['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status))
+        : 0;
 
   if (loading) {
     return (
@@ -146,7 +154,7 @@ export default function OrderConfirmationPage() {
               <h3 className="font-semibold text-charcoal mb-3">Order Flow</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 {['Pending', 'Processing', 'Shipped', 'Delivered'].map((step, index) => (
-                  <div key={step} className={`rounded-xl px-3 py-3 border ${index === 0 ? 'border-himalayan bg-himalayan/10 text-himalayan' : 'border-gray-100 text-charcoal-light'}`}>
+                  <div key={step} className={`rounded-xl px-3 py-3 border ${index <= activeStep ? 'border-himalayan bg-himalayan/10 text-himalayan' : 'border-gray-100 text-charcoal-light'}`}>
                     {step}
                   </div>
                 ))}
@@ -173,6 +181,23 @@ export default function OrderConfirmationPage() {
           </section>
 
           <aside className="lg:col-span-1 space-y-6">
+            <OrderTrackingPanel
+              orderNumber={order.order_number}
+              email={order.email}
+              status={order.status}
+              paymentStatus={order.payment_status}
+              carrier={order.shipping_carrier}
+              service={order.shipping_service}
+              trackingNumber={order.tracking_number}
+              trackingUrl={order.tracking_url}
+              compact
+            />
+            <p className="text-xs text-charcoal-light text-center">
+              <Link to={trackOrderPageUrl(order.order_number, order.email)} className="text-himalayan font-semibold hover:underline">
+                Open full tracking page
+              </Link>
+            </p>
+
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h3 className="font-serif text-lg font-bold text-charcoal mb-4">Invoice Summary</h3>
               <div className="space-y-2">

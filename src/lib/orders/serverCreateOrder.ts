@@ -5,6 +5,7 @@ import {
   type CreateOrderData,
 } from '@/lib/supabase/api/orders';
 import type { CartWithItems, Json, Order, OrderItem, OrderWithItems } from '@/lib/supabase/database.types';
+import { dispatchOrderCreatedNotifications } from '@/lib/orders/notifyOrderEvents';
 
 async function loadCartForCheckout(
   userId: string | null,
@@ -120,6 +121,8 @@ export async function serverCreateOrder(
       .eq('cart_id', cart.id);
     if (clearError) throw clearError;
   }
+
+  dispatchOrderCreatedNotifications((order as Order).id);
 
   return {
     ...(order as Order),

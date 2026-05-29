@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
+import { dispatchPaymentReceivedNotifications } from '@/lib/orders/notifyOrderEvents';
 
 export async function markOrderPaid(orderId: string, paymentIntentId: string) {
   const supabase = getSupabaseAdmin();
@@ -29,12 +30,14 @@ export async function markOrderPaid(orderId: string, paymentIntentId: string) {
     .update({
       payment_status: 'paid',
       payment_method: 'stripe_card',
+      status: 'processing',
       notes,
       updated_at: new Date().toISOString(),
     } as never)
     .eq('id', orderId);
 
   if (updateError) throw updateError;
+  dispatchPaymentReceivedNotifications(orderId);
   return { alreadyPaid: false };
 }
 

@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, signOut } = useAuthContext();
+  const { profile, signOut, user } = useAuthContext();
   const unreadCount = alerts.filter((alert) => !alert.read).length;
 
   const handleSignOut = async () => {
@@ -96,6 +96,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           message: `${order.order_number || 'Order'} from ${order.email || 'customer'}${order.total ? ` · $${Number(order.total).toFixed(2)}` : ''}`,
         });
       })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          ...(user?.id ? { filter: `user_id=eq.${user.id}` } : {}),
+        },
+        (payload) => {
+          const note = payload.new as { title?: string; message?: string };
+          addAlert({
+            type: 'order',
+            title: note.title || 'Order update',
+            message: note.message || 'You have a new order notification.',
+          });
+        }
+      )
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
         const customer = payload.new as { full_name?: string; email?: string; role?: string };
         if (customer.role === 'admin') return;
@@ -125,7 +142,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, []);
+  }, [user?.id]);
 
   return (
     <div className="min-h-screen bg-gray-100 flex">

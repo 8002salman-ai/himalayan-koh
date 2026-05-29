@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
+import { dispatchOrderShippedNotifications } from '@/lib/orders/notifyOrderEvents';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { shippoConfigError } from '@/lib/shippo/config';
 import { purchaseShippoLabel } from '@/lib/shippo/server/labels';
@@ -123,6 +124,7 @@ export async function POST(request: Request) {
         shipping_carrier: label.carrier,
         shipping_service: label.serviceName,
         label_url: label.labelUrl,
+        tracking_url: label.trackingUrl,
         shipped_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       } as never)
@@ -130,11 +132,14 @@ export async function POST(request: Request) {
 
     if (updateError) throw updateError;
 
+    dispatchOrderShippedNotifications(row.id);
+
     return NextResponse.json({
       ok: true,
       orderId: row.id,
       orderNumber: row.order_number,
       trackingNumber: label.trackingNumber,
+      trackingUrl: label.trackingUrl,
       labelUrl: label.labelUrl,
       carrier: label.carrier,
       serviceName: label.serviceName,

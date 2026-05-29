@@ -6,6 +6,7 @@ interface ShippoTransactionResponse {
   status: string;
   tracking_number?: string;
   label_url?: string;
+  tracking_url_provider?: string;
   rate?: {
     provider?: string;
     servicelevel_name?: string;
@@ -39,6 +40,7 @@ export async function purchaseShippoLabel(rateId: string, orderId: string): Prom
     transactionId: transaction.object_id,
     trackingNumber: transaction.tracking_number,
     labelUrl: transaction.label_url,
+    trackingUrl: transaction.tracking_url_provider || null,
     carrier: transaction.rate?.provider || 'Carrier',
     serviceName: transaction.rate?.servicelevel_name || 'Shipping',
   };
