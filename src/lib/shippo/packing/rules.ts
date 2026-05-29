@@ -19,6 +19,8 @@ export interface PackingRule {
 const BOX_10_10_6: BoxDimensions = { lengthIn: 10, widthIn: 10, heightIn: 6 };
 const BOX_9_5_5_5: BoxDimensions = { lengthIn: 9.5, widthIn: 9.5, heightIn: 5.5 };
 const BOX_30_BLOCK: BoxDimensions = { lengthIn: 8.5, widthIn: 7.5, heightIn: 6.5 };
+const BOX_BAG_18: BoxDimensions = { lengthIn: 10, widthIn: 10, heightIn: 8 };
+const BOX_BAG_45: BoxDimensions = { lengthIn: 12, widthIn: 10, heightIn: 8 };
 
 function hasLb(text: string, pounds: number): boolean {
   const normalized = text.toLowerCase();
@@ -52,6 +54,9 @@ export const SLUG_PACKING_RULE_IDS: Record<string, string> = {
   'himalayan-salt-licks-horses': 'lick-2lb',
   'himalayan-pink-salt-16oz-jar': 'jar-1lb-edible',
   'himalayan-rock-salt-6lbs-pouch': 'pouch-6lb-fine',
+  'himalayan-edible-pink-salt-fine': 'pouch-6lb-fine',
+  'himalayan-livestock-salt-45lbs': 'bag-45lb',
+  'himalayan-salt-cattle-18lbs': 'bag-18lb',
 };
 
 export const ACTIVE_PACKING_RULES: PackingRule[] = [
@@ -135,10 +140,34 @@ export const ACTIVE_PACKING_RULES: PackingRule[] = [
     unitWeightLbs: 6,
     unitsPerBox: 3,
     box: BOX_10_10_6,
-    slugs: ['himalayan-rock-salt-6lbs-pouch'],
+    slugs: ['himalayan-rock-salt-6lbs-pouch', 'himalayan-edible-pink-salt-fine'],
     matches: ({ slug, name }) => {
       const text = `${slug} ${name}`;
       return hasLb(text, 6) && hasPouch(text);
+    },
+  },
+  {
+    id: 'bag-18lb',
+    label: '18 lb bag',
+    unitWeightLbs: 18,
+    unitsPerBox: 1,
+    box: BOX_BAG_18,
+    slugs: ['himalayan-salt-cattle-18lbs'],
+    matches: ({ slug, name }) => {
+      const text = `${slug} ${name}`;
+      return hasLb(text, 18) && /\bbag\b/i.test(text);
+    },
+  },
+  {
+    id: 'bag-45lb',
+    label: '45 lb bag',
+    unitWeightLbs: 45,
+    unitsPerBox: 1,
+    box: BOX_BAG_45,
+    slugs: ['himalayan-livestock-salt-45lbs'],
+    matches: ({ slug, name }) => {
+      const text = `${slug} ${name}`;
+      return hasLb(text, 45) && /\bbag\b/i.test(text);
     },
   },
 ];
@@ -178,6 +207,11 @@ export function resolvePackingRule(product: {
     }
     if (hasJar(text) && weight === 1) return getPackingRuleById('jar-1lb-edible') ?? null;
     if (hasBlock(text) && weight === 30) return getPackingRuleById('block-30lb') ?? null;
+    if (/\bbag\b/i.test(text)) {
+      if (weight === 45) return getPackingRuleById('bag-45lb') ?? null;
+      if (weight === 18) return getPackingRuleById('bag-18lb') ?? null;
+    }
+    return pickRuleByWeightOnly(weight);
   }
 
   for (const rule of ACTIVE_PACKING_RULES) {
@@ -187,6 +221,31 @@ export function resolvePackingRule(product: {
   }
 
   return null;
+}
+
+/** Closest approved box when only product weight is known (legacy listings). */
+function pickRuleByWeightOnly(weightLbs: number): PackingRule | null {
+  const weight = Math.round(weightLbs);
+  const byWeight: Record<number, string> = {
+    1: 'jar-1lb-edible',
+    2: 'lick-2lb',
+    3: 'pouch-3lb-fine',
+    4: 'lick-4lb',
+    6: 'pouch-6lb-fine',
+    18: 'bag-18lb',
+    30: 'block-30lb',
+    45: 'bag-45lb',
+  };
+
+  if (byWeight[weight]) {
+    return getPackingRuleById(byWeight[weight]) ?? null;
+  }
+
+  if (weight <= 2) return getPackingRuleById('lick-2lb') ?? null;
+  if (weight <= 4) return getPackingRuleById('lick-4lb') ?? null;
+  if (weight <= 6) return getPackingRuleById('pouch-6lb-fine') ?? null;
+  if (weight <= 30) return getPackingRuleById('block-30lb') ?? null;
+  return getPackingRuleById('bag-45lb') ?? null;
 }
 
 export function getPackingRuleById(id: string): PackingRule | undefined {

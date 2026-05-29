@@ -19,6 +19,10 @@ import {
 } from '../../lib/images/productImageConstants';
 import { optimizeProductImage } from '../../lib/images/optimizeImage';
 import { isSupabaseProductImageUrl } from '../../lib/images/productImageStorage';
+import {
+  formatShippingWeightLabel,
+  productMissingShippingWeight,
+} from '../../lib/products/shippingWeight';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import RichTextEditor from './RichTextEditor';
 import ImageDropzone from './ImageDropzone';
@@ -491,6 +495,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
+    if (!product && (!formData.weight || formData.weight <= 0)) {
+      setError('Shipping weight is required for new products. Enter weight in pounds (e.g. 2 for a 2 lb lick).');
+      setActiveTab('pricing');
+      return;
+    }
+
     if (formData.price <= 0) {
       setError('Price must be greater than 0');
       setActiveTab('pricing');
@@ -793,6 +803,65 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {/* Pricing Tab */}
               {activeTab === 'pricing' && (
                 <div className="space-y-5">
+                  <div className="rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
+                    <p className="font-semibold text-himalayan">Shipping weight {!product ? '(required)' : ''}</p>
+                    <p className="mt-1 text-charcoal-light">
+                      Used for live Shippo carrier rates and box packing. New listings must include weight. Common values: 2, 4, 6 lb licks · 3 or 6 lb pouches · 1 lb jar · 18 or 45 lb bags.
+                    </p>
+                  </div>
+
+                  {product && productMissingShippingWeight(formData.weight) && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                      <p className="font-semibold">This listing has no shipping weight yet</p>
+                      <p className="mt-1">
+                        The product stays active and uses catalog box rules for now. Add weight below so future orders get the most accurate shipping rates.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                        Shipping weight {!product ? '*' : ''}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        required={!product}
+                        value={formData.weight || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, weight: parseFloat(e.target.value) || undefined }))}
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan ${
+                          !product && productMissingShippingWeight(formData.weight)
+                            ? 'border-amber-300 bg-amber-50/50'
+                            : 'border-gray-200'
+                        }`}
+                        placeholder="e.g. 2"
+                      />
+                      {formData.weight && formData.weight > 0 && (
+                        <p className="text-xs text-green-700 mt-1">
+                          Saved as {formatShippingWeightLabel(formData.weight, formData.weight_unit)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                        Weight unit
+                      </label>
+                      <select
+                        value={formData.weight_unit}
+                        onChange={(e) => setFormData(prev => ({ ...prev, weight_unit: e.target.value }))}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
+                      >
+                        <option value="lbs">Pounds (lbs)</option>
+                        <option value="oz">Ounces (oz)</option>
+                        <option value="kg">Kilograms (kg)</option>
+                        <option value="g">Grams (g)</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="grid md:grid-cols-3 gap-5">
                     <div>
                       <label className="block text-sm font-medium text-charcoal mb-1.5">
@@ -873,39 +942,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
                         placeholder="123456789012"
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
-                        Weight
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.weight || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, weight: parseFloat(e.target.value) || undefined }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
-                        Weight Unit
-                      </label>
-                      <select
-                        value={formData.weight_unit}
-                        onChange={(e) => setFormData(prev => ({ ...prev, weight_unit: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
-                      >
-                        <option value="lbs">Pounds (lbs)</option>
-                        <option value="oz">Ounces (oz)</option>
-                        <option value="kg">Kilograms (kg)</option>
-                        <option value="g">Grams (g)</option>
-                      </select>
                     </div>
                   </div>
                 </div>

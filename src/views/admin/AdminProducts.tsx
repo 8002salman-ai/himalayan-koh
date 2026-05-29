@@ -22,6 +22,10 @@ import { adminApi, AdminProductFilters } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import { products as fallbackProducts, categories as fallbackCategories } from '../../data/products';
+import {
+  formatShippingWeightLabel,
+  productMissingShippingWeight,
+} from '../../lib/products/shippingWeight';
 import ProductEditorModal from '../../components/admin/ProductEditorModal';
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
@@ -318,6 +322,8 @@ export default function AdminProducts() {
     }
   };
 
+  const missingWeightCount = products.filter((p) => productMissingShippingWeight(p.weight)).length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -334,6 +340,15 @@ export default function AdminProducts() {
           Add Product
         </button>
       </div>
+
+      {missingWeightCount > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">Add shipping weight to {missingWeightCount} listing{missingWeightCount > 1 ? 's' : ''}</p>
+          <p className="mt-1 text-amber-900/90">
+            Products without weight still stay active and use catalog box rules, but each listing should have weight (lbs) for accurate Shippo rates. Edit the product and fill in <strong>Shipping weight</strong> on the Pricing tab.
+          </p>
+        </div>
+      )}
 
       {productStats && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -555,7 +570,16 @@ export default function AdminProducts() {
                             </p>
                             <p className="text-xs text-charcoal-light">
                               SKU: {product.sku || 'N/A'}
+                              {!productMissingShippingWeight(product.weight) && (
+                                <> · Ship: {formatShippingWeightLabel(product.weight, product.weight_unit)}</>
+                              )}
                             </p>
+                            {productMissingShippingWeight(product.weight) && (
+                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                                <AlertTriangle size={10} />
+                                Add shipping weight
+                              </span>
+                            )}
                           </div>
                           {product.is_featured && (
                             <Star size={14} className="text-amber-500 fill-amber-500 flex-shrink-0" />

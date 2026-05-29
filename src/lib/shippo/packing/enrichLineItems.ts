@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
+import { toWeightLbs } from '@/lib/products/shippingWeight';
 import type { RatesLineItem } from '../types';
 import type { PackingLineItem } from './buildParcels';
 
@@ -29,12 +30,7 @@ export async function enrichRatesLineItems(
         weight: number | null;
         weight_unit: string | null;
       };
-      const weightLbs =
-        product.weight && product.weight > 0
-          ? product.weight_unit?.toLowerCase() === 'kg'
-            ? Math.round(product.weight * 2.20462 * 100) / 100
-            : product.weight
-          : null;
+      const weightLbs = toWeightLbs(product.weight, product.weight_unit);
       productById.set(product.id, { slug: product.slug, name: product.name, weightLbs });
     }
   }
