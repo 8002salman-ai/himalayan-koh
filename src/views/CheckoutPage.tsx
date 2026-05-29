@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Loader2, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
@@ -81,8 +81,12 @@ export default function CheckoutPage() {
   const [selectedShippoRateId, setSelectedShippoRateId] = useState<string | null>(null);
   const [shippoRatesLoading, setShippoRatesLoading] = useState(false);
   const [shippoRatesError, setShippoRatesError] = useState<string | null>(null);
-  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('invoice');
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
+    isStripeConfigured ? 'stripe' : 'invoice'
+  );
   const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
+  const stripePaymentRef = useRef<HTMLDivElement>(null);
 
   const shippoEnabled = publicEnv.shippoEnabled;
   const selectedShippoRate = shippoRates.find((rate) => rate.objectId === selectedShippoRateId) || null;
@@ -312,6 +316,9 @@ export default function CheckoutPage() {
         paymentIntentId: paymentIntent.paymentIntentId,
       });
       setError(null);
+      requestAnimationFrame(() => {
+        stripePaymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to place order.'));
     } finally {
@@ -554,20 +561,14 @@ export default function CheckoutPage() {
             </section>
 
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Payment</h2>
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-2">Payment</h2>
+              <p className="text-sm text-charcoal-light mb-5">
+                {isStripeConfigured
+                  ? 'Pay securely with your card at checkout. Invoice is available for wholesale or manual billing.'
+                  : 'Card payments are not configured on this site. Place your order and pay by invoice.'}
+              </p>
+
               <div className="grid md:grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('invoice');
-                    setStripeSession(null);
-                  }}
-                  className={`text-left rounded-2xl border p-4 transition-colors ${paymentMethod === 'invoice' ? 'border-himalayan bg-himalayan/10' : 'border-gray-200 hover:border-himalayan/40'}`}
-                >
-                  <PackageCheck size={22} className="text-himalayan mb-2" />
-                  <p className="font-semibold text-charcoal">Request Invoice</p>
-                  <p className="text-sm text-charcoal-light mt-1">Place the order now. Payment can be completed manually after confirmation.</p>
-                </button>
                 <button
                   type="button"
                   disabled={!isStripeConfigured}
@@ -575,33 +576,66 @@ export default function CheckoutPage() {
                     setPaymentMethod('stripe');
                     setStripeSession(null);
                   }}
-                  className={`text-left rounded-2xl border p-4 transition-colors ${
+                  className={`relative text-left rounded-2xl border p-4 transition-colors ${
                     paymentMethod === 'stripe'
-                      ? 'border-himalayan bg-himalayan/10'
+                      ? 'border-himalayan bg-himalayan/10 ring-2 ring-himalayan/30'
                       : isStripeConfigured
                         ? 'border-gray-200 hover:border-himalayan/40'
                         : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-80'
                   }`}
                 >
+                  {isStripeConfigured && (
+                    <span className="absolute top-3 right-3 rounded-full bg-himalayan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      Recommended
+                    </span>
+                  )}
                   <CreditCard size={22} className="text-himalayan mb-2" />
-                  <p className="font-semibold text-charcoal">Pay with Card (Stripe)</p>
+                  <p className="font-semibold text-charcoal">Pay with Card</p>
                   <p className="text-sm text-charcoal-light mt-1">
                     {isStripeConfigured
                       ? isStripeTestMode
-                        ? 'Test mode — use card 4242 4242 4242 4242.'
-                        : 'Secure card payment via Stripe.'
-                      : 'Add VITE_STRIPE_PUBLISHABLE_KEY to enable.'}
+                        ? 'Enter card details after clicking Continue — test card 4242 4242 4242 4242.'
+                        : 'Secure card payment via Stripe. Enter card number, expiry, and CVC on the next step.'
+                      : 'Add Stripe keys to enable online card payment.'}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod('invoice');
+                    setStripeSession(null);
+                  }}
+                  className={`text-left rounded-2xl border p-4 transition-colors ${paymentMethod === 'invoice' ? 'border-charcoal/30 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <PackageCheck size={22} className="text-charcoal-light mb-2" />
+                  <p className="font-semibold text-charcoal">Pay by Invoice</p>
+                  <p className="text-sm text-charcoal-light mt-1">
+                    No card required now. We will email you to arrange payment before shipping.
                   </p>
                 </button>
               </div>
 
+              {paymentMethod === 'stripe' && isStripeConfigured && (
+                <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-charcoal-light">
+                  <p className="font-semibold text-charcoal mb-1">How card checkout works</p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Click <strong>Continue to payment</strong> to save your order.</li>
+                    <li>Enter your card number, expiry date, and security code below.</li>
+                    <li>Click <strong>Pay ${totals.total.toFixed(2)}</strong> — your order is confirmed when payment succeeds.</li>
+                  </ol>
+                </div>
+              )}
+
               {paymentMethod === 'stripe' && stripeSession && (
-                <div className="mt-5 rounded-xl border border-himalayan/30 bg-himalayan/5 p-4">
+                <div
+                  ref={stripePaymentRef}
+                  className="mt-5 rounded-xl border-2 border-himalayan/40 bg-white p-5 shadow-sm"
+                >
                   <p className="text-sm font-semibold text-charcoal mb-1">
-                    Order {stripeSession.order.order_number} — complete payment
+                    Step 2 — Enter card details · Order {stripeSession.order.order_number}
                   </p>
                   <p className="text-xs text-charcoal-light mb-4">
-                    Your order is saved. Pay below to confirm. Cart items stay reserved until payment succeeds.
+                    Total due now: <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
                   </p>
                   <StripePaymentForm
                     clientSecret={stripeSession.clientSecret}
@@ -611,12 +645,6 @@ export default function CheckoutPage() {
                     onError={(message) => setError(message)}
                   />
                 </div>
-              )}
-
-              {paymentMethod === 'stripe' && !stripeSession && isStripeConfigured && (
-                <p className="mt-4 text-xs text-charcoal-light">
-                  Click &quot;Continue to card payment&quot; to save your order and open the secure card form.
-                </p>
               )}
             </section>
 
@@ -684,8 +712,10 @@ export default function CheckoutPage() {
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
                 <p>
                   {paymentMethod === 'stripe' && isStripeConfigured
-                    ? 'Card payments use Stripe test mode. Invoice checkout remains available without card details.'
-                    : 'Your order is saved securely. Pay by invoice or enable Stripe keys for card checkout.'}
+                    ? stripeSession
+                      ? 'Complete card payment below to confirm your order.'
+                      : 'Step 1: Continue to payment, then enter your card details on this page.'
+                    : 'Invoice order — no card needed. Payment will be arranged by email before shipping.'}
                 </p>
               </div>
 
@@ -701,9 +731,9 @@ export default function CheckoutPage() {
                   ? paymentMethod === 'stripe' ? 'Preparing payment...' : 'Placing Order...'
                   : paymentMethod === 'stripe'
                     ? stripeSession
-                      ? 'Complete card payment below'
-                      : 'Continue to card payment'
-                    : 'Place Order'}
+                      ? 'Enter card details above'
+                      : 'Continue to payment'
+                    : 'Place order (invoice)'}
               </button>
             </div>
           </aside>

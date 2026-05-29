@@ -189,11 +189,19 @@ export default function OrderConfirmationPage() {
 
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h3 className="font-serif text-lg font-bold text-charcoal mb-4">Payment Status</h3>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-charcoal-light">{order.payment_method || 'invoice'}</span>
-                <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium capitalize">
-                  {order.payment_status}
-                </span>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-charcoal-light">Method</span>
+                  <span className="font-medium text-charcoal capitalize">
+                    {order.payment_method === 'stripe_card' ? 'Credit / debit card' : order.payment_method || 'invoice'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-charcoal-light">Status</span>
+                  <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium capitalize">
+                    {order.payment_status}
+                  </span>
+                </div>
               </div>
             </section>
 

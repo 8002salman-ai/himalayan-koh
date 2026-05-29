@@ -21,6 +21,7 @@ import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
 import { publicEnv } from '../../lib/env';
+import { formatPaymentMethod, formatPaymentStatus } from '../../lib/orders/display';
 import type { Json, Order } from '../../lib/supabase/database.types';
 
 const orderStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -357,8 +358,9 @@ export default function AdminOrders() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.payment_status] || 'bg-gray-100 text-gray-700'}`}>
-                            {order.payment_status}
+                          <p className="text-xs font-medium text-charcoal">{formatPaymentMethod(order.payment_method)}</p>
+                          <span className={`inline-flex mt-1 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.payment_status] || 'bg-gray-100 text-gray-700'}`}>
+                            {formatPaymentStatus(order.payment_status)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right font-semibold text-charcoal">${order.total.toFixed(2)}</td>
@@ -557,7 +559,8 @@ function OrderDetailPanel({
         <InfoRow label="Customer" value={order.profile?.full_name || order.email} />
         <InfoRow label="Email" value={order.email} />
         <InfoRow label="Phone" value={order.phone || 'Not provided'} />
-        <InfoRow label="Payment" value={capitalize(order.payment_status)} />
+        <InfoRow label="Payment method" value={formatPaymentMethod(order.payment_method)} />
+        <InfoRow label="Payment status" value={formatPaymentStatus(order.payment_status)} />
         <InfoRow label="Carrier" value={order.shipping_carrier || 'Not assigned'} />
         <InfoRow label="Service" value={order.shipping_service || 'Not assigned'} />
         <InfoRow label="Tracking" value={order.tracking_number || 'Not assigned'} />
