@@ -25,6 +25,7 @@ import {
   savePendingStripeCheckout,
 } from '../lib/payments/stripeSessionStorage';
 import { getErrorMessage } from '../lib/errors';
+import { orderConfirmationUrl } from '../lib/orders/paths';
 import { fetchShippoRates } from '../lib/shippo/client';
 import type { ShippoRate } from '../lib/shippo/types';
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
@@ -277,7 +278,7 @@ export default function CheckoutPage() {
           paymentStatus: 'pending',
         }, user?.id);
         await clearCart();
-        navigate('/order-confirmation', { state: { order } });
+        navigate(orderConfirmationUrl(order.id), { state: { order } });
         return;
       }
 
@@ -337,7 +338,7 @@ export default function CheckoutPage() {
 
       clearPendingStripeCheckout();
       await clearCart();
-      navigate('/order-confirmation', { state: { order: paidOrder } });
+      navigate(orderConfirmationUrl(paidOrder.id), { state: { order: paidOrder } });
     } catch (err) {
       setError(getErrorMessage(err, 'Payment succeeded but order confirmation failed. Contact support with your email.'));
     } finally {

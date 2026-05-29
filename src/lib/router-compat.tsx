@@ -19,6 +19,56 @@ import {
 
 const ROUTER_STATE_KEY = '__next_router_state';
 
+type StoredNavigation = { path: string; state: unknown };
+
+/** Shared across all useLocation() callers so Layout/SEO do not steal navigation state. */
+let sharedNavigationState: StoredNavigation | null = null;
+
+function pathOnly(url: string): string {
+  return url.split('?')[0] || '/';
+}
+
+function setNavigationState(path: string, state: unknown) {
+  sharedNavigationState = { path: pathOnly(path), state };
+  sessionStorage.setItem(ROUTER_STATE_KEY, JSON.stringify(sharedNavigationState));
+}
+
+function readNavigationState(pathname: string): unknown | undefined {
+  const path = pathOnly(pathname);
+
+  if (sharedNavigationState?.path === path) {
+    return sharedNavigationState.state;
+  }
+
+  const raw = sessionStorage.getItem(ROUTER_STATE_KEY);
+  if (!raw) return undefined;
+
+  try {
+    const parsed = JSON.parse(raw) as StoredNavigation | unknown;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'path' in parsed &&
+      'state' in parsed &&
+      (parsed as StoredNavigation).path === path
+    ) {
+      sharedNavigationState = parsed as StoredNavigation;
+      return (parsed as StoredNavigation).state;
+    }
+  } catch {
+    sessionStorage.removeItem(ROUTER_STATE_KEY);
+  }
+
+  return undefined;
+}
+
+function clearNavigationState(pathname: string) {
+  if (sharedNavigationState?.path === pathOnly(pathname)) {
+    sharedNavigationState = null;
+  }
+  sessionStorage.removeItem(ROUTER_STATE_KEY);
+}
+
 type SetSearchParamsOptions = { replace?: boolean };
 
 type LinkProps = {
@@ -34,7 +84,7 @@ export function Link({ to, href, replace, state, children, onClick, ...rest }: L
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (state) {
-      sessionStorage.setItem(ROUTER_STATE_KEY, JSON.stringify(state));
+      setNavigationState(destination, state);
     }
     onClick?.(event);
   };
@@ -55,7 +105,7 @@ export function useNavigate() {
         return;
       }
       if (options?.state) {
-        sessionStorage.setItem(ROUTER_STATE_KEY, JSON.stringify(options.state));
+        setNavigationState(to, options.state);
       }
       if (options?.replace) router.replace(to);
       else router.push(to);
@@ -68,17 +118,13 @@ export function useLocation() {
   const pathname = usePathname() ?? '/';
   const nextParams = useNextSearchParams();
   const search = nextParams?.toString() ? `?${nextParams.toString()}` : '';
-  const [state, setState] = useState<unknown>(undefined);
+  const [state, setState] = useState<unknown>(() => readNavigationState(pathname));
 
   useEffect(() => {
-    const raw = sessionStorage.getItem(ROUTER_STATE_KEY);
-    if (!raw) return;
-    try {
-      setState(JSON.parse(raw) as unknown);
-    } catch {
-      setState(undefined);
-    }
-    sessionStorage.removeItem(ROUTER_STATE_KEY);
+    setState(readNavigationState(pathname));
+    return () => {
+      clearNavigationState(pathname);
+    };
   }, [pathname, search]);
 
   return useMemo(
@@ -104,7 +150,7 @@ export function Navigate({
 }) {
   const router = useRouter();
   useEffect(() => {
-    if (state) sessionStorage.setItem(ROUTER_STATE_KEY, JSON.stringify(state));
+    if (state) setNavigationState(to, state);
     if (replace) router.replace(to);
     else router.push(to);
   }, [to, replace, state, router]);

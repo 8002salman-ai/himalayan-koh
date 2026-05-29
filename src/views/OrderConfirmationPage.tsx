@@ -1,6 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Package } from 'lucide-react';
+import { CheckCircle, Loader2, Package } from 'lucide-react';
+import { useAuthContext } from '../context/AuthContext';
+import { getErrorMessage } from '../lib/errors';
+import { ordersApi } from '../lib/supabase/api/orders';
 import type { Json, OrderWithItems } from '../lib/supabase/database.types';
 
 interface LocationState {
@@ -19,8 +23,65 @@ interface ShippingAddress {
 
 export default function OrderConfirmationPage() {
   const { state } = useLocation();
-  const order = (state as LocationState | null)?.order;
+  const [searchParams] = useSearchParams();
+  const { user } = useAuthContext();
+  const orderId = searchParams.get('orderId');
+  const stateOrder = (state as LocationState | null)?.order;
+
+  const [order, setOrder] = useState<OrderWithItems | null>(stateOrder ?? null);
+  const [loading, setLoading] = useState(Boolean(orderId && !stateOrder));
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (stateOrder) {
+      setOrder(stateOrder);
+      setLoading(false);
+    }
+  }, [stateOrder]);
+
+  useEffect(() => {
+    if (!orderId || stateOrder) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+
+    void ordersApi
+      .getOrderById(orderId, user?.id)
+      .then((fetched) => {
+        if (cancelled) return;
+        if (fetched) {
+          setOrder(fetched);
+        } else {
+          setLoadError('We could not find this order. Check your email for confirmation.');
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLoadError(getErrorMessage(err, 'Unable to load order confirmation.'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, stateOrder, user?.id]);
+
   const shippingAddress = toShippingAddress(order?.shipping_address);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-warm-white flex items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 size={40} className="animate-spin text-himalayan mx-auto mb-4" />
+          <p className="text-charcoal-light text-sm">Loading your order confirmation…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -29,7 +90,9 @@ export default function OrderConfirmationPage() {
           <div className="bg-white rounded-2xl shadow-md p-12">
             <Package size={64} className="mx-auto mb-6 text-gray-200" />
             <h1 className="font-serif text-3xl font-bold text-charcoal mb-3">Order confirmation unavailable</h1>
-            <p className="text-charcoal-light mb-6">We could not find an order in this checkout session.</p>
+            <p className="text-charcoal-light mb-6">
+              {loadError || 'We could not find an order in this checkout session.'}
+            </p>
             <Link to="/products" className="inline-flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors">
               Continue Shopping
             </Link>

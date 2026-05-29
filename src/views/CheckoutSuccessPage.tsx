@@ -8,6 +8,7 @@ import {
   clearPendingStripeCheckout,
   loadPendingStripeCheckout,
 } from '../lib/payments/stripeSessionStorage';
+import { orderConfirmationUrl } from '../lib/orders/paths';
 import { useCart } from '../store/cartStore';
 
 type Status = 'loading' | 'error';
@@ -64,7 +65,7 @@ export default function CheckoutSuccessPage() {
         if (cancelled) return;
 
         if (order) {
-          navigate('/order-confirmation', {
+          navigate(orderConfirmationUrl(order.id), {
             replace: true,
             state: { order: { ...order, payment_status: 'paid', payment_method: 'stripe_card' } },
           });
