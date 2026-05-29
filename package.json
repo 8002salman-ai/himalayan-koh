@@ -16,7 +16,8 @@
     "verify:rls": "node scripts/verify-rls.mjs",
     "verify:phase0": "node scripts/verify-phase0.mjs",
     "check:stripe": "node scripts/check-stripe-setup.mjs",
-    "check:shippo": "node scripts/check-shippo-setup.mjs"
+    "check:shippo": "node scripts/check-shippo-setup.mjs",
+    "check:packing": "node scripts/check-shippo-packing.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",

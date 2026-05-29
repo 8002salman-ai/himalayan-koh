@@ -53,7 +53,9 @@ Or run `supabase/migrations/008_shippo_shipping.sql` manually in the Supabase SQ
 
 ## Product weights
 
-Shippo uses product `weight` from the admin product editor. Default parcel: **2 lb** per item if weight is missing.
+Shippo parcel size and weight come from **approved packing rules** in `src/lib/shippo/packing/rules.ts` (not generic product weight). See [SHIPPO-PACKING.md](./SHIPPO-PACKING.md) for the full table.
+
+Unsupported products use flat-rate shipping at checkout and cannot auto-create Shippo labels.
 
 ## Test mode
 

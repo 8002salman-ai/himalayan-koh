@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { dispatchOrderShippedNotifications } from '@/lib/orders/notifyOrderEvents';
+import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { shippoConfigError } from '@/lib/shippo/config';
 import { purchaseShippoLabel } from '@/lib/shippo/server/labels';
@@ -78,22 +79,21 @@ export async function POST(request: Request) {
     const productIds = row.order_items.map((item) => item.product_id);
     const { data: products } = await supabase
       .from('products')
-      .select('id, weight, weight_unit')
+      .select('id, slug, name')
       .in('id', productIds);
 
-    const weightByProduct = new Map(
-      (products || []).map((product) => {
-        const p = product as { id: string; weight: number | null; weight_unit: string | null };
-        const lbs = p.weight_unit === 'kg' && p.weight ? p.weight * 2.20462 : p.weight || undefined;
-        return [p.id, lbs];
-      })
-    );
+    const lineItems = row.order_items.map((item) => {
+      const product = (products || []).find(
+        (row) => (row as { id: string }).id === item.product_id,
+      ) as { id: string; slug: string; name: string } | undefined;
 
-    const lineItems = row.order_items.map((item) => ({
-      productId: item.product_id,
-      quantity: item.quantity,
-      weightLbs: weightByProduct.get(item.product_id),
-    }));
+      return {
+        productId: item.product_id,
+        quantity: item.quantity,
+        slug: product?.slug ?? '',
+        name: product?.name ?? '',
+      };
+    });
 
     const shippingMethod =
       row.billing_address?.shippingMethod === 'expedited' ? 'expedited' : 'standard';
@@ -145,6 +145,16 @@ export async function POST(request: Request) {
       serviceName: label.serviceName,
     });
   } catch (error) {
+    if (error instanceof UnsupportedPackingProductsError) {
+      return NextResponse.json(
+        {
+          error: `${error.message} Update the cart or add a packing rule before creating a label.`,
+          unsupportedProducts: true,
+          products: error.products,
+        },
+        { status: 422 },
+      );
+    }
     console.error('Shippo label creation failed:', error);
     const message = error instanceof Error ? error.message : 'Unable to create shipping label.';
     return NextResponse.json({ error: message }, { status: 502 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { shippoConfigError } from '@/lib/shippo/config';
+import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { fetchShippoRates } from '@/lib/shippo/server/rates';
 import type { CheckoutShippingAddress, RatesLineItem } from '@/lib/shippo/types';
 
@@ -76,6 +77,18 @@ export async function POST(request: Request) {
     const rates = await fetchShippoRates({ toAddress: address, email, lineItems });
     return NextResponse.json({ configured: true, rates });
   } catch (error) {
+    if (error instanceof UnsupportedPackingProductsError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          configured: true,
+          unsupportedProducts: true,
+          products: error.products,
+          rates: [],
+        },
+        { status: 422 },
+      );
+    }
     console.error('Shippo rates fetch failed:', error);
     const message = error instanceof Error ? error.message : 'Unable to fetch shipping rates.';
     return NextResponse.json({ error: message, configured: true }, { status: 502 });

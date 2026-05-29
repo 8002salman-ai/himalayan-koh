@@ -1,8 +1,11 @@
 import { getShippoFromAddress } from '../config';
 import type { CheckoutShippingAddress, RatesLineItem, ShippoRate } from '../types';
+import { enrichRatesLineItems } from '../packing/enrichLineItems';
+import { buildParcelsFromPackingLineItems } from '../packing/buildParcels';
 import { shippoAddressPayload, toShippoAddress } from './addresses';
 import { shippoRequest } from './client';
-import { buildParcelsFromLineItems, shippoParcelPayload } from './parcels';
+import { shippoParcelPayload } from './parcels';
+import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 
 interface ShippoRateResponse {
   object_id: string;
@@ -36,7 +39,9 @@ export async function fetchShippoRates(params: {
 }): Promise<ShippoRate[]> {
   const fromAddress = getShippoFromAddress();
   const to = toShippoAddress(params.toAddress, params.email);
-  const parcels = buildParcelsFromLineItems(params.lineItems).map(shippoParcelPayload);
+  const supabase = getSupabaseAdmin();
+  const packingItems = await enrichRatesLineItems(supabase, params.lineItems);
+  const parcels = buildParcelsFromPackingLineItems(packingItems).map(shippoParcelPayload);
 
   const shipment = await shippoRequest<ShippoShipmentResponse>('/shipments/', {
     method: 'POST',
