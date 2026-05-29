@@ -58,22 +58,20 @@ export default function CheckoutSuccessPage() {
 
       try {
         await verifyStripeOrderPayment({ orderId, paymentIntentId: intentId });
-        const order = await ordersApi.getOrderById(orderId, user?.id);
         clearPendingStripeCheckout();
         await clearCart();
 
         if (cancelled) return;
 
-        if (order) {
-          navigate(orderConfirmationUrl(order.id), {
-            replace: true,
-            state: { order: { ...order, payment_status: 'paid', payment_method: 'stripe_card' } },
-          });
-          return;
-        }
-
-        setStatus('error');
-        setMessage('Payment succeeded but we could not load your order. Check your email for confirmation.');
+        const order = await ordersApi.getOrderById(orderId, user?.id);
+        navigate(orderConfirmationUrl(orderId), {
+          replace: true,
+          state: {
+            order: order
+              ? { ...order, payment_status: 'paid' as const, payment_method: 'stripe_card' }
+              : undefined,
+          },
+        });
       } catch (err) {
         if (!cancelled) {
           setStatus('error');

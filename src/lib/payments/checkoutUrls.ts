@@ -9,9 +9,17 @@ function siteOrigin(): string {
 }
 
 export function getStripeSuccessUrl(): string {
-  return `${siteOrigin()}/checkout/success`;
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/checkout/success`;
+  }
+  const origin = siteOrigin();
+  return origin ? `${origin}/checkout/success` : '/checkout/success';
 }
 
 export function getStripeCancelUrl(): string {
-  return `${siteOrigin()}/checkout/cancel`;
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/checkout/cancel`;
+  }
+  const origin = siteOrigin();
+  return origin ? `${origin}/checkout/cancel` : '/checkout/cancel';
 }

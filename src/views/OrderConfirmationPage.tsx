@@ -40,7 +40,7 @@ export default function OrderConfirmationPage() {
   }, [stateOrder]);
 
   useEffect(() => {
-    if (!orderId || stateOrder) return;
+    if (!orderId) return;
 
     let cancelled = false;
     setLoading(true);
@@ -52,12 +52,12 @@ export default function OrderConfirmationPage() {
         if (cancelled) return;
         if (fetched) {
           setOrder(fetched);
-        } else {
+        } else if (!stateOrder) {
           setLoadError('We could not find this order. Check your email for confirmation.');
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !stateOrder) {
           setLoadError(getErrorMessage(err, 'Unable to load order confirmation.'));
         }
       })
@@ -68,7 +68,7 @@ export default function OrderConfirmationPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, stateOrder, user?.id]);
+  }, [orderId, user?.id, stateOrder]);
 
   const shippingAddress = toShippingAddress(order?.shipping_address);
 
@@ -126,8 +126,8 @@ export default function OrderConfirmationPage() {
         )}
         {order.payment_status === 'paid' && (
           <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-950">
-            <p className="font-semibold">Payment received</p>
-            <p className="mt-1">Your order will move to processing shortly. You will receive shipping updates by email.</p>
+            <p className="font-semibold">Payment received — thank you!</p>
+            <p className="mt-1">Your card payment was successful. We will process and ship your order soon.</p>
           </div>
         )}
         <div className="grid lg:grid-cols-3 gap-8">

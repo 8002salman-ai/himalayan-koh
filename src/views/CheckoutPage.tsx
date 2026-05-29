@@ -86,6 +86,7 @@ export default function CheckoutPage() {
     isStripeConfigured ? 'stripe' : 'invoice'
   );
   const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
+  const [paymentCompleting, setPaymentCompleting] = useState(false);
   const stripePaymentRef = useRef<HTMLDivElement>(null);
 
   const shippoEnabled = publicEnv.shippoEnabled;
@@ -329,6 +330,7 @@ export default function CheckoutPage() {
   const handleStripePaymentSuccess = async () => {
     if (!stripeSession) return;
 
+    setPaymentCompleting(true);
     setSubmitting(true);
     setError(null);
     try {
@@ -344,16 +346,17 @@ export default function CheckoutPage() {
       };
 
       clearPendingStripeCheckout();
-      await clearCart();
       navigate(orderConfirmationUrl(paidOrder.id), { state: { order: paidOrder } });
+      await clearCart();
     } catch (err) {
+      setPaymentCompleting(false);
       setError(getErrorMessage(err, 'Payment succeeded but order confirmation failed. Contact support with your email.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (items.length === 0 && !submitting) {
+  if (items.length === 0 && !submitting && !stripeSession && !paymentCompleting) {
     return (
       <div className="min-h-screen bg-warm-white py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
@@ -615,35 +618,14 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {paymentMethod === 'stripe' && isStripeConfigured && (
+              {paymentMethod === 'stripe' && isStripeConfigured && !stripeSession && (
                 <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-charcoal-light">
                   <p className="font-semibold text-charcoal mb-1">How card checkout works</p>
                   <ol className="list-decimal pl-5 space-y-1">
                     <li>Click <strong>Continue to payment</strong> to save your order.</li>
-                    <li>Enter your card number, expiry date, and security code below.</li>
+                    <li>Enter your card number, expiry date, and security code in the secure form below.</li>
                     <li>Click <strong>Pay ${totals.total.toFixed(2)}</strong> — your order is confirmed when payment succeeds.</li>
                   </ol>
-                </div>
-              )}
-
-              {paymentMethod === 'stripe' && stripeSession && (
-                <div
-                  ref={stripePaymentRef}
-                  className="mt-5 rounded-xl border-2 border-himalayan/40 bg-white p-5 shadow-sm"
-                >
-                  <p className="text-sm font-semibold text-charcoal mb-1">
-                    Step 2 — Enter card details · Order {stripeSession.order.order_number}
-                  </p>
-                  <p className="text-xs text-charcoal-light mb-4">
-                    Total due now: <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
-                  </p>
-                  <StripePaymentForm
-                    clientSecret={stripeSession.clientSecret}
-                    amountLabel={`$${totals.total.toFixed(2)}`}
-                    disabled={submitting}
-                    onSuccess={handleStripePaymentSuccess}
-                    onError={(message) => setError(message)}
-                  />
                 </div>
               )}
             </section>
@@ -739,6 +721,30 @@ export default function CheckoutPage() {
           </aside>
         </div>
       </form>
+
+      {paymentMethod === 'stripe' && stripeSession && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+          <div
+            ref={stripePaymentRef}
+            className="max-w-3xl rounded-2xl border-2 border-himalayan/40 bg-white p-6 shadow-md"
+          >
+            <p className="text-sm font-semibold text-charcoal mb-1">
+              Step 2 — Enter card details · Order {stripeSession.order.order_number}
+            </p>
+            <p className="text-xs text-charcoal-light mb-4">
+              Total due now: <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
+            </p>
+            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+            <StripePaymentForm
+              clientSecret={stripeSession.clientSecret}
+              amountLabel={`$${totals.total.toFixed(2)}`}
+              disabled={submitting || paymentCompleting}
+              onSuccess={handleStripePaymentSuccess}
+              onError={(message) => setError(message)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
