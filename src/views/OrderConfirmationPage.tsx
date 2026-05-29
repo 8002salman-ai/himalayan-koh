@@ -115,6 +115,21 @@ export default function OrderConfirmationPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {order.payment_status === 'pending' && order.payment_method === 'invoice' && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+            <p className="font-semibold">Invoice order — awaiting payment</p>
+            <p className="mt-1 text-amber-900/90">
+              Your order is saved as <strong>pending</strong> until payment is confirmed. Himalayan Koh will contact you at{' '}
+              <strong>{order.email}</strong> to complete payment, then move the order to processing and shipping.
+            </p>
+          </div>
+        )}
+        {order.payment_status === 'paid' && (
+          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-950">
+            <p className="font-semibold">Payment received</p>
+            <p className="mt-1">Your order will move to processing shortly. You will receive shipping updates by email.</p>
+          </div>
+        )}
         <div className="grid lg:grid-cols-3 gap-8">
           <section className="lg:col-span-2 bg-white rounded-2xl shadow-md p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-5 border-b border-gray-100">
