@@ -9,3 +9,4 @@ out
 
 # Legacy Vite build output (Next.js uses .next)
 dist
+.env*

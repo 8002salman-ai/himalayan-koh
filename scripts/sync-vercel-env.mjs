@@ -82,15 +82,12 @@ async function main() {
   }
 
   for (const key of keys) {
-    if (!getValue(key, 'production')) {
-      console.error(`Missing ${key} in .env.local`);
-      process.exit(1);
-    }
-  }
-
-  for (const key of keys) {
     for (const env of environments) {
       const value = getValue(key, env);
+      if (!value) {
+        console.warn(`Skip ${key} → ${env} (empty in .env.local; Vercel value unchanged)`);
+        continue;
+      }
       console.log(`Setting ${key} → ${env}`);
       await removeEnv(key, env);
       await addEnv(key, value, env);

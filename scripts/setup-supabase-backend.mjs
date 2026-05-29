@@ -33,6 +33,7 @@ const migrations = [
   '006_product_images_table.sql',
   '007_category_hub_overrides.sql',
   '008_shippo_shipping.sql',
+  '009_hk_migrations_rls.sql',
 ];
 
 function requireEnv() {
@@ -65,6 +66,8 @@ async function run() {
       filename TEXT PRIMARY KEY,
       applied_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE public._hk_migrations ENABLE ROW LEVEL SECURITY;
+    REVOKE ALL ON TABLE public._hk_migrations FROM anon, authenticated, PUBLIC;
   `);
 
   for (const filename of migrations) {
