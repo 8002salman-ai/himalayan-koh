@@ -20,9 +20,7 @@ Products are matched by **slug and name** (from the database) using rules in:
 
 `src/lib/shippo/packing/rules.ts`
 
-Examples:
-
-- `himalayan-pink-salt-16oz-jar` → 1 lb jar rule  
+| `himalayan-salt-licks-horses` | 2 lb licks (default catalog listing) |
 - `himalayan-rock-salt-6lbs-pouch` → 6 lb pouch rule  
 - Names containing `2 lb` + `lick` → 2 lb lick rule  
 

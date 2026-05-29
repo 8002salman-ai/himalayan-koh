@@ -7,6 +7,7 @@ export interface PackingLineItem {
   quantity: number;
   slug: string;
   name: string;
+  weightLbs?: number | null;
 }
 
 function roundWeightLbs(value: number): number {
@@ -28,7 +29,11 @@ export function buildParcelsFromPackingLineItems(items: PackingLineItem[]): Ship
   for (const item of items) {
     if (item.quantity <= 0) continue;
 
-    const rule = resolvePackingRule({ slug: item.slug, name: item.name });
+    const rule = resolvePackingRule({
+      slug: item.slug,
+      name: item.name,
+      weightLbs: item.weightLbs,
+    });
     if (!rule) {
       unsupported.push({
         productId: item.productId,

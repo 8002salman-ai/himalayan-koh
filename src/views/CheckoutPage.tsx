@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, CreditCard, Loader2, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, CreditCard, Loader2, MapPin, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { useAuthContext } from '../context/AuthContext';
 import StripePaymentForm from '../components/checkout/StripePaymentForm';
 import {
@@ -26,8 +26,9 @@ import {
 } from '../lib/payments/stripeSessionStorage';
 import { getErrorMessage } from '../lib/errors';
 import { orderConfirmationUrl } from '../lib/orders/paths';
-import { fetchShippoRates } from '../lib/shippo/client';
-import type { ShippoRate } from '../lib/shippo/types';
+import { formatUsPostalCode, normalizeUsState } from '../lib/address/usStates';
+import { fetchShippoRates, validateShippingAddressClient, type AddressValidationResponse } from '../lib/shippo/client';
+import type { CheckoutShippingAddress, ShippoRate } from '../lib/shippo/types';
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
 const labelClass = 'block text-sm font-semibold text-charcoal mb-1.5';
 
@@ -81,6 +82,8 @@ export default function CheckoutPage() {
   const [selectedShippoRateId, setSelectedShippoRateId] = useState<string | null>(null);
   const [shippoRatesLoading, setShippoRatesLoading] = useState(false);
   const [shippoRatesError, setShippoRatesError] = useState<string | null>(null);
+  const [addressValidation, setAddressValidation] = useState<AddressValidationResponse | null>(null);
+  const [addressValidating, setAddressValidating] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
     isStripeConfigured ? 'stripe' : 'invoice'
@@ -112,6 +115,7 @@ export default function CheckoutPage() {
     if (!shippoEnabled || items.length === 0) {
       setShippoRates([]);
       setSelectedShippoRateId(null);
+      setAddressValidation(null);
       return;
     }
 
@@ -126,21 +130,74 @@ export default function CheckoutPage() {
     if (!addressReady) {
       setShippoRates([]);
       setSelectedShippoRateId(null);
+      setAddressValidation(null);
       return;
     }
 
     const timer = window.setTimeout(async () => {
+      setAddressValidating(true);
       setShippoRatesLoading(true);
       setShippoRatesError(null);
+
+      const shippingAddress = buildShippingAddress(form);
+
       try {
+        const validation = await validateShippingAddressClient({
+          address: shippingAddress,
+          email: form.email,
+        });
+        setAddressValidation(validation);
+
+        const normalized = validation.normalizedAddress;
+        const recommended = validation.recommendedAddress;
+        const streetSuggestion =
+          recommended &&
+          (recommended.addressLine1.toLowerCase() !== normalized.addressLine1.toLowerCase() ||
+            recommended.city.toLowerCase() !== normalized.city.toLowerCase());
+
+        setForm((current) => {
+          if (streetSuggestion) {
+            if (current.state === normalized.state && current.postalCode === normalized.postalCode) {
+              return current;
+            }
+            return {
+              ...current,
+              state: normalized.state,
+              postalCode: normalized.postalCode,
+            };
+          }
+
+          const next = {
+            ...current,
+            addressLine1: normalized.addressLine1,
+            addressLine2: normalized.addressLine2 || '',
+            city: normalized.city,
+            state: normalized.state,
+            postalCode: normalized.postalCode,
+          };
+
+          if (
+            current.addressLine1 === next.addressLine1 &&
+            current.addressLine2 === next.addressLine2 &&
+            current.city === next.city &&
+            current.state === next.state &&
+            current.postalCode === next.postalCode
+          ) {
+            return current;
+          }
+
+          return next;
+        });
+
         const result = await fetchShippoRates({
-          address: buildShippingAddress(form),
+          address: normalized,
           email: form.email,
           items: items.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
           })),
         });
+
         setShippoRates(result.rates);
         setSelectedShippoRateId((current) => {
           if (current && result.rates.some((rate) => rate.objectId === current)) {
@@ -153,9 +210,10 @@ export default function CheckoutPage() {
         setSelectedShippoRateId(null);
         setShippoRatesError(err instanceof Error ? err.message : 'Unable to load live shipping rates.');
       } finally {
+        setAddressValidating(false);
         setShippoRatesLoading(false);
       }
-    }, 600);
+    }, 700);
 
     return () => window.clearTimeout(timer);
   }, [
@@ -170,9 +228,44 @@ export default function CheckoutPage() {
     form.country,
     form.email,
   ]);
+  const applySuggestedAddress = () => {
+    if (!addressValidation?.recommendedAddress) return;
+    const suggested = addressValidation.recommendedAddress;
+    setForm((current) => ({
+      ...current,
+      addressLine1: suggested.addressLine1,
+      addressLine2: suggested.addressLine2 || '',
+      city: suggested.city,
+      state: suggested.state,
+      postalCode: suggested.postalCode,
+      country: suggested.country,
+    }));
+    setAddressValidation((current) =>
+      current
+        ? {
+            ...current,
+            isValid: true,
+            recommendedAddress: undefined,
+            messages: [],
+            normalizedAddress: suggested,
+          }
+        : current,
+    );
+  };
+
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    if (
+      field === 'addressLine1' ||
+      field === 'addressLine2' ||
+      field === 'city' ||
+      field === 'state' ||
+      field === 'postalCode' ||
+      field === 'country'
+    ) {
+      setAddressValidation(null);
+    }
   };
 
   const applyCoupon = () => {
@@ -456,6 +549,63 @@ export default function CheckoutPage() {
                   <input required value={form.country} onChange={(event) => handleChange('country', event.target.value)} placeholder="Country" className={inputClass} />
                 </Field>
               </div>
+
+              {(addressValidating || addressValidation) && (
+                <div className="mt-4">
+                  {addressValidating && (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-charcoal-light flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin text-himalayan" />
+                      Verifying your shipping address…
+                    </div>
+                  )}
+                  {!addressValidating && addressValidation?.isValid && !addressValidation.recommendedAddress && (
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 flex items-start gap-2">
+                      <CheckCircle size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">Address verified</p>
+                        <p className="mt-1 text-green-800/90">
+                          Your shipping address is confirmed{addressValidation.source === 'shippo' ? ' with USPS' : ''}. Live carrier rates use this address.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {!addressValidating && addressValidation?.recommendedAddress && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                      <div className="flex items-start gap-2">
+                        <MapPin size={18} className="text-himalayan flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold">Did you mean this address?</p>
+                          <p className="mt-2 leading-6">
+                            {formatAddressLines(addressValidation.recommendedAddress)}
+                          </p>
+                          {addressValidation.messages.length > 0 && (
+                            <p className="mt-2 text-amber-900/90">{addressValidation.messages[0]}</p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={applySuggestedAddress}
+                            className="mt-3 inline-flex items-center justify-center px-4 py-2 bg-himalayan text-white rounded-lg text-sm font-semibold hover:bg-himalayan-dark transition-colors"
+                          >
+                            Use suggested address
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!addressValidating &&
+                    addressValidation &&
+                    !addressValidation.isValid &&
+                    !addressValidation.recommendedAddress && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                        <p className="font-semibold">Please double-check your address</p>
+                        <p className="mt-1">
+                          {addressValidation.messages[0] ||
+                            'We could not fully verify this address. Fix any typos or use standard USPS formatting.'}
+                        </p>
+                      </div>
+                    )}
+                </div>
+              )}
             </section>
 
             <section className="bg-white rounded-2xl shadow-md p-6">
@@ -783,16 +933,31 @@ function ShippingOption({ active, title, detail, price, onClick }: {
   );
 }
 
-function buildShippingAddress(form: CheckoutForm) {
+function buildShippingAddress(form: CheckoutForm): CheckoutShippingAddress {
+  const country = form.country.trim() || 'United States';
+  const countryIsUs = country.toLowerCase().includes('united states') || country.toUpperCase() === 'US';
+
   return {
-    fullName: form.fullName,
-    addressLine1: form.addressLine1,
-    addressLine2: form.addressLine2 || undefined,
-    city: form.city,
-    state: form.state,
-    postalCode: form.postalCode,
-    country: form.country,
+    fullName: form.fullName.trim(),
+    addressLine1: form.addressLine1.trim(),
+    addressLine2: form.addressLine2?.trim() || undefined,
+    city: form.city.trim(),
+    state: countryIsUs ? normalizeUsState(form.state) : form.state.trim(),
+    postalCode: countryIsUs ? formatUsPostalCode(form.postalCode) : form.postalCode.trim(),
+    country,
   };
+}
+
+function formatAddressLines(address: CheckoutShippingAddress): string {
+  return [
+    address.fullName,
+    address.addressLine1,
+    address.addressLine2,
+    `${address.city}, ${address.state} ${address.postalCode}`,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function buildBillingAddress(form: CheckoutForm) {

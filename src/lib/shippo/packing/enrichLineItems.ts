@@ -11,19 +11,31 @@ export async function enrichRatesLineItems(
     ...new Set(lineItems.map((item) => item.productId).filter((id): id is string => Boolean(id))),
   ];
 
-  const productById = new Map<string, { slug: string; name: string }>();
+  const productById = new Map<string, { slug: string; name: string; weightLbs: number | null }>();
 
   if (productIds.length > 0) {
     const { data, error } = await supabase
       .from('products')
-      .select('id, slug, name')
+      .select('id, slug, name, weight, weight_unit')
       .in('id', productIds);
 
     if (error) throw error;
 
     for (const row of data || []) {
-      const product = row as { id: string; slug: string; name: string };
-      productById.set(product.id, { slug: product.slug, name: product.name });
+      const product = row as {
+        id: string;
+        slug: string;
+        name: string;
+        weight: number | null;
+        weight_unit: string | null;
+      };
+      const weightLbs =
+        product.weight && product.weight > 0
+          ? product.weight_unit?.toLowerCase() === 'kg'
+            ? Math.round(product.weight * 2.20462 * 100) / 100
+            : product.weight
+          : null;
+      productById.set(product.id, { slug: product.slug, name: product.name, weightLbs });
     }
   }
 
@@ -36,6 +48,7 @@ export async function enrichRatesLineItems(
         quantity: item.quantity,
         slug: fromDb?.slug ?? '',
         name: fromDb?.name ?? '',
+        weightLbs: fromDb?.weightLbs ?? null,
       };
     });
 }

@@ -1,5 +1,35 @@
 import type { CheckoutShippingAddress, RatesLineItem, ShippoRate } from './types';
 
+export interface AddressValidationResponse {
+  configured: boolean;
+  isValid: boolean;
+  messages: string[];
+  normalizedAddress: CheckoutShippingAddress;
+  recommendedAddress?: CheckoutShippingAddress;
+  source: 'shippo' | 'basic';
+}
+
+export async function validateShippingAddressClient(params: {
+  address: CheckoutShippingAddress;
+  email?: string;
+}): Promise<AddressValidationResponse> {
+  const response = await fetch('/api/shippo/validate-address', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: params.address,
+      email: params.email,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error || 'Unable to validate shipping address.');
+  }
+
+  return body as AddressValidationResponse;
+}
+
 export async function fetchShippoRates(params: {
   address: CheckoutShippingAddress;
   email?: string;
@@ -18,6 +48,9 @@ export async function fetchShippoRates(params: {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 422 && body.unsupportedProducts) {
+      throw new Error(body.error || 'Live carrier rates are not available for one or more items.');
+    }
     throw new Error(body.error || 'Unable to fetch shipping rates.');
   }
 

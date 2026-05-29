@@ -47,6 +47,13 @@ function hasJar(text: string): boolean {
  * Active Shippo packing rules — only these products get live carrier parcel math.
  * Order matters: more specific rules must appear first.
  */
+/** Explicit catalog slug → packing rule id (for products without size in the title). */
+export const SLUG_PACKING_RULE_IDS: Record<string, string> = {
+  'himalayan-salt-licks-horses': 'lick-2lb',
+  'himalayan-pink-salt-16oz-jar': 'jar-1lb-edible',
+  'himalayan-rock-salt-6lbs-pouch': 'pouch-6lb-fine',
+};
+
 export const ACTIVE_PACKING_RULES: PackingRule[] = [
   {
     id: 'jar-1lb-edible',
@@ -66,6 +73,7 @@ export const ACTIVE_PACKING_RULES: PackingRule[] = [
     unitWeightLbs: 2,
     unitsPerBox: 6,
     box: BOX_10_10_6,
+    slugs: ['himalayan-salt-licks-horses'],
     matches: ({ slug, name }) => {
       const text = `${slug} ${name}`;
       return hasLb(text, 2) && hasLick(text) && !hasPouch(text) && !hasBlock(text);
@@ -140,12 +148,36 @@ const rulesById = new Map(ACTIVE_PACKING_RULES.map((rule) => [rule.id, rule]));
 export function resolvePackingRule(product: {
   slug: string;
   name: string;
+  weightLbs?: number | null;
 }): PackingRule | null {
   const slugKey = product.slug.trim().toLowerCase();
+  const mappedRuleId = SLUG_PACKING_RULE_IDS[slugKey];
+  if (mappedRuleId) {
+    const mapped = getPackingRuleById(mappedRuleId);
+    if (mapped) return mapped;
+  }
+
   for (const rule of ACTIVE_PACKING_RULES) {
     if (rule.slugs?.some((slug) => slug.toLowerCase() === slugKey)) {
       return rule;
     }
+  }
+
+  if (product.weightLbs && product.weightLbs > 0) {
+    const weight = Math.round(product.weightLbs);
+    const text = `${product.slug} ${product.name}`;
+
+    if (hasLick(text) && !hasPouch(text) && !hasBlock(text)) {
+      if (weight === 2) return getPackingRuleById('lick-2lb') ?? null;
+      if (weight === 4) return getPackingRuleById('lick-4lb') ?? null;
+      if (weight === 6) return getPackingRuleById('lick-6lb') ?? null;
+    }
+    if (hasPouch(text)) {
+      if (weight === 3) return getPackingRuleById('pouch-3lb-fine') ?? null;
+      if (weight === 6) return getPackingRuleById('pouch-6lb-fine') ?? null;
+    }
+    if (hasJar(text) && weight === 1) return getPackingRuleById('jar-1lb-edible') ?? null;
+    if (hasBlock(text) && weight === 30) return getPackingRuleById('block-30lb') ?? null;
   }
 
   for (const rule of ACTIVE_PACKING_RULES) {
