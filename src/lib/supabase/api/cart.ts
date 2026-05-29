@@ -2,7 +2,7 @@ import { supabase } from '../client';
 import type { Cart, CartItem, CartWithItems } from '../database.types';
 
 // Generate a session ID for guest carts
-const getSessionId = (): string => {
+export const getCartSessionId = (): string => {
   let sessionId = localStorage.getItem('cart_session_id');
   if (!sessionId) {
     sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -14,7 +14,7 @@ const getSessionId = (): string => {
 export const cartApi = {
   // Get or create cart
   async getOrCreateCart(userId?: string): Promise<Cart> {
-    const sessionId = getSessionId();
+    const sessionId = getCartSessionId();
 
     // Try to find existing cart
     let query = supabase
@@ -51,7 +51,7 @@ export const cartApi = {
 
   // Get cart with items
   async getCartWithItems(userId?: string): Promise<CartWithItems | null> {
-    const sessionId = getSessionId();
+    const sessionId = getCartSessionId();
 
     let query = supabase
       .from('carts')
@@ -170,7 +170,7 @@ export const cartApi = {
 
   // Merge guest cart with user cart after login
   async mergeGuestCart(userId: string): Promise<void> {
-    const sessionId = getSessionId();
+    const sessionId = getCartSessionId();
 
     // Get guest cart
     const { data: guestCart } = await supabase

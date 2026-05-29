@@ -1,6 +1,7 @@
 import { supabase } from '../client';
 import type { Order, OrderItem, OrderWithItems, Json } from '../database.types';
-import { cartApi } from './cart';
+import { getErrorMessage } from '@/lib/errors';
+import { cartApi, getCartSessionId } from './cart';
 
 export const TAX_RATE = 0.0825;
 export const FREE_SHIPPING_THRESHOLD = 50;
@@ -102,9 +103,37 @@ export interface OrderFilters {
   offset?: number;
 }
 
+async function createOrderViaApi(data: CreateOrderData, userId?: string): Promise<OrderWithItems> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  const response = await fetch('/api/orders/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      ...data,
+      cartSessionId: getCartSessionId(),
+      userId,
+    }),
+  });
+
+  const body = (await response.json().catch(() => ({}))) as OrderWithItems & { error?: string };
+  if (!response.ok) {
+    throw new Error(body.error || `Unable to place order (${response.status}).`);
+  }
+  return body;
+}
+
 export const ordersApi = {
-  // Create a new order from cart
+  // Create a new order from cart (server API — bypasses guest RLS on insert return)
   async createOrder(data: CreateOrderData, userId?: string): Promise<OrderWithItems> {
+    if (typeof window !== 'undefined') {
+      return createOrderViaApi(data, userId);
+    }
+
     const cart = await cartApi.getCartWithItems(userId);
 
     if (!cart || cart.cart_items.length === 0) {
@@ -159,7 +188,9 @@ export const ordersApi = {
       .select()
       .single();
 
-    if (orderError) throw orderError;
+    if (orderError) {
+      throw new Error(getErrorMessage(orderError, 'Unable to create order.'));
+    }
 
     // Create order items
     const orderItems = cart.cart_items.map((item) => ({

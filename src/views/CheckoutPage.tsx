@@ -24,6 +24,7 @@ import {
   clearPendingStripeCheckout,
   savePendingStripeCheckout,
 } from '../lib/payments/stripeSessionStorage';
+import { getErrorMessage } from '../lib/errors';
 import { fetchShippoRates } from '../lib/shippo/client';
 import type { ShippoRate } from '../lib/shippo/types';
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
@@ -311,7 +312,7 @@ export default function CheckoutPage() {
       });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to place order.');
+      setError(getErrorMessage(err, 'Unable to place order.'));
     } finally {
       setSubmitting(false);
     }
@@ -338,7 +339,7 @@ export default function CheckoutPage() {
       await clearCart();
       navigate('/order-confirmation', { state: { order: paidOrder } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment succeeded but order confirmation failed. Contact support with your email.');
+      setError(getErrorMessage(err, 'Payment succeeded but order confirmation failed. Contact support with your email.'));
     } finally {
       setSubmitting(false);
     }
