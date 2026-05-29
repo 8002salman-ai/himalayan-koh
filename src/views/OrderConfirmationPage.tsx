@@ -3,8 +3,13 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Loader2, Package } from 'lucide-react';
 import OrderTrackingPanel from '../components/orders/OrderTrackingPanel';
+import OrderProgressSteps from '../components/orders/OrderProgressSteps';
 import { useAuthContext } from '../context/AuthContext';
 import { getErrorMessage } from '../lib/errors';
+import {
+  formatCustomerOrderStatus,
+  orderStatusBadgeClass,
+} from '../lib/orders/status';
 import { trackOrderPageUrl } from '../lib/orders/tracking';
 import { ordersApi } from '../lib/supabase/api/orders';
 import type { Json, OrderWithItems } from '../lib/supabase/database.types';
@@ -73,12 +78,6 @@ export default function OrderConfirmationPage() {
   }, [orderId, user?.id, stateOrder]);
 
   const shippingAddress = toShippingAddress(order?.shipping_address);
-  const activeStep =
-    order?.payment_status === 'paid' && order.status === 'pending'
-      ? 1
-      : order
-        ? Math.max(0, ['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status))
-        : 0;
 
   if (loading) {
     return (
@@ -145,20 +144,14 @@ export default function OrderConfirmationPage() {
                 <p className="text-sm text-charcoal-light">Order Number</p>
                 <h2 className="font-serif text-2xl font-bold text-charcoal">{order.order_number}</h2>
               </div>
-              <span className="self-start md:self-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium capitalize">
-                {order.status}
+              <span className={`self-start md:self-center px-3 py-1 rounded-full text-sm font-medium ${orderStatusBadgeClass(order.status, order.payment_status)}`}>
+                {formatCustomerOrderStatus(order.status, order.payment_status)}
               </span>
             </div>
 
             <div className="py-5 border-b border-gray-100">
-              <h3 className="font-semibold text-charcoal mb-3">Order Flow</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                {['Pending', 'Processing', 'Shipped', 'Delivered'].map((step, index) => (
-                  <div key={step} className={`rounded-xl px-3 py-3 border ${index <= activeStep ? 'border-himalayan bg-himalayan/10 text-himalayan' : 'border-gray-100 text-charcoal-light'}`}>
-                    {step}
-                  </div>
-                ))}
-              </div>
+              <h3 className="font-semibold text-charcoal mb-3">Order progress</h3>
+              <OrderProgressSteps status={order.status} paymentStatus={order.payment_status} />
             </div>
 
             <div className="pt-5">
@@ -241,9 +234,16 @@ export default function OrderConfirmationPage() {
               </div>
             </section>
 
-            <Link to="/products" className="w-full flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors">
-              Continue Shopping
-            </Link>
+            <div className="flex flex-col gap-3">
+              {user && (
+                <Link to="/orders" className="w-full flex items-center justify-center px-6 py-3 bg-charcoal hover:bg-charcoal-light text-white font-semibold rounded-xl transition-colors">
+                  View in My Purchases
+                </Link>
+              )}
+              <Link to="/products" className="w-full flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors">
+                Continue Shopping
+              </Link>
+            </div>
           </aside>
         </div>
       </div>

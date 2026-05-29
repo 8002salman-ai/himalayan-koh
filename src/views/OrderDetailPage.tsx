@@ -1,24 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Clock, Loader2, Package, ShoppingCart, Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, ShoppingCart } from 'lucide-react';
 import DashboardSidebar from '../components/account/DashboardSidebar';
+import OrderProgressSteps from '../components/orders/OrderProgressSteps';
 import OrderTrackingPanel from '../components/orders/OrderTrackingPanel';
-import { trackOrderPageUrl } from '../lib/orders/tracking';
+import {
+  formatCustomerOrderStatus,
+  orderStatusBadgeClass,
+} from '../lib/orders/status';
 import { useAuthContext } from '../context/AuthContext';
 import { ordersApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import type { Json, OrderWithItems } from '../lib/supabase/database.types';
 import { useCart } from '../store/cartStore';
-
-const statusSteps = ['pending', 'processing', 'shipped', 'delivered'];
-
-const statusIcons: Record<string, React.ReactNode> = {
-  pending: <Clock size={16} />,
-  processing: <Package size={16} />,
-  shipped: <Truck size={16} />,
-  delivered: <Check size={16} />,
-};
 
 interface ShippingAddress {
   fullName?: string;
@@ -72,7 +67,6 @@ export default function OrderDetailPage() {
   };
 
   const shippingAddress = toShippingAddress(order?.shipping_address);
-  const activeStep = order ? Math.max(0, statusSteps.indexOf(order.status)) : 0;
 
   return (
     <div className="min-h-screen bg-warm-white">
@@ -89,7 +83,7 @@ export default function OrderDetailPage() {
           >
             Order Details
           </motion.h1>
-          <p className="text-white/70 mt-2 text-sm">Your purchases, invoices, and package tracking</p>
+          <p className="text-white/70 mt-2 text-sm">Invoice, payment status, and live shipment tracking</p>
         </div>
       </div>
 
@@ -115,6 +109,21 @@ export default function OrderDetailPage() {
                     <div>
                       <p className="text-sm text-charcoal-light">Order Number</p>
                       <h2 className="font-serif text-2xl font-bold text-charcoal">{order.order_number}</h2>
+                      <p className="text-sm text-charcoal-light mt-1">
+                        Placed {new Date(order.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-start md:items-end gap-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${orderStatusBadgeClass(order.status, order.payment_status)}`}>
+                        {formatCustomerOrderStatus(order.status, order.payment_status)}
+                      </span>
+                      {order.payment_status === 'paid' && (
+                        <span className="text-xs font-semibold text-green-700">Payment confirmed · ${order.total.toFixed(2)}</span>
+                      )}
                     </div>
                     <button
                       onClick={handleReorder}
@@ -125,23 +134,7 @@ export default function OrderDetailPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {statusSteps.map((step, index) => (
-                      <div
-                        key={step}
-                        className={`rounded-xl px-3 py-3 border text-sm capitalize ${
-                          index <= activeStep
-                            ? 'border-himalayan bg-himalayan/10 text-himalayan'
-                            : 'border-gray-100 text-charcoal-light'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {statusIcons[step]}
-                          {step}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <OrderProgressSteps status={order.status} paymentStatus={order.payment_status} />
                 </section>
 
                 <OrderTrackingPanel

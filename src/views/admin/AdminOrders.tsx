@@ -21,8 +21,10 @@ import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '..
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
+import { updateAdminOrderStatus } from '../../lib/admin/updateOrderStatusClient';
 import { publicEnv } from '../../lib/env';
 import { formatPaymentMethod, formatPaymentStatus } from '../../lib/orders/display';
+import { formatAdminOrderStatus, getAdminWorkflowHint } from '../../lib/orders/status';
 import type { Json, Order } from '../../lib/supabase/database.types';
 
 const orderStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -162,14 +164,17 @@ export default function AdminOrders() {
     event.preventDefault();
     if (!editingOrder) return;
 
+    const token = session?.access_token;
+    if (!token) return;
+
     setSaving(true);
     try {
-      await adminApi.updateOrderStatus(
-        editingOrder.id,
-        statusForm.status,
-        statusForm.trackingNumber || undefined,
-      );
-      await adminApi.updateOrderPaymentStatus(editingOrder.id, statusForm.paymentStatus);
+      await updateAdminOrderStatus(token, {
+        orderId: editingOrder.id,
+        status: statusForm.status,
+        paymentStatus: statusForm.paymentStatus,
+        trackingNumber: statusForm.trackingNumber || undefined,
+      });
       setEditingOrder(null);
       await fetchOrders();
     } catch (err) {
@@ -366,9 +371,9 @@ export default function AdminOrders() {
                           <p className="text-xs text-charcoal-light">{order.email}</p>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
                             {statusIcons[order.status]}
-                            {order.status}
+                            {formatAdminOrderStatus(order.status, order.payment_status)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -481,10 +486,15 @@ export default function AdminOrders() {
                     onChange={(event) => setStatusForm({ ...statusForm, status: event.target.value as Order['status'] })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
                   >
-                    {orderStatuses.map((status) => (
-                      <option key={status} value={status}>{capitalize(status)}</option>
-                    ))}
+                    <option value="pending">Awaiting fulfillment</option>
+                    <option value="processing">Processing &amp; packing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
+                  <p className="text-xs text-charcoal-light mt-1">
+                    Use Processing when payment is confirmed and you are packing. Shippo label auto-sets Shipped.
+                  </p>
                 </div>
 
                 <div>
@@ -563,11 +573,18 @@ function OrderDetailPanel({
           <h3 className="font-serif text-lg font-bold text-charcoal">Order Detail</h3>
           <p className="text-sm text-charcoal-light">{order.order_number}</p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
           {statusIcons[order.status]}
-          {order.status}
+          {formatAdminOrderStatus(order.status, order.payment_status)}
         </span>
       </div>
+
+      {getAdminWorkflowHint(order) && (
+        <div className="mb-5 rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
+          <p className="font-semibold text-himalayan">Admin next step</p>
+          <p className="mt-1 text-charcoal-light">{getAdminWorkflowHint(order)}</p>
+        </div>
+      )}
 
       <div className="space-y-3 mb-5">
         <InfoRow label="Customer" value={order.profile?.full_name || order.email} />
@@ -646,7 +663,7 @@ function OrderDetailPanel({
         </button>
       </div>
 
-      {shippoEnabled && !order.tracking_number && order.status !== 'cancelled' && (
+      {shippoEnabled && order.payment_status === 'paid' && !order.tracking_number && order.status !== 'cancelled' && (
         <button
           type="button"
           onClick={() => onCreateLabel(order)}

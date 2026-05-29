@@ -1,4 +1,5 @@
 import { ExternalLink, MapPin, Package, RefreshCw, Truck } from 'lucide-react';
+import { formatCustomerOrderStatus, formatCustomerStatusDetail } from '@/lib/orders/status';
 import { resolveTrackingUrl } from '@/lib/orders/tracking';
 
 interface TrackingEvent {
@@ -50,6 +51,8 @@ export default function OrderTrackingPanel({
     });
 
   const trackPageHref = `/track?${new URLSearchParams({ order: orderNumber, email }).toString()}`;
+  const customerStatus = formatCustomerOrderStatus(status, paymentStatus);
+  const statusDetail = formatCustomerStatusDetail(status, paymentStatus, Boolean(trackingNumber));
 
   return (
     <section className={`rounded-2xl border border-gray-100 bg-white ${compact ? 'p-4' : 'p-6 shadow-md'}`}>
@@ -58,13 +61,8 @@ export default function OrderTrackingPanel({
           <h3 className={`font-serif font-bold text-charcoal ${compact ? 'text-base' : 'text-lg'}`}>
             Shipment tracking
           </h3>
-          <p className="text-sm text-charcoal-light mt-1">
-            {paymentStatus === 'paid'
-              ? status === 'pending'
-                ? 'Payment confirmed · Preparing shipment'
-                : `Payment confirmed · Order ${status}`
-              : `Payment pending · Order ${status}`}
-          </p>
+          <p className="text-sm font-semibold text-charcoal mt-1">{customerStatus}</p>
+          <p className="text-sm text-charcoal-light mt-1">{statusDetail}</p>
         </div>
         {onRefresh && trackingNumber && (
           <button

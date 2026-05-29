@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import {
+  formatCustomerOrderStatus,
+  formatCustomerStatusDetail,
+  orderStatusBadgeClass,
+} from '../lib/orders/status';
 import { trackOrderPageUrl } from '../lib/orders/tracking';
 import { Package, ChevronRight, Truck, Check, Clock, XCircle, Loader2, ShoppingCart } from 'lucide-react';
 import DashboardSidebar from '../components/account/DashboardSidebar';
@@ -77,7 +82,7 @@ export default function OrdersPage() {
             animate={{ opacity: 1, y: 0 }}
             className="font-serif text-3xl md:text-4xl font-bold text-white"
           >
-            My Orders
+            My Purchases
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -85,7 +90,7 @@ export default function OrdersPage() {
             transition={{ delay: 0.1 }}
             className="text-white/70 mt-2"
           >
-            Track and manage your orders
+            View your orders, invoices, payment status, and shipment tracking
           </motion.p>
         </div>
       </div>
@@ -144,15 +149,28 @@ export default function OrdersPage() {
                         })}
                       </p>
                     </div>
-                    <span
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium capitalize ${
-                        statusColors[order.status]
-                      }`}
-                    >
-                      {statusIcons[order.status]}
-                      {order.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
+                          orderStatusBadgeClass(order.status, order.payment_status)
+                        }`}
+                      >
+                        {statusIcons[order.status] || statusIcons.processing}
+                        {formatCustomerOrderStatus(order.status, order.payment_status)}
+                      </span>
+                      {order.payment_status === 'paid' && (
+                        <span className="text-xs font-semibold text-green-700">Payment confirmed</span>
+                      )}
+                    </div>
                   </div>
+
+                  <p className="text-sm text-charcoal-light mb-4">
+                    {formatCustomerStatusDetail(
+                      order.status,
+                      order.payment_status,
+                      Boolean(order.tracking_number),
+                    )}
+                  </p>
 
                   <div className="flex items-center gap-4">
                     <div className="flex -space-x-3">
@@ -227,9 +245,13 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-charcoal-light">Status</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusColors[selectedOrder.status]}`}>
-                        {selectedOrder.status}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${orderStatusBadgeClass(selectedOrder.status, selectedOrder.payment_status)}`}>
+                        {formatCustomerOrderStatus(selectedOrder.status, selectedOrder.payment_status)}
                       </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-charcoal-light">Payment</span>
+                      <span className="font-medium text-charcoal capitalize">{selectedOrder.payment_status}</span>
                     </div>
                     {selectedOrder.tracking_number && (
                       <div className="flex flex-col gap-2 text-sm">

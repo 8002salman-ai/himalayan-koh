@@ -5,7 +5,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 const customerNavItems = [
   { label: 'Dashboard', path: '/account', icon: LayoutDashboard },
-  { label: 'My Orders', path: '/orders', icon: Package },
+  { label: 'My Purchases', path: '/orders', icon: Package },
   { label: 'Track a Package', path: '/track', icon: Truck },
   { label: 'Wishlist', path: '/wishlist', icon: Heart },
   { label: 'Addresses', path: '/account?tab=addresses', icon: MapPin },
