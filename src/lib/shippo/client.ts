@@ -81,5 +81,6 @@ export async function createShippoLabel(orderId: string, accessToken: string) {
     carrier?: string;
     serviceName?: string;
     alreadyCreated?: boolean;
+    usedFallbackCarrier?: boolean;
   };
 }

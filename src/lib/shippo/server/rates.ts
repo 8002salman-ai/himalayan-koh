@@ -56,7 +56,12 @@ export async function fetchShippoRates(params: {
   const rates = (shipment.rates || [])
     .map(mapRate)
     .filter((rate) => rate.amount > 0 && rate.currency.toUpperCase() === 'USD')
-    .sort((a, b) => a.amount - b.amount);
+    .sort((a, b) => {
+      const aUsps = /usps/i.test(a.provider) ? 0 : 1;
+      const bUsps = /usps/i.test(b.provider) ? 0 : 1;
+      if (aUsps !== bUsps) return aUsps - bUsps;
+      return a.amount - b.amount;
+    });
 
   return rates.slice(0, 8);
 }
@@ -87,14 +92,29 @@ export function pickRateForShippingMethod(
 
   if (shippingMethod === 'expedited') {
     const expedited = rates.find((rate) =>
-      /priority|express|2.?day|overnight|next/i.test(rate.serviceName)
+      /priority|express|2.?day|overnight|next|3.?day/i.test(rate.serviceName)
     );
     if (expedited) return expedited;
     return rates[Math.min(1, rates.length - 1)] || rates[0];
   }
 
   const standard = rates.find((rate) =>
-    /ground|parcel|standard|usps/i.test(`${rate.provider} ${rate.serviceName}`)
+    /ground|parcel|standard|advantage|usps/i.test(`${rate.provider} ${rate.serviceName}`)
   );
   return standard || rates[0];
+}
+
+/** Pick a rate for label purchase — USPS first, then cheapest available. */
+export function pickRateForLabelPurchase(
+  rates: ShippoRate[],
+  shippingMethod: 'standard' | 'expedited',
+): ShippoRate | null {
+  if (rates.length === 0) return null;
+
+  const uspsRates = rates.filter((rate) => /usps/i.test(rate.provider));
+  if (uspsRates.length > 0) {
+    return pickRateForShippingMethod(uspsRates, shippingMethod);
+  }
+
+  return pickRateForShippingMethod(rates, shippingMethod);
 }

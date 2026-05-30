@@ -9,6 +9,7 @@ import {
   Clock,
   CreditCard,
   DollarSign,
+  ExternalLink,
   FileText,
   Loader2,
   Package,
@@ -21,6 +22,7 @@ import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '..
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
+import { formatShippoLabelError } from '../../lib/shippo/carrierErrors';
 import { updateAdminOrderStatus } from '../../lib/admin/updateOrderStatusClient';
 import { publicEnv } from '../../lib/env';
 import { formatPaymentMethod, formatPaymentStatus } from '../../lib/orders/display';
@@ -69,6 +71,7 @@ export default function AdminOrders() {
   const [saving, setSaving] = useState(false);
   const [labelCreating, setLabelCreating] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
+  const [labelNotice, setLabelNotice] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -184,6 +187,11 @@ export default function AdminOrders() {
     }
   };
 
+  useEffect(() => {
+    setLabelError(null);
+    setLabelNotice(null);
+  }, [selectedOrder?.id]);
+
   const handleCreateShippoLabel = async (order: AdminOrder) => {
     const token = session?.access_token;
     if (!token) {
@@ -193,9 +201,17 @@ export default function AdminOrders() {
 
     setLabelCreating(true);
     setLabelError(null);
+    setLabelNotice(null);
     try {
       const result = await createShippoLabel(order.id, token);
       await fetchOrders();
+      if (result.usedFallbackCarrier && result.carrier) {
+        setLabelNotice(
+          `Label created with ${result.carrier} (${result.serviceName || 'shipping'}). Checkout used a carrier that is not active in Shippo, so we switched to the next available rate.`,
+        );
+      } else if (result.trackingNumber) {
+        setLabelNotice(`Shipping label ready. Tracking number ${result.trackingNumber}.`);
+      }
       if (result.labelUrl) {
         window.open(result.labelUrl, '_blank', 'noopener,noreferrer');
       }
@@ -445,6 +461,7 @@ export default function AdminOrders() {
           shippoEnabled={shippoEnabled}
           labelCreating={labelCreating}
           labelError={labelError}
+          labelNotice={labelNotice}
           onCreateLabel={handleCreateShippoLabel}
         />
       </div>
@@ -546,6 +563,7 @@ function OrderDetailPanel({
   shippoEnabled,
   labelCreating,
   labelError,
+  labelNotice,
   onCreateLabel,
 }: {
   order: AdminOrder | null;
@@ -555,6 +573,7 @@ function OrderDetailPanel({
   shippoEnabled: boolean;
   labelCreating: boolean;
   labelError: string | null;
+  labelNotice: string | null;
   onCreateLabel: (order: AdminOrder) => void;
 }) {
   if (!order) {
@@ -565,6 +584,14 @@ function OrderDetailPanel({
       </div>
     );
   }
+
+  const labelErrorInfo = labelError ? formatShippoLabelError(labelError) : null;
+  const needsLabel =
+    shippoEnabled &&
+    order.payment_status === 'paid' &&
+    !order.tracking_number &&
+    order.status !== 'cancelled';
+  const hasLabel = Boolean(order.label_url);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 h-fit">
@@ -602,11 +629,51 @@ function OrderDetailPanel({
           href={order.label_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-himalayan hover:underline mb-5"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors mb-5"
         >
           <Truck size={16} />
-          Download shipping label (PDF)
+          Print shipping label (PDF)
         </a>
+      )}
+
+      {(needsLabel || hasLabel || labelError || labelNotice) && (
+        <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
+          <p className="font-semibold text-charcoal">Shipping label</p>
+          {needsLabel && (
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-charcoal-light">
+              <li>Pack the order and confirm the shipping address.</li>
+              <li>Click Create Shippo Label — tracking is emailed to the customer.</li>
+              <li>Print the PDF label and attach it to the package.</li>
+            </ol>
+          )}
+          {needsLabel && order.shipping_carrier && !/usps/i.test(order.shipping_carrier) && (
+            <p className="mt-3 text-xs text-amber-800">
+              Checkout selected {order.shipping_carrier}. If that carrier is not activated in Shippo, we automatically try USPS instead.
+            </p>
+          )}
+          {labelNotice && (
+            <p className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              {labelNotice}
+            </p>
+          )}
+          {labelErrorInfo && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
+              <p className="font-semibold">{labelErrorInfo.title}</p>
+              <p className="mt-1">{labelErrorInfo.detail}</p>
+              {labelErrorInfo.actionUrl && (
+                <a
+                  href={labelErrorInfo.actionUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1 font-semibold text-red-900 underline"
+                >
+                  {labelErrorInfo.actionLabel}
+                  <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="border-t border-gray-100 pt-4 mb-5">
@@ -663,7 +730,7 @@ function OrderDetailPanel({
         </button>
       </div>
 
-      {shippoEnabled && order.payment_status === 'paid' && !order.tracking_number && order.status !== 'cancelled' && (
+      {needsLabel && (
         <button
           type="button"
           onClick={() => onCreateLabel(order)}
@@ -673,10 +740,6 @@ function OrderDetailPanel({
           {labelCreating ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />}
           {labelCreating ? 'Creating Shippo label...' : 'Create Shippo Label'}
         </button>
-      )}
-
-      {labelError && (
-        <p className="mt-3 text-sm text-red-600">{labelError}</p>
       )}
     </div>
   );

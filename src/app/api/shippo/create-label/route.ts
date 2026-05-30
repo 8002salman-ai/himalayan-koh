@@ -5,7 +5,8 @@ import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { shippoConfigError } from '@/lib/shippo/config';
 import { purchaseShippoLabel } from '@/lib/shippo/server/labels';
-import { fetchShippoRatesForOrder, pickRateForShippingMethod } from '@/lib/shippo/server/rates';
+import { fetchShippoRatesForOrder, pickRateForLabelPurchase } from '@/lib/shippo/server/rates';
+import { formatShippoLabelError, isCarrierActivationError } from '@/lib/shippo/carrierErrors';
 import type { CheckoutShippingAddress } from '@/lib/shippo/types';
 
 interface OrderRow {
@@ -98,21 +99,52 @@ export async function POST(request: Request) {
     const shippingMethod =
       row.billing_address?.shippingMethod === 'expedited' ? 'expedited' : 'standard';
 
-    let rateId = row.shippo_rate_id;
-    if (!rateId) {
-      const rates = await fetchShippoRatesForOrder({
-        email: row.email,
-        shippingAddress,
-        lineItems,
-      });
-      const picked = pickRateForShippingMethod(rates, shippingMethod);
-      if (!picked) {
-        return NextResponse.json({ error: 'No Shippo rates available for this order.' }, { status: 502 });
-      }
-      rateId = picked.objectId;
+    const rates = await fetchShippoRatesForOrder({
+      email: row.email,
+      shippingAddress,
+      lineItems,
+    });
+
+    if (rates.length === 0) {
+      return NextResponse.json({ error: 'No Shippo rates available for this order.' }, { status: 502 });
     }
 
-    const label = await purchaseShippoLabel(rateId, row.id);
+    const candidates: string[] = [];
+    if (row.shippo_rate_id) {
+      candidates.push(row.shippo_rate_id);
+    }
+    const fallback = pickRateForLabelPurchase(rates, shippingMethod);
+    if (fallback && !candidates.includes(fallback.objectId)) {
+      candidates.push(fallback.objectId);
+    }
+
+    let label = null;
+    let usedRateId: string | null = null;
+    let lastError: Error | null = null;
+    let usedFallback = false;
+
+    for (let index = 0; index < candidates.length; index += 1) {
+      const rateId = candidates[index];
+      try {
+        label = await purchaseShippoLabel(rateId, row.id);
+        usedRateId = rateId;
+        usedFallback = index > 0;
+        break;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Unable to create shipping label.');
+        lastError = error;
+        const canRetry =
+          index < candidates.length - 1 &&
+          (isCarrierActivationError(error.message) || /rate.*invalid|not found/i.test(error.message));
+        if (!canRetry) break;
+      }
+    }
+
+    if (!label || !usedRateId) {
+      throw lastError ?? new Error('Unable to create shipping label.');
+    }
+
+    const pickedRate = rates.find((rate) => rate.objectId === usedRateId);
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -120,7 +152,7 @@ export async function POST(request: Request) {
         status: 'shipped',
         tracking_number: label.trackingNumber,
         shippo_transaction_id: label.transactionId,
-        shippo_rate_id: rateId,
+        shippo_rate_id: usedRateId,
         shipping_carrier: label.carrier,
         shipping_service: label.serviceName,
         label_url: label.labelUrl,
@@ -143,6 +175,8 @@ export async function POST(request: Request) {
       labelUrl: label.labelUrl,
       carrier: label.carrier,
       serviceName: label.serviceName,
+      usedFallbackCarrier: usedFallback,
+      checkoutCarrier: pickedRate?.provider ?? null,
     });
   } catch (error) {
     if (error instanceof UnsupportedPackingProductsError) {
@@ -157,6 +191,9 @@ export async function POST(request: Request) {
     }
     console.error('Shippo label creation failed:', error);
     const message = error instanceof Error ? error.message : 'Unable to create shipping label.';
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: message, carrierError: formatShippoLabelError(message) },
+      { status: 502 },
+    );
   }
 }

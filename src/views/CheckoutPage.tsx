@@ -29,6 +29,12 @@ import { orderConfirmationUrl } from '../lib/orders/paths';
 import { formatUsPostalCode, normalizeUsState } from '../lib/address/usStates';
 import { fetchShippoRates, validateShippingAddressClient, type AddressValidationResponse } from '../lib/shippo/client';
 import type { CheckoutShippingAddress, ShippoRate } from '../lib/shippo/types';
+
+function pickDefaultShippoRateId(rates: ShippoRate[]): string | null {
+  if (rates.length === 0) return null;
+  const usps = rates.find((rate) => /usps/i.test(rate.provider));
+  return usps?.objectId ?? rates[0]?.objectId ?? null;
+}
 const inputClass = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all';
 const labelClass = 'block text-sm font-semibold text-charcoal mb-1.5';
 
@@ -203,7 +209,7 @@ export default function CheckoutPage() {
           if (current && result.rates.some((rate) => rate.objectId === current)) {
             return current;
           }
-          return result.rates[0]?.objectId || null;
+          return pickDefaultShippoRateId(result.rates);
         });
       } catch (err) {
         setShippoRates([]);
