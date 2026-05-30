@@ -66,3 +66,27 @@ export function buildParcelsFromPackingLineItems(items: PackingLineItem[]): Ship
 
   return parcels;
 }
+
+/** Combine multiple packing boxes into one parcel for reliable label purchase. */
+export function buildConsolidatedParcelFromPackingLineItems(
+  items: PackingLineItem[],
+): ShippoParcelInput[] {
+  const parcels = buildParcelsFromPackingLineItems(items);
+  if (parcels.length <= 1) return parcels;
+
+  const totalWeightLbs = roundWeightLbs(
+    parcels.reduce((sum, parcel) => sum + parcel.weightLbs, 0),
+  );
+  const lengthIn = Math.max(...parcels.map((parcel) => parcel.lengthIn ?? 10));
+  const widthIn = Math.max(...parcels.map((parcel) => parcel.widthIn ?? 10));
+  const stackedHeight = parcels.reduce((sum, parcel) => sum + (parcel.heightIn ?? 6), 0);
+
+  return [
+    {
+      lengthIn,
+      widthIn,
+      heightIn: Math.min(12, Math.max(6, roundWeightLbs(stackedHeight))),
+      weightLbs: totalWeightLbs,
+    },
+  ];
+}

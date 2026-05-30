@@ -44,7 +44,7 @@ export async function enrichRatesLineItems(
         quantity: item.quantity,
         slug: fromDb?.slug ?? '',
         name: fromDb?.name ?? '',
-        weightLbs: fromDb?.weightLbs ?? null,
+        weightLbs: fromDb?.weightLbs ?? item.weightLbs ?? null,
       };
     });
 }

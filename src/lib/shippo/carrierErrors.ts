@@ -2,6 +2,15 @@ export function isCarrierActivationError(message: string): boolean {
   return /not yet registered|activate account|register via webapp|carrier account/i.test(message);
 }
 
+export function isRetryableLabelError(message: string): boolean {
+  return (
+    isCarrierActivationError(message) ||
+    /rate.*invalid|not found|multipiece|multi-piece|multi piece|already been purchased/i.test(
+      message,
+    )
+  );
+}
+
 export function formatShippoLabelError(message: string): {
   title: string;
   detail: string;

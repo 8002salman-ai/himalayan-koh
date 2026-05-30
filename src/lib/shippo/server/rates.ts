@@ -1,7 +1,7 @@
 import { getShippoFromAddress } from '../config';
 import type { CheckoutShippingAddress, RatesLineItem, ShippoRate } from '../types';
 import { enrichRatesLineItems } from '../packing/enrichLineItems';
-import { buildParcelsFromPackingLineItems } from '../packing/buildParcels';
+import { buildConsolidatedParcelFromPackingLineItems, buildParcelsFromPackingLineItems } from '../packing/buildParcels';
 import { shippoAddressPayload, toShippoAddress } from './addresses';
 import { shippoRequest } from './client';
 import { shippoParcelPayload } from './parcels';
@@ -36,12 +36,16 @@ export async function fetchShippoRates(params: {
   toAddress: CheckoutShippingAddress;
   email?: string;
   lineItems: RatesLineItem[];
+  consolidateParcels?: boolean;
 }): Promise<ShippoRate[]> {
   const fromAddress = getShippoFromAddress();
   const to = toShippoAddress(params.toAddress, params.email);
   const supabase = getSupabaseAdmin();
   const packingItems = await enrichRatesLineItems(supabase, params.lineItems);
-  const parcels = buildParcelsFromPackingLineItems(packingItems).map(shippoParcelPayload);
+  const parcelInputs = params.consolidateParcels
+    ? buildConsolidatedParcelFromPackingLineItems(packingItems)
+    : buildParcelsFromPackingLineItems(packingItems);
+  const parcels = parcelInputs.map(shippoParcelPayload);
 
   const shipment = await shippoRequest<ShippoShipmentResponse>('/shipments/', {
     method: 'POST',
@@ -70,11 +74,13 @@ export async function fetchShippoRatesForOrder(params: {
   email: string;
   shippingAddress: CheckoutShippingAddress;
   lineItems: RatesLineItem[];
+  consolidateParcels?: boolean;
 }): Promise<ShippoRate[]> {
   return fetchShippoRates({
     toAddress: params.shippingAddress,
     email: params.email,
     lineItems: params.lineItems,
+    consolidateParcels: params.consolidateParcels,
   });
 }
 
@@ -117,4 +123,33 @@ export function pickRateForLabelPurchase(
   }
 
   return pickRateForShippingMethod(rates, shippingMethod);
+}
+
+/** Ordered rate IDs to try when purchasing a label. */
+export function pickRateCandidatesForLabel(
+  rates: ShippoRate[],
+  shippingMethod: 'standard' | 'expedited',
+): string[] {
+  if (rates.length === 0) return [];
+
+  const ids = new Set<string>();
+  const add = (rate: ShippoRate | null | undefined) => {
+    if (rate?.objectId) ids.add(rate.objectId);
+  };
+
+  add(pickRateForLabelPurchase(rates, shippingMethod));
+
+  for (const rate of rates) {
+    if (/usps/i.test(rate.provider)) add(rate);
+  }
+  for (const rate of rates) {
+    if (/ground|advantage|parcel select|media mail/i.test(`${rate.provider} ${rate.serviceName}`)) {
+      add(rate);
+    }
+  }
+  for (const rate of rates) {
+    add(rate);
+  }
+
+  return [...ids];
 }

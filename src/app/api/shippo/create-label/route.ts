@@ -4,10 +4,14 @@ import { dispatchOrderShippedNotifications } from '@/lib/orders/notifyOrderEvent
 import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { shippoConfigError } from '@/lib/shippo/config';
+import { formatShippoLabelError, isRetryableLabelError } from '@/lib/shippo/carrierErrors';
+import { normalizeOrderShippingAddress } from '@/lib/shippo/normalizeAddress';
 import { purchaseShippoLabel } from '@/lib/shippo/server/labels';
-import { fetchShippoRatesForOrder, pickRateForLabelPurchase } from '@/lib/shippo/server/rates';
-import { formatShippoLabelError, isCarrierActivationError } from '@/lib/shippo/carrierErrors';
-import type { CheckoutShippingAddress } from '@/lib/shippo/types';
+import {
+  fetchShippoRatesForOrder,
+  pickRateCandidatesForLabel,
+} from '@/lib/shippo/server/rates';
+import type { CheckoutShippingAddress, RatesLineItem } from '@/lib/shippo/types';
 
 interface OrderRow {
   id: string;
@@ -18,7 +22,18 @@ interface OrderRow {
   shippo_rate_id: string | null;
   tracking_number: string | null;
   label_url: string | null;
-  order_items: { quantity: number; product_id: string }[];
+  order_items: { quantity: number; product_id: string }[] | null;
+}
+
+function buildOrderLineItems(orderItems: OrderRow['order_items']): RatesLineItem[] {
+  if (!Array.isArray(orderItems)) return [];
+
+  return orderItems
+    .map((item) => ({
+      productId: typeof item.product_id === 'string' ? item.product_id : '',
+      quantity: Math.max(1, Math.floor(Number(item.quantity) || 0)),
+    }))
+    .filter((item) => item.productId && item.quantity > 0);
 }
 
 export async function POST(request: Request) {
@@ -79,66 +94,71 @@ export async function POST(request: Request) {
       });
     }
 
-    const shippingAddress = row.shipping_address;
-    const productIds = row.order_items.map((item) => item.product_id);
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, slug, name')
-      .in('id', productIds);
+    const shippingAddress = normalizeOrderShippingAddress(row.shipping_address);
+    if (!shippingAddress) {
+      return NextResponse.json(
+        { error: 'Order shipping address is incomplete. Update the order address before creating a label.' },
+        { status: 422 },
+      );
+    }
 
-    const lineItems = row.order_items.map((item) => {
-      const product = (products || []).find(
-        (row) => (row as { id: string }).id === item.product_id,
-      ) as { id: string; slug: string; name: string } | undefined;
-
-      return {
-        productId: item.product_id,
-        quantity: item.quantity,
-        slug: product?.slug ?? '',
-        name: product?.name ?? '',
-      };
-    });
+    const lineItems = buildOrderLineItems(row.order_items);
+    if (lineItems.length === 0) {
+      return NextResponse.json(
+        { error: 'Order has no shippable line items. Check order items in the database.' },
+        { status: 422 },
+      );
+    }
 
     const shippingMethod =
       row.billing_address?.shippingMethod === 'expedited' ? 'expedited' : 'standard';
 
-    const rates = await fetchShippoRatesForOrder({
+    const consolidateParcels = lineItems.length > 1;
+    let rates = await fetchShippoRatesForOrder({
       email: row.email,
       shippingAddress,
       lineItems,
+      consolidateParcels,
     });
 
-    if (rates.length === 0) {
-      return NextResponse.json({ error: 'No Shippo rates available for this order.' }, { status: 502 });
+    if (rates.length === 0 && consolidateParcels) {
+      rates = await fetchShippoRatesForOrder({
+        email: row.email,
+        shippingAddress,
+        lineItems,
+        consolidateParcels: false,
+      });
     }
 
-    const candidates: string[] = [];
-    if (row.shippo_rate_id) {
-      candidates.push(row.shippo_rate_id);
+    if (rates.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            'No Shippo rates available for this order. Confirm the shipping address and product weights, then try again.',
+        },
+        { status: 502 },
+      );
     }
-    const fallback = pickRateForLabelPurchase(rates, shippingMethod);
-    if (fallback && !candidates.includes(fallback.objectId)) {
-      candidates.push(fallback.objectId);
+
+    const candidates = pickRateCandidatesForLabel(rates, shippingMethod);
+    if (candidates.length === 0) {
+      return NextResponse.json({ error: 'No Shippo rates available for this order.' }, { status: 502 });
     }
 
     let label = null;
     let usedRateId: string | null = null;
     let lastError: Error | null = null;
-    let usedFallback = false;
 
     for (let index = 0; index < candidates.length; index += 1) {
       const rateId = candidates[index];
       try {
         label = await purchaseShippoLabel(rateId, row.id);
         usedRateId = rateId;
-        usedFallback = index > 0;
         break;
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Unable to create shipping label.');
         lastError = error;
-        const canRetry =
-          index < candidates.length - 1 &&
-          (isCarrierActivationError(error.message) || /rate.*invalid|not found/i.test(error.message));
+        const canRetry = index < candidates.length - 1 && isRetryableLabelError(error.message);
         if (!canRetry) break;
       }
     }
@@ -148,6 +168,7 @@ export async function POST(request: Request) {
     }
 
     const pickedRate = rates.find((rate) => rate.objectId === usedRateId);
+    const usedFallback = usedRateId !== row.shippo_rate_id;
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -180,6 +201,7 @@ export async function POST(request: Request) {
       serviceName: label.serviceName,
       usedFallbackCarrier: usedFallback,
       checkoutCarrier: pickedRate?.provider ?? null,
+      consolidatedParcel: consolidateParcels,
     });
   } catch (error) {
     if (error instanceof UnsupportedPackingProductsError) {
