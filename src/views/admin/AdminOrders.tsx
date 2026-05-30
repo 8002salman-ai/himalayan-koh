@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Check,
@@ -9,7 +9,6 @@ import {
   Clock,
   CreditCard,
   DollarSign,
-  ExternalLink,
   FileText,
   Loader2,
   Package,
@@ -22,7 +21,7 @@ import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '..
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
-import { formatShippoLabelError } from '../../lib/shippo/carrierErrors';
+import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
 import { updateAdminOrderStatus } from '../../lib/admin/updateOrderStatusClient';
 import { publicEnv } from '../../lib/env';
 import { formatPaymentMethod, formatPaymentStatus } from '../../lib/orders/display';
@@ -279,11 +278,20 @@ export default function AdminOrders() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-charcoal">Manage store orders</h1>
-        <p className="text-charcoal-light">
-          All customer orders — update payment, create Shippo labels, print invoices, and ship.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-charcoal">Manage store orders</h1>
+          <p className="text-charcoal-light">
+            All customer orders — update payment, create Shippo labels, print invoices, and ship.
+          </p>
+        </div>
+        <Link
+          to="/admin/labels"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+        >
+          <Truck size={16} />
+          Shipping Labels
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -585,14 +593,6 @@ function OrderDetailPanel({
     );
   }
 
-  const labelErrorInfo = labelError ? formatShippoLabelError(labelError) : null;
-  const needsLabel =
-    shippoEnabled &&
-    order.payment_status === 'paid' &&
-    !order.tracking_number &&
-    order.status !== 'cancelled';
-  const hasLabel = Boolean(order.label_url);
-
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 h-fit">
       <div className="flex items-start justify-between gap-4 mb-5">
@@ -623,58 +623,6 @@ function OrderDetailPanel({
         <InfoRow label="Service" value={order.shipping_service || 'Not assigned'} />
         <InfoRow label="Tracking" value={order.tracking_number || 'Not assigned'} />
       </div>
-
-      {order.label_url && (
-        <a
-          href={order.label_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors mb-5"
-        >
-          <Truck size={16} />
-          Print shipping label (PDF)
-        </a>
-      )}
-
-      {(needsLabel || hasLabel || labelError || labelNotice) && (
-        <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
-          <p className="font-semibold text-charcoal">Shipping label</p>
-          {needsLabel && (
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-charcoal-light">
-              <li>Pack the order and confirm the shipping address.</li>
-              <li>Click Create Shippo Label — tracking is emailed to the customer.</li>
-              <li>Print the PDF label and attach it to the package.</li>
-            </ol>
-          )}
-          {needsLabel && order.shipping_carrier && !/usps/i.test(order.shipping_carrier) && (
-            <p className="mt-3 text-xs text-amber-800">
-              Checkout selected {order.shipping_carrier}. If that carrier is not activated in Shippo, we automatically try USPS instead.
-            </p>
-          )}
-          {labelNotice && (
-            <p className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              {labelNotice}
-            </p>
-          )}
-          {labelErrorInfo && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
-              <p className="font-semibold">{labelErrorInfo.title}</p>
-              <p className="mt-1">{labelErrorInfo.detail}</p>
-              {labelErrorInfo.actionUrl && (
-                <a
-                  href={labelErrorInfo.actionUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 font-semibold text-red-900 underline"
-                >
-                  {labelErrorInfo.actionLabel}
-                  <ExternalLink size={14} />
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="border-t border-gray-100 pt-4 mb-5">
         <h4 className="font-semibold text-charcoal mb-3">Shipping Address</h4>
@@ -713,7 +661,19 @@ function OrderDetailPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-6">
+      <div className="mt-6 mb-4">
+        <ShippingLabelPanel
+          order={order}
+          shippoEnabled={shippoEnabled}
+          labelCreating={labelCreating}
+          labelError={labelError}
+          labelNotice={labelNotice}
+          onCreateLabel={() => onCreateLabel(order)}
+          variant="full"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => onUpdate(order)}
           className="flex items-center justify-center gap-2 px-4 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors"
@@ -729,18 +689,6 @@ function OrderDetailPanel({
           Invoice
         </button>
       </div>
-
-      {needsLabel && (
-        <button
-          type="button"
-          onClick={() => onCreateLabel(order)}
-          disabled={labelCreating}
-          className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 border border-himalayan text-himalayan rounded-xl font-semibold hover:bg-himalayan/5 transition-colors disabled:opacity-70"
-        >
-          {labelCreating ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />}
-          {labelCreating ? 'Creating Shippo label...' : 'Create Shippo Label'}
-        </button>
-      )}
     </div>
   );
 }

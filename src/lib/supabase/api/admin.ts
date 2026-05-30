@@ -888,6 +888,29 @@ export const adminApi = {
     };
   },
 
+  async getShippingLabelOrders(): Promise<{ ready: AdminOrder[]; pending: AdminOrder[] }> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        profile:profiles(*),
+        order_items(*)
+      `)
+      .eq('payment_status', 'paid')
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    const orders = (data || []) as AdminOrder[];
+
+    return {
+      ready: orders.filter((order) => Boolean(order.label_url)),
+      pending: orders.filter((order) => !order.label_url),
+    };
+  },
+
   async getOrderAnalytics(): Promise<AdminOrderAnalytics> {
     const { data, error } = await supabase
       .from('orders')

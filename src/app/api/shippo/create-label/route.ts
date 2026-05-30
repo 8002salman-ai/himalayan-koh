@@ -17,6 +17,7 @@ interface OrderRow {
   billing_address: { shippingMethod?: string } | null;
   shippo_rate_id: string | null;
   tracking_number: string | null;
+  label_url: string | null;
   order_items: { quantity: number; product_id: string }[];
 }
 
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         billing_address,
         shippo_rate_id,
         tracking_number,
+        label_url,
         order_items(quantity, product_id)
       `)
       .eq('id', orderId)
@@ -68,11 +70,12 @@ export async function POST(request: Request) {
     }
 
     const row = order as unknown as OrderRow;
-    if (row.tracking_number) {
+    if (row.tracking_number && row.label_url) {
       return NextResponse.json({
         ok: true,
         alreadyCreated: true,
         trackingNumber: row.tracking_number,
+        labelUrl: row.label_url,
       });
     }
 
