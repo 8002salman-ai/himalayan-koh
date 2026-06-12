@@ -222,54 +222,56 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.aside
-              initial={{ x: -280 }}
+              initial={{ x: -300 }}
               animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              className="fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-charcoal text-white z-50 lg:hidden flex flex-col"
+              exit={{ x: -300 }}
+              className="fixed left-0 top-0 bottom-0 w-[300px] max-w-[90vw] bg-charcoal text-white z-50 lg:hidden flex flex-col"
             >
-              <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-                <Link to="/admin" className="flex items-center gap-2">
+              <div className="h-14 flex items-center justify-between px-3 border-b border-white/10">
+                <Link to="/admin" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                   <img
                     src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
                     alt="Himalayan Koh"
-                    className="h-8 brightness-0 invert"
+                    className="h-7 brightness-0 invert"
                   />
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-2 hover:bg-white/10 rounded-lg"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
-              <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.path ||
-                    (item.path !== '/admin' && location.pathname.startsWith(item.path));
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                        isActive
-                          ? 'bg-himalayan text-white'
-                          : 'text-white/70 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <item.icon size={20} />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  );
-                })}
+              <nav className="flex-1 py-3 px-3 overflow-y-auto">
+                <div className="grid grid-cols-3 gap-2">
+                  {navItems.map((item) => {
+                    const isActive = location.pathname === item.path ||
+                      (item.path !== '/admin' && location.pathname.startsWith(item.path));
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl transition-all ${
+                          isActive
+                            ? 'bg-himalayan text-white'
+                            : 'text-white/60 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <item.icon size={20} />
+                        <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </nav>
-              <div className="p-4 border-t border-white/10">
+              <div className="px-3 py-3 border-t border-white/10">
                 <Link
                   to="/"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-white/60 hover:bg-white/10 hover:text-white transition-all text-sm"
                 >
-                  <Home size={20} />
+                  <Home size={18} />
                   <span className="font-medium">Back to Site</span>
                 </Link>
               </div>
@@ -281,7 +283,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 lg:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -422,13 +424,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 pb-28 lg:p-6 overflow-auto">
+        <main className="flex-1 p-3 pb-24 lg:p-6 overflow-auto">
           {children}
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
-        <div className="grid grid-cols-4 gap-1">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.07)]">
+        <div className="grid grid-cols-4 gap-0.5">
           {mobileNavItems.map((item) => {
             const isMenu = item.path === 'menu';
             const isActive = !isMenu && (
@@ -437,8 +439,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             );
             const content = (
               <>
-                <item.icon size={20} />
-                <span className="text-[11px] font-semibold">{item.label}</span>
+                <item.icon size={19} />
+                <span className="text-[10px] font-semibold">{item.label}</span>
               </>
             );
 
@@ -448,7 +450,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   key={item.label}
                   type="button"
                   onClick={() => setMobileMenuOpen(true)}
-                  className="min-h-[54px] rounded-xl flex flex-col items-center justify-center gap-1 text-charcoal-light hover:bg-gray-50"
+                  className="min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-charcoal-light hover:bg-gray-50"
                 >
                   {content}
                 </button>
@@ -459,7 +461,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`min-h-[54px] rounded-xl flex flex-col items-center justify-center gap-1 ${
+                className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 ${
                   isActive ? 'bg-himalayan text-white' : 'text-charcoal-light hover:bg-gray-50'
                 }`}
               >
@@ -472,10 +474,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <Link
         to="/admin/products?action=new"
-        className="lg:hidden fixed right-4 bottom-24 z-50 w-14 h-14 rounded-full bg-himalayan text-white shadow-xl flex items-center justify-center"
+        className="lg:hidden fixed right-3 bottom-[4.5rem] z-50 w-12 h-12 rounded-full bg-himalayan text-white shadow-xl flex items-center justify-center"
         aria-label="Quick add product"
       >
-        <Plus size={24} />
+        <Plus size={22} />
       </Link>
 
       {/* Click outside to close user menu */}

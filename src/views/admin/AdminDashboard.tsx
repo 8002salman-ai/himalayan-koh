@@ -169,7 +169,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -226,13 +226,13 @@ export default function AdminDashboard() {
 
       {/* Analytics Charts */}
       {analytics && (
-        <div className="grid xl:grid-cols-3 gap-6">
+        <div className="grid xl:grid-cols-3 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm"
+            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-charcoal">Revenue Analytics</h3>
                 <p className="text-sm text-charcoal-light">Last 7 days revenue and order volume</p>
@@ -259,7 +259,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-sm"
+            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
           >
             <h3 className="font-semibold text-charcoal mb-4">Orders Analytics</h3>
             <div className="space-y-3">
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm"
+            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
           >
             <h3 className="font-semibold text-charcoal mb-4">Product Analytics</h3>
             <div className="space-y-4">
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-sm"
+            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
           >
             <h3 className="font-semibold text-charcoal mb-4">Inventory Alerts</h3>
             <div className="space-y-3">
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Alerts & Quick Actions */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* Low Stock Alert */}
         {(stats?.lowStockCount || 0) > 0 && (
           <motion.div
@@ -410,7 +410,7 @@ export default function AdminDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="bg-white rounded-2xl p-6 shadow-sm"
+        className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
       >
         <h3 className="font-semibold text-charcoal mb-4">Recent Activity</h3>
         <div className="space-y-4">

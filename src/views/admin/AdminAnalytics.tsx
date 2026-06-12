@@ -52,7 +52,7 @@ export default function AdminAnalytics() {
   const maxProductRevenue = Math.max(...analytics.topProducts.map((p) => p.revenue), 1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Analytics</h1>
         <p className="text-charcoal-light">Revenue, orders, and product performance</p>
@@ -75,8 +75,8 @@ export default function AdminAnalytics() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6">
           <h2 className="font-semibold text-charcoal mb-4">Revenue (7 days)</h2>
           <div className="flex items-end gap-2 h-40">
             {analytics.revenueSeries.map((day) => (
@@ -92,7 +92,7 @@ export default function AdminAnalytics() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6">
           <h2 className="font-semibold text-charcoal mb-4">Order Status</h2>
           <div className="space-y-3">
             {Object.entries(analytics.orderStatusCounts).map(([status, count]) => (
@@ -113,7 +113,7 @@ export default function AdminAnalytics() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6">
         <h2 className="font-semibold text-charcoal mb-4">Top Products by Revenue</h2>
         {analytics.topProducts.length === 0 ? (
           <p className="text-sm text-charcoal-light">No sales data yet.</p>
@@ -138,7 +138,7 @@ export default function AdminAnalytics() {
       </div>
 
       {analytics.inventoryAlerts.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-charcoal flex items-center gap-2">
               <Package size={18} className="text-amber-600" />

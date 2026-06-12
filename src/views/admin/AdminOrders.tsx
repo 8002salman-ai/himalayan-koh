@@ -281,7 +281,7 @@ export default function AdminOrders() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-charcoal">Manage store orders</h1>
