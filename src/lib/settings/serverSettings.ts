@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any;
+
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 
 interface CacheEntry {
@@ -6,7 +9,7 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const TTL_MS = 60_000; // 1 minute
+const TTL_MS = 60_000;
 
 function cacheKey(category: string, key: string) {
   return `${category}::${key}`;
@@ -18,7 +21,7 @@ export async function getSetting(category: string, key: string): Promise<string 
   if (hit && hit.expiresAt > Date.now()) return hit.value;
 
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase: AnyClient = getSupabaseAdmin();
     const { data } = await supabase
       .from('site_settings')
       .select('value')
@@ -38,7 +41,7 @@ export async function getSettingsForCategory(
   category: string,
 ): Promise<Record<string, string | null>> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase: AnyClient = getSupabaseAdmin();
     const { data } = await supabase
       .from('site_settings')
       .select('key, value')
@@ -62,7 +65,7 @@ export async function upsertSettings(
   category: string,
   settings: Record<string, string | null>,
 ): Promise<void> {
-  const supabase = getSupabaseAdmin();
+  const supabase: AnyClient = getSupabaseAdmin();
   const rows = Object.entries(settings).map(([key, value]) => ({
     category,
     key,
