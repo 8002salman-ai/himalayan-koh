@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, Loader2, Save, Settings, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { SETTINGS_REGISTRY, type SettingsCategory } from '../../lib/settings/registry';
 
@@ -113,12 +113,12 @@ export default function AdminSettings() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3 mb-2">
         <div className="w-10 h-10 rounded-xl bg-himalayan/10 flex items-center justify-center">
-          <Settings size={22} className="text-himalayan" />
+          <KeyRound size={22} className="text-himalayan" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-charcoal">API Settings</h1>
+          <h1 className="text-2xl font-bold text-charcoal">API Keys & Integrations</h1>
           <p className="text-sm text-charcoal-light">
-            Keys saved here are used first. Env vars (.env.local / Vercel) are the fallback.
+            Keys saved here are used first. Vercel environment variables are the fallback.
           </p>
         </div>
       </div>

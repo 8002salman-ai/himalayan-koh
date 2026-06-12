@@ -125,16 +125,29 @@ export const SETTINGS_REGISTRY: SettingsCategory[] = [
       },
     ],
   },
-  // ─── Add future shipping / payment services below ────────────────────────────
-  // Example:
-  // {
-  //   id: 'easypost',
-  //   label: 'EasyPost — Shipping',
-  //   description: 'Alternative shipping carrier integration.',
-  //   docsHref: 'https://www.easypost.com/docs/api',
-  //   fields: [
-  //     { key: 'api_key', label: 'EasyPost API Key', type: 'password',
-  //       placeholder: 'EZT...', envFallback: 'EASYPOST_API_KEY' },
-  //   ],
-  // },
+  {
+    id: 'openrouter',
+    label: 'OpenRouter — AI Chat Assistant',
+    description: 'Powers the customer-facing AI chat widget. Free models work without a key; add a key for higher limits.',
+    docsHref: 'https://openrouter.ai/keys',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'OpenRouter API Key',
+        type: 'password',
+        placeholder: 'sk-or-v1-...',
+        hint: 'Get it from openrouter.ai/keys. Leave blank to use free models (rate-limited).',
+        envFallback: 'OPENROUTER_API_KEY',
+      },
+      {
+        key: 'model',
+        label: 'Preferred AI Model (optional)',
+        type: 'text',
+        placeholder: 'deepseek/deepseek-v4-flash:free',
+        hint: 'Leave blank to use the default free model. Find model IDs at openrouter.ai/models.',
+        envFallback: 'OPENROUTER_MODEL',
+      },
+    ],
+  },
+  // ─── Add future services below ───────────────────────────────────────────────
 ];
