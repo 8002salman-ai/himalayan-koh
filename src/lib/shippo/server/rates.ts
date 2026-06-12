@@ -39,6 +39,84 @@ function mapRate(rate: ShippoRateResponse): ShippoRate {
   };
 }
 
+/**
+ * Joins per-parcel rate object IDs into one composite checkout rate ID.
+ * Shippo object IDs are hex strings, so '+' is a safe separator.
+ */
+export const MULTI_RATE_ID_SEPARATOR = '+';
+
+export function splitShippoRateIds(rateId: string): string[] {
+  return rateId.split(MULTI_RATE_ID_SEPARATOR).filter(Boolean);
+}
+
+function isUsableRate(rate: ShippoRateResponse): boolean {
+  return Number(rate.amount) > 0 && (rate.currency || 'USD').toUpperCase() === 'USD';
+}
+
+function rateServiceKey(rate: ShippoRateResponse): string {
+  return `${rate.provider}|${rate.servicelevel?.token || rate.servicelevel?.name || ''}`;
+}
+
+function sortRates(rates: ShippoRate[]): ShippoRate[] {
+  return rates.sort((a, b) => {
+    const aUsps = /usps/i.test(a.provider) ? 0 : 1;
+    const bUsps = /usps/i.test(b.provider) ? 0 : 1;
+    if (aUsps !== bUsps) return aUsps - bUsps;
+    return a.amount - b.amount;
+  });
+}
+
+/**
+ * USPS does not rate multi-parcel shipments, so each box is rated as its own
+ * shipment and amounts are summed per carrier service available for ALL boxes.
+ */
+function combineParcelRates(shipments: ShippoShipmentResponse[]): ShippoRate[] {
+  const rateMaps = shipments.map((shipment) => {
+    const byService = new Map<string, ShippoRateResponse>();
+    for (const rate of shipment.rates || []) {
+      if (!isUsableRate(rate)) continue;
+      const key = rateServiceKey(rate);
+      const existing = byService.get(key);
+      if (!existing || Number(rate.amount) < Number(existing.amount)) {
+        byService.set(key, rate);
+      }
+    }
+    return byService;
+  });
+
+  const [first, ...rest] = rateMaps;
+  if (!first) return [];
+
+  const combined: ShippoRate[] = [];
+  for (const [key, baseRate] of first) {
+    const group = [baseRate];
+    const availableForAllBoxes = rest.every((byService) => {
+      const match = byService.get(key);
+      if (match) group.push(match);
+      return Boolean(match);
+    });
+    if (!availableForAllBoxes) continue;
+
+    let estimatedDays: number | null = null;
+    for (const rate of group) {
+      if (rate.estimated_days != null) {
+        estimatedDays = estimatedDays == null ? rate.estimated_days : Math.max(estimatedDays, rate.estimated_days);
+      }
+    }
+
+    combined.push({
+      objectId: group.map((rate) => rate.object_id).join(MULTI_RATE_ID_SEPARATOR),
+      amount: Math.round(group.reduce((sum, rate) => sum + Number(rate.amount), 0) * 100) / 100,
+      currency: 'USD',
+      provider: baseRate.provider,
+      serviceName: baseRate.servicelevel?.name || baseRate.provider,
+      estimatedDays,
+    });
+  }
+
+  return combined;
+}
+
 export async function fetchShippoRates(params: {
   toAddress: CheckoutShippingAddress;
   email?: string;
@@ -52,33 +130,45 @@ export async function fetchShippoRates(params: {
   const parcelInputs = params.consolidateParcels
     ? buildConsolidatedParcelFromPackingLineItems(packingItems)
     : buildParcelsFromPackingLineItems(packingItems);
-  const parcels = parcelInputs.map(shippoParcelPayload);
 
-  const shipment = await shippoRequest<ShippoShipmentResponse>('/shipments/', {
-    method: 'POST',
-    body: {
-      address_from: shippoAddressPayload(fromAddress),
-      address_to: shippoAddressPayload(to),
-      parcels,
-      async: false,
-    },
-  });
+  const addressFrom = shippoAddressPayload(fromAddress);
+  const addressTo = shippoAddressPayload(to);
 
-  const rates = (shipment.rates || [])
-    .map(mapRate)
-    .filter((rate) => rate.amount > 0 && rate.currency.toUpperCase() === 'USD')
-    .sort((a, b) => {
-      const aUsps = /usps/i.test(a.provider) ? 0 : 1;
-      const bUsps = /usps/i.test(b.provider) ? 0 : 1;
-      if (aUsps !== bUsps) return aUsps - bUsps;
-      return a.amount - b.amount;
-    });
+  // One shipment per box: USPS rejects multi-parcel shipments and boxes over
+  // 70 lbs, so each box gets its own rate and amounts are summed per service.
+  const shipments = await Promise.all(
+    parcelInputs.map((parcel) =>
+      shippoRequest<ShippoShipmentResponse>('/shipments/', {
+        method: 'POST',
+        body: {
+          address_from: addressFrom,
+          address_to: addressTo,
+          parcels: [shippoParcelPayload(parcel)],
+          async: false,
+        },
+      }),
+    ),
+  );
 
-  if (rates.length === 0 && (shipment.messages?.length || (shipment.rates || []).length > 0)) {
-    console.warn('[Shippo] Shipment returned no usable USD rates. Raw rate count:', (shipment.rates || []).length, 'Messages:', JSON.stringify(shipment.messages ?? []));
+  const rates =
+    shipments.length === 1
+      ? (shipments[0].rates || []).map(mapRate).filter((rate) => rate.amount > 0 && rate.currency.toUpperCase() === 'USD')
+      : combineParcelRates(shipments);
+
+  if (rates.length === 0) {
+    for (const shipment of shipments) {
+      if (shipment.messages?.length || (shipment.rates || []).length > 0) {
+        console.warn(
+          '[Shippo] Shipment returned no usable USD rates. Raw rate count:',
+          (shipment.rates || []).length,
+          'Messages:',
+          JSON.stringify(shipment.messages ?? []),
+        );
+      }
+    }
   }
 
-  return rates.slice(0, 8);
+  return sortRates(rates).slice(0, 8);
 }
 
 export async function fetchShippoRatesForOrder(params: {

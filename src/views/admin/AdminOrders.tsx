@@ -205,15 +205,18 @@ export default function AdminOrders() {
     try {
       const result = await createShippoLabel(order.id, token);
       await fetchOrders();
+      const costInfo = typeof result.rateAmount === 'number' ? ` Carrier cost: $${result.rateAmount.toFixed(2)}.` : '';
+      const boxInfo = result.parcelCount && result.parcelCount > 1 ? ` ${result.parcelCount} boxes — one label per box.` : '';
       if (result.usedFallbackCarrier && result.carrier) {
         setLabelNotice(
-          `Label created with ${result.carrier} (${result.serviceName || 'shipping'}). Checkout used a carrier that is not active in Shippo, so we switched to the next available rate.`,
+          `Label created with ${result.carrier} (${result.serviceName || 'shipping'}).${costInfo}${boxInfo}`,
         );
       } else if (result.trackingNumber) {
-        setLabelNotice(`Shipping label ready. Tracking number ${result.trackingNumber}.`);
+        setLabelNotice(`Shipping label ready. Tracking: ${result.trackingNumber}.${costInfo}${boxInfo}`);
       }
-      if (result.labelUrl) {
-        window.open(result.labelUrl, '_blank', 'noopener,noreferrer');
+      const urls = result.labelUrls?.length ? result.labelUrls : result.labelUrl ? [result.labelUrl] : [];
+      for (const url of urls) {
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       setLabelError(err instanceof Error ? err.message : 'Unable to create Shippo label.');
@@ -644,6 +647,13 @@ function OrderDetailPanel({
           })()}
         </div>
       </div>
+
+      {order.notes && (
+        <div className="border-t border-gray-100 pt-4 mb-5">
+          <h4 className="font-semibold text-charcoal mb-2">Order Notes</h4>
+          <p className="text-xs text-charcoal-light whitespace-pre-line leading-5">{order.notes}</p>
+        </div>
+      )}
 
       <div className="border-t border-gray-100 pt-4 mb-5">
         <h4 className="font-semibold text-charcoal mb-3">Shipping Address</h4>
