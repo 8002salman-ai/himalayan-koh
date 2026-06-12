@@ -10,6 +10,7 @@ import {
   Users,
   FileText,
   Settings,
+  KeyRound,
   LogOut,
   Menu,
   X,
@@ -48,6 +49,7 @@ const navItems = [
   { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
+  { label: 'API Keys', path: '/admin/api-keys', icon: KeyRound },
 ];
 
 const mobileNavItems = [

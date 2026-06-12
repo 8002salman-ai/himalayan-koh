@@ -1,4 +1,7 @@
-export const runtime = 'edge';
+// Note: cannot use 'edge' runtime because getSetting uses Node.js globals (server-only DB client)
+// export const runtime = 'edge';
+
+import { getSetting } from '@/lib/settings/serverSettings';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -12,9 +15,11 @@ const stableFreeModels = [
   'meta-llama/llama-3.2-3b-instruct:free',
 ];
 
-const modelCandidates = Array.from(
-  new Set([...stableFreeModels, process.env.OPENROUTER_MODEL].filter(Boolean))
-) as string[];
+async function resolveModelCandidates(): Promise<string[]> {
+  const dbModel = await getSetting('openrouter', 'model');
+  const envModel = process.env.OPENROUTER_MODEL;
+  return Array.from(new Set([...stableFreeModels, dbModel || envModel].filter(Boolean))) as string[];
+}
 
 const maxMessages = 12;
 const maxMessageLength = 2000;
@@ -37,7 +42,9 @@ export async function POST(request: Request) {
     return jsonResponse({ error: 'Content-Type must be application/json' }, 415, responseHeaders);
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY;
+  const apiKey = (await getSetting('openrouter', 'api_key'))
+    || process.env.OPENROUTER_API_KEY
+    || process.env.OPEN_ROUTER_API_KEY;
   if (!apiKey) {
     return jsonResponse(
       { error: 'AI assistant is not configured yet. Please add OPENROUTER_API_KEY in Vercel.' },
@@ -65,10 +72,12 @@ export async function POST(request: Request) {
     return jsonResponse({ error: 'A user message is required' }, 400, responseHeaders);
   }
 
+  const modelCandidates = await resolveModelCandidates();
   const upstream = await requestOpenRouter({
     apiKey,
     origin: request.headers.get('origin') || 'https://himalayankoh.com',
     messages,
+    modelCandidates,
   });
 
   if (!upstream.content) {
@@ -93,10 +102,12 @@ async function requestOpenRouter({
   apiKey,
   origin,
   messages,
+  modelCandidates,
 }: {
   apiKey: string;
   origin: string;
   messages: { role: 'user' | 'assistant'; content: string }[];
+  modelCandidates: string[];
 }) {
   let lastError = '';
   let lastStatus = 502;
