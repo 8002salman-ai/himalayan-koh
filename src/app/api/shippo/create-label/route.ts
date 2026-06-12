@@ -3,7 +3,7 @@ import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { dispatchOrderShippedNotifications } from '@/lib/orders/notifyOrderEvents';
 import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
-import { shippoConfigError } from '@/lib/shippo/config';
+import { resolveShippoConfigError } from '@/lib/shippo/config';
 import { formatShippoLabelError, isRetryableLabelError } from '@/lib/shippo/carrierErrors';
 import { normalizeOrderShippingAddress } from '@/lib/shippo/normalizeAddress';
 import { purchaseShippoLabel } from '@/lib/shippo/server/labels';
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const configError = shippoConfigError();
+  const configError = await resolveShippoConfigError();
   if (configError) {
     return NextResponse.json({ error: configError }, { status: 503 });
   }

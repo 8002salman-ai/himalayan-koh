@@ -5,7 +5,7 @@ import { markOrderPaid } from '@/lib/stripe/server/updateOrderPayment';
 import { validateVerifyPaymentBody } from '@/lib/stripe/server/validation';
 
 export async function POST(request: Request) {
-  const configError = stripeConfigError();
+  const configError = await stripeConfigError();
   if (configError) return configError;
 
   let body: unknown;
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const { orderId, paymentIntentId } = validated.data;
 
   try {
-    const stripe = getStripeClient();
+    const stripe = await getStripeClient();
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status !== 'succeeded') {

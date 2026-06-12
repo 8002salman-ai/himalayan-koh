@@ -11,10 +11,15 @@ export interface ShippoAddress {
 }
 
 export interface ShippoParcelInput {
+  /** Billable weight: max(actual weight, dimensional weight). Sent to Shippo. */
   weightLbs: number;
   lengthIn?: number;
   widthIn?: number;
   heightIn?: number;
+  /** Actual product weight before DIM comparison (for logging/reference). */
+  actualWeightLbs?: number;
+  /** Dimensional weight = L × W × H / DIM_DIVISOR (for logging/reference). */
+  dimWeightLbs?: number;
 }
 
 export interface ShippoRate {

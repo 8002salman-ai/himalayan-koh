@@ -18,6 +18,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '../../lib/supabase/api/admin';
+import { FREE_SHIPPING_THRESHOLD } from '../../lib/supabase/api/orders';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
@@ -619,9 +620,29 @@ function OrderDetailPanel({
         <InfoRow label="Phone" value={order.phone || 'Not provided'} />
         <InfoRow label="Payment method" value={formatPaymentMethod(order.payment_method)} />
         <InfoRow label="Payment status" value={formatPaymentStatus(order.payment_status)} />
-        <InfoRow label="Carrier" value={order.shipping_carrier || 'Not assigned'} />
-        <InfoRow label="Service" value={order.shipping_service || 'Not assigned'} />
-        <InfoRow label="Tracking" value={order.tracking_number || 'Not assigned'} />
+      </div>
+
+      <div className="border-t border-gray-100 pt-4 mb-5">
+        <h4 className="font-semibold text-charcoal mb-3 flex items-center gap-2">
+          <Truck size={15} className="text-himalayan" />
+          Shipping
+        </h4>
+        <div className="space-y-2">
+          {(() => {
+            const info = describeShipping(order);
+            return (
+              <>
+                <InfoRow label="Type" value={info.typeLabel} />
+                {info.carrier && <InfoRow label="Carrier" value={info.carrier} />}
+                {info.service && <InfoRow label="Service" value={info.service} />}
+                {order.tracking_number && <InfoRow label="Tracking" value={order.tracking_number} />}
+                {!order.tracking_number && order.shipping_carrier && (
+                  <InfoRow label="Tracking" value="Not yet assigned" />
+                )}
+              </>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="border-t border-gray-100 pt-4 mb-5">
@@ -705,6 +726,35 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function toShippingAddress(value: Json | undefined): ShippingAddress {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return value as ShippingAddress;
+}
+
+function describeShipping(order: AdminOrder): {
+  typeLabel: string;
+  carrier?: string;
+  service?: string;
+} {
+  const billing = order.billing_address as Record<string, unknown> | null;
+  const shippingMethod = typeof billing?.shippingMethod === 'string' ? billing.shippingMethod : 'standard';
+
+  if (order.shipping_carrier) {
+    return {
+      typeLabel: 'Live carrier rate (Shippo)',
+      carrier: order.shipping_carrier,
+      service: order.shipping_service || undefined,
+    };
+  }
+
+  if (order.shipping_cost === 0) {
+    return {
+      typeLabel: order.subtotal >= FREE_SHIPPING_THRESHOLD ? `Free shipping (order over $${FREE_SHIPPING_THRESHOLD})` : 'Free shipping',
+    };
+  }
+
+  const method = shippingMethod === 'expedited' ? 'Expedited' : 'Standard';
+  const price = shippingMethod === 'expedited' ? '$18.95' : '$9.95';
+  return {
+    typeLabel: `${method} flat rate (${price})`,
+  };
 }
 
 function capitalize(value: string) {

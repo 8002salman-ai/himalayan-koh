@@ -88,6 +88,7 @@ export default function CheckoutPage() {
   const [selectedShippoRateId, setSelectedShippoRateId] = useState<string | null>(null);
   const [shippoRatesLoading, setShippoRatesLoading] = useState(false);
   const [shippoRatesError, setShippoRatesError] = useState<string | null>(null);
+  const [shippoRatesAttempted, setShippoRatesAttempted] = useState(false);
   const [addressValidation, setAddressValidation] = useState<AddressValidationResponse | null>(null);
   const [addressValidating, setAddressValidating] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
@@ -137,6 +138,7 @@ export default function CheckoutPage() {
       setShippoRates([]);
       setSelectedShippoRateId(null);
       setAddressValidation(null);
+      setShippoRatesAttempted(false);
       return;
     }
 
@@ -205,6 +207,7 @@ export default function CheckoutPage() {
         });
 
         setShippoRates(result.rates);
+        setShippoRatesAttempted(true);
         setSelectedShippoRateId((current) => {
           if (current && result.rates.some((rate) => rate.objectId === current)) {
             return current;
@@ -214,6 +217,7 @@ export default function CheckoutPage() {
       } catch (err) {
         setShippoRates([]);
         setSelectedShippoRateId(null);
+        setShippoRatesAttempted(true);
         setShippoRatesError(err instanceof Error ? err.message : 'Unable to load live shipping rates.');
       } finally {
         setAddressValidating(false);
@@ -656,7 +660,11 @@ export default function CheckoutPage() {
                     </div>
                   )}
                   {!shippoRatesLoading && shippoRates.length === 0 && !shippoRatesError && (
-                    <p className="text-charcoal-light mt-1">Complete your shipping address to see live carrier rates.</p>
+                    <p className="text-charcoal-light mt-1">
+                      {shippoRatesAttempted
+                        ? 'Live carrier rates are unavailable for this address — flat rates apply below.'
+                        : 'Complete your shipping address to see live carrier rates.'}
+                    </p>
                   )}
                 </div>
               )}

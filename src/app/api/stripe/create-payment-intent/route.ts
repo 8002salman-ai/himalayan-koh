@@ -7,7 +7,7 @@ import { validateCreatePaymentIntentBody } from '@/lib/stripe/server/validation'
 const MIN_AMOUNT_CENTS = 50;
 
 export async function POST(request: Request) {
-  const configError = stripeConfigError();
+  const configError = await stripeConfigError();
   if (configError) return configError;
 
   let body: unknown;
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const stripe = getStripeClient();
+    const stripe = await getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       paymentIntentId: paymentIntent.id,
       amount: amountCents,
       currency: 'usd',
-      mode: getStripeMode(),
+      mode: await getStripeMode(),
     });
   } catch (error) {
     console.error('Stripe PaymentIntent creation failed:', error);

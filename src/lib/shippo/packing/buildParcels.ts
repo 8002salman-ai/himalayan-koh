@@ -1,6 +1,7 @@
 import type { ShippoParcelInput } from '../types';
 import { UnsupportedPackingProductsError } from './errors';
 import { resolvePackingRule } from './rules';
+import { calcBillableWeightLbs, calcDimWeightLbs } from './dimWeight';
 
 export interface PackingLineItem {
   productId?: string;
@@ -46,11 +47,19 @@ export function buildParcelsFromPackingLineItems(items: PackingLineItem[]): Ship
     let remaining = item.quantity;
     while (remaining > 0) {
       const unitsInBox = Math.min(remaining, rule.unitsPerBox);
+      const { lengthIn, widthIn, heightIn } = rule.box;
+      const actualWeightLbs = roundWeightLbs(unitsInBox * rule.unitWeightLbs);
+      const dimWeightLbs = roundWeightLbs(calcDimWeightLbs(lengthIn, widthIn, heightIn));
+      const billableWeightLbs = roundWeightLbs(
+        calcBillableWeightLbs(actualWeightLbs, lengthIn, widthIn, heightIn),
+      );
       parcels.push({
-        lengthIn: rule.box.lengthIn,
-        widthIn: rule.box.widthIn,
-        heightIn: rule.box.heightIn,
-        weightLbs: roundWeightLbs(unitsInBox * rule.unitWeightLbs),
+        lengthIn,
+        widthIn,
+        heightIn,
+        weightLbs: billableWeightLbs,
+        actualWeightLbs,
+        dimWeightLbs,
       });
       remaining -= unitsInBox;
     }
@@ -74,19 +83,29 @@ export function buildConsolidatedParcelFromPackingLineItems(
   const parcels = buildParcelsFromPackingLineItems(items);
   if (parcels.length <= 1) return parcels;
 
-  const totalWeightLbs = roundWeightLbs(
-    parcels.reduce((sum, parcel) => sum + parcel.weightLbs, 0),
+  // Sum actual product weights (not billable) for true consolidated weight
+  const totalActualWeightLbs = roundWeightLbs(
+    parcels.reduce((sum, parcel) => sum + (parcel.actualWeightLbs ?? parcel.weightLbs), 0),
   );
   const lengthIn = Math.max(...parcels.map((parcel) => parcel.lengthIn ?? 10));
   const widthIn = Math.max(...parcels.map((parcel) => parcel.widthIn ?? 10));
   const stackedHeight = parcels.reduce((sum, parcel) => sum + (parcel.heightIn ?? 6), 0);
+  const heightIn = Math.min(12, Math.max(6, roundWeightLbs(stackedHeight)));
+
+  // Re-apply DIM weight to the final consolidated box dimensions
+  const dimWeightLbs = roundWeightLbs(calcDimWeightLbs(lengthIn, widthIn, heightIn));
+  const billableWeightLbs = roundWeightLbs(
+    calcBillableWeightLbs(totalActualWeightLbs, lengthIn, widthIn, heightIn),
+  );
 
   return [
     {
       lengthIn,
       widthIn,
-      heightIn: Math.min(12, Math.max(6, roundWeightLbs(stackedHeight))),
-      weightLbs: totalWeightLbs,
+      heightIn,
+      weightLbs: billableWeightLbs,
+      actualWeightLbs: totalActualWeightLbs,
+      dimWeightLbs,
     },
   ];
 }

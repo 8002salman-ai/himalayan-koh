@@ -1,4 +1,4 @@
-import { getShippoFromAddress } from '../config';
+import { resolveShippoFromAddress } from '../config';
 import type { CheckoutShippingAddress, RatesLineItem, ShippoRate } from '../types';
 import { enrichRatesLineItems } from '../packing/enrichLineItems';
 import { buildConsolidatedParcelFromPackingLineItems, buildParcelsFromPackingLineItems } from '../packing/buildParcels';
@@ -17,8 +17,15 @@ interface ShippoRateResponse {
   attributes?: string[];
 }
 
+interface ShippoShipmentMessage {
+  code: string;
+  source: string;
+  text: string;
+}
+
 interface ShippoShipmentResponse {
   rates: ShippoRateResponse[];
+  messages?: ShippoShipmentMessage[];
 }
 
 function mapRate(rate: ShippoRateResponse): ShippoRate {
@@ -38,7 +45,7 @@ export async function fetchShippoRates(params: {
   lineItems: RatesLineItem[];
   consolidateParcels?: boolean;
 }): Promise<ShippoRate[]> {
-  const fromAddress = getShippoFromAddress();
+  const fromAddress = await resolveShippoFromAddress();
   const to = toShippoAddress(params.toAddress, params.email);
   const supabase = getSupabaseAdmin();
   const packingItems = await enrichRatesLineItems(supabase, params.lineItems);
@@ -66,6 +73,10 @@ export async function fetchShippoRates(params: {
       if (aUsps !== bUsps) return aUsps - bUsps;
       return a.amount - b.amount;
     });
+
+  if (rates.length === 0 && (shipment.messages?.length || (shipment.rates || []).length > 0)) {
+    console.warn('[Shippo] Shipment returned no usable USD rates. Raw rate count:', (shipment.rates || []).length, 'Messages:', JSON.stringify(shipment.messages ?? []));
+  }
 
   return rates.slice(0, 8);
 }
