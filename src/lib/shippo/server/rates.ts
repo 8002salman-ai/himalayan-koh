@@ -1,4 +1,4 @@
-import { getShippoFromAddress } from '../config';
+import { resolveShippoFromAddress } from '../config';
 import type { CheckoutShippingAddress, RatesLineItem, ShippoRate } from '../types';
 import { enrichRatesLineItems } from '../packing/enrichLineItems';
 import { buildConsolidatedParcelFromPackingLineItems, buildParcelsFromPackingLineItems } from '../packing/buildParcels';
@@ -38,7 +38,7 @@ export async function fetchShippoRates(params: {
   lineItems: RatesLineItem[];
   consolidateParcels?: boolean;
 }): Promise<ShippoRate[]> {
-  const fromAddress = getShippoFromAddress();
+  const fromAddress = await resolveShippoFromAddress();
   const to = toShippoAddress(params.toAddress, params.email);
   const supabase = getSupabaseAdmin();
   const packingItems = await enrichRatesLineItems(supabase, params.lineItems);

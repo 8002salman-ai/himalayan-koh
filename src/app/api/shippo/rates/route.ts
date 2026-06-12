@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { shippoConfigError } from '@/lib/shippo/config';
+import { resolveShippoConfigError } from '@/lib/shippo/config';
 import { UnsupportedPackingProductsError } from '@/lib/shippo/packing/errors';
 import { fetchShippoRates } from '@/lib/shippo/server/rates';
 import type { CheckoutShippingAddress, RatesLineItem } from '@/lib/shippo/types';
@@ -45,7 +45,7 @@ function parseLineItems(body: Record<string, unknown>): RatesLineItem[] {
 }
 
 export async function POST(request: Request) {
-  const configError = shippoConfigError();
+  const configError = await resolveShippoConfigError();
   if (configError) {
     return NextResponse.json({ error: configError, configured: false }, { status: 503 });
   }

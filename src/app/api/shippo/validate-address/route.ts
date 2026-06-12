@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { shippoConfigError } from '@/lib/shippo/config';
+import { resolveShippoConfigError } from '@/lib/shippo/config';
 import { validateShippingAddress } from '@/lib/shippo/server/validateAddress';
 import type { CheckoutShippingAddress } from '@/lib/shippo/types';
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   const email = typeof record.email === 'string' ? record.email.trim() : undefined;
-  const configured = !shippoConfigError();
+  const configured = !(await resolveShippoConfigError());
 
   try {
     const result = await validateShippingAddress(address, email);

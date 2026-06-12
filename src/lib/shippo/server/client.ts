@@ -1,10 +1,17 @@
+import { getSetting } from '@/lib/settings/serverSettings';
+
 const SHIPPO_API_BASE = 'https://api.goshippo.com';
+
+async function resolveShippoApiKey(): Promise<string> {
+  const dbKey = await getSetting('shippo', 'api_key');
+  return dbKey || process.env.SHIPPO_API_KEY?.trim() || '';
+}
 
 export async function shippoRequest<T>(
   path: string,
-  options: { method?: string; body?: unknown } = {}
+  options: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const apiKey = process.env.SHIPPO_API_KEY?.trim();
+  const apiKey = await resolveShippoApiKey();
   if (!apiKey) {
     throw new Error('SHIPPO_API_KEY is not configured.');
   }
