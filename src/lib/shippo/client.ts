@@ -77,9 +77,13 @@ export async function createShippoLabel(orderId: string, accessToken: string) {
   return body as {
     ok: boolean;
     trackingNumber?: string;
+    trackingNumbers?: string[];
     labelUrl?: string;
+    labelUrls?: string[];
     carrier?: string;
     serviceName?: string;
+    rateAmount?: number | null;
+    parcelCount?: number;
     alreadyCreated?: boolean;
     usedFallbackCarrier?: boolean;
   };
