@@ -10,3 +10,6 @@ out
 # Legacy Vite build output (Next.js uses .next)
 dist
 .env*
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
