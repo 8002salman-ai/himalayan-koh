@@ -12,7 +12,7 @@ export const ORGANIZATION_JSON_LD = {
   '@type': 'Organization',
   name: SITE_NAME,
   url: SITE_URL,
-  logo: '/logo.png',
+  logo: '/logo.svg',
   contactPoint: {
     '@type': 'ContactPoint',
     telephone: '+1-832-224-6466',

@@ -118,7 +118,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
 
               <div className="text-center mb-6">
                 <img
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="Himalayan Koh"
                   className="h-12 mx-auto mb-4"
                 />
