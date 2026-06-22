@@ -176,15 +176,6 @@ export default function HomePage() {
             {/* Left Side - Text */}
             <div>
               <motion.p
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="text-2xl sm:text-3xl text-white/90 font-light mb-5 tracking-wide"
-              >
-                ~ World's Best for Livestock ~
-              </motion.p>
-
-              <motion.p
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.7 }}
