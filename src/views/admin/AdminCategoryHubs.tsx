@@ -159,7 +159,7 @@ export default function AdminCategoryHubs() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-charcoal">Category Hubs</h1>
@@ -212,7 +212,7 @@ export default function AdminCategoryHubs() {
               <Loader2 size={32} className="animate-spin text-himalayan" />
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-serif text-xl font-bold text-charcoal">
                   {filterLabelFromKey(selectedKey)}

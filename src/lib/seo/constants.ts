@@ -12,7 +12,7 @@ export const ORGANIZATION_JSON_LD = {
   '@type': 'Organization',
   name: SITE_NAME,
   url: SITE_URL,
-  logo: 'https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg',
+  logo: '/logo.png',
   contactPoint: {
     '@type': 'ContactPoint',
     telephone: '+1-832-224-6466',

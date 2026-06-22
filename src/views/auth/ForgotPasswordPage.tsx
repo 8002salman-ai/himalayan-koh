@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
           {/* Logo */}
           <div className="text-center mb-8">
             <img
-              src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
+              src="/logo.png"
               alt="Himalayan Koh"
               className="h-14 mx-auto mb-4"
             />

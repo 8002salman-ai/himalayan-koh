@@ -172,47 +172,9 @@ export default function HomePage() {
 
         {/* Content */}
         <div className="relative z-10 max-w-[88rem] mx-auto px-4 sm:px-6 py-14 md:py-24 w-full">
-          <motion.div
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md px-4 py-3 text-sm text-white/85"
-          >
-            <span>All Natural Himalayan salt for horses, cattle and deer</span>
-            <div className="flex flex-wrap items-center gap-4">
-              <a href="tel:8322246466" className="inline-flex items-center gap-2 hover:text-himalayan transition-colors">
-                <Phone size={15} />
-                Call: (832) 224-6466
-              </a>
-              <Link to="/contact" className="inline-flex items-center gap-2 hover:text-himalayan transition-colors">
-                <MapPin size={15} />
-                Product Locator
-              </Link>
-            </div>
-          </motion.div>
-
           <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-12 xl:gap-16 items-center">
             {/* Left Side - Text */}
             <div>
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-hk-green/15 backdrop-blur-sm border border-hk-green/30 rounded-md text-hk-green text-xs font-extrabold tracking-[0.14em] uppercase mb-6">
-                  All Natural Himalayan salt for horses, cattle and deer
-                </span>
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="font-serif text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-bold text-white leading-[0.95] mb-5 tracking-tight"
-              >
-                Rich All Natural{' '}
-                <span className="text-hk-rose">Himalayan Pink Salt</span>
-              </motion.h1>
-
               <motion.p
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -326,7 +288,7 @@ export default function HomePage() {
                         <p className="text-sm text-charcoal-light">Natural nutrition for healthier herds</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {mineralHighlights.map((item) => (
                         <div key={item.value} className="rounded-xl bg-warm-white p-3 text-center">
                           <p className="font-bold text-himalayan">{item.value}</p>
