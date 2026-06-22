@@ -95,7 +95,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <img
-              src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
+              src="/logo.png"
               alt="Himalayan Koh"
               className="h-12 mb-5 brightness-0 invert"
             />

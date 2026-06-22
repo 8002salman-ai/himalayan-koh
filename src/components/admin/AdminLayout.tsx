@@ -161,7 +161,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {sidebarOpen && (
             <Link to="/admin" className="flex items-center gap-2">
               <img
-                src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
+                src="/logo.png"
                 alt="Himalayan Koh"
                 className="h-8 brightness-0 invert"
               />
@@ -230,7 +230,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div className="h-14 flex items-center justify-between px-3 border-b border-white/10">
                 <Link to="/admin" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                   <img
-                    src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
+                    src="/logo.png"
                     alt="Himalayan Koh"
                     className="h-7 brightness-0 invert"
                   />

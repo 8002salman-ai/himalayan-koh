@@ -118,7 +118,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
 
               <div className="text-center mb-6">
                 <img
-                  src="https://himalayankoh.com/wp-content/uploads/2017/10/logo.svg"
+                  src="/logo.png"
                   alt="Himalayan Koh"
                   className="h-12 mx-auto mb-4"
                 />
