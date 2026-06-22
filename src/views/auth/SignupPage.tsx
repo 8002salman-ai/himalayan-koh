@@ -120,7 +120,7 @@ export default function SignupPage() {
           {/* Logo */}
           <div className="text-center mb-8">
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="Himalayan Koh"
               className="h-14 mx-auto mb-4"
             />
