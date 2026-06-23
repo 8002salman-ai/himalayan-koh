@@ -15,8 +15,6 @@ const navLinks = [
   { label: 'Home', path: '/' },
   { label: 'Products', path: '/products' },
   { label: 'About Us', path: '/about' },
-  { label: 'Blog', path: '/blog' },
-  { label: 'Gallery', path: '/gallery' },
   { label: 'Contact', path: '/contact' },
 ];
 
@@ -47,6 +45,8 @@ export default function Layout({ children }: LayoutProps) {
       >
         Skip to main content
       </a>
+      {/* Announcement Bar + Navbar — sticky together so bar never scrolls away */}
+      <div className="sticky top-0 z-50">
       {/* Announcement Bar */}
       <div className="bg-hk-paper border-b border-hk-line text-sm text-hk-ink">
         <motion.div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -72,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Navbar */}
-      <header className="sticky top-0 z-50 bg-hk-panel/95 backdrop-blur-xl border-b border-hk-line shadow-[0_10px_30px_rgba(33,29,24,0.07)]">
+      <header className="bg-hk-panel/95 backdrop-blur-xl border-b border-hk-line shadow-[0_10px_30px_rgba(33,29,24,0.07)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
@@ -227,6 +227,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </header>
+      </div>{/* end sticky wrapper */}
 
       {/* Mobile Menu */}
       <AnimatePresence>
