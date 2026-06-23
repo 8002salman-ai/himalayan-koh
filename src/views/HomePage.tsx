@@ -134,25 +134,6 @@ export default function HomePage() {
       {/* Testimonials */}
       <section className="py-16 md:py-24">
         <div className="max-w-[88rem] mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-8 lg:gap-12 items-start">
-            <div className="lg:sticky lg:top-24">
-            <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
-              Testimonials
-            </span>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal">
-              Our Customers Say!
-            </h2>
-              <p className="text-charcoal-light mt-4 leading-relaxed">
-                Ranch owners, equestrian centers, and livestock caretakers trust Himalayan Koh for premium pink salt products that animals naturally enjoy.
-              </p>
-              <img
-                src="https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg"
-                alt="Livestock ranch visual"
-                className="hidden lg:block mt-8 rounded-2xl shadow-lg w-full h-72 object-cover"
-                loading="lazy"
-              />
-            </div>
-
           <div className="grid gap-6">
             {testimonials.map((testimonial, index) => (
               <motion.div
@@ -173,7 +154,6 @@ export default function HomePage() {
                 </div>
               </motion.div>
             ))}
-            </div>
           </div>
         </div>
       </section>
