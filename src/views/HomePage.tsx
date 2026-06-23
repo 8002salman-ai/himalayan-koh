@@ -1,13 +1,6 @@
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, MapPin, Phone, Quote, Star, Award } from 'lucide-react';
+import { MapPin, Phone, Quote, Star, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
-import { productsApi } from '../lib/supabase/api';
-import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
-import type { Product } from '../data/products';
-import { products as fallbackProducts } from '../data/products';
-import { mapSupabaseProduct } from '../lib/products/mapProduct';
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -53,36 +46,6 @@ const testimonials = [
 ];
 
 export default function HomePage() {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    const loadFeatured = async () => {
-      if (!isSupabaseConfigured()) {
-        setFeaturedProducts(fallbackProducts.filter((p) => p.inStock).slice(0, 4));
-        return;
-      }
-      try {
-        const items = await productsApi.getFeaturedProducts(4);
-        setFeaturedProducts(items.map(mapSupabaseProduct));
-      } catch (err) {
-        console.error('Failed to load featured products:', err);
-        setFeaturedProducts(fallbackProducts.slice(0, 4));
-      }
-    };
-
-    loadFeatured();
-
-    if (!isSupabaseConfigured()) return;
-
-    const channel = supabase
-      .channel('home-featured-products')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => loadFeatured())
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, []);
 
   return (
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
@@ -167,28 +130,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Featured Products */}
-      {featuredProducts.length > 0 && (
-        <section className="py-16 md:py-20 bg-warm-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-10">
-              <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal">Featured Products</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
-              ))}
-            </div>
-            <div className="text-center mt-10">
-              <Link to="/products" className="btn-hk-primary inline-flex items-center gap-2">
-                View All Products
-                <ArrowRight size={18} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Testimonials */}
       <section className="py-16 md:py-24">
