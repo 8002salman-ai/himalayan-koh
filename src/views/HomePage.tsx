@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, MapPin, Phone, Quote } from 'lucide-react';
+import { ArrowRight, MapPin, Phone, Quote, Star, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productsApi } from '../lib/supabase/api';
@@ -8,6 +8,28 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import type { Product } from '../data/products';
 import { products as fallbackProducts } from '../data/products';
 import { mapSupabaseProduct } from '../lib/products/mapProduct';
+
+const livestockBenefits = [
+  'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
+  'Livestock need sodium and chloride to maintain appetite, weight, milk production, and healthy growth.',
+  'Pure Himalayan pink salt provides natural magnesium and mineral support that helps animals stay stronger and healthier.',
+  'Our Himalayan salt licks and lumps are a natural improvement over livestock salts with artificial mineral additives.',
+];
+
+const healthCards = [
+  {
+    title: 'Better Livestock Health',
+    text: 'Quality sodium and chloride support appetite, body weight, hydration, and daily herd performance.',
+  },
+  {
+    title: 'Milk Production Support',
+    text: 'Good salt intake helps mothers maintain the mineral balance needed for stronger milk production.',
+  },
+  {
+    title: 'Magnesium & Nutrition',
+    text: 'Natural Himalayan minerals support recovery, strength, and overall wellness for working animals.',
+  },
+];
 
 const testimonials = [
   {
@@ -64,6 +86,87 @@ export default function HomePage() {
 
   return (
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
+
+      {/* Livestock Salt Story */}
+      <section className="py-16 md:py-24 bg-white">
+        <div className="max-w-[88rem] mx-auto px-4 sm:px-6">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+                World's Best for Livestock
+              </span>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal mb-5">
+                Rich All Natural Himalayan Pink Salt
+              </h2>
+              <div className="space-y-4 text-charcoal-light leading-relaxed">
+                <p>
+                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It's a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
+                </p>
+                <p>
+                  Himalayan pink rock salt not only tastes its salty best, but gives cattle, horses, deer, and other animals the quality NaCl they need to stay healthy and be more productive.
+                </p>
+                <p>
+                  Ensure your herd is healthy and happy. Shop our convenient premium Himalayan Pink Salt products and enjoy friendly customer service from Himalayan Koh.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-6">
+                {livestockBenefits.map((benefit) => (
+                  <div key={benefit} className="p-4 bg-warm-white rounded-xl text-sm text-charcoal-light">
+                    <Star size={16} className="text-himalayan mb-2" />
+                    {benefit}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="grid grid-cols-2 gap-4"
+            >
+              <img
+                src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
+                alt="Horse licking Himalayan salt"
+                className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80"
+                loading="lazy"
+              />
+              <img
+                src="https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg"
+                alt="Bowls of Himalayan salt"
+                className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80 mt-10"
+                loading="lazy"
+              />
+            </motion.div>
+          </div>
+
+          <div className="mt-14 grid md:grid-cols-3 gap-6">
+            {healthCards.map((card, index) => (
+              <motion.div
+                key={card.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.08 }}
+                className="relative overflow-hidden rounded-2xl bg-charcoal p-7 text-white shadow-lg"
+              >
+                <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-himalayan/20" />
+                <div className="relative">
+                  <div className="w-11 h-11 rounded-xl bg-himalayan text-white flex items-center justify-center mb-5">
+                    <Award size={20} />
+                  </div>
+                  <h3 className="font-serif text-2xl font-bold mb-3">{card.title}</h3>
+                  <p className="text-white/70 leading-relaxed">{card.text}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Featured Products */}
       {featuredProducts.length > 0 && (
