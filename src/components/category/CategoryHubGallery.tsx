@@ -69,6 +69,7 @@ export default function CategoryHubGallery({ images, title }: Props) {
                 loading="lazy"
                 decoding="async"
                 className="max-w-full max-h-full w-auto h-auto object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
               <span className="absolute inset-0 bg-charcoal/0 group-hover:bg-charcoal/20 transition-colors" aria-hidden />
               <span className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-white/90 text-charcoal flex items-center justify-center opacity-80 group-hover:opacity-100 shadow-sm">

@@ -66,6 +66,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
           />
         </Link>
 

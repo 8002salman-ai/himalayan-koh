@@ -89,6 +89,7 @@ export default function SearchModal({ isOpen, onClose }: Props) {
                     src={product.image}
                     alt={product.name}
                     className="w-14 h-14 object-cover rounded-xl flex-shrink-0"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                   />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-charcoal text-sm line-clamp-2">{product.name}</h4>

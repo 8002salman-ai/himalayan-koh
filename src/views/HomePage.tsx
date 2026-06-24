@@ -96,12 +96,14 @@ export default function HomePage() {
                 alt="Horse licking Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80"
                 loading="lazy"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
               <img
                 src="https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg"
                 alt="Bowls of Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80 mt-10"
                 loading="lazy"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
             </motion.div>
           </div>

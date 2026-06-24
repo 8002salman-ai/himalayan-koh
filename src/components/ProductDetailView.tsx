@@ -116,6 +116,7 @@ export default function ProductDetailView({
             src={product.image}
             alt={displayName}
             className={`w-full h-full object-cover ${variant === 'modal' ? 'md:rounded-l-3xl' : ''}`}
+            onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
           />
           {variant === 'modal' && onClose && (
             <button
