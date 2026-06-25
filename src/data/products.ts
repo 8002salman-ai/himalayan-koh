@@ -42,6 +42,7 @@ export const products: Product[] = [
     name: "Himalayan Koh Authentic Pure Natural Halal Unprocessed Himalayan Edible Pink Cooking Salt, Fine Grain (0.5mm to 1mm)",
     price: "$9.95 – $17.95",
     priceRange: true,
+    isFeatured: true,
     priceMin: 9.95,
     priceMax: 17.95,
     image: "https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp",

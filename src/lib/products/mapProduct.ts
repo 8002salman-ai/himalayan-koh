@@ -30,6 +30,7 @@ export function mapSupabaseProduct(product: ProductWithCategory): Product {
       : true,
     metaTitle: product.meta_title || undefined,
     metaDescription: product.meta_description || undefined,
+    isFeatured: product.is_featured,
   };
 }
 

@@ -122,7 +122,7 @@ export default function AdminProducts() {
         images: [p.image],
         thumbnail: p.image,
         is_active: p.inStock,
-        is_featured: p.priceRange || false,
+        is_featured: p.isFeatured || false,
         grain_sizes: p.grainSizes || [],
         tags: [],
         meta_title: null,
