@@ -41,29 +41,29 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen flex flex-col">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[120] focus:px-4 focus:py-2 focus:bg-hk-green focus:text-hk-panel focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-skip focus:px-4 focus:py-2 focus:bg-himalayan-green focus:text-cream focus:rounded-lg"
       >
         Skip to main content
       </a>
       {/* Announcement Bar + Navbar — sticky together so bar never scrolls away */}
-      <div className="sticky top-0 z-50">
+      <div className="sticky top-0 z-nav">
       {/* Announcement Bar */}
-      <div className="bg-hk-paper border-b border-hk-line text-sm text-hk-ink">
+      <div className="bg-warm-white border-b border-himalayan-line text-sm text-charcoal">
         <motion.div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-center sm:text-left tracking-wide">
-            <strong className="font-extrabold text-hk-green">All Natural</strong>{' '}
+            <strong className="font-extrabold text-himalayan-green">All Natural</strong>{' '}
             Himalayan salt for horses, cattle and deer
           </p>
           <div className="flex items-center gap-4 text-xs sm:text-sm font-semibold">
-            <Link to="/contact" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
+            <Link to="/contact" className="flex items-center gap-1 hover:text-himalayan-dark transition-colors">
               <MapPin size={14} />
               <span className="hidden md:inline">Product Locator</span>
             </Link>
-            <Link to="/checkout" className="flex items-center gap-1 hover:text-hk-rose-dark transition-colors">
+            <Link to="/checkout" className="flex items-center gap-1 hover:text-himalayan-dark transition-colors">
               <Calculator size={14} />
               <span className="hidden md:inline">Calculate Shipping</span>
             </Link>
-            <a href="tel:8322246466" className="flex items-center gap-1 text-hk-green hover:text-hk-rose-dark transition-colors">
+            <a href="tel:8322246466" className="flex items-center gap-1 text-himalayan-green hover:text-himalayan-dark transition-colors">
               <Phone size={14} />
               <strong>Call: (832) 224-6466</strong>
             </a>
@@ -72,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Navbar */}
-      <header className="bg-hk-panel/95 backdrop-blur-xl border-b border-hk-line shadow-[0_10px_30px_rgba(33,29,24,0.07)]">
+      <header className="bg-cream/95 backdrop-blur-xl border-b border-himalayan-line shadow-[0_10px_30px_rgba(33,29,24,0.07)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
@@ -92,15 +92,15 @@ export default function Layout({ children }: LayoutProps) {
                   to={link.path}
                   className={`relative px-3 py-2 text-[0.82rem] font-extrabold uppercase tracking-[0.035em] transition-colors rounded-lg ${
                     location.pathname === link.path
-                      ? 'text-hk-rose-dark'
-                      : 'text-hk-ink hover:text-hk-rose-dark'
+                      ? 'text-himalayan-dark'
+                      : 'text-charcoal hover:text-himalayan-dark'
                   }`}
                 >
                   {link.label}
                   {location.pathname === link.path && (
                     <motion.div
                       layoutId="navIndicator"
-                      className="absolute bottom-0 left-3 right-3 h-0.5 bg-hk-rose rounded-full"
+                      className="absolute bottom-0 left-3 right-3 h-0.5 bg-himalayan rounded-full"
                     />
                   )}
                 </Link>
@@ -113,25 +113,25 @@ export default function Layout({ children }: LayoutProps) {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-lg border border-hk-line hover:border-hk-rose/40 hover:bg-hk-paper transition-colors"
+                className="p-2 rounded-lg border border-himalayan-line hover:border-himalayan/40 hover:bg-warm-white transition-colors"
                 aria-label="Search"
               >
-                <Search size={20} className="text-hk-ink" />
+                <Search size={20} className="text-charcoal" />
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setCartOpen(true)}
-                className="p-2 rounded-lg border border-hk-line hover:border-hk-rose/40 hover:bg-hk-paper transition-colors relative"
+                className="p-2 rounded-lg border border-himalayan-line hover:border-himalayan/40 hover:bg-warm-white transition-colors relative"
                 aria-label="Cart"
               >
-                <ShoppingCart size={20} className="text-hk-ink" />
+                <ShoppingCart size={20} className="text-charcoal" />
                 {totalItems > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 bg-hk-green text-hk-panel text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                    className="absolute -top-1 -right-1 bg-himalayan-green text-cream text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
                   >
                     {totalItems}
                   </motion.span>
@@ -146,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="p-2 rounded-lg border border-hk-line bg-hk-paper transition-colors"
+                      className="p-2 rounded-lg border border-himalayan-line bg-warm-white transition-colors"
                     >
                       {profile?.avatar_url ? (
                         <img
@@ -155,7 +155,7 @@ export default function Layout({ children }: LayoutProps) {
                           className="w-5 h-5 rounded-full object-cover"
                         />
                       ) : (
-                        <User size={20} className="text-hk-green" />
+                        <User size={20} className="text-himalayan-green" />
                       )}
                     </motion.button>
 
@@ -236,7 +236,7 @@ export default function Layout({ children }: LayoutProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden fixed top-[104px] left-0 right-0 z-40 bg-hk-panel border-t border-hk-line shadow-xl overflow-hidden"
+            className="lg:hidden fixed top-[104px] left-0 right-0 z-40 bg-cream border-t border-himalayan-line shadow-xl overflow-hidden"
           >
             <nav className="max-w-7xl mx-auto px-4 py-4 space-y-1">
               {navLinks.map((link, i) => (
@@ -251,8 +251,8 @@ export default function Layout({ children }: LayoutProps) {
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide transition-colors ${
                       location.pathname === link.path
-                        ? 'bg-hk-paper text-hk-rose-dark'
-                        : 'text-hk-ink hover:bg-hk-paper'
+                        ? 'bg-warm-white text-himalayan-dark'
+                        : 'text-charcoal hover:bg-warm-white'
                     }`}
                   >
                     {link.label}

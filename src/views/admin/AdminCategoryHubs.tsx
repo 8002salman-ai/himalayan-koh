@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, Loader2, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Button } from '../../components/ui';
 import {
   CATEGORY_FILTER_TABS,
   buildProductsCategoryPath,
@@ -355,23 +356,21 @@ export default function AdminCategoryHubs() {
               {error && <p className="text-sm text-red-600">{error}</p>}
 
               <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
+                <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl disabled:opacity-60"
+                  isLoading={saving}
+                  leftIcon={<Save size={18} />}
                 >
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                   Save CMS override
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleReset}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-charcoal hover:bg-gray-50"
+                  leftIcon={<RefreshCw size={16} />}
                 >
-                  <RefreshCw size={16} />
                   Reset to defaults
-                </button>
+                </Button>
               </div>
             </div>
           )}
