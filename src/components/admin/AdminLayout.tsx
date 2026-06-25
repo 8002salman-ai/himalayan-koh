@@ -2,25 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Package,
-  FolderTree,
-  ShoppingCart,
-  Truck,
-  Users,
-  FileText,
-  Settings,
-  KeyRound,
   LogOut,
   Menu,
   X,
   Bell,
   Plus,
   ChevronDown,
-  BarChart3,
   Home,
-  LayoutGrid,
+  ShoppingCart,
+  Package,
+  Users,
 } from 'lucide-react';
+import { ADMIN_NAV_ITEMS, ADMIN_MOBILE_NAV_ITEMS } from '../../lib/adminNav';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import AIChatWidget from '../AIChatWidget';
@@ -38,26 +31,6 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const navItems = [
-  { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-  { label: 'Products', path: '/admin/products', icon: Package },
-  { label: 'Categories', path: '/admin/categories', icon: FolderTree },
-  { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
-  { label: 'Shipping Labels', path: '/admin/labels', icon: Truck },
-  { label: 'Customers', path: '/admin/customers', icon: Users },
-  { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
-  { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },
-  { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
-  { label: 'Settings', path: '/admin/settings', icon: Settings },
-  { label: 'API Keys', path: '/admin/api-keys', icon: KeyRound },
-];
-
-const mobileNavItems = [
-  { label: 'Home', path: '/admin', icon: LayoutDashboard },
-  { label: 'Products', path: '/admin/products', icon: Package },
-  { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
-  { label: 'More', path: 'menu', icon: Menu },
-];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -177,8 +150,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path || 
+          {ADMIN_NAV_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path ||
               (item.path !== '/admin' && location.pathname.startsWith(item.path));
             
             return (
@@ -244,7 +217,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
               <nav className="flex-1 py-3 px-3 overflow-y-auto">
                 <div className="grid grid-cols-3 gap-2">
-                  {navItems.map((item) => {
+                  {ADMIN_NAV_ITEMS.map((item) => {
                     const isActive = location.pathname === item.path ||
                       (item.path !== '/admin' && location.pathname.startsWith(item.path));
                     return (
@@ -431,7 +404,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.07)]">
         <div className="grid grid-cols-4 gap-0.5">
-          {mobileNavItems.map((item) => {
+          {ADMIN_MOBILE_NAV_ITEMS.map((item) => {
             const isMenu = item.path === 'menu';
             const isActive = !isMenu && (
               location.pathname === item.path ||

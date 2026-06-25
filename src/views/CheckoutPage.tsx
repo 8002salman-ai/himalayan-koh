@@ -806,7 +806,7 @@ export default function CheckoutPage() {
           </div>
 
           <aside className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-24">
+            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-[var(--header-height)]">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Order Summary</h2>
               <div className="space-y-4 mb-5">
                 {items.map((item) => (

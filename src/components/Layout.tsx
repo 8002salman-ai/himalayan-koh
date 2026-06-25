@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MapPin, Calculator, LogOut } from 'lucide-react';
@@ -28,9 +28,23 @@ export default function Layout({ children }: LayoutProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { totalItems } = useCart();
   const { isAuthenticated, profile, signOut, user } = useAuthContext();
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      document.documentElement.style.setProperty(
+        '--header-height',
+        `${entry.contentRect.height}px`
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -46,7 +60,7 @@ export default function Layout({ children }: LayoutProps) {
         Skip to main content
       </a>
       {/* Announcement Bar + Navbar — sticky together so bar never scrolls away */}
-      <div className="sticky top-0 z-nav">
+      <div ref={headerRef} className="sticky top-0 z-nav">
       {/* Announcement Bar */}
       <div className="bg-warm-white border-b border-himalayan-line text-sm text-charcoal">
         <motion.div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -236,7 +250,7 @@ export default function Layout({ children }: LayoutProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden fixed top-[104px] left-0 right-0 z-nav-overlaybg-cream border-t border-himalayan-line shadow-xl overflow-hidden"
+            className="lg:hidden fixed top-[var(--header-height)] left-0 right-0 z-nav-overlay bg-cream border-t border-himalayan-line shadow-xl overflow-hidden"
           >
             <nav className="max-w-7xl mx-auto px-4 py-4 space-y-1">
               {navLinks.map((link, i) => (
