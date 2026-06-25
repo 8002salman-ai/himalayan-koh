@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../store/cartStore';
+import EmptyState from './ui/EmptyState';
 
 interface Props {
   isOpen: boolean;
@@ -51,16 +52,14 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
             {/* Items */}
             <div className="flex-1 overflow-y-auto scrollbar-thin p-5">
               {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <ShoppingBag size={56} className="text-gray-200 mb-4" />
-                  <h3 className="font-serif text-xl font-bold text-charcoal mb-2">Your cart is empty</h3>
-                  <p className="text-charcoal-light text-sm mb-6">Add some premium Himalayan salt products!</p>
-                  <button
-                    onClick={onClose}
-                    className="px-6 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors"
-                  >
-                    Continue Shopping
-                  </button>
+                <div className="flex flex-col items-center justify-center h-full">
+                  <EmptyState
+                    icon={<ShoppingBag size={48} />}
+                    title="Your cart is empty"
+                    description="Add some premium Himalayan salt products!"
+                    action={{ label: 'Continue Shopping', onClick: onClose }}
+                    size="card"
+                  />
                 </div>
               ) : (
                 <div className="space-y-4">

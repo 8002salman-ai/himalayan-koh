@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Loader2, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
+import { SkeletonDashboard } from '../components/ui/Skeleton';
 import { useToast } from '../context/ToastContext';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
@@ -297,9 +298,7 @@ export default function AccountPage() {
                     Dashboard Summary
                   </h2>
                   {dashboardLoading ? (
-                    <div className="flex items-center justify-center py-16">
-                      <Loader2 size={36} className="animate-spin text-himalayan" />
-                    </div>
+                    <SkeletonDashboard />
                   ) : (
                     <>
                       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

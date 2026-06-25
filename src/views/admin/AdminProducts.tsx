@@ -21,6 +21,9 @@ import {
 import { adminApi, AdminProductFilters } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
+import { useToast } from '../../context/ToastContext';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import EmptyState from '../../components/ui/EmptyState';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import { products as fallbackProducts, categories as fallbackCategories } from '../../data/products';
 import {
@@ -64,6 +67,7 @@ function inventoryBadge(product: ProductWithRelations) {
 }
 
 export default function AdminProducts() {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductWithRelations[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -78,8 +82,6 @@ export default function AdminProducts() {
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'price_asc' | 'price_desc'>('newest');
   const [productStats, setProductStats] = useState<ProductStats | null>(null);
-  const [loadError, setLoadError] = useState('');
-  const [actionError, setActionError] = useState<string | null>(null);
 
   // Selected items for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -95,7 +97,6 @@ export default function AdminProducts() {
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
-    setLoadError('');
 
     if (!isSupabaseConfigured()) {
       // Use fallback data
@@ -177,14 +178,14 @@ export default function AdminProducts() {
       setTotalPages(productsResult.totalPages);
       setCategories(categoriesResult);
     } catch (err) {
-      setLoadError(getErrorMessage(err, 'Unable to load products. Please refresh and try again.'));
+      toast.error(getErrorMessage(err, 'Unable to load products. Please refresh and try again.'));
       setProducts([]);
       setTotalCount(0);
       setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter, statusFilter, page, sortBy]);
+  }, [search, categoryFilter, statusFilter, page, sortBy, toast]);
 
   useEffect(() => {
     fetchProducts();
@@ -239,13 +240,12 @@ export default function AdminProducts() {
     }
 
     setActionLoading(true);
-    setActionError(null);
     try {
       await adminApi.deleteProduct(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      setActionError(getErrorMessage(err, 'Failed to delete product. Please try again.'));
+      toast.error(getErrorMessage(err, 'Failed to delete product. Please try again.'));
     } finally {
       setActionLoading(false);
     }
@@ -265,7 +265,7 @@ export default function AdminProducts() {
         p.id === product.id ? { ...p, is_active: !p.is_active } : p
       ));
     } catch (err) {
-      setActionError(getErrorMessage(err, 'Failed to update product status.'));
+      toast.error(getErrorMessage(err, 'Failed to update product status.'));
     }
     setContextMenu(null);
   };
@@ -284,7 +284,7 @@ export default function AdminProducts() {
         p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
       ));
     } catch (err) {
-      setActionError(getErrorMessage(err, 'Failed to update featured status.'));
+      toast.error(getErrorMessage(err, 'Failed to update featured status.'));
     }
     setContextMenu(null);
   };
@@ -299,13 +299,12 @@ export default function AdminProducts() {
     }
 
     setActionLoading(true);
-    setActionError(null);
     try {
       await adminApi.bulkDeleteProducts(selectedIds);
       setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
     } catch (err) {
-      setActionError(getErrorMessage(err, 'Failed to delete selected products.'));
+      toast.error(getErrorMessage(err, 'Failed to delete selected products.'));
     } finally {
       setActionLoading(false);
     }
@@ -464,59 +463,27 @@ export default function AdminProducts() {
         )}
       </div>
 
-      {loadError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Products could not be loaded.</p>
-          <p className="mt-1">{loadError}</p>
-          <button
-            type="button"
-            onClick={fetchProducts}
-            className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {actionError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
-          <p>{actionError}</p>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Products Table */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-himalayan" />
-          </div>
+          <SkeletonTable rows={6} />
         ) : products.length === 0 ? (
-          <div className="text-center py-20">
-            <Package size={48} className="mx-auto mb-4 text-gray-200" />
-            <h3 className="text-lg font-semibold text-charcoal mb-1">No products found</h3>
-            <p className="text-charcoal-light mb-4">
-              {search || categoryFilter || statusFilter
+          <EmptyState
+            icon={<Package size={40} />}
+            title="No products found"
+            description={
+              search || categoryFilter || statusFilter
                 ? 'Try adjusting your filters'
-                : 'Get started by adding your first product'}
-            </p>
-            {!search && !categoryFilter && !statusFilter && (
-              <button
-                onClick={() => { setEditingProduct(null); setEditorOpen(true); }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-              >
-                <Plus size={18} />
-                Add Product
-              </button>
-            )}
-          </div>
+                : 'Get started by adding your first product'
+            }
+            action={
+              !search && !categoryFilter && !statusFilter
+                ? { label: 'Add Product', onClick: () => { setEditingProduct(null); setEditorOpen(true); } }
+                : undefined
+            }
+            size="compact"
+            className="border-0 shadow-none rounded-none py-20"
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

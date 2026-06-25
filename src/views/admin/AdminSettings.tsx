@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { SETTINGS_REGISTRY, type SettingsCategory } from '../../lib/settings/registry';
 
 type SourceMap = Record<string, Record<string, 'db' | 'env' | 'unset'>>;
@@ -38,13 +39,12 @@ function isConfigured(category: SettingsCategory, values: ValuesMap, sources: So
 
 export default function AdminSettings() {
   const { session } = useAuthContext();
+  const toast = useToast();
   const [values, setValues] = useState<ValuesMap>({});
   const [sources, setSources] = useState<SourceMap>({});
   const [localEdits, setLocalEdits] = useState<ValuesMap>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
-  const [error, setError] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
@@ -60,7 +60,7 @@ export default function AdminSettings() {
       }
       setLocalEdits(initial);
     } catch (err) {
-      setError({ global: err instanceof Error ? err.message : 'Failed to load settings.' });
+      toast.error(err instanceof Error ? err.message : 'Failed to load settings.');
     } finally {
       setLoading(false);
     }
@@ -73,26 +73,20 @@ export default function AdminSettings() {
       ...prev,
       [categoryId]: { ...(prev[categoryId] ?? {}), [key]: value },
     }));
-    setSaved(null);
   };
 
   const handleSave = async (categoryId: string) => {
     if (!session?.access_token) return;
     setSaving(categoryId);
-    setError((prev) => ({ ...prev, [categoryId]: '' }));
     try {
       await apiFetch('/api/admin/settings', session.access_token, {
         method: 'POST',
         body: JSON.stringify({ category: categoryId, settings: localEdits[categoryId] ?? {} }),
       });
-      setSaved(categoryId);
+      toast.success('Settings saved successfully.');
       await load();
-      setTimeout(() => setSaved(null), 3000);
     } catch (err) {
-      setError((prev) => ({
-        ...prev,
-        [categoryId]: err instanceof Error ? err.message : 'Save failed.',
-      }));
+      toast.error(err instanceof Error ? err.message : 'Save failed.');
     } finally {
       setSaving(null);
     }
@@ -123,12 +117,6 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      {error.global && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error.global}
-        </div>
-      )}
-
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <p className="font-semibold mb-1">Supabase keys cannot be set here</p>
         <p>
@@ -143,8 +131,6 @@ export default function AdminSettings() {
         const configured = isConfigured(category, values, sources);
         const open = expanded[category.id] ?? true;
         const isSaving = saving === category.id;
-        const justSaved = saved === category.id;
-        const catError = error[category.id];
 
         return (
           <div key={category.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -213,20 +199,10 @@ export default function AdminSettings() {
                   );
                 })}
 
-                {catError && (
-                  <p className="text-sm text-red-600">{catError}</p>
-                )}
-
                 <div className="flex items-center justify-between pt-2">
-                  {justSaved ? (
-                    <span className="flex items-center gap-1.5 text-sm text-green-700 font-semibold">
-                      <CheckCircle size={16} /> Saved successfully
-                    </span>
-                  ) : (
-                    <span className="text-xs text-charcoal-light">
-                      Leave a field blank to remove its DB override (env var will be used).
-                    </span>
-                  )}
+                  <span className="text-xs text-charcoal-light">
+                    Leave a field blank to remove its DB override (env var will be used).
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleSave(category.id)}

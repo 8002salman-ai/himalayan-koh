@@ -25,6 +25,7 @@ import {
   savePendingStripeCheckout,
 } from '../lib/payments/stripeSessionStorage';
 import { getErrorMessage } from '../lib/errors';
+import { useToast } from '../context/ToastContext';
 import { orderConfirmationUrl } from '../lib/orders/paths';
 import { formatUsPostalCode, normalizeUsState } from '../lib/address/usStates';
 import { fetchShippoRates, validateShippingAddressClient, type AddressValidationResponse } from '../lib/shippo/client';
@@ -72,6 +73,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuthContext();
   const { items, clearCart } = useCart();
+  const toast = useToast();
   const [form, setForm] = useState({
     ...initialForm,
     email: user?.email || '',
@@ -453,7 +455,7 @@ export default function CheckoutPage() {
       await clearCart();
     } catch (err) {
       setPaymentCompleting(false);
-      setError(getErrorMessage(err, 'Payment succeeded but order confirmation failed. Contact support with your email.'));
+      toast.error(getErrorMessage(err, 'Payment succeeded but order confirmation failed. Contact support with your email.'));
     } finally {
       setSubmitting(false);
     }
@@ -898,13 +900,12 @@ export default function CheckoutPage() {
             <p className="text-xs text-charcoal-light mb-4">
               Total due now: <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
             </p>
-            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
             <StripePaymentForm
               clientSecret={stripeSession.clientSecret}
               amountLabel={`$${totals.total.toFixed(2)}`}
               disabled={submitting || paymentCompleting}
               onSuccess={handleStripePaymentSuccess}
-              onError={(message) => setError(message)}
+              onError={(message) => toast.error(message)}
             />
           </div>
         </div>

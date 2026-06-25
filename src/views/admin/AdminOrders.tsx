@@ -22,6 +22,9 @@ import { FREE_SHIPPING_THRESHOLD } from '../../lib/supabase/api/orders';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import EmptyState from '../../components/ui/EmptyState';
 import { createShippoLabel } from '../../lib/shippo/client';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
 import { updateAdminOrderStatus } from '../../lib/admin/updateOrderStatusClient';
@@ -62,6 +65,7 @@ interface ShippingAddress {
 
 export default function AdminOrders() {
   const { session } = useAuthContext();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const shippoEnabled = publicEnv.shippoEnabled;
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -69,9 +73,7 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [editingOrder, setEditingOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
   const [labelCreating, setLabelCreating] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [labelNotice, setLabelNotice] = useState<string | null>(null);
@@ -89,7 +91,6 @@ export default function AdminOrders() {
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
-    setFetchError(null);
 
     if (!isSupabaseConfigured()) {
       setOrders([]);
@@ -123,11 +124,11 @@ export default function AdminOrders() {
         return ordersResult.orders.find((order) => order.id === current.id) || ordersResult.orders[0] || null;
       });
     } catch (err) {
-      setFetchError(getErrorMessage(err, 'Failed to load orders.'));
+      toast.error(getErrorMessage(err, 'Failed to load orders.'));
     } finally {
       setLoading(false);
     }
-  }, [page, paymentFilter, search, statusFilter]);
+  }, [page, paymentFilter, search, statusFilter, toast]);
 
   useEffect(() => {
     fetchOrders();
@@ -160,7 +161,6 @@ export default function AdminOrders() {
 
   const openStatusModal = (order: AdminOrder) => {
     setEditingOrder(order);
-    setUpdateError(null);
     setStatusForm({
       status: normalizeStatus(order.status),
       paymentStatus: order.payment_status,
@@ -176,7 +176,6 @@ export default function AdminOrders() {
     if (!token) return;
 
     setSaving(true);
-    setUpdateError(null);
     try {
       await updateAdminOrderStatus(token, {
         orderId: editingOrder.id,
@@ -184,10 +183,11 @@ export default function AdminOrders() {
         paymentStatus: statusForm.paymentStatus,
         trackingNumber: statusForm.trackingNumber || undefined,
       });
+      toast.success('Order status updated successfully.');
       setEditingOrder(null);
       await fetchOrders();
     } catch (err) {
-      setUpdateError(getErrorMessage(err, 'Failed to update order status.'));
+      toast.error(getErrorMessage(err, 'Failed to update order status.'));
     } finally {
       setSaving(false);
     }
@@ -304,20 +304,6 @@ export default function AdminOrders() {
         </Link>
       </div>
 
-      {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Orders could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchOrders}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
           <motion.div
@@ -381,14 +367,15 @@ export default function AdminOrders() {
       <div className="grid xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 size={32} className="animate-spin text-himalayan" />
-            </div>
+            <SkeletonTable rows={5} />
           ) : orders.length === 0 ? (
-            <div className="text-center py-16 text-charcoal-light">
-              <Package size={48} className="mx-auto mb-4 text-gray-200" />
-              <p>No orders found.</p>
-            </div>
+            <EmptyState
+              icon={<Package size={40} />}
+              title="No orders found"
+              description="Orders will appear here once customers start placing them."
+              size="compact"
+              className="border-0 shadow-none rounded-none py-16"
+            />
           ) : (
             <>
               <div className="overflow-x-auto">
@@ -569,12 +556,6 @@ export default function AdminOrders() {
                   />
                   <p className="text-xs text-charcoal-light mt-1">Used for shipped order tracking.</p>
                 </div>
-
-                {updateError && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {updateError}
-                  </div>
-                )}
 
                 <button
                   type="submit"
