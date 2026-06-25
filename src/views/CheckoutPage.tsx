@@ -827,7 +827,7 @@ export default function CheckoutPage() {
                   <input
                     value={couponInput}
                     onChange={(event) => setCouponInput(event.target.value)}
-                    placeholder="HKWELCOME10"
+                    placeholder="Enter coupon code"
                     className={inputClass}
                   />
                   <button type="button" onClick={applyCoupon} className="px-4 bg-charcoal text-white rounded-xl text-sm font-semibold hover:bg-charcoal-light">

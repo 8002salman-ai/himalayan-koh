@@ -12,12 +12,15 @@ import {
 } from 'lucide-react';
 import { adminApi, CategoryFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 import type { Category } from '../../lib/supabase/database.types';
 import { categories as fallbackCategories } from '../../data/products';
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -29,6 +32,7 @@ export default function AdminCategories() {
 
   const fetchCategories = async () => {
     setLoading(true);
+    setFetchError(null);
 
     if (!isSupabaseConfigured()) {
       setCategories(fallbackCategories.map((c, i) => ({
@@ -51,7 +55,7 @@ export default function AdminCategories() {
       const data = await adminApi.getCategories();
       setCategories(data);
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
+      setFetchError(getErrorMessage(err, 'Failed to load categories.'));
     } finally {
       setLoading(false);
     }
@@ -92,7 +96,7 @@ export default function AdminCategories() {
       setEditorOpen(false);
       setEditingCategory(null);
     } catch (err) {
-      console.error('Failed to save category:', err);
+      setActionError(getErrorMessage(err, 'Failed to save category.'));
     } finally {
       setActionLoading(false);
     }
@@ -113,7 +117,7 @@ export default function AdminCategories() {
       setCategories(prev => prev.filter(c => c.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Failed to delete category:', err);
+      setActionError(getErrorMessage(err, 'Failed to delete category.'));
     } finally {
       setActionLoading(false);
     }
@@ -129,11 +133,11 @@ export default function AdminCategories() {
 
     try {
       await adminApi.updateCategory(category.id, { is_active: !category.is_active });
-      setCategories(prev => prev.map(c => 
+      setCategories(prev => prev.map(c =>
         c.id === category.id ? { ...c, is_active: !c.is_active } : c
       ));
     } catch (err) {
-      console.error('Failed to toggle category:', err);
+      setActionError(getErrorMessage(err, 'Failed to update category.'));
     }
   };
 
@@ -153,6 +157,34 @@ export default function AdminCategories() {
           Add Category
         </button>
       </div>
+
+      {fetchError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Categories could not be loaded.</p>
+          <p className="mt-1">{fetchError}</p>
+          <button
+            type="button"
+            onClick={fetchCategories}
+            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
+          <p>{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Categories Grid */}
       {loading ? (

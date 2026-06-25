@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { BarChart3, DollarSign, Loader2, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 
 export default function AdminAnalytics() {
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -19,7 +21,7 @@ export default function AdminAnalytics() {
       const data = await adminApi.getDashboardAnalytics();
       setAnalytics(data);
     } catch (err) {
-      console.error('Failed to fetch analytics:', err);
+      setFetchError(getErrorMessage(err, 'Failed to load analytics.'));
     } finally {
       setLoading(false);
     }
@@ -33,6 +35,22 @@ export default function AdminAnalytics() {
     return (
       <div className="flex justify-center py-20">
         <Loader2 size={32} className="animate-spin text-himalayan" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        <p className="font-semibold">Analytics could not be loaded.</p>
+        <p className="mt-1">{fetchError}</p>
+        <button
+          type="button"
+          onClick={fetchAnalytics}
+          className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }

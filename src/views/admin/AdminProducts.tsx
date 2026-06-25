@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { adminApi, AdminProductFilters } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import { products as fallbackProducts, categories as fallbackCategories } from '../../data/products';
 import {
@@ -78,6 +79,7 @@ export default function AdminProducts() {
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'price_asc' | 'price_desc'>('newest');
   const [productStats, setProductStats] = useState<ProductStats | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Selected items for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -175,8 +177,7 @@ export default function AdminProducts() {
       setTotalPages(productsResult.totalPages);
       setCategories(categoriesResult);
     } catch (err) {
-      console.error('Failed to fetch products:', err);
-      setLoadError(err instanceof Error ? err.message : 'Unable to load products. Please refresh and try again.');
+      setLoadError(getErrorMessage(err, 'Unable to load products. Please refresh and try again.'));
       setProducts([]);
       setTotalCount(0);
       setTotalPages(1);
@@ -238,12 +239,13 @@ export default function AdminProducts() {
     }
 
     setActionLoading(true);
+    setActionError(null);
     try {
       await adminApi.deleteProduct(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Failed to delete product:', err);
+      setActionError(getErrorMessage(err, 'Failed to delete product. Please try again.'));
     } finally {
       setActionLoading(false);
     }
@@ -263,7 +265,7 @@ export default function AdminProducts() {
         p.id === product.id ? { ...p, is_active: !p.is_active } : p
       ));
     } catch (err) {
-      console.error('Failed to update product:', err);
+      setActionError(getErrorMessage(err, 'Failed to update product status.'));
     }
     setContextMenu(null);
   };
@@ -282,7 +284,7 @@ export default function AdminProducts() {
         p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
       ));
     } catch (err) {
-      console.error('Failed to update product:', err);
+      setActionError(getErrorMessage(err, 'Failed to update featured status.'));
     }
     setContextMenu(null);
   };
@@ -297,12 +299,13 @@ export default function AdminProducts() {
     }
 
     setActionLoading(true);
+    setActionError(null);
     try {
       await adminApi.bulkDeleteProducts(selectedIds);
       setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
     } catch (err) {
-      console.error('Failed to delete products:', err);
+      setActionError(getErrorMessage(err, 'Failed to delete selected products.'));
     } finally {
       setActionLoading(false);
     }
@@ -471,6 +474,20 @@ export default function AdminProducts() {
             className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
           >
             Retry
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
+          <p>{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
+            aria-label="Dismiss"
+          >
+            ✕
           </button>
         </div>
       )}

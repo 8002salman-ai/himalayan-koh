@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   price: string;
   priceRange?: boolean;
+  isFeatured?: boolean;
   priceMin: number;
   priceMax?: number;
   image: string;

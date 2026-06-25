@@ -16,6 +16,7 @@ import {
 import { useAuthContext } from '../../context/AuthContext';
 import { adminApi, AdminBlogFilters, BlogPostFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 import type { BlogPost } from '../../lib/supabase/database.types';
 
 const emptyForm: BlogPostFormData = {
@@ -37,8 +38,11 @@ export default function AdminBlog() {
   const { user } = useAuthContext();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -62,6 +66,7 @@ export default function AdminBlog() {
     }
 
     try {
+      setFetchError(null);
       const filters: AdminBlogFilters = {
         search: search || undefined,
         is_published: statusFilter === 'published' ? true : statusFilter === 'draft' ? false : undefined,
@@ -73,7 +78,7 @@ export default function AdminBlog() {
       setTotalCount(result.count);
       setTotalPages(result.totalPages || 1);
     } catch (err) {
-      console.error('Failed to fetch blog posts:', err);
+      setFetchError(getErrorMessage(err, 'Failed to load blog posts.'));
     } finally {
       setLoading(false);
     }
@@ -126,11 +131,12 @@ export default function AdminBlog() {
 
   const handleImageUpload = async (file: File) => {
     setUploadingImage(true);
+    setUploadError(null);
     try {
       const url = await adminApi.uploadBlogImage(file, editingPost?.id);
       setFormData((current) => ({ ...current, featured_image: url }));
     } catch (err) {
-      console.error('Failed to upload blog image:', err);
+      setUploadError(getErrorMessage(err, 'Failed to upload image.'));
     } finally {
       setUploadingImage(false);
     }
@@ -139,6 +145,7 @@ export default function AdminBlog() {
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
+    setSaveError(null);
 
     try {
       const payload: BlogPostFormData = {
@@ -159,7 +166,7 @@ export default function AdminBlog() {
       setEditingPost(null);
       await fetchPosts();
     } catch (err) {
-      console.error('Failed to save blog post:', err);
+      setSaveError(getErrorMessage(err, 'Failed to save blog post.'));
     } finally {
       setSaving(false);
     }
@@ -173,7 +180,8 @@ export default function AdminBlog() {
       setDeleteConfirm(null);
       await fetchPosts();
     } catch (err) {
-      console.error('Failed to delete blog post:', err);
+      setSaveError(getErrorMessage(err, 'Failed to delete blog post.'));
+      setDeleteConfirm(null);
     } finally {
       setSaving(false);
     }
@@ -187,7 +195,7 @@ export default function AdminBlog() {
       });
       setPosts((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (err) {
-      console.error('Failed to update blog status:', err);
+      setSaveError(getErrorMessage(err, 'Failed to update blog post status.'));
     }
   };
 
@@ -229,6 +237,34 @@ export default function AdminBlog() {
           </select>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Blog posts could not be loaded.</p>
+          <p className="mt-1">{fetchError}</p>
+          <button
+            type="button"
+            onClick={fetchPosts}
+            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
+          <p>{saveError}</p>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
@@ -347,6 +383,9 @@ export default function AdminBlog() {
                         <span className="text-sm font-medium text-charcoal">Upload Image</span>
                         <input type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && handleImageUpload(event.target.files[0])} />
                       </label>
+                      {uploadError && (
+                        <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                      )}
                     </div>
                     <input value={formData.category} onChange={(event) => setFormData({ ...formData, category: event.target.value })} placeholder="Category" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
                     <input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Tags, comma separated" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
@@ -364,14 +403,21 @@ export default function AdminBlog() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
-                  <button type="button" onClick={() => setEditorOpen(false)} className="px-5 py-3 border border-gray-200 rounded-xl font-semibold text-charcoal hover:bg-gray-50 transition-colors">
-                    Cancel
-                  </button>
-                  <button disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors disabled:opacity-70">
-                    {saving && <Loader2 size={18} className="animate-spin" />}
-                    Save Blog
-                  </button>
+                <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                  {saveError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {saveError}
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => setEditorOpen(false)} className="px-5 py-3 border border-gray-200 rounded-xl font-semibold text-charcoal hover:bg-gray-50 transition-colors">
+                      Cancel
+                    </button>
+                    <button disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors disabled:opacity-70">
+                      {saving && <Loader2 size={18} className="animate-spin" />}
+                      Save Blog
+                    </button>
+                  </div>
                 </div>
               </form>
             </motion.div>

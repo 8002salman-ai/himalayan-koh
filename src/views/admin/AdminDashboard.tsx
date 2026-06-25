@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 
 interface DashboardStats {
   totalProducts: number;
@@ -31,24 +32,19 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [realtimeNotice, setRealtimeNotice] = useState('');
 
   const fetchDashboard = useCallback(async () => {
       if (!isSupabaseConfigured()) {
-        setStats({
-          totalProducts: 6,
-          activeProducts: 6,
-          lowStockCount: 2,
-          totalCategories: 4,
-          recentOrders: 15,
-          totalRevenue: 2450.50,
-        });
+        setStats(null);
         setAnalytics(null);
         setLoading(false);
         return;
       }
 
       try {
+        setFetchError(null);
         const [data, analyticsData] = await Promise.all([
           adminApi.getDashboardStats(),
           adminApi.getDashboardAnalytics(),
@@ -56,7 +52,7 @@ export default function AdminDashboard() {
         setStats(data);
         setAnalytics(analyticsData);
       } catch (err) {
-        console.error('Failed to fetch dashboard:', err);
+        setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
       } finally {
         setLoading(false);
       }
@@ -184,6 +180,27 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {!isSupabaseConfigured() && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-semibold">Supabase not connected</p>
+          <p className="mt-1">Add Supabase environment variables to view live orders, revenue, and inventory.</p>
+        </div>
+      )}
+
+      {fetchError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="font-semibold">Dashboard failed to load</p>
+          <p className="mt-1">{fetchError}</p>
+          <button
+            type="button"
+            onClick={fetchDashboard}
+            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="lg:hidden grid grid-cols-2 gap-3">
         {mobileActions.map((action) => (

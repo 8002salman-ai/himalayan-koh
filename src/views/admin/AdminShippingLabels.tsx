@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Download, Loader2, Package, Printer, Search, Truck } from 'lucide-react';
 import { adminApi, AdminOrder } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
 import { publicEnv } from '../../lib/env';
@@ -14,6 +15,7 @@ export default function AdminShippingLabels() {
   const [ready, setReady] = useState<AdminOrder[]>([]);
   const [pending, setPending] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [creatingId, setCreatingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,7 +35,7 @@ export default function AdminShippingLabels() {
       setReady(result.ready);
       setPending(result.pending);
     } catch (err) {
-      console.error('Failed to load shipping labels:', err);
+      setFetchError(getErrorMessage(err, 'Failed to load shipping label orders.'));
     } finally {
       setLoading(false);
     }
@@ -120,6 +122,20 @@ export default function AdminShippingLabels() {
           All orders
         </Link>
       </div>
+
+      {fetchError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Shipping labels could not be loaded.</p>
+          <p className="mt-1">{fetchError}</p>
+          <button
+            type="button"
+            onClick={fetchLabels}
+            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatCard label="Ready to download" value={ready.length} tone="indigo" />

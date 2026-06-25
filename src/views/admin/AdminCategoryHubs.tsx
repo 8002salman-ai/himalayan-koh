@@ -83,8 +83,7 @@ export default function AdminCategoryHubs() {
       const override = await categoryHubApi.getOverride(key, { includeUnpublished: true });
       setForm(buildFormFromSources(key, override));
     } catch (err) {
-      console.error(err);
-      setError('Failed to load category hub CMS data.');
+      setError(err instanceof Error ? err.message : 'Failed to load category hub CMS data.');
       setForm(buildFormFromSources(key, null));
     } finally {
       setLoading(false);
@@ -115,7 +114,6 @@ export default function AdminCategoryHubs() {
       await categoryHubApi.upsertOverride(form);
       setMessage('Category hub saved. Changes appear on the shop page after refresh.');
     } catch (err) {
-      console.error(err);
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
       setSaving(false);

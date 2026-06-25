@@ -20,6 +20,7 @@ import {
 import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '../../lib/supabase/api/admin';
 import { FREE_SHIPPING_THRESHOLD } from '../../lib/supabase/api/orders';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
@@ -68,7 +69,9 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [editingOrder, setEditingOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [labelCreating, setLabelCreating] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [labelNotice, setLabelNotice] = useState<string | null>(null);
@@ -86,6 +89,7 @@ export default function AdminOrders() {
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
 
     if (!isSupabaseConfigured()) {
       setOrders([]);
@@ -119,7 +123,7 @@ export default function AdminOrders() {
         return ordersResult.orders.find((order) => order.id === current.id) || ordersResult.orders[0] || null;
       });
     } catch (err) {
-      console.error('Failed to fetch admin orders:', err);
+      setFetchError(getErrorMessage(err, 'Failed to load orders.'));
     } finally {
       setLoading(false);
     }
@@ -156,6 +160,7 @@ export default function AdminOrders() {
 
   const openStatusModal = (order: AdminOrder) => {
     setEditingOrder(order);
+    setUpdateError(null);
     setStatusForm({
       status: normalizeStatus(order.status),
       paymentStatus: order.payment_status,
@@ -171,6 +176,7 @@ export default function AdminOrders() {
     if (!token) return;
 
     setSaving(true);
+    setUpdateError(null);
     try {
       await updateAdminOrderStatus(token, {
         orderId: editingOrder.id,
@@ -181,7 +187,7 @@ export default function AdminOrders() {
       setEditingOrder(null);
       await fetchOrders();
     } catch (err) {
-      console.error('Failed to update order:', err);
+      setUpdateError(getErrorMessage(err, 'Failed to update order status.'));
     } finally {
       setSaving(false);
     }
@@ -297,6 +303,20 @@ export default function AdminOrders() {
           Shipping Labels
         </Link>
       </div>
+
+      {fetchError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Orders could not be loaded.</p>
+          <p className="mt-1">{fetchError}</p>
+          <button
+            type="button"
+            onClick={fetchOrders}
+            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
@@ -549,6 +569,12 @@ export default function AdminOrders() {
                   />
                   <p className="text-xs text-charcoal-light mt-1">Used for shipped order tracking.</p>
                 </div>
+
+                {updateError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {updateError}
+                  </div>
+                )}
 
                 <button
                   type="submit"

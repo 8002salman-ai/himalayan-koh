@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Eye } from 'lucide-react';
 import { Product } from '../data/products';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
@@ -92,24 +92,16 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           </motion.button>
         </div>
 
-        {/* Badge */}
-        {product.priceRange && (
+        {/* Badge — shown only when the product is explicitly featured */}
+        {product.isFeatured && (
           <div className="absolute top-3 left-3 px-3 py-1 bg-himalayan text-white text-xs font-bold rounded-full">
-            Best Seller
+            Featured
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="p-4 md:p-5">
-        {/* Rating */}
-        <div className="flex items-center gap-1 mb-2">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
-          ))}
-          <span className="text-xs text-gray-400 ml-1">(4.9)</span>
-        </div>
-
         <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-[2.5rem]">
           <Link
             to={`/products/${product.slug}`}
