@@ -62,6 +62,7 @@
   /* ── Z-Index Scale ──────────────────────────────────── */
   --z-dropdown: 20;         /* Floating menus, autocomplete           */
   --z-sticky: 30;           /* Admin sidebar, sticky subheaders       */
+  --z-nav-overlay: 40;      /* Mobile menu / click-outside (below nav) */
   --z-nav: 50;              /* Main navigation (public site)          */
   --z-fab: 80;              /* Floating action buttons (chat, scroll) */
   --z-drawer-backdrop: 90;  /* Cart / off-canvas backdrop             */

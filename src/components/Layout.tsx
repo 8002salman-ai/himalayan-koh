@@ -165,7 +165,7 @@ export default function Layout({ children }: LayoutProps) {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 10 }}
-                          className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                          className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-dropdown"
                         >
                           <div className="px-4 py-2 border-b border-gray-100">
                             <p className="font-semibold text-charcoal text-sm truncate">
@@ -236,7 +236,7 @@ export default function Layout({ children }: LayoutProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden fixed top-[104px] left-0 right-0 z-40 bg-cream border-t border-himalayan-line shadow-xl overflow-hidden"
+            className="lg:hidden fixed top-[104px] left-0 right-0 z-nav-overlaybg-cream border-t border-himalayan-line shadow-xl overflow-hidden"
           >
             <nav className="max-w-7xl mx-auto px-4 py-4 space-y-1">
               {navLinks.map((link, i) => (
@@ -290,7 +290,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Click outside to close user menu */}
       {userMenuOpen && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-nav-overlay"
           onClick={() => setUserMenuOpen(false)}
         />
       )}
