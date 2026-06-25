@@ -76,6 +76,11 @@
   --font-sans: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
 
+/* ── Runtime CSS vars (set by JS, not @theme) ────────── */
+:root {
+  --header-height: 102px; /* fallback; overwritten by ResizeObserver in Layout.tsx */
+}
+
 /* ── Reset ─────────────────────────────────────────────── */
 * {
   box-sizing: border-box;

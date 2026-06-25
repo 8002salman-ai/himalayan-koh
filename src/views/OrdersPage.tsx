@@ -226,7 +226,7 @@ export default function OrdersPage() {
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl shadow-md p-6 sticky top-24"
+                  className="bg-white rounded-2xl shadow-md p-6 sticky top-[var(--header-height)]"
                 >
                   <h3 className="font-serif text-lg font-bold text-charcoal mb-4">
                     Order Details
