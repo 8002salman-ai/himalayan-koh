@@ -188,7 +188,7 @@ export default function AIChatWidget() {
               <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-warm-white">
                 {messages.length === 0 && (
                   <div className="text-center py-6">
-                    <Sparkles size={42} className="mx-auto mb-4 text-himalayan" />
+                    <Sparkles size={40} className="mx-auto mb-4 text-himalayan" />
                     <h3 className="font-serif text-xl font-bold text-charcoal mb-2">
                       How can I help?
                     </h3>

@@ -43,7 +43,7 @@ export default function DashboardSidebar({ profile, user }: DashboardSidebarProp
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
-              <User size={28} className="text-himalayan" />
+              <User size={24} className="text-himalayan" />
             )}
           </div>
           <div className="min-w-0">

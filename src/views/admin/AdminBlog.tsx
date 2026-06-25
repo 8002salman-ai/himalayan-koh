@@ -258,10 +258,10 @@ export default function AdminBlog() {
           <button
             type="button"
             onClick={() => setSaveError(null)}
-            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
+            className="shrink-0 text-red-500 hover:text-red-700"
             aria-label="Dismiss"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       )}
@@ -308,7 +308,7 @@ export default function AdminBlog() {
                             post.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {post.is_published ? <Eye size={13} /> : <EyeOff size={13} />}
+                          {post.is_published ? <Eye size={14} /> : <EyeOff size={14} />}
                           {post.is_published ? 'Published' : 'Draft'}
                         </button>
                       </td>

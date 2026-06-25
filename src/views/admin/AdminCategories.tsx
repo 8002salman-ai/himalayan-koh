@@ -178,10 +178,10 @@ export default function AdminCategories() {
           <button
             type="button"
             onClick={() => setActionError(null)}
-            className="shrink-0 text-red-500 hover:text-red-700 font-bold"
+            className="shrink-0 text-red-500 hover:text-red-700"
             aria-label="Dismiss"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       )}

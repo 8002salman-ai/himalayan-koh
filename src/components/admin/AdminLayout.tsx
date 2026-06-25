@@ -262,7 +262,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={() => setMobileMenuOpen(true)}
               className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
             >
-              <Menu size={22} />
+              <Menu size={20} />
             </button>
             <h1 className="text-lg font-semibold text-charcoal hidden sm:block">
               Admin Panel
@@ -317,7 +317,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           <div key={alert.id} className="px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50">
                             <div className="flex items-start gap-3">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${alertColor(alert.type)}`}>
-                                {alert.type === 'order' ? <ShoppingCart size={15} /> : alert.type === 'customer' ? <Users size={15} /> : <Package size={15} />}
+                                {alert.type === 'order' ? <ShoppingCart size={14} /> : alert.type === 'customer' ? <Users size={14} /> : <Package size={14} />}
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-charcoal">{alert.title}</p>
@@ -412,7 +412,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             );
             const content = (
               <>
-                <item.icon size={19} />
+                <item.icon size={20} />
                 <span className="text-[10px] font-semibold">{item.label}</span>
               </>
             );
@@ -450,7 +450,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         className="lg:hidden fixed right-3 bottom-[4.5rem] z-50 w-12 h-12 rounded-full bg-himalayan text-white shadow-xl flex items-center justify-center"
         aria-label="Quick add product"
       >
-        <Plus size={22} />
+        <Plus size={20} />
       </Link>
 
       {/* Click outside to close user menu */}

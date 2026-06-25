@@ -48,7 +48,7 @@ function ToastMessage({ toast, onDismiss }: ToastItemProps) {
         aria-label="Dismiss"
         className="flex-shrink-0 text-gray-400 hover:text-charcoal transition-colors mt-0.5"
       >
-        <X size={15} />
+        <X size={14} />
       </button>
     </motion.div>
   );

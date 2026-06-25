@@ -180,7 +180,7 @@ export default function ImageDropzone({
 
                 {isBusy && (
                   <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-2">
-                    <Loader2 size={22} className="animate-spin text-himalayan" />
+                    <Loader2 size={20} className="animate-spin text-himalayan" />
                     <span className="text-xs font-medium text-charcoal">Uploading...</span>
                   </div>
                 )}

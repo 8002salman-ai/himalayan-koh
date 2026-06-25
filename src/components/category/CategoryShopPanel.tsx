@@ -15,7 +15,7 @@ export default function CategoryShopPanel({ categoryLabel, productCount, childre
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-himalayan text-white shadow-md shadow-himalayan/30">
-              <Package size={22} aria-hidden />
+              <Package size={20} aria-hidden />
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-himalayan">

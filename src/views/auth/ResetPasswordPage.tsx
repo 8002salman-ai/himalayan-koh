@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Loader2, Check } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { authApi } from '../../lib/supabase/api';
 import { supabase } from '../../lib/supabase/client';
 import { useToast } from '../../context/ToastContext';
@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
           className="bg-white rounded-3xl shadow-xl shadow-black/5 p-8 max-w-md w-full text-center"
         >
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-3xl">⚠️</span>
+            <AlertTriangle size={32} className="text-red-500" />
           </div>
           <h1 className="font-serif text-2xl font-bold text-charcoal mb-2">Invalid or Expired Link</h1>
           <p className="text-charcoal-light mb-6">

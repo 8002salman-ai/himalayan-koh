@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { authApi } from '../lib/supabase/api';
@@ -291,7 +291,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                     onClick={() => goToFullPage(mode === 'login' ? 'login' : 'signup')}
                     className="text-xs text-charcoal-light hover:text-charcoal"
                   >
-                    Open full {mode === 'login' ? 'login' : 'signup'} page →
+                    Open full {mode === 'login' ? 'login' : 'signup'} page <ArrowRight size={12} className="inline" />
                   </button>
                 </div>
               )}

@@ -634,7 +634,7 @@ function OrderDetailPanel({
 
       <div className="border-t border-gray-100 pt-4 mb-5">
         <h4 className="font-semibold text-charcoal mb-3 flex items-center gap-2">
-          <Truck size={15} className="text-himalayan" />
+          <Truck size={16} className="text-himalayan" />
           Shipping
         </h4>
         <div className="space-y-2">

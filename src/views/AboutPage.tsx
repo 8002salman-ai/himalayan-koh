@@ -84,11 +84,11 @@ export default function AboutPage() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative">
-                <div className="rounded-3xl overflow-hidden shadow-2xl shadow-himalayan/10">
+                <div className="rounded-3xl overflow-hidden shadow-2xl shadow-himalayan/10 aspect-[4/3]">
                   <img
                     src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
                     alt="Horse licking Himalayan salt"
-                    className="w-full h-[400px] md:h-[500px] object-cover"
+                    className="w-full h-full object-cover"
                     onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
                   />
                 </div>
@@ -185,7 +185,7 @@ export default function AboutPage() {
                 className="group bg-white border border-gray-100 rounded-2xl p-7 md:p-8 hover:shadow-xl hover:shadow-himalayan/10 hover:border-himalayan/20 transition-all duration-500"
               >
                 <div className="w-14 h-14 bg-himalayan-lighter rounded-2xl flex items-center justify-center text-himalayan mb-5 group-hover:bg-himalayan group-hover:text-white transition-all duration-300">
-                  <benefit.icon size={28} />
+                  <benefit.icon size={24} />
                 </div>
                 <h3 className="font-serif text-xl font-bold text-charcoal mb-3">
                   {benefit.title}

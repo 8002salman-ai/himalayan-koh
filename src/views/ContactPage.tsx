@@ -121,7 +121,7 @@ export default function ContactPage() {
 
             {/* Quick Call CTA */}
             <div className="bg-himalayan rounded-2xl p-6 text-white">
-              <MessageSquare size={28} className="mb-4" />
+              <MessageSquare size={24} className="mb-4" />
               <h3 className="font-serif text-xl font-bold mb-2">Need Bulk Orders?</h3>
               <p className="text-white/80 text-sm mb-4">
                 Call us directly for wholesale pricing and bulk order inquiries.

@@ -98,7 +98,7 @@ export default function CategoryHubGallery({ images, title }: Props) {
               className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
               aria-label="Close preview"
             >
-              <X size={22} />
+              <X size={24} />
             </button>
 
             {images.length > 1 && (
@@ -112,7 +112,7 @@ export default function CategoryHubGallery({ images, title }: Props) {
                   className="absolute left-2 sm:left-6 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
                   aria-label="Previous image"
                 >
-                  <ChevronLeft size={22} />
+                  <ChevronLeft size={24} />
                 </button>
                 <button
                   type="button"
@@ -123,7 +123,7 @@ export default function CategoryHubGallery({ images, title }: Props) {
                   className="absolute right-2 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
                   aria-label="Next image"
                 >
-                  <ChevronRight size={22} />
+                  <ChevronRight size={24} />
                 </button>
               </>
             )}

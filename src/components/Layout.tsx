@@ -235,7 +235,7 @@ export default function Layout({ children }: LayoutProps) {
                 className="lg:hidden p-2 rounded-full hover:bg-himalayan-lighter transition-colors"
                 aria-label="Menu"
               >
-                {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
               </motion.button>
             </div>
           </div>

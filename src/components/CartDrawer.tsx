@@ -36,7 +36,7 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-3">
-                <ShoppingBag size={22} className="text-himalayan" />
+                <ShoppingBag size={20} className="text-himalayan" />
                 <h2 className="font-serif text-xl font-bold text-charcoal">
                   Your Cart ({totalItems})
                 </h2>

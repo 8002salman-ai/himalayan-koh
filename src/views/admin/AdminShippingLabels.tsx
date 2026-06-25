@@ -156,7 +156,7 @@ export default function AdminShippingLabels() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-charcoal-light">
-          <Loader2 size={28} className="animate-spin mr-2" />
+          <Loader2 size={32} className="animate-spin mr-2" />
           Loading labels...
         </div>
       ) : (

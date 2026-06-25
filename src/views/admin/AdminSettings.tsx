@@ -107,7 +107,7 @@ export default function AdminSettings() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3 mb-2">
         <div className="w-10 h-10 rounded-xl bg-himalayan/10 flex items-center justify-center">
-          <KeyRound size={22} className="text-himalayan" />
+          <KeyRound size={20} className="text-himalayan" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-charcoal">API Keys & Integrations</h1>
@@ -160,7 +160,7 @@ export default function AdminSettings() {
                     onClick={(e) => e.stopPropagation()}
                     className="text-xs text-himalayan flex items-center gap-1 hover:underline"
                   >
-                    Docs <ExternalLink size={11} />
+                    Docs <ExternalLink size={12} />
                   </a>
                 )}
                 {open ? <ChevronUp size={18} className="text-charcoal-light" /> : <ChevronDown size={18} className="text-charcoal-light" />}
@@ -209,7 +209,7 @@ export default function AdminSettings() {
                     disabled={isSaving}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-himalayan hover:bg-himalayan-dark disabled:bg-gray-300 text-white text-sm font-semibold rounded-xl transition-colors"
                   >
-                    {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                     Save {category.label.split('—')[0].trim()}
                   </button>
                 </div>

@@ -79,7 +79,7 @@ export default function OrderTrackingPanel({
 
       {!trackingNumber ? (
         <div className="rounded-xl bg-gray-50 px-4 py-5 text-sm text-charcoal-light">
-          <Package size={28} className="text-gray-300 mb-2" />
+          <Package size={32} className="text-gray-300 mb-2" />
           <p className="font-medium text-charcoal">Preparing your shipment</p>
           <p className="mt-1">
             Tracking will appear here and by email when your label is created. You can bookmark{' '}

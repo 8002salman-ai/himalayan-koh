@@ -758,7 +758,7 @@ export default function CheckoutPage() {
                       Recommended
                     </span>
                   )}
-                  <CreditCard size={22} className="text-himalayan mb-2" />
+                  <CreditCard size={20} className="text-himalayan mb-2" />
                   <p className="font-semibold text-charcoal">Pay with Card</p>
                   <p className="text-sm text-charcoal-light mt-1">
                     {isStripeConfigured
@@ -776,7 +776,7 @@ export default function CheckoutPage() {
                   }}
                   className={`text-left rounded-2xl border p-4 transition-colors ${paymentMethod === 'invoice' ? 'border-charcoal/30 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
                 >
-                  <PackageCheck size={22} className="text-charcoal-light mb-2" />
+                  <PackageCheck size={20} className="text-charcoal-light mb-2" />
                   <p className="font-semibold text-charcoal">Pay by Invoice</p>
                   <p className="text-sm text-charcoal-light mt-1">
                     No card required now. We will email you to arrange payment before shipping.
@@ -839,7 +839,7 @@ export default function CheckoutPage() {
                 {fieldErrors.coupon && <p className="text-xs text-red-600 mt-1">{fieldErrors.coupon}</p>}
                 {couponCode && (
                   <p className="text-xs text-green-700 mt-2 flex items-center gap-1">
-                    <CheckCircle size={13} />
+                    <CheckCircle size={14} />
                     {supportedCoupons[couponCode].label} applied
                   </p>
                 )}

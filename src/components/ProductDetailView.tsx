@@ -111,7 +111,7 @@ export default function ProductDetailView({
       )}
 
       <div className="grid md:grid-cols-2 gap-0">
-        <div className="relative aspect-square md:aspect-auto bg-gray-50 min-h-[280px] md:min-h-[400px]">
+        <div className="relative aspect-square md:aspect-auto bg-gray-50 min-h-72 md:min-h-96">
           <img
             src={product.image}
             alt={displayName}
