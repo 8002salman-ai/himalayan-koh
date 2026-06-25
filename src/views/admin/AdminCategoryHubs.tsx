@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, Loader2, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui';
+import { useToast } from '../../context/ToastContext';
 import {
   CATEGORY_FILTER_TABS,
   buildProductsCategoryPath,
@@ -68,8 +69,7 @@ export default function AdminCategoryHubs() {
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const toast = useToast();
 
   const loadForm = useCallback(async (key: CategoryContentKey) => {
     if (!isSupabaseConfigured()) {
@@ -79,17 +79,16 @@ export default function AdminCategoryHubs() {
     }
 
     setLoading(true);
-    setError('');
     try {
       const override = await categoryHubApi.getOverride(key, { includeUnpublished: true });
       setForm(buildFormFromSources(key, override));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load category hub CMS data.');
+      toast.error(err instanceof Error ? err.message : 'Failed to load category hub CMS data.');
       setForm(buildFormFromSources(key, null));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     void loadForm(selectedKey);
@@ -102,20 +101,18 @@ export default function AdminCategoryHubs() {
 
   const handleSave = async () => {
     setSaving(true);
-    setMessage('');
-    setError('');
 
     if (!isSupabaseConfigured()) {
-      setError('Supabase is required to save category hub CMS overrides.');
+      toast.error('Supabase is required to save category hub CMS overrides.');
       setSaving(false);
       return;
     }
 
     try {
       await categoryHubApi.upsertOverride(form);
-      setMessage('Category hub saved. Changes appear on the shop page after refresh.');
+      toast.success('Category hub saved. Changes appear on the shop page after refresh.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed.');
+      toast.error(err instanceof Error ? err.message : 'Save failed.');
     } finally {
       setSaving(false);
     }
@@ -131,7 +128,7 @@ export default function AdminCategoryHubs() {
       trust_points: base.trustPoints.map((point) => ({ ...point })),
       is_published: true,
     });
-    setMessage('Form reset to code registry defaults. Save to persist to CMS.');
+    toast.info('Form reset to code registry defaults. Save to persist to CMS.');
   };
 
   const updateTrustPoint = (index: number, field: keyof CategoryTrustPoint, value: string) => {
@@ -351,9 +348,6 @@ export default function AdminCategoryHubs() {
                   </div>
                 ))}
               </section>
-
-              {message && <p className="text-sm text-green-700">{message}</p>}
-              {error && <p className="text-sm text-red-600">{error}</p>}
 
               <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
                 <Button

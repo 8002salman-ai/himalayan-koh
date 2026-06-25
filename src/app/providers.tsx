@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastProvider } from '@/context/ToastContext';
 import HashUrlRedirect from '@/components/HashUrlRedirect';
 import RouteScrollRestoration from '@/components/RouteScrollRestoration';
 import SEO from '@/components/SEO';
@@ -20,8 +21,10 @@ function ClientEffects() {
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <ClientEffects />
-      {children}
+      <ToastProvider>
+        <ClientEffects />
+        {children}
+      </ToastProvider>
     </AuthProvider>
   );
 }

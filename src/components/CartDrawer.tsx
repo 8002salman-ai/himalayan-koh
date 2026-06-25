@@ -49,10 +49,10 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-5">
               {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <ShoppingBag size={64} className="text-gray-200 mb-4" />
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <ShoppingBag size={56} className="text-gray-200 mb-4" />
                   <h3 className="font-serif text-xl font-bold text-charcoal mb-2">Your cart is empty</h3>
                   <p className="text-charcoal-light text-sm mb-6">Add some premium Himalayan salt products!</p>
                   <button

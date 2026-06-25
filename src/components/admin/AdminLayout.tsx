@@ -149,7 +149,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
           {ADMIN_NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/admin' && location.pathname.startsWith(item.path));
@@ -215,7 +215,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <X size={18} />
                 </button>
               </div>
-              <nav className="flex-1 py-3 px-3 overflow-y-auto">
+              <nav className="flex-1 py-3 px-3 overflow-y-auto scrollbar-thin">
                 <div className="grid grid-cols-3 gap-2">
                   {ADMIN_NAV_ITEMS.map((item) => {
                     const isActive = location.pathname === item.path ||

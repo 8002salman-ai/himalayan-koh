@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Loader2, Check } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { authApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { useToast } from '../context/ToastContext';
 
 interface Props {
   isOpen: boolean;
@@ -32,18 +33,15 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     password: demoAccounts.customer.password,
     fullName: '',
   });
-  const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
 
   const { signIn, signUp } = useAuthContext();
   const navigate = useNavigate();
+  const toast = useToast();
   const supabaseReady = isSupabaseConfigured();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError('');
-    setSuccess('');
     setLocalLoading(true);
 
     try {
@@ -56,13 +54,15 @@ export default function AuthModal({ isOpen, onClose }: Props) {
           password: formData.password,
           fullName: formData.fullName,
         });
-        setSuccess('Account created! Please check your email to verify.');
+        toast.success('Account created! Please check your email to verify.');
+        onClose();
       } else if (mode === 'forgot') {
         await authApi.resetPassword(formData.email);
-        setSuccess('Reset link sent! Check your email.');
+        toast.success('Reset link sent! Check your email.');
+        onClose();
       }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'An error occurred');
+      toast.error(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLocalLoading(false);
     }
@@ -70,8 +70,6 @@ export default function AuthModal({ isOpen, onClose }: Props) {
 
   const resetForm = () => {
     setFormData({ email: '', password: '', fullName: '' });
-    setFormError('');
-    setSuccess('');
   };
 
   const goToFullPage = (page: 'login' | 'signup') => {
@@ -86,8 +84,6 @@ export default function AuthModal({ isOpen, onClose }: Props) {
       email: demoAccounts[type].email,
       password: demoAccounts[type].password,
     });
-    setFormError('');
-    setSuccess('');
   };
 
   return (
@@ -137,19 +133,6 @@ export default function AuthModal({ isOpen, onClose }: Props) {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 pt-0 space-y-4">
-              {formError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                  {formError}
-                </div>
-              )}
-
-              {success && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm flex items-center gap-2">
-                  <Check size={16} />
-                  {success}
-                </div>
-              )}
-
               {!supabaseReady && mode === 'login' && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
                   Supabase is not configured. Add Vercel env vars before demo login will work.

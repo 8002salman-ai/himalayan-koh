@@ -3,23 +3,23 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Loader2, ArrowLeft, Check } from 'lucide-react';
 import { authApi } from '../../lib/supabase/api';
+import { useToast } from '../../context/ToastContext';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const toast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       await authApi.resetPassword(email);
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+      toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
@@ -92,16 +92,6 @@ export default function ForgotPasswordPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
-              >
-                {error}
-              </motion.div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-charcoal mb-1.5">
                 Email Address

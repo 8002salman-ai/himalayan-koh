@@ -7,7 +7,9 @@ import {
   orderStatusBadgeClass,
 } from '../lib/orders/status';
 import { trackOrderPageUrl } from '../lib/orders/tracking';
-import { Package, ChevronRight, Truck, Check, Clock, XCircle, Loader2, ShoppingCart } from 'lucide-react';
+import { Package, ChevronRight, Truck, Check, Clock, XCircle, ShoppingCart } from 'lucide-react';
+import { SkeletonOrderList } from '../components/ui/Skeleton';
+import EmptyState from '../components/ui/EmptyState';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
 import { ordersApi } from '../lib/supabase/api';
@@ -100,29 +102,14 @@ export default function OrdersPage() {
           <DashboardSidebar profile={profile} user={user} />
           <div className="lg:col-span-3">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={40} className="animate-spin text-himalayan" />
-          </div>
+          <SkeletonOrderList count={3} />
         ) : orders.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-md p-12 text-center"
-          >
-            <Package size={64} className="mx-auto mb-6 text-gray-200" />
-            <h2 className="font-serif text-2xl font-bold text-charcoal mb-2">
-              No Orders Yet
-            </h2>
-            <p className="text-charcoal-light mb-6">
-              You haven't placed any orders yet. Start shopping to see your orders here.
-            </p>
-            <Link
-              to="/products"
-              className="inline-flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-            >
-              Browse Products
-            </Link>
-          </motion.div>
+          <EmptyState
+            icon={<Package size={48} />}
+            title="No Orders Yet"
+            description="You haven't placed any orders yet. Start shopping to see your orders here."
+            action={{ label: 'Browse Products', href: '/products' }}
+          />
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Orders List */}

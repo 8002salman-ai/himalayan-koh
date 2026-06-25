@@ -114,13 +114,39 @@ h6 {
 /* ── Scrollbar ─────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-warm-white);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-himalayan);
+  background: var(--color-himalayan-line);
   border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-himalayan);
+}
+
+/* Thin scrollbar variant — modals, drawers, sidebars */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-himalayan-line);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-himalayan);
+}
+
+/* Firefox thin scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-himalayan-line) transparent;
 }
 
 /* ── Button Utilities ──────────────────────────────────── */

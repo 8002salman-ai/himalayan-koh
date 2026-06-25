@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Loader2, ShoppingBag, Trash2 } from 'lucide-react';
+import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
+import { SkeletonProductGrid } from '../components/ui/Skeleton';
+import EmptyState from '../components/ui/EmptyState';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
 import { wishlistApi } from '../lib/supabase/api';
@@ -89,26 +90,14 @@ export default function WishlistPage() {
             className="lg:col-span-3"
           >
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 size={40} className="animate-spin text-himalayan" />
-              </div>
+              <SkeletonProductGrid count={4} />
             ) : wishlist.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-md p-12 text-center">
-                <Heart size={64} className="mx-auto mb-6 text-gray-200" />
-                <h2 className="font-serif text-2xl font-bold text-charcoal mb-2">
-                  No Saved Products Yet
-                </h2>
-                <p className="text-charcoal-light mb-6">
-                  Products you save will appear here.
-                </p>
-                <Link
-                  to="/products"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-                >
-                  <ShoppingBag size={18} />
-                  Browse Products
-                </Link>
-              </div>
+              <EmptyState
+                icon={<Heart size={48} />}
+                title="No Saved Products Yet"
+                description="Products you save will appear here."
+                action={{ label: 'Browse Products', href: '/products' }}
+              />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {wishlist.map((item) => (

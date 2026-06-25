@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Loader2, Search } from 'lucide-react';
+import { SkeletonProductGrid } from '../components/ui/Skeleton';
+import EmptyState from '../components/ui/EmptyState';
 import { products as fallbackProducts, Product } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
@@ -111,9 +113,15 @@ export default function ProductsPage() {
   const productList = (
     <>
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 size={36} className="animate-spin text-himalayan" />
-        </div>
+        <SkeletonProductGrid count={isCategoryHub ? 3 : 6} />
+      ) : filteredProducts.length === 0 ? (
+        <EmptyState
+          icon={<Search size={40} />}
+          title="No products match this filter"
+          description="Try another category or clear your search."
+          size="compact"
+          className="border border-dashed border-gray-200 shadow-none"
+        />
       ) : (
         <div
           className={
@@ -131,13 +139,6 @@ export default function ProductsPage() {
               shopHighlight={isCategoryHub}
             />
           ))}
-        </div>
-      )}
-
-      {!loading && filteredProducts.length === 0 && (
-        <div className="text-center py-12 text-charcoal-light rounded-xl border border-dashed border-gray-200 bg-white">
-          <p className="font-medium text-charcoal">No products match this filter</p>
-          <p className="text-sm mt-1">Try another category or clear your search.</p>
         </div>
       )}
     </>

@@ -9,12 +9,12 @@ import {
   AlertTriangle,
   TrendingUp,
   ArrowUpRight,
-  Loader2,
   Users,
   BarChart3,
   Plus,
   FileText,
 } from 'lucide-react';
+import { SkeletonDashboard } from '../../components/ui/Skeleton';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
@@ -157,11 +157,7 @@ export default function AdminDashboard() {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 size={32} className="animate-spin text-himalayan" />
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   return (

@@ -4,20 +4,20 @@ import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, Loader2, Check } from 'lucide-react';
 import { authApi } from '../../lib/supabase/api';
 import { supabase } from '../../lib/supabase/client';
+import { useToast } from '../../context/ToastContext';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [validSession, setValidSession] = useState<boolean | null>(null);
 
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
-    // Check if we have a valid recovery session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setValidSession(!!session);
     });
@@ -25,15 +25,14 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      toast.error('Password must be at least 8 characters');
       return;
     }
 
@@ -44,7 +43,7 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password');
+      toast.error(err instanceof Error ? err.message : 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -131,16 +130,6 @@ export default function ResetPasswordPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
-              >
-                {error}
-              </motion.div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-charcoal mb-1.5">
                 New Password

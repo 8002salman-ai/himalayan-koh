@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Loader2, Check, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
+import { User, Mail, Phone, Loader2, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
 import { addressesApi, notificationsApi, ordersApi, wishlistApi } from '../lib/supabase/api';
@@ -19,9 +20,8 @@ export default function AccountPage() {
     const tab = searchParams.get('tab') as TabType | null;
     return tab && validTabs.includes(tab) ? tab : 'dashboard';
   });
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -124,18 +124,15 @@ export default function AccountPage() {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError('');
-    setSuccess('');
 
     try {
       await updateProfile({
         full_name: formData.fullName,
         phone: formData.phone,
       });
-      setSuccess('Profile updated successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      toast.success('Profile updated successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -145,18 +142,16 @@ export default function AccountPage() {
     e.preventDefault();
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+      toast.error('Password must be at least 8 characters');
       return;
     }
 
     setSaving(true);
-    setError('');
-    setSuccess('');
 
     try {
       const { error: updateError } = await supabase.auth.updateUser({
@@ -165,11 +160,10 @@ export default function AccountPage() {
 
       if (updateError) throw updateError;
 
-      setSuccess('Password updated successfully!');
+      toast.success('Password updated successfully!');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update password');
+      toast.error(err instanceof Error ? err.message : 'Failed to update password');
     } finally {
       setSaving(false);
     }
@@ -180,8 +174,6 @@ export default function AccountPage() {
     if (!user?.id) return;
 
     setSaving(true);
-    setError('');
-    setSuccess('');
 
     try {
       const address = await addressesApi.createAddress(user.id, {
@@ -209,22 +201,20 @@ export default function AccountPage() {
         country: 'United States',
       });
       setShowAddressForm(false);
-      setSuccess('Address saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      toast.success('Address saved successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save address');
+      toast.error(err instanceof Error ? err.message : 'Failed to save address');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteAddress = async (addressId: string) => {
-    setError('');
     try {
       await addressesApi.deleteAddress(addressId);
       setAddresses((current) => current.filter((address) => address.id !== addressId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete address');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete address');
     }
   };
 
@@ -237,7 +227,7 @@ export default function AccountPage() {
           : notification
       )));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update notification');
+      toast.error(err instanceof Error ? err.message : 'Failed to update notification');
     }
   };
 
@@ -299,27 +289,6 @@ export default function AccountPage() {
                   </button>
                 ))}
               </div>
-
-              {/* Success/Error Messages */}
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-600 flex items-center gap-2"
-                >
-                  <Check size={18} />
-                  {success}
-                </motion.div>
-              )}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600"
-                >
-                  {error}
-                </motion.div>
-              )}
 
               {/* Dashboard Tab */}
               {activeTab === 'dashboard' && (
