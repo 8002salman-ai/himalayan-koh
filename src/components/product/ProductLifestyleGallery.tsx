@@ -42,6 +42,7 @@ export default function ProductLifestyleGallery({ images, productName }: Props) 
                   loading="lazy"
                   decoding="async"
                   className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
                 />
               </div>
             </figure>

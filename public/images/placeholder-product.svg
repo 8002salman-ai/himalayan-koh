@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450" viewBox="0 0 600 450">
+  <rect width="600" height="450" fill="#f5f0eb"/>
+  <rect x="240" y="160" width="120" height="80" rx="8" fill="#d4b896" opacity="0.6"/>
+  <circle cx="300" cy="180" r="30" fill="#c8a882" opacity="0.5"/>
+  <text x="300" y="280" font-family="Georgia, serif" font-size="16" fill="#8b6f47" text-anchor="middle" opacity="0.7">Himalayan Koh</text>
+  <text x="300" y="300" font-family="Georgia, serif" font-size="12" fill="#a08060" text-anchor="middle" opacity="0.6">Pure Himalayan Salt</text>
+</svg>

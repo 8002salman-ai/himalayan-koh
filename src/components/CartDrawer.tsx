@@ -77,6 +77,7 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                         src={item.image}
                         alt={item.name}
                         className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                       />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-1">

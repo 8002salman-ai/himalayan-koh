@@ -40,7 +40,7 @@ export default function CategoryEducationPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className="rounded-2xl border border-gray-200/80 bg-white/90 shadow-sm p-4 sm:p-5 space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto"
+      className="rounded-2xl border border-gray-200/80 bg-white/90 shadow-sm p-4 sm:p-5 space-y-6 lg:sticky lg:top-24"
       aria-label={`${content.hero.title} guides and resources`}
     >
       <section aria-labelledby={`${content.key}-gallery-heading`}>
