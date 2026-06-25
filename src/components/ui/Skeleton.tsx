@@ -139,3 +139,49 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
     </tbody>
   );
 }
+
+function SkeletonSettingsCard() {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-hidden="true">
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-5 h-5 rounded-full" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3 w-52" />
+          </div>
+        </div>
+        <Skeleton className="w-4 h-4" />
+      </div>
+      <div className="px-6 pb-5 pt-3 space-y-4 border-t border-gray-100">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="h-3.5 w-32 mb-2" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+          </div>
+        ))}
+        <div className="flex justify-end pt-1">
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonSettings({ count = 4 }: { count?: number }) {
+  return (
+    <div className="max-w-3xl mx-auto space-y-6" aria-hidden="true">
+      <div className="flex items-center gap-3 mb-2">
+        <Skeleton className="w-10 h-10 rounded-xl" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-3 w-64" />
+        </div>
+      </div>
+      <Skeleton className="h-16 w-full rounded-xl" />
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonSettingsCard key={i} />
+      ))}
+    </div>
+  );
+}

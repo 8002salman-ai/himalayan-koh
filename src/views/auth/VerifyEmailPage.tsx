@@ -33,11 +33,11 @@ export default function VerifyEmailPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream via-white to-himalayan-lighter flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-cream via-white to-himalayan-lighter flex items-start sm:items-center justify-center px-4 py-8 sm:py-0">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-3xl shadow-xl shadow-black/5 p-8 max-w-md w-full text-center"
+        className="bg-white rounded-3xl shadow-xl shadow-black/5 p-6 sm:p-8 max-w-md w-full text-center"
       >
         {status === 'loading' && (
           <>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
+import { SkeletonSettings } from '../../components/ui/Skeleton';
 import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { SETTINGS_REGISTRY, type SettingsCategory } from '../../lib/settings/registry';
@@ -96,11 +97,7 @@ export default function AdminSettings() {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 size={32} className="animate-spin text-himalayan" />
-      </div>
-    );
+    return <SkeletonSettings count={4} />;
   }
 
   return (

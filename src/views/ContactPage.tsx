@@ -54,7 +54,7 @@ export default function ContactPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-20">
         <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Contact Info */}
           <motion.div

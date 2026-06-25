@@ -423,7 +423,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   key={item.label}
                   type="button"
                   onClick={() => setMobileMenuOpen(true)}
-                  className="min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-charcoal-light hover:bg-gray-50"
+                  className="min-h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-charcoal-light hover:bg-gray-50"
                 >
                   {content}
                 </button>
@@ -434,7 +434,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 ${
+                className={`min-h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 ${
                   isActive ? 'bg-himalayan text-white' : 'text-charcoal-light hover:bg-gray-50'
                 }`}
               >

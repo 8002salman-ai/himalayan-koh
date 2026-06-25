@@ -105,8 +105,8 @@ export default function AboutPage() {
                   </div>
                 </motion.div>
                 {/* Decorative */}
-                <div className="absolute -top-4 -left-4 w-24 h-24 bg-himalayan/10 rounded-full -z-10" />
-                <div className="absolute -bottom-4 -left-8 w-32 h-32 bg-himalayan/5 rounded-full -z-10" />
+                <div className="hidden sm:block absolute -top-4 -left-4 w-24 h-24 bg-himalayan/10 rounded-full -z-10" />
+                <div className="hidden sm:block absolute -bottom-4 -left-8 w-32 h-32 bg-himalayan/5 rounded-full -z-10" />
               </div>
             </motion.div>
 

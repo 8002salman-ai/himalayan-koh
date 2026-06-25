@@ -103,7 +103,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
 
       {/* Content */}
       <div className="p-4 md:p-5">
-        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-[2.5rem]">
+        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-10">
           <Link
             to={`/products/${product.slug}`}
             className="group-hover:text-himalayan transition-colors"

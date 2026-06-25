@@ -1,7 +1,9 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Mail, Phone, Search, Users } from 'lucide-react';
+import { Mail, Phone, Search, Users } from 'lucide-react';
 import { Button } from '../../components/ui';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import EmptyState from '../../components/ui/EmptyState';
 import { adminApi } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
@@ -73,19 +75,34 @@ export default function AdminCustomers() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-himalayan" />
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Joined</th>
+                </tr>
+              </thead>
+              <SkeletonTable rows={5} />
+            </table>
           </div>
         ) : customers.length === 0 ? (
-          <div className="text-center py-20 text-charcoal-light">No customers found.</div>
+          <EmptyState
+            icon={<Users size={40} />}
+            title="No customers found"
+            description={search ? 'No customers match your search' : 'Customer accounts will appear here after sign-up'}
+            size="compact"
+            className="border-0 shadow-none rounded-none py-16"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase">Joined</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Joined</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -93,20 +110,21 @@ export default function AdminCustomers() {
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-himalayan/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-himalayan/10 flex items-center justify-center flex-shrink-0">
                           <Users size={18} className="text-himalayan" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium text-charcoal">{customer.full_name || 'Unnamed customer'}</p>
                           <p className="text-xs text-charcoal-light capitalize">{customer.role}</p>
+                          <p className="text-xs text-charcoal-light mt-0.5 truncate sm:hidden">{customer.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light">
-                      <p className="flex items-center gap-1"><Mail size={14} />{customer.email}</p>
-                      {customer.phone && <p className="flex items-center gap-1 mt-1"><Phone size={14} />{customer.phone}</p>}
+                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
+                      <p className="flex items-center gap-1.5"><Mail size={14} className="flex-shrink-0" /><span className="truncate">{customer.email}</span></p>
+                      {customer.phone && <p className="flex items-center gap-1.5 mt-1"><Phone size={14} className="flex-shrink-0" />{customer.phone}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light">
+                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
                       {new Date(customer.created_at).toLocaleDateString()}
                     </td>
                   </tr>

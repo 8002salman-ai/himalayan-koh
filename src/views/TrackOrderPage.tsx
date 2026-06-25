@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Loader2, Search } from 'lucide-react';
 import OrderTrackingPanel from '../components/orders/OrderTrackingPanel';
 import { getErrorMessage } from '../lib/errors';
@@ -84,12 +85,31 @@ export default function TrackOrderPage() {
 
   return (
     <div className="min-h-screen bg-warm-white">
-      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-12 md:py-16">
+      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold text-white">Track your order</h1>
-          <p className="text-white/70 mt-2">
-            Enter your order number and email for live shipment updates — like eBay tracking.
-          </p>
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4"
+          >
+            Order Tracking
+          </motion.span>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="font-serif text-3xl md:text-4xl font-bold text-white mb-3"
+          >
+            Track Your Order
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-white/70 text-lg max-w-xl mx-auto"
+          >
+            Enter your order number and email for live shipment updates.
+          </motion.p>
         </div>
       </div>
 
@@ -101,7 +121,7 @@ export default function TrackOrderPage() {
               value={orderNumber}
               onChange={(event) => setOrderNumber(event.target.value)}
               placeholder="HK-20260529-4996"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
               required
             />
           </div>
@@ -112,7 +132,7 @@ export default function TrackOrderPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
               required
             />
           </div>
