@@ -133,7 +133,7 @@ export default function AIChatWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-5 sm:bottom-5 z-[80] w-14 h-14 bg-himalayan hover:bg-himalayan-dark text-white rounded-full shadow-xl shadow-himalayan/30 flex items-center justify-center"
+        className="fixed bottom-20 right-5 sm:bottom-5 z-fab w-14 h-14 bg-himalayan hover:bg-himalayan-dark text-white rounded-full shadow-xl shadow-himalayan/30 flex items-center justify-center"
         aria-label="Open AI assistant"
       >
         <MessageCircle size={24} />
@@ -146,14 +146,14 @@ export default function AIChatWidget() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-modal bg-black/40 backdrop-blur-sm md:hidden"
               onClick={() => setIsOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, y: 30, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.96 }}
-              className="fixed left-3 right-3 top-4 bottom-20 md:top-auto md:left-auto md:bottom-24 md:right-5 z-[105] md:w-[420px] md:h-[620px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed left-3 right-3 top-4 bottom-20 md:top-auto md:left-auto md:bottom-24 md:right-5 z-chat md:w-[420px] md:h-[620px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">

@@ -45,7 +45,7 @@ export default function PdfViewerModal({ resource, onClose }: Props) {
         e.preventDefault();
         onClose();
       }}
-      className="fixed inset-0 z-[200] m-0 max-h-none max-w-none w-full h-full bg-transparent p-0 backdrop:bg-black/60 open:flex open:items-center open:justify-center"
+      className="fixed inset-0 z-overlay m-0 max-h-none max-w-none w-full h-full bg-transparent p-0 backdrop:bg-black/60 open:flex open:items-center open:justify-center"
       aria-labelledby={resource ? 'pdf-viewer-title' : undefined}
       aria-hidden={!resource}
     >

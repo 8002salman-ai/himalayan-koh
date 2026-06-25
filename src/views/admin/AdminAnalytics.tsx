@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, DollarSign, Loader2, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
+import { Button } from '../../components/ui';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
@@ -44,13 +45,9 @@ export default function AdminAnalytics() {
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
         <p className="font-semibold">Analytics could not be loaded.</p>
         <p className="mt-1">{fetchError}</p>
-        <button
-          type="button"
-          onClick={fetchAnalytics}
-          className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-        >
+        <Button variant="destructive" size="sm" onClick={fetchAnalytics} className="mt-3">
           Retry
-        </button>
+        </Button>
       </div>
     );
   }

@@ -1,31 +1,82 @@
 @import "tailwindcss";
 
-/* Himalayan Koh staging theme — https://himalayankoh.com/staging/ */
+/**
+ * Himalayan Koh — Design Token System
+ *
+ * SINGLE SOURCE OF TRUTH for all visual decisions.
+ * All Tailwind utilities are generated from these @theme tokens.
+ *
+ * ── Colors ────────────────────────────────────────────────
+ *   himalayan-*     Brand rose (primary CTA, accent)
+ *   charcoal-*      Text (primary, secondary/muted)
+ *   warm-white      Page background
+ *   cream           Card / panel surface
+ *
+ * ── Z-Index ───────────────────────────────────────────────
+ *   Named scale replaces magic numbers.
+ *   Use z-{name} utilities (e.g. z-modal, z-drawer).
+ *
+ * ── Typography ────────────────────────────────────────────
+ *   Brand uses Source Serif 4 for all text (deliberate).
+ *   font-serif = font-sans = Source Serif 4.
+ *
+ * ── Border Radius ─────────────────────────────────────────
+ *   rounded-full    Badge circles, avatar rings
+ *   rounded-lg      Thumbnails, quantity spinners
+ *   rounded-xl      Buttons, inputs, cards
+ *   rounded-2xl     Modals, large containers
+ *   rounded-3xl     Auth form wrappers
+ *
+ * ── Max-Width ─────────────────────────────────────────────
+ *   max-w-7xl       Primary content container (1280px)
+ *   max-w-5xl       Article / order detail pages
+ *   max-w-4xl       Legal, narrow blog detail
+ *   max-w-3xl       Checkout, narrow forms
+ *   max-w-2xl       Search modal, FAQ
+ *   max-w-md        Auth forms, confirmations
+ *
+ * ── Section Spacing ───────────────────────────────────────
+ *   py-12 md:py-16  Typical content section
+ *   py-16 md:py-20  Hero / featured section
+ *   py-8  md:py-12  Sub-sections
+ */
+
 @theme {
-  --color-hk-ink: #26211c;
-  --color-hk-muted: #6d6258;
-  --color-hk-paper: #faf7f1;
-  --color-hk-panel: #fffdf8;
-  --color-hk-line: #e0d6c8;
-  --color-hk-rose: #b86452;
-  --color-hk-rose-dark: #8d4133;
-  --color-hk-green: #3f6550;
-  --color-hk-gold: #c98745;
+  /* ── Brand Colors ───────────────────────────────────── */
+  --color-himalayan: #b86452;           /* Primary — rose / CTA  */
+  --color-himalayan-dark: #8d4133;      /* Hover / pressed state */
+  --color-himalayan-light: #f3e4de;     /* Tint                  */
+  --color-himalayan-lighter: #faf0eb;   /* Subtle tint / hover bg */
+  --color-himalayan-green: #3f6550;     /* Accent green          */
+  --color-himalayan-gold: #c98745;      /* Accent gold           */
+  --color-himalayan-line: #e0d6c8;      /* Border / divider      */
 
-  /* Legacy aliases used across the app */
-  --color-himalayan: #b86452;
-  --color-himalayan-dark: #8d4133;
-  --color-himalayan-light: #f3e4de;
-  --color-himalayan-lighter: #faf0eb;
-  --color-charcoal: #26211c;
-  --color-charcoal-light: #6d6258;
-  --color-warm-white: #faf7f1;
-  --color-cream: #fffdf8;
+  /* ── Neutrals ───────────────────────────────────────── */
+  --color-charcoal: #26211c;            /* Primary text          */
+  --color-charcoal-light: #6d6258;      /* Secondary / muted     */
 
+  /* ── Surfaces ───────────────────────────────────────── */
+  --color-warm-white: #faf7f1;          /* Page background       */
+  --color-cream: #fffdf8;               /* Card / panel surface  */
+
+  /* ── Z-Index Scale ──────────────────────────────────── */
+  --z-dropdown: 20;         /* Floating menus, autocomplete           */
+  --z-sticky: 30;           /* Admin sidebar, sticky subheaders       */
+  --z-nav: 50;              /* Main navigation (public site)          */
+  --z-fab: 80;              /* Floating action buttons (chat, scroll) */
+  --z-drawer-backdrop: 90;  /* Cart / off-canvas backdrop             */
+  --z-drawer: 95;           /* Cart drawer, off-canvas panels         */
+  --z-modal: 100;           /* Modals, dialogs, search overlay        */
+  --z-chat: 105;            /* Chat widget above modal on mobile      */
+  --z-skip: 120;            /* Skip-to-content accessibility link     */
+  --z-overlay: 200;         /* Full-screen PDF / image overlays       */
+
+  /* ── Typography ─────────────────────────────────────── */
   --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-sans: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
 
+/* ── Reset ─────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
@@ -36,8 +87,8 @@ html {
 
 body {
   font-family: var(--font-sans);
-  color: var(--color-hk-ink);
-  background: var(--color-hk-paper);
+  color: var(--color-charcoal);
+  background: var(--color-warm-white);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -49,12 +100,26 @@ h4,
 h5,
 h6 {
   font-family: var(--font-serif);
-  color: var(--color-hk-ink);
+  color: var(--color-charcoal);
   font-weight: 700;
   letter-spacing: 0;
 }
 
-/* Staging-style primary CTA */
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-warm-white);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-himalayan);
+  border-radius: 4px;
+}
+
+/* ── Button Utilities ──────────────────────────────────── */
+
+/* Green CTA — used in nav / hero (staging accent) */
 .btn-hk-primary {
   display: inline-flex;
   align-items: center;
@@ -62,9 +127,9 @@ h6 {
   min-height: 3rem;
   padding: 0.85rem 1.25rem;
   border-radius: 0.375rem;
-  border: 1px solid var(--color-hk-green);
-  background: var(--color-hk-green);
-  color: var(--color-hk-panel);
+  border: 1px solid var(--color-himalayan-green);
+  background: var(--color-himalayan-green);
+  color: var(--color-cream);
   font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -75,11 +140,12 @@ h6 {
 }
 
 .btn-hk-primary:hover {
-  background: var(--color-hk-rose-dark);
-  border-color: var(--color-hk-rose-dark);
-  color: var(--color-hk-panel);
+  background: var(--color-himalayan-dark);
+  border-color: var(--color-himalayan-dark);
+  color: var(--color-cream);
 }
 
+/* Ghost — nav login, secondary CTAs */
 .btn-hk-ghost {
   display: inline-flex;
   align-items: center;
@@ -87,9 +153,9 @@ h6 {
   min-height: 3rem;
   padding: 0.85rem 1.25rem;
   border-radius: 0.375rem;
-  border: 1px solid #bcae9b;
+  border: 1px solid var(--color-himalayan-line);
   background: rgba(255, 253, 248, 0.86);
-  color: var(--color-hk-ink);
+  color: var(--color-charcoal);
   font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -99,23 +165,11 @@ h6 {
 }
 
 .btn-hk-ghost:hover {
-  border-color: rgba(177, 110, 51, 0.58);
-  background: #fffefa;
+  border-color: rgba(184, 100, 82, 0.5);
+  background: var(--color-cream);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-hk-paper);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-hk-rose);
-  border-radius: 4px;
-}
-
-/* Smooth image loading */
+/* ── Misc Utilities ─────────────────────────────────────── */
 img {
   transition: opacity 0.3s ease;
 }

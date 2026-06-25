@@ -121,7 +121,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           <select
             value={selectedGrain}
             onChange={(e) => setSelectedGrain(e.target.value)}
-            className="w-full mb-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
+            className="w-full mb-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
           >
             {product.grainSizes.map((g) => (
               <option key={g} value={g}>{g}</option>
