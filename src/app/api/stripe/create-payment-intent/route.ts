@@ -3,10 +3,20 @@ import { calculateOrderTotals } from '@/lib/stripe/server/orderTotals';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getStripeClient, getStripeMode, stripeConfigError } from '@/lib/stripe/server/stripe';
 import { validateCreatePaymentIntentBody } from '@/lib/stripe/server/validation';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 const MIN_AMOUNT_CENTS = 50;
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = checkRateLimit(`payment:${ip}`, { limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 }
+    );
+  }
+
   const configError = await stripeConfigError();
   if (configError) return configError;
 

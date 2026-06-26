@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
 import { SkeletonSettings } from '../../components/ui/Skeleton';
 import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -47,6 +47,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     if (!session?.access_token) return;
@@ -177,18 +178,41 @@ export default function AdminSettings() {
                         <label className="text-sm font-semibold text-charcoal">{field.label}</label>
                         <SourceBadge source={src} />
                       </div>
-                      <input
-                        type={field.type === 'password' ? 'password' : field.type === 'email' ? 'email' : 'text'}
-                        value={currentVal}
-                        onChange={(e) => handleChange(category.id, field.key, e.target.value)}
-                        placeholder={
-                          src === 'env'
-                            ? `${field.placeholder} (using env var)`
-                            : field.placeholder
-                        }
-                        autoComplete="off"
-                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
-                      />
+                      <div className="relative">
+                        <input
+                          type={
+                            field.type === 'password'
+                              ? showPasswords[`${category.id}:${field.key}`] ? 'text' : 'password'
+                              : field.type === 'email' ? 'email' : 'text'
+                          }
+                          value={currentVal}
+                          onChange={(e) => handleChange(category.id, field.key, e.target.value)}
+                          placeholder={
+                            src === 'env'
+                              ? `${field.placeholder} (using env var)`
+                              : field.placeholder
+                          }
+                          autoComplete="off"
+                          className={`w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white ${field.type === 'password' ? 'pr-10' : ''}`}
+                        />
+                        {field.type === 'password' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowPasswords((prev) => ({
+                                ...prev,
+                                [`${category.id}:${field.key}`]: !prev[`${category.id}:${field.key}`],
+                              }))
+                            }
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-light hover:text-charcoal transition-colors"
+                            aria-label={showPasswords[`${category.id}:${field.key}`] ? 'Hide' : 'Show'}
+                          >
+                            {showPasswords[`${category.id}:${field.key}`]
+                              ? <EyeOff size={16} />
+                              : <Eye size={16} />}
+                          </button>
+                        )}
+                      </div>
                       {field.hint && (
                         <p className="text-xs text-charcoal-light mt-1">{field.hint}</p>
                       )}

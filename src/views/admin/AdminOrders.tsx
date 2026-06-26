@@ -33,6 +33,16 @@ import { formatPaymentMethod, formatPaymentStatus } from '../../lib/orders/displ
 import { formatAdminOrderStatus, getAdminWorkflowHint } from '../../lib/orders/status';
 import type { Json, Order } from '../../lib/supabase/database.types';
 
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const orderStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 const paymentStatuses: Order['payment_status'][] = ['pending', 'paid', 'failed', 'refunded'];
 
@@ -252,15 +262,15 @@ export default function AdminOrders() {
         </head>
         <body>
           <h1>Invoice</h1>
-          <p>${order.order_number}</p>
-          <p><strong>Customer:</strong> ${order.profile?.full_name || order.email}<br/>${order.email}${order.phone ? `<br/>${order.phone}` : ''}</p>
-          <p><strong>Ship To:</strong><br/>${address.fullName || ''}<br/>${address.addressLine1 || ''}<br/>${[address.city, address.state, address.postalCode].filter(Boolean).join(', ')}<br/>${address.country || ''}</p>
+          <p>${escapeHtml(order.order_number)}</p>
+          <p><strong>Customer:</strong> ${escapeHtml(order.profile?.full_name || order.email)}<br/>${escapeHtml(order.email)}${order.phone ? `<br/>${escapeHtml(order.phone)}` : ''}</p>
+          <p><strong>Ship To:</strong><br/>${escapeHtml(address.fullName)}<br/>${escapeHtml(address.addressLine1)}<br/>${escapeHtml([address.city, address.state, address.postalCode].filter(Boolean).join(', '))}<br/>${escapeHtml(address.country)}</p>
           <table>
             <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
             <tbody>
               ${order.order_items.map((item) => `
                 <tr>
-                  <td>${item.product_name}</td>
+                  <td>${escapeHtml(item.product_name)}</td>
                   <td>${item.quantity}</td>
                   <td>$${item.unit_price.toFixed(2)}</td>
                   <td>$${item.total_price.toFixed(2)}</td>

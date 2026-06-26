@@ -3,8 +3,18 @@ import { resolveTrackingUrl } from '@/lib/orders/tracking';
 import { fetchShippoTracking } from '@/lib/shippo/server/tracking';
 import { shippoConfigError } from '@/lib/shippo/config';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = checkRateLimit(`track:${ip}`, { limit: 10, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

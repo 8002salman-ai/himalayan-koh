@@ -141,7 +141,12 @@ export default function AccountPage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!passwordData.currentPassword) {
+      toast.error('Current password is required');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -155,6 +160,16 @@ export default function AccountPage() {
     setSaving(true);
 
     try {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user?.email ?? '',
+        password: passwordData.currentPassword,
+      });
+
+      if (verifyError) {
+        toast.error('Current password is incorrect');
+        return;
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: passwordData.newPassword,
       });
@@ -462,6 +477,21 @@ export default function AccountPage() {
                   <form onSubmit={handlePasswordSubmit} className="space-y-5 max-w-md">
                     <div>
                       <label className="block text-sm font-medium text-charcoal mb-1.5">
+                        Current Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal mb-1.5">
                         New Password
                       </label>
                       <input
@@ -471,6 +501,7 @@ export default function AccountPage() {
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
                         placeholder="••••••••"
                         minLength={8}
+                        autoComplete="new-password"
                       />
                     </div>
 
@@ -484,6 +515,7 @@ export default function AccountPage() {
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
                         placeholder="••••••••"
+                        autoComplete="new-password"
                       />
                     </div>
 

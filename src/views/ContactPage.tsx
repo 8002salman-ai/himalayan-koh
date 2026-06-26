@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Mail, Phone, Clock, Send, MessageSquare, CheckCircle } from 'lucide-react';
+import { MapPin, Mail, Phone, Clock, Send, MessageSquare, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -11,15 +11,31 @@ export default function ContactPage() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) {
+        setSubmitError(data.error || 'Failed to send message. Please try again.');
+        return;
+      }
+      setSubmitted(true);
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
-    }, 3000);
+    } catch {
+      setSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -237,14 +253,18 @@ export default function ContactPage() {
                     />
                   </div>
 
+                  {submitError && (
+                    <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{submitError}</p>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     type="submit"
-                    className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
+                    disabled={submitting}
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark disabled:opacity-70 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
                   >
-                    <Send size={18} />
-                    Send Message
+                    {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                    {submitting ? 'Sending…' : 'Send Message'}
                   </motion.button>
                 </form>
               )}

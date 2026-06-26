@@ -20,6 +20,14 @@ let loadedForUserId: string | null | undefined;
 let isLoadingCart = false;
 const localCartKey = 'cart_items';
 
+// Serializes concurrent mutations so API calls don't interleave
+let mutationQueue: Promise<void> = Promise.resolve();
+function enqueue<T>(fn: () => Promise<T>): Promise<T> {
+  const next = mutationQueue.then(fn);
+  mutationQueue = next.then(() => {}, () => {});
+  return next;
+}
+
 function emitChange() {
   listeners.forEach(l => l());
 }
@@ -95,78 +103,86 @@ export function useCart() {
   }, [userId]);
 
   const addItem = useCallback(async (item: Omit<CartItem, 'quantity' | 'cartItemId'>, quantity = 1) => {
-    const productId = String(item.id);
+    return enqueue(async () => {
+      const productId = String(item.id);
 
-    if (isSupabaseConfigured()) {
-      await cartApi.addToCart(productId, quantity, item.price, item.grainSize, userId);
-      const cart = await cartApi.getCartWithItems(userId);
-      cartItems = mapSupabaseCart(cart);
-      loadedForUserId = userId;
+      if (isSupabaseConfigured()) {
+        await cartApi.addToCart(productId, quantity, item.price, item.grainSize, userId);
+        const cart = await cartApi.getCartWithItems(userId);
+        cartItems = mapSupabaseCart(cart);
+        loadedForUserId = userId;
+        emitChange();
+        return;
+      }
+
+      const existing = cartItems.find(
+        ci => getItemKey(ci.id, ci.grainSize) === getItemKey(productId, item.grainSize)
+      );
+      if (existing) {
+        existing.quantity += quantity;
+        cartItems = [...cartItems];
+      } else {
+        cartItems = [...cartItems, { ...item, id: productId, quantity }];
+      }
+      saveLocalCart();
       emitChange();
-      return;
-    }
-
-    const existing = cartItems.find(
-      ci => getItemKey(ci.id, ci.grainSize) === getItemKey(productId, item.grainSize)
-    );
-    if (existing) {
-      existing.quantity += quantity;
-      cartItems = [...cartItems];
-    } else {
-      cartItems = [...cartItems, { ...item, id: productId, quantity }];
-    }
-    saveLocalCart();
-    emitChange();
+    });
   }, [userId]);
 
   const removeItem = useCallback(async (id: string, grainSize?: string) => {
-    const item = cartItems.find(
-      ci => getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
-    );
+    return enqueue(async () => {
+      const item = cartItems.find(
+        ci => getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
+      );
 
-    if (isSupabaseConfigured() && item?.cartItemId) {
-      await cartApi.removeFromCart(item.cartItemId);
-    }
+      if (isSupabaseConfigured() && item?.cartItemId) {
+        await cartApi.removeFromCart(item.cartItemId);
+      }
 
-    cartItems = cartItems.filter(
-      ci => getItemKey(ci.id, ci.grainSize) !== getItemKey(id, grainSize)
-    );
-    saveLocalCart();
-    emitChange();
-  }, []);
-
-  const updateQuantity = useCallback(async (id: string, quantity: number, grainSize?: string) => {
-    const item = cartItems.find(
-      ci => getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
-    );
-
-    if (isSupabaseConfigured() && item?.cartItemId) {
-      await cartApi.updateCartItemQuantity(item.cartItemId, quantity);
-    }
-
-    if (quantity <= 0) {
       cartItems = cartItems.filter(
         ci => getItemKey(ci.id, ci.grainSize) !== getItemKey(id, grainSize)
       );
-    } else {
-      cartItems = cartItems.map(ci =>
-        getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
-          ? { ...ci, quantity }
-          : ci
+      saveLocalCart();
+      emitChange();
+    });
+  }, []);
+
+  const updateQuantity = useCallback(async (id: string, quantity: number, grainSize?: string) => {
+    return enqueue(async () => {
+      const item = cartItems.find(
+        ci => getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
       );
-    }
-    saveLocalCart();
-    emitChange();
+
+      if (isSupabaseConfigured() && item?.cartItemId) {
+        await cartApi.updateCartItemQuantity(item.cartItemId, quantity);
+      }
+
+      if (quantity <= 0) {
+        cartItems = cartItems.filter(
+          ci => getItemKey(ci.id, ci.grainSize) !== getItemKey(id, grainSize)
+        );
+      } else {
+        cartItems = cartItems.map(ci =>
+          getItemKey(ci.id, ci.grainSize) === getItemKey(id, grainSize)
+            ? { ...ci, quantity }
+            : ci
+        );
+      }
+      saveLocalCart();
+      emitChange();
+    });
   }, []);
 
   const clearCart = useCallback(async () => {
-    if (isSupabaseConfigured()) {
-      await cartApi.clearCart(userId);
-    }
+    return enqueue(async () => {
+      if (isSupabaseConfigured()) {
+        await cartApi.clearCart(userId);
+      }
 
-    cartItems = [];
-    saveLocalCart();
-    emitChange();
+      cartItems = [];
+      saveLocalCart();
+      emitChange();
+    });
   }, [userId]);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);

@@ -2,6 +2,7 @@
 // export const runtime = 'edge';
 
 import { getSetting } from '@/lib/settings/serverSettings';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -36,6 +37,12 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const responseHeaders = corsHeaders(request);
+
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = checkRateLimit(`openrouter:${ip}`, { limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429, responseHeaders);
+  }
 
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {

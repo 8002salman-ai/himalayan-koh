@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../store/cartStore';
+import { useToast } from '../context/ToastContext';
 import EmptyState from './ui/EmptyState';
 
 interface Props {
@@ -11,6 +12,31 @@ interface Props {
 
 export default function CartDrawer({ isOpen, onClose }: Props) {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
+  const toast = useToast();
+
+  const handleRemove = async (id: string, grainSize?: string) => {
+    try {
+      await removeItem(id, grainSize);
+    } catch {
+      toast.error('Failed to remove item. Please try again.');
+    }
+  };
+
+  const handleUpdateQuantity = async (id: string, quantity: number, grainSize?: string) => {
+    try {
+      await updateQuantity(id, quantity, grainSize);
+    } catch {
+      toast.error('Failed to update quantity. Please try again.');
+    }
+  };
+
+  const handleClearCart = async () => {
+    try {
+      await clearCart();
+    } catch {
+      toast.error('Failed to clear cart. Please try again.');
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -91,21 +117,21 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1, item.grainSize)}
+                              onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.grainSize)}
                               className="p-1.5 hover:bg-gray-100 transition-colors"
                             >
                               <Minus size={14} />
                             </button>
                             <span className="px-3 text-sm font-medium">{item.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1, item.grainSize)}
+                              onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.grainSize)}
                               className="p-1.5 hover:bg-gray-100 transition-colors"
                             >
                               <Plus size={14} />
                             </button>
                           </div>
                           <button
-                            onClick={() => removeItem(item.id, item.grainSize)}
+                            onClick={() => handleRemove(item.id, item.grainSize)}
                             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                           >
                             <Trash2 size={16} />
@@ -135,7 +161,7 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                   <ArrowRight size={18} />
                 </Link>
                 <button
-                  onClick={clearCart}
+                  onClick={handleClearCart}
                   className="w-full py-2 text-sm text-charcoal-light hover:text-red-500 transition-colors"
                 >
                   Clear Cart

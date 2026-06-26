@@ -175,8 +175,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       runAfterAuthCallback(() => {
+        if (event === 'TOKEN_REFRESHED') {
+          // Only update the session token — no profile re-fetch needed
+          if (mounted) {
+            setSession(nextSession);
+            setUser(nextSession?.user ?? null);
+          }
+          return;
+        }
+        if (event === 'SIGNED_OUT') {
+          if (mounted) {
+            profileRequestId.current += 1;
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+          }
+          return;
+        }
         applySession(nextSession, Boolean(nextSession?.user));
       });
     });

@@ -5,6 +5,7 @@ import { ShoppingCart, Heart, Eye } from 'lucide-react';
 import { Product } from '../data/products';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { wishlistApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 
@@ -23,17 +24,22 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useCart();
   const { user } = useAuthContext();
+  const toast = useToast();
 
   const handleAddToCart = async () => {
-    await addItem({
-      id: String(product.id),
-      name: product.name,
-      price: product.priceMin,
-      image: product.image,
-      grainSize: selectedGrain || undefined,
-    }, qty);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    try {
+      await addItem({
+        id: String(product.id),
+        name: product.name,
+        price: product.priceMin,
+        image: product.image,
+        grainSize: selectedGrain || undefined,
+      }, qty);
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch {
+      toast.error('Failed to add item to cart. Please try again.');
+    }
   };
 
   const handleWishlist = async () => {
