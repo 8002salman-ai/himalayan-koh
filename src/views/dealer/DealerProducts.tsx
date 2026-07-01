@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, ShoppingCart } from 'lucide-react';
+import { Search, ShoppingCart, Zap } from 'lucide-react';
 import { dealerApi, dealerUnitPrice } from '../../lib/supabase/api';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { useCart } from '../../store/cartStore';
@@ -12,6 +12,7 @@ export default function DealerProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { addItem } = useCart();
   const toast = useToast();
 
@@ -24,6 +25,7 @@ export default function DealerProducts() {
       try {
         const catalog = await dealerApi.getDealerCatalog();
         setProducts(catalog);
+        setQuantities(Object.fromEntries(catalog.map((p) => [p.id, p.moq || 1])));
       } catch (err) {
         console.error('Failed to load dealer catalog:', err);
       } finally {
@@ -35,15 +37,21 @@ export default function DealerProducts() {
 
   const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
+  const setQuantity = (product: Product, value: number) => {
+    const moq = product.moq || 1;
+    setQuantities((q) => ({ ...q, [product.id]: Math.max(moq, Math.round(value) || moq) }));
+  };
+
   const handleAddToCart = async (product: Product) => {
+    const quantity = quantities[product.id] || product.moq || 1;
     try {
       await addItem({
         id: product.id,
         name: product.name,
         price: dealerUnitPrice(product),
         image: product.thumbnail || product.images?.[0] || '',
-      }, product.moq || 1);
-      toast.success(`Added ${product.moq > 1 ? `${product.moq} units of ` : ''}${product.name} to cart.`);
+      }, quantity);
+      toast.success(`Added ${quantity} units of ${product.name} to cart.`);
     } catch {
       toast.error('Failed to add item to cart.');
     }
@@ -53,7 +61,7 @@ export default function DealerProducts() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Dealer Catalog</h1>
-        <p className="text-charcoal-light">Products shown at your dealer pricing</p>
+        <p className="text-charcoal-light">Products shown at your dealer pricing — set a quantity and add straight to your order</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-4">
@@ -82,6 +90,8 @@ export default function DealerProducts() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((product) => {
             const dealerPrice = dealerUnitPrice(product);
+            const moq = product.moq || 1;
+            const quantity = quantities[product.id] || moq;
             return (
               <div key={product.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="aspect-square bg-gray-50">
@@ -100,20 +110,59 @@ export default function DealerProducts() {
                     <span className="text-himalayan font-bold text-lg">${dealerPrice.toFixed(2)}</span>
                     <span className="text-xs text-charcoal-light ml-1.5 uppercase tracking-wide">Dealer Price</span>
                   </div>
-                  <p className="text-xs text-charcoal-light mb-3">MOQ: {product.moq} units</p>
+                  <p className="text-xs text-charcoal-light mb-3">MOQ: {moq} units · Bulk quantity supported</p>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(product, quantity - 1)}
+                        className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold text-charcoal"
+                        aria-label="Decrease quantity"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={moq}
+                        value={quantity}
+                        onChange={(e) => setQuantity(product, Number(e.target.value))}
+                        className="w-14 px-1 py-2 text-sm font-medium text-center border-x border-gray-200 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(product, quantity + 1)}
+                        className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold text-charcoal"
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-xs text-charcoal-light">
+                      = ${(dealerPrice * quantity).toFixed(2)}
+                    </span>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => handleAddToCart(product)}
                     className="w-full flex items-center justify-center gap-2 min-h-11 bg-himalayan hover:bg-himalayan-dark text-white font-semibold text-sm rounded-xl transition-colors"
                   >
                     <ShoppingCart size={16} />
-                    Add to Cart
+                    Add to Order
                   </button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <p className="flex items-center gap-1.5 text-xs text-charcoal-light">
+          <Zap size={12} className="text-himalayan" />
+          Quick order: adjust quantity per product above, then check out from your cart once you've added everything you need.
+        </p>
       )}
     </div>
   );

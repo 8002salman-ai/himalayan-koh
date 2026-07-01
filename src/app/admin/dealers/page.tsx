@@ -1,2 +1,2 @@
 'use client';
-export { default } from '@/views/admin/dealer/AdminDealerApplications';
+export { default } from '@/views/admin/dealer/AdminDealerDashboard';

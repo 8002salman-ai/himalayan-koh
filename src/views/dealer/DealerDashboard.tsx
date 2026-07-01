@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, CreditCard, DollarSign, Package, ShoppingCart, Sparkles, ArrowUpRight, ChevronRight } from 'lucide-react';
+import {
+  Award,
+  Bell,
+  Building2,
+  CreditCard,
+  DollarSign,
+  MapPin,
+  Package,
+  Percent,
+  Phone,
+  ShoppingCart,
+  Sparkles,
+  ArrowUpRight,
+  ChevronRight,
+} from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
-import { dealerApi, dealerUnitPrice, ordersApi } from '../../lib/supabase/api';
+import { dealerApi, dealerUnitPrice, notificationsApi, ordersApi } from '../../lib/supabase/api';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { formatCustomerOrderStatus, orderStatusBadgeClass } from '../../lib/orders/status';
-import type { DealerApplicationWithDocuments, OrderWithItems, Product } from '../../lib/supabase/database.types';
+import type { DealerApplicationWithDocuments, Notification, OrderWithItems, Product } from '../../lib/supabase/database.types';
 import { SkeletonDashboard } from '../../components/ui/Skeleton';
 
 const levelColors: Record<string, string> = {
@@ -22,6 +36,7 @@ export default function DealerDashboard() {
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,14 +46,16 @@ export default function DealerDashboard() {
         return;
       }
       try {
-        const [app, ordersResult, dealerCatalog] = await Promise.all([
+        const [app, ordersResult, dealerCatalog, notes] = await Promise.all([
           dealerApi.getMyApplication(user.id),
           ordersApi.getUserOrders(user.id),
           dealerApi.getDealerCatalog(),
+          notificationsApi.getNotifications(user.id).catch(() => []),
         ]);
         setApplication(app);
         setOrders(ordersResult.orders);
         setCatalog(dealerCatalog);
+        setNotifications(notes.slice(0, 5));
       } catch (err) {
         console.error('Failed to load dealer dashboard:', err);
       } finally {
@@ -52,13 +69,19 @@ export default function DealerDashboard() {
 
   const pendingCount = orders.filter((o) => UNPAID_STATUSES.has(o.status)).length;
   const totalSpend = orders.reduce((sum, o) => sum + o.total, 0);
-  const outstanding = orders
+  const outstandingBalance = orders
     .filter((o) => UNPAID_STATUSES.has(o.status))
     .reduce((sum, o) => sum + o.total, 0);
-  const availableCredit = application?.credit_limit != null ? Math.max(application.credit_limit - outstanding, 0) : null;
+  const availableCredit = application?.credit_limit != null ? Math.max(application.credit_limit - outstandingBalance, 0) : null;
   const recentOrders = orders.slice(0, 5);
   const featuredProducts = catalog.filter((p) => p.is_featured).slice(0, 3);
   const recommendedProducts = catalog.filter((p) => !p.is_featured).slice(0, 3);
+
+  const discountedProducts = catalog.filter((p) => p.dealer_price != null && p.dealer_price < p.price);
+  const avgDiscountPct =
+    discountedProducts.length > 0
+      ? (discountedProducts.reduce((sum, p) => sum + (1 - p.dealer_price! / p.price), 0) / discountedProducts.length) * 100
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -86,7 +109,7 @@ export default function DealerDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard icon={<Award size={18} />} label="Dealer Tier">
           <span
             className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
@@ -96,14 +119,67 @@ export default function DealerDashboard() {
             {application?.dealer_level || 'Bronze'}
           </span>
         </StatCard>
+        <StatCard icon={<Percent size={18} />} label="Current Discount" value={avgDiscountPct > 0 ? `${avgDiscountPct.toFixed(0)}% off` : '—'} />
         <StatCard icon={<ShoppingCart size={18} />} label="Total Orders" value={String(orders.length)} />
         <StatCard icon={<Package size={18} />} label="Pending Orders" value={String(pendingCount)} />
         <StatCard icon={<DollarSign size={18} />} label="Total Spend" value={`$${totalSpend.toFixed(2)}`} />
-        <StatCard
-          icon={<CreditCard size={18} />}
-          label="Available Credit"
-          value={availableCredit != null ? `$${availableCredit.toFixed(2)}` : 'Due on receipt'}
-        />
+        <StatCard icon={<CreditCard size={18} />} label="Available Credit" value={availableCredit != null ? `$${availableCredit.toFixed(2)}` : 'Due on receipt'} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Company Information */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-charcoal">Company Information</h2>
+            <Link to="/dealer/profile" className="text-sm font-semibold text-himalayan hover:underline flex items-center gap-1">
+              Edit
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Building2 size={16} className="text-himalayan flex-shrink-0" />
+              <span className="text-sm text-charcoal">{application?.business_name} · <span className="text-charcoal-light">{application?.business_type}</span></span>
+            </div>
+            <div className="flex items-center gap-3">
+              <MapPin size={16} className="text-himalayan flex-shrink-0" />
+              <span className="text-sm text-charcoal-light">{application?.city}, {application?.state}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Phone size={16} className="text-himalayan flex-shrink-0" />
+              <span className="text-sm text-charcoal-light">{application?.phone}</span>
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span className="text-xs text-charcoal-light">Outstanding Balance</span>
+              <span className="text-sm font-semibold text-charcoal">${outstandingBalance.toFixed(2)}</span>
+            </div>
+            {application?.tax_exempt && (
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                Tax Exempt
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <h2 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+            <Bell size={18} className="text-himalayan" />
+            Notifications
+          </h2>
+          {notifications.length === 0 ? (
+            <p className="text-sm text-charcoal-light">No notifications yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {notifications.map((note) => (
+                <div key={note.id} className="p-3 rounded-xl bg-gray-50">
+                  <p className="text-sm font-medium text-charcoal">{note.title}</p>
+                  <p className="text-xs text-charcoal-light mt-0.5">{note.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -201,6 +277,22 @@ export default function DealerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Quick Actions */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Link to="/dealer/products" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
+          <ShoppingCart size={20} className="text-himalayan mx-auto mb-2" />
+          <p className="text-sm font-semibold text-charcoal">Place an Order</p>
+        </Link>
+        <Link to="/dealer/invoices" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
+          <DollarSign size={20} className="text-himalayan mx-auto mb-2" />
+          <p className="text-sm font-semibold text-charcoal">View Invoices</p>
+        </Link>
+        <Link to="/dealer/support" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
+          <Bell size={20} className="text-himalayan mx-auto mb-2" />
+          <p className="text-sm font-semibold text-charcoal">Contact Support</p>
+        </Link>
+      </div>
     </div>
   );
 }
