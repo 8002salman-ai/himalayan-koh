@@ -78,23 +78,129 @@ const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+const seededUsers = {};
 for (const account of demoAccounts) {
   const user = await upsertAuthUser(account);
   await upsertProfile(user.id, account);
   await verifyLogin(account);
+  seededUsers[account.email] = user;
 }
 
 console.log('Demo authentication accounts are ready.');
 
+// Retail demo data (orders, wishlist, notifications) for the customer
+// account, so retail workflows (order history, invoices, wishlist) have
+// something to show immediately, same as the dealer accounts below.
+await seedCustomerDemoData(seededUsers['customer@himalayankoh.com']);
+
+async function seedCustomerDemoData(user) {
+  if (!user) return;
+
+  const { data: products, error: productsError } = await adminClient
+    .from('products')
+    .select('id, name, price, thumbnail, images')
+    .eq('is_active', true)
+    .limit(6);
+
+  if (productsError) throw productsError;
+  if (!products || products.length === 0) {
+    console.warn('No active products found — skipping customer demo data.');
+    return;
+  }
+
+  for (const product of products.slice(0, 3)) {
+    await adminClient
+      .from('wishlists')
+      .upsert({ user_id: user.id, product_id: product.id }, { onConflict: 'user_id,product_id' });
+  }
+  console.log('Seeded demo customer wishlist.');
+
+  const shippingAddress = {
+    fullName: 'Demo Customer',
+    address_line1: '12620 FM 1960 W Ste A-4',
+    city: 'Houston',
+    state: 'Texas',
+    postal_code: '77065',
+    country: 'United States',
+  };
+
+  const demoOrders = [
+    { status: 'delivered', paymentStatus: 'paid', daysAgo: 30 },
+    { status: 'shipped', paymentStatus: 'paid', daysAgo: 5 },
+  ];
+
+  for (let orderIndex = 0; orderIndex < demoOrders.length; orderIndex += 1) {
+    const demoOrder = demoOrders[orderIndex];
+    const items = products.slice(orderIndex, orderIndex + 2);
+    const quantity = 1;
+    const unitPrices = items.map((p) => p.price);
+    const subtotal = unitPrices.reduce((sum, price) => sum + price * quantity, 0);
+    const shippingCost = subtotal >= 50 ? 0 : 9.95;
+    const total = subtotal + shippingCost;
+    const createdAt = new Date(Date.now() - demoOrder.daysAgo * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: order, error: orderError } = await adminClient
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        email: 'customer@himalayankoh.com',
+        status: demoOrder.status,
+        payment_status: demoOrder.paymentStatus,
+        subtotal,
+        shipping_cost: shippingCost,
+        tax_amount: 0,
+        discount_amount: 0,
+        total,
+        shipping_address: shippingAddress,
+        billing_address: shippingAddress,
+        notes: 'Demo customer order (seeded for testing).',
+        created_at: createdAt,
+        updated_at: createdAt,
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    const orderItems = items.map((p, i) => ({
+      order_id: order.id,
+      product_id: p.id,
+      product_name: p.name,
+      product_image: p.thumbnail || p.images?.[0] || null,
+      quantity,
+      unit_price: unitPrices[i],
+      total_price: unitPrices[i] * quantity,
+    }));
+
+    const { error: itemsError } = await adminClient.from('order_items').insert(orderItems);
+    if (itemsError) throw itemsError;
+  }
+  console.log(`Seeded ${demoOrders.length} demo customer orders with line items.`);
+
+  const demoNotifications = [
+    { type: 'order', title: 'Order delivered', message: 'Your recent order has been delivered. We hope you love it!' },
+    { type: 'promotion', title: 'Welcome offer', message: 'Use code HKWELCOME10 for 10% off your next order.' },
+  ];
+  for (const note of demoNotifications) {
+    await adminClient.from('notifications').insert({
+      user_id: user.id,
+      type: note.type,
+      title: note.title,
+      message: note.message,
+    });
+  }
+  console.log('Seeded demo customer notifications.');
+}
+
 // =====================================================================
-// DEMO WHOLESALE / DEALER ACCOUNT
+// DEMO WHOLESALE / DEALER ACCOUNTS
 // =====================================================================
-// DEV/DEMO ONLY. Never wired into `npm run build` or any deploy step —
-// this only runs if explicitly invoked with SEED_DEMO_DEALER=true, so it
-// can never be created by accident against a production database.
-// It bypasses the real dealer approval workflow on purpose: the
-// dealer_applications row is inserted with status "approved" directly,
-// clearly labeled as a demo account in its notes field.
+// DEV/DEMO ONLY. This script is never wired into `npm run build` or any
+// deploy step, so it can only ever run if a human deliberately invokes it
+// against a specific Supabase project's credentials — that invocation is
+// the safety boundary. It bypasses the real dealer approval workflow on
+// purpose: the dealer_applications row is inserted with status "approved"
+// directly, clearly labeled as a demo account in its notes field.
 // =====================================================================
 
 const demoDealerConfigs = [
@@ -114,12 +220,8 @@ const demoDealerConfigs = [
   },
 ];
 
-if (process.env.SEED_DEMO_DEALER === 'true') {
-  for (const config of demoDealerConfigs) {
-    await seedDemoDealer(config);
-  }
-} else {
-  console.log('Skipping demo dealer seed (set SEED_DEMO_DEALER=true to include it).');
+for (const config of demoDealerConfigs) {
+  await seedDemoDealer(config);
 }
 
 async function seedDemoDealer(config) {

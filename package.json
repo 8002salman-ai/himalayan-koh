@@ -12,6 +12,7 @@
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "generate:routes": "node scripts/generate-next-routes.mjs",
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
+    "seed": "node scripts/seed-demo-accounts.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
     "verify:rls": "node scripts/verify-rls.mjs",
     "verify:phase0": "node scripts/verify-phase0.mjs",
