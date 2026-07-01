@@ -15,17 +15,38 @@ const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY;
 
+// This app's schema only distinguishes profiles.role = 'customer' | 'admin'
+// (see supabase/migrations/004_auth_profile_roles.sql). There is no
+// super_admin/manager/sales_rep enum value — Manager and Sales
+// Representative below are seeded as role='admin' with a descriptive
+// full_name, since that is the only role that actually grants elevated
+// access in this codebase (AdminRoute checks profile.role === 'admin'
+// only, and adminDealerApi.listSalesReps() queries role === 'admin' too).
 const demoAccounts = [
   {
     email: 'admin@himalayankoh.com',
-    password: 'Admin123!',
+    password: 'Admin@123',
     role: 'admin',
-    fullName: 'Himalayan Koh Admin',
+    fullName: 'Himalayan Koh Super Admin',
+    phone: '(832) 224-6466',
+  },
+  {
+    email: 'manager@himalayankoh.com',
+    password: 'Manager@123',
+    role: 'admin',
+    fullName: 'Himalayan Koh Manager',
+    phone: '(832) 224-6466',
+  },
+  {
+    email: 'sales@himalayankoh.com',
+    password: 'Sales@123',
+    role: 'admin',
+    fullName: 'Himalayan Koh Sales Representative',
     phone: '(832) 224-6466',
   },
   {
     email: 'customer@himalayankoh.com',
-    password: 'Customer123!',
+    password: 'Customer@123',
     role: 'customer',
     fullName: 'Demo Customer',
     phone: '(832) 224-6466',
@@ -76,20 +97,39 @@ console.log('Demo authentication accounts are ready.');
 // clearly labeled as a demo account in its notes field.
 // =====================================================================
 
+const demoDealerConfigs = [
+  {
+    email: 'dealer@himalayankoh.com',
+    password: 'Dealer@123',
+    fullName: 'Demo Gold Dealer',
+    phone: '(832) 555-0100',
+    businessName: 'Himalayan Koh Demo Dealer LLC',
+  },
+  {
+    email: 'demo@dealer.himalayankoh.com',
+    password: 'Demo@12345',
+    fullName: 'Demo Wholesale Dealer',
+    phone: '(832) 555-0101',
+    businessName: 'Demo Ranch Supply LLC',
+  },
+];
+
 if (process.env.SEED_DEMO_DEALER === 'true') {
-  await seedDemoDealer();
+  for (const config of demoDealerConfigs) {
+    await seedDemoDealer(config);
+  }
 } else {
   console.log('Skipping demo dealer seed (set SEED_DEMO_DEALER=true to include it).');
 }
 
-async function seedDemoDealer() {
-  console.warn('⚠️  Seeding DEMO WHOLESALE ACCOUNT — development/testing use only.');
+async function seedDemoDealer(config) {
+  console.warn(`⚠️  Seeding DEMO WHOLESALE ACCOUNT (${config.email}) — development/testing use only.`);
 
   const demoDealer = {
-    email: 'demo@dealer.himalayankoh.com',
-    password: 'Demo@12345',
-    fullName: 'Demo Wholesale Dealer',
-    phone: '(832) 555-0100',
+    email: config.email,
+    password: config.password,
+    fullName: config.fullName,
+    phone: config.phone,
     role: 'customer', // profiles.role is intentionally untouched — dealer
                        // access is granted via an approved dealer_applications
                        // row, matching this app's actual RBAC design.
@@ -103,8 +143,8 @@ async function seedDemoDealer() {
     .upsert(
       {
         user_id: user.id,
-        business_name: 'Demo Ranch Supply LLC',
-        owner_name: 'Demo Wholesale Dealer',
+        business_name: config.businessName,
+        owner_name: demoDealer.fullName,
         business_email: demoDealer.email,
         phone: demoDealer.phone,
         website: 'https://demo-ranchsupply.example.com',
@@ -288,7 +328,7 @@ async function seedDemoDealer() {
   console.log('Seeded demo notifications.');
 
   await verifyLogin(demoDealer);
-  console.log('✅ Demo wholesale account ready: demo@dealer.himalayankoh.com / Demo@12345');
+  console.log(`✅ Demo wholesale account ready: ${config.email} / ${config.password}`);
   console.log('   Sign in at /dealer/login — it will land on /dealer/dashboard immediately (pre-approved).');
 }
 

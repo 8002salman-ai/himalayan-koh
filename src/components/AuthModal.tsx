@@ -17,11 +17,11 @@ type AuthMode = 'login' | 'signup' | 'forgot';
 const demoAccounts = {
   customer: {
     email: 'customer@himalayankoh.com',
-    password: 'Customer123!',
+    password: 'Customer@123',
   },
   admin: {
     email: 'admin@himalayankoh.com',
-    password: 'Admin123!',
+    password: 'Admin@123',
   },
 };
 

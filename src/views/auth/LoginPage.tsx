@@ -9,13 +9,13 @@ const demoAccounts = {
   customer: {
     label: 'Use Demo Customer',
     email: 'customer@himalayankoh.com',
-    password: 'Customer123!',
+    password: 'Customer@123',
     redirectTo: '/account',
   },
   admin: {
     label: 'Use Demo Admin',
     email: 'admin@himalayankoh.com',
-    password: 'Admin123!',
+    password: 'Admin@123',
     redirectTo: '/admin',
   },
 };
@@ -128,8 +128,8 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
-            <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer123!</p>
-            <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin123!</p>
+            <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer@123</p>
+            <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin@123</p>
           </div>
 
           {!supabaseReady && (
