@@ -7,14 +7,6 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(root, '.env.local') });
 dotenv.config({ path: path.join(root, '.env') });
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SECRET_KEY;
-
 // This app's schema only distinguishes profiles.role = 'customer' | 'admin'
 // (see supabase/migrations/004_auth_profile_roles.sql). There is no
 // super_admin/manager/sales_rep enum value — Manager and Sales
@@ -53,48 +45,104 @@ const demoAccounts = [
   },
 ];
 
-if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-  console.error([
-    'Missing Supabase environment variables.',
-    'Required:',
-    '- SUPABASE_URL or VITE_SUPABASE_URL',
-    '- SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY',
-    '- SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)',
-  ].join('\n'));
-  process.exit(1);
+// =====================================================================
+// DEMO WHOLESALE / DEALER ACCOUNTS
+// =====================================================================
+// DEV/DEMO ONLY. This script is never wired into `npm run build` or any
+// deploy step, so it can only ever run if a human deliberately invokes it
+// against a specific Supabase project's credentials — that invocation is
+// the safety boundary. It bypasses the real dealer approval workflow on
+// purpose: the dealer_applications row is inserted with status "approved"
+// directly, clearly labeled as a demo account in its notes field.
+// =====================================================================
+const demoDealerConfigs = [
+  {
+    email: 'dealer@himalayankoh.com',
+    password: 'Dealer@123',
+    fullName: 'Demo Gold Dealer',
+    phone: '(832) 555-0100',
+    businessName: 'Himalayan Koh Demo Dealer LLC',
+  },
+  {
+    email: 'demo@dealer.himalayankoh.com',
+    password: 'Demo@12345',
+    fullName: 'Demo Wholesale Dealer',
+    phone: '(832) 555-0101',
+    businessName: 'Demo Ranch Supply LLC',
+  },
+];
+
+/**
+ * Resolve Supabase env vars and build the admin (service role) + anon
+ * clients used for seeding. Returns null (and prints exactly which
+ * variable is missing) instead of throwing, so callers like setup.mjs
+ * can decide how to react.
+ */
+export function createSeedClients() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+
+  const missing = [];
+  if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!supabaseAnonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  if (!serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (missing.length > 0) {
+    console.error('Missing required environment variable(s):');
+    for (const name of missing) console.error(`  - ${name}`);
+    return null;
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  return { supabaseUrl, adminClient, anonClient };
 }
 
-const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+/**
+ * Seeds every demo account and its demo data. Idempotent — safe to run
+ * any number of times (upsert throughout, never inserts duplicates).
+ * Returns a structured summary so callers can report exactly what
+ * happened rather than assuming success.
+ */
+export async function seedAll({ adminClient, anonClient }) {
+  const summary = {
+    accounts: [],
+    customer: { orders: 0, wishlist: 0, notifications: 0 },
+    dealers: [],
+  };
 
-const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+  const seededUsers = {};
+  for (const account of demoAccounts) {
+    const user = await upsertAuthUser(adminClient, account);
+    await upsertProfile(adminClient, user.id, account);
+    await verifyLogin(anonClient, account);
+    seededUsers[account.email] = user;
+    summary.accounts.push({ email: account.email, role: account.role });
+  }
+  console.log('Demo authentication accounts are ready.');
 
-const seededUsers = {};
-for (const account of demoAccounts) {
-  const user = await upsertAuthUser(account);
-  await upsertProfile(user.id, account);
-  await verifyLogin(account);
-  seededUsers[account.email] = user;
+  const customerResult = await seedCustomerDemoData(adminClient, seededUsers['customer@himalayankoh.com']);
+  summary.customer = customerResult;
+
+  for (const config of demoDealerConfigs) {
+    const dealerResult = await seedDemoDealer(adminClient, anonClient, config);
+    summary.dealers.push(dealerResult);
+  }
+
+  return summary;
 }
 
-console.log('Demo authentication accounts are ready.');
-
-// Retail demo data (orders, wishlist, notifications) for the customer
-// account, so retail workflows (order history, invoices, wishlist) have
-// something to show immediately, same as the dealer accounts below.
-await seedCustomerDemoData(seededUsers['customer@himalayankoh.com']);
-
-async function seedCustomerDemoData(user) {
-  if (!user) return;
+async function seedCustomerDemoData(adminClient, user) {
+  const result = { orders: 0, wishlist: 0, notifications: 0 };
+  if (!user) return result;
 
   const { data: products, error: productsError } = await adminClient
     .from('products')
@@ -105,7 +153,7 @@ async function seedCustomerDemoData(user) {
   if (productsError) throw productsError;
   if (!products || products.length === 0) {
     console.warn('No active products found — skipping customer demo data.');
-    return;
+    return result;
   }
 
   for (const product of products.slice(0, 3)) {
@@ -113,6 +161,7 @@ async function seedCustomerDemoData(user) {
       .from('wishlists')
       .upsert({ user_id: user.id, product_id: product.id }, { onConflict: 'user_id,product_id' });
   }
+  result.wishlist = Math.min(3, products.length);
   console.log('Seeded demo customer wishlist.');
 
   const shippingAddress = {
@@ -174,8 +223,9 @@ async function seedCustomerDemoData(user) {
 
     const { error: itemsError } = await adminClient.from('order_items').insert(orderItems);
     if (itemsError) throw itemsError;
+    result.orders += 1;
   }
-  console.log(`Seeded ${demoOrders.length} demo customer orders with line items.`);
+  console.log(`Seeded ${result.orders} demo customer orders with line items.`);
 
   const demoNotifications = [
     { type: 'order', title: 'Order delivered', message: 'Your recent order has been delivered. We hope you love it!' },
@@ -188,44 +238,17 @@ async function seedCustomerDemoData(user) {
       title: note.title,
       message: note.message,
     });
+    result.notifications += 1;
   }
   console.log('Seeded demo customer notifications.');
+
+  return result;
 }
 
-// =====================================================================
-// DEMO WHOLESALE / DEALER ACCOUNTS
-// =====================================================================
-// DEV/DEMO ONLY. This script is never wired into `npm run build` or any
-// deploy step, so it can only ever run if a human deliberately invokes it
-// against a specific Supabase project's credentials — that invocation is
-// the safety boundary. It bypasses the real dealer approval workflow on
-// purpose: the dealer_applications row is inserted with status "approved"
-// directly, clearly labeled as a demo account in its notes field.
-// =====================================================================
-
-const demoDealerConfigs = [
-  {
-    email: 'dealer@himalayankoh.com',
-    password: 'Dealer@123',
-    fullName: 'Demo Gold Dealer',
-    phone: '(832) 555-0100',
-    businessName: 'Himalayan Koh Demo Dealer LLC',
-  },
-  {
-    email: 'demo@dealer.himalayankoh.com',
-    password: 'Demo@12345',
-    fullName: 'Demo Wholesale Dealer',
-    phone: '(832) 555-0101',
-    businessName: 'Demo Ranch Supply LLC',
-  },
-];
-
-for (const config of demoDealerConfigs) {
-  await seedDemoDealer(config);
-}
-
-async function seedDemoDealer(config) {
+async function seedDemoDealer(adminClient, anonClient, config) {
   console.warn(`⚠️  Seeding DEMO WHOLESALE ACCOUNT (${config.email}) — development/testing use only.`);
+
+  const result = { email: config.email, documents: 0, pricing: 0, wishlist: 0, orders: 0, notifications: 0 };
 
   const demoDealer = {
     email: config.email,
@@ -237,8 +260,8 @@ async function seedDemoDealer(config) {
                        // row, matching this app's actual RBAC design.
   };
 
-  const user = await upsertAuthUser(demoDealer);
-  await upsertProfile(user.id, demoDealer);
+  const user = await upsertAuthUser(adminClient, demoDealer);
+  await upsertProfile(adminClient, user.id, demoDealer);
 
   const { data: application, error: appError } = await adminClient
     .from('dealer_applications')
@@ -299,7 +322,10 @@ async function seedDemoDealer(config) {
       .eq('document_type', doc.document_type)
       .maybeSingle();
 
-    if (existingDoc) continue;
+    if (existingDoc) {
+      result.documents += 1;
+      continue;
+    }
 
     await adminClient.from('dealer_documents').insert({
       application_id: application.id,
@@ -311,6 +337,7 @@ async function seedDemoDealer(config) {
       is_verified: true,
       verified_at: new Date().toISOString(),
     });
+    result.documents += 1;
   }
   console.log('Seeded demo dealer documents (pre-verified).');
 
@@ -326,7 +353,7 @@ async function seedDemoDealer(config) {
   if (productsError) throw productsError;
   if (!products || products.length === 0) {
     console.warn('No active products found — skipping demo orders/wishlist seed.');
-    return;
+    return result;
   }
 
   for (const product of products) {
@@ -336,8 +363,9 @@ async function seedDemoDealer(config) {
         .update({ dealer_price: Number((product.price * 0.75).toFixed(2)) })
         .eq('id', product.id);
     }
+    result.pricing += 1;
   }
-  console.log(`Ensured dealer pricing on ${products.length} demo catalog products.`);
+  console.log(`Ensured dealer pricing on ${result.pricing} demo catalog products.`);
 
   // Wishlist ("saved / favorite products")
   for (const product of products.slice(0, 3)) {
@@ -345,6 +373,7 @@ async function seedDemoDealer(config) {
       .from('wishlists')
       .upsert({ user_id: user.id, product_id: product.id }, { onConflict: 'user_id,product_id' });
   }
+  result.wishlist = Math.min(3, products.length);
   console.log('Seeded demo saved/favorite products.');
 
   // Demo order history (bulk order history / invoices / statements / stats)
@@ -411,8 +440,9 @@ async function seedDemoDealer(config) {
 
     const { error: itemsError } = await adminClient.from('order_items').insert(orderItems);
     if (itemsError) throw itemsError;
+    result.orders += 1;
   }
-  console.log(`Seeded ${demoOrders.length} demo wholesale orders with line items.`);
+  console.log(`Seeded ${result.orders} demo wholesale orders with line items.`);
 
   const demoNotifications = [
     { type: 'system', title: 'Welcome to your Dealer Portal', message: 'Your Gold dealer account is approved and ready — browse dealer pricing and place your first order.' },
@@ -426,26 +456,26 @@ async function seedDemoDealer(config) {
       title: note.title,
       message: note.message,
     });
+    result.notifications += 1;
   }
   console.log('Seeded demo notifications.');
 
-  await verifyLogin(demoDealer);
+  await verifyLogin(anonClient, demoDealer);
   console.log(`✅ Demo wholesale account ready: ${config.email} / ${config.password}`);
   console.log('   Sign in at /dealer/login — it will land on /dealer/dashboard immediately (pre-approved).');
+
+  return result;
 }
 
-async function upsertAuthUser(account) {
-  const existing = await findUserByEmail(account.email);
+async function upsertAuthUser(adminClient, account) {
+  const existing = await findUserByEmail(adminClient, account.email);
 
   if (existing) {
     const { data, error } = await adminClient.auth.admin.updateUserById(existing.id, {
       email: account.email,
       password: account.password,
       email_confirm: true,
-      user_metadata: {
-        full_name: account.fullName,
-        role: account.role,
-      },
+      user_metadata: { full_name: account.fullName, role: account.role },
     });
 
     if (error) throw error;
@@ -457,10 +487,7 @@ async function upsertAuthUser(account) {
     email: account.email,
     password: account.password,
     email_confirm: true,
-    user_metadata: {
-      full_name: account.fullName,
-      role: account.role,
-    },
+    user_metadata: { full_name: account.fullName, role: account.role },
   });
 
   if (error) throw error;
@@ -468,16 +495,12 @@ async function upsertAuthUser(account) {
   return data.user;
 }
 
-async function findUserByEmail(email) {
+async function findUserByEmail(adminClient, email) {
   let page = 1;
   const perPage = 100;
 
   while (true) {
-    const { data, error } = await adminClient.auth.admin.listUsers({
-      page,
-      perPage,
-    });
-
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
     if (error) throw error;
 
     const found = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
@@ -487,23 +510,26 @@ async function findUserByEmail(email) {
   }
 }
 
-async function upsertProfile(userId, account) {
+async function upsertProfile(adminClient, userId, account) {
   const { error } = await adminClient
     .from('profiles')
-    .upsert({
-      id: userId,
-      email: account.email,
-      full_name: account.fullName,
-      phone: account.phone,
-      role: account.role,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    .upsert(
+      {
+        id: userId,
+        email: account.email,
+        full_name: account.fullName,
+        phone: account.phone,
+        role: account.role,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
 
   if (error) throw error;
   console.log(`Upserted ${account.role} profile: ${account.email}`);
 }
 
-async function verifyLogin(account) {
+async function verifyLogin(anonClient, account) {
   const { data, error } = await anonClient.auth.signInWithPassword({
     email: account.email,
     password: account.password,
@@ -524,4 +550,21 @@ async function verifyLogin(account) {
 
   await anonClient.auth.signOut();
   console.log(`Verified login and ${account.role} role: ${account.email}`);
+}
+
+const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+
+if (isMain) {
+  const clients = createSeedClients();
+  if (!clients) {
+    console.error('\nSet the missing variable(s) above in .env.local and re-run.');
+    process.exit(1);
+  }
+
+  seedAll(clients)
+    .then(() => console.log('\nDemo authentication accounts are ready.'))
+    .catch((error) => {
+      console.error('\nSeeding failed:', error.message);
+      process.exit(1);
+    });
 }

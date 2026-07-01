@@ -11,6 +11,7 @@
     "lint": "next lint",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "generate:routes": "node scripts/generate-next-routes.mjs",
+    "setup": "node scripts/setup-supabase-backend.mjs",
     "setup:supabase": "node scripts/setup-supabase-backend.mjs",
     "seed": "node scripts/seed-demo-accounts.mjs",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.mjs",
