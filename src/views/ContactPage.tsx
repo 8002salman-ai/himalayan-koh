@@ -144,7 +144,7 @@ export default function ContactPage() {
               </p>
               <a
                 href="tel:8322246466"
-                className="inline-flex items-center gap-2 px-5 py-3 bg-white text-himalayan font-semibold rounded-xl hover:bg-white/90 transition-colors text-sm"
+                className="inline-flex items-center justify-center gap-2 px-5 min-h-11 bg-white text-himalayan font-semibold rounded-xl hover:bg-white/90 transition-colors text-sm"
               >
                 <Phone size={16} />
                 Call Now
@@ -261,7 +261,7 @@ export default function ContactPage() {
                     whileTap={{ scale: 0.99 }}
                     type="submit"
                     disabled={submitting}
-                    className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark disabled:opacity-70 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
+                    className="w-full flex items-center justify-center gap-2 min-h-12 bg-himalayan hover:bg-himalayan-dark disabled:opacity-70 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
                   >
                     {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                     {submitting ? 'Sending…' : 'Send Message'}

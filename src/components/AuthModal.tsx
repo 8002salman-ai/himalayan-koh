@@ -238,7 +238,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                 whileTap={{ scale: 0.99 }}
                 type="submit"
                 disabled={localLoading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 min-h-11 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {localLoading && <Loader2 size={18} className="animate-spin" />}
                 {mode === 'login' && 'Sign In'}

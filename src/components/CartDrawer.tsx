@@ -155,7 +155,7 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                 <Link
                   to="/checkout"
                   onClick={onClose}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
+                  className="w-full flex items-center justify-center gap-2 min-h-12 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
                 >
                   Proceed to Checkout
                   <ArrowRight size={18} />

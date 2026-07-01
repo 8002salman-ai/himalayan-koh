@@ -43,13 +43,13 @@ export default function Footer() {
     <footer id="contact" className="bg-charcoal text-cream">
       {/* Newsletter Strip */}
       <div className="border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="font-serif text-2xl md:text-3xl font-bold mb-2">
+              <h3 className="font-serif text-2xl md:text-3xl font-bold mb-3 text-white">
                 Stay Updated
               </h3>
-              <p className="text-white/60">
+              <p className="text-white/70 text-base leading-relaxed">
                 Subscribe for exclusive offers, livestock health tips, and product updates.
               </p>
             </div>
@@ -62,14 +62,14 @@ export default function Footer() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-himalayan/50 focus:border-himalayan/50 transition-all"
+                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-himalayan/50 focus:border-himalayan/50 transition-all"
                 />
               </div>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className={`px-6 py-3.5 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 ${
+                className={`px-6 min-h-11 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
                   subscribed
                     ? 'bg-himalayan-green text-cream'
                     : 'bg-himalayan hover:bg-himalayan-dark text-cream'
@@ -125,7 +125,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold text-lg mb-5">Quick Links</h4>
+            <h4 className="font-serif font-bold text-lg mb-6 text-white">Quick Links</h4>
             <ul className="space-y-3">
               {aboutLinks.map((link) => (
                 <li key={link.label}>
@@ -140,7 +140,7 @@ export default function Footer() {
 
           {/* Products */}
           <div>
-            <h4 className="font-semibold text-lg mb-5">Products</h4>
+            <h4 className="font-serif font-bold text-lg mb-6 text-white">Products</h4>
             <ul className="space-y-3">
               {productLinks.map((link) => (
                 <li key={link.label}>
@@ -155,7 +155,7 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold text-lg mb-5">Contact Us</h4>
+            <h4 className="font-serif font-bold text-lg mb-6 text-white">Contact Us</h4>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <MapPin size={18} className="text-himalayan flex-shrink-0 mt-0.5" />

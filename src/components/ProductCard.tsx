@@ -140,16 +140,16 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setQty(Math.max(1, qty - 1))}
-              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold"
+              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold text-charcoal"
             >
               −
             </button>
-            <span className="px-3 py-2 text-sm font-medium min-w-[2rem] text-center border-x border-gray-200">
+            <span className="px-3 py-2 text-sm font-semibold min-w-[2rem] text-center border-x border-gray-200 text-charcoal">
               {qty}
             </span>
             <button
               onClick={() => setQty(qty + 1)}
-              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold"
+              className="px-3 py-2 text-sm hover:bg-gray-100 transition-colors font-semibold text-charcoal"
             >
               +
             </button>
@@ -158,9 +158,9 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleAddToCart}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 ${
+            className={`flex-1 flex items-center justify-center gap-2 min-h-11 rounded-xl font-semibold text-sm transition-all duration-300 ${
               addedToCart
-                ? 'bg-green-500 text-white'
+                ? 'bg-himalayan-green text-white'
                 : 'bg-himalayan hover:bg-himalayan-dark text-white'
             }`}
           >

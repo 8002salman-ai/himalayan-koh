@@ -60,7 +60,7 @@ export default function GalleryPage() {
             <button
               key={cat}
               onClick={() => setFilter(cat)}
-              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`px-5 min-h-10 rounded-full text-sm font-medium transition-all duration-300 ${
                 filter === cat
                   ? 'bg-himalayan text-white shadow-lg shadow-himalayan/25'
                   : 'bg-white text-charcoal hover:bg-himalayan-lighter border border-gray-200'
