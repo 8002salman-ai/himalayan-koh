@@ -59,8 +59,8 @@ export default function HomePage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <div className="flex justify-center lg:justify-start mb-6">
-                <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full">
+              <div className="flex justify-center mb-6">
+                <span className="inline-block px-5 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full text-center">
                   World's Best for Livestock
                 </span>
               </div>

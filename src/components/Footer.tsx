@@ -43,33 +43,33 @@ export default function Footer() {
     <footer id="contact" className="bg-charcoal text-cream">
       {/* Newsletter Strip */}
       <div className="border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 md:py-16">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             <div>
-              <h3 className="font-serif text-2xl md:text-3xl font-bold mb-3 text-white">
+              <h3 className="font-serif text-2xl md:text-3xl font-bold mb-4 text-white">
                 Stay Updated
               </h3>
-              <p className="text-white/70 text-base leading-relaxed">
+              <p className="text-white/90 text-base md:text-lg leading-relaxed">
                 Subscribe for exclusive offers, livestock health tips, and product updates.
               </p>
             </div>
-            <form onSubmit={handleSubscribe} className="flex gap-3">
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-light" />
                 <input
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-himalayan/50 focus:border-himalayan/50 transition-all"
+                  className="w-full pl-11 pr-4 py-3 bg-white text-charcoal border border-white/20 rounded-xl placeholder:text-charcoal-light focus:outline-none focus:ring-2 focus:ring-himalayan transition-all"
                 />
               </div>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className={`px-6 min-h-11 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
+                className={`px-7 min-h-11 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-himalayan/30 transition-all duration-300 ${
                   subscribed
                     ? 'bg-himalayan-green text-cream'
                     : 'bg-himalayan hover:bg-himalayan-dark text-cream'
@@ -80,7 +80,7 @@ export default function Footer() {
                 ) : (
                   <>
                     <Send size={16} />
-                    <span className="hidden sm:inline">Subscribe</span>
+                    <span>Subscribe</span>
                   </>
                 )}
               </motion.button>
