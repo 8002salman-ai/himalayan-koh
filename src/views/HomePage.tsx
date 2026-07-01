@@ -135,8 +135,8 @@ export default function HomePage() {
                   <div className="w-11 h-11 rounded-xl bg-himalayan text-white flex items-center justify-center mb-5">
                     <Award size={20} />
                   </div>
-                  <h3 className="font-serif text-2xl font-bold mb-3">{card.title}</h3>
-                  <p className="text-white/70 leading-relaxed">{card.text}</p>
+                  <h3 className="font-serif text-2xl font-bold mb-3 text-white">{card.title}</h3>
+                  <p className="text-white/85 leading-relaxed">{card.text}</p>
                 </div>
               </motion.div>
             ))}
