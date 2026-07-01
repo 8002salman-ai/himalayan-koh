@@ -102,6 +102,11 @@ export interface Database {
           tags: string[];
           meta_title: string | null;
           meta_description: string | null;
+          dealer_price: number | null;
+          distributor_price: number | null;
+          moq: number;
+          dealer_only: boolean;
+          retail_only: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -127,6 +132,11 @@ export interface Database {
           tags?: string[];
           meta_title?: string | null;
           meta_description?: string | null;
+          dealer_price?: number | null;
+          distributor_price?: number | null;
+          moq?: number;
+          dealer_only?: boolean;
+          retail_only?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -152,6 +162,11 @@ export interface Database {
           tags?: string[];
           meta_title?: string | null;
           meta_description?: string | null;
+          dealer_price?: number | null;
+          distributor_price?: number | null;
+          moq?: number;
+          dealer_only?: boolean;
+          retail_only?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -642,6 +657,211 @@ export interface Database {
           updated_at?: string;
         };
       };
+      dealer_applications: {
+        Row: {
+          id: string;
+          user_id: string;
+          business_name: string;
+          owner_name: string;
+          business_email: string;
+          phone: string;
+          website: string | null;
+          business_type: string;
+          years_in_business: number | null;
+          country: string;
+          state: string;
+          city: string;
+          zip: string;
+          address: string;
+          monthly_purchase: string | null;
+          products_interested: string[];
+          sales_channels: string[];
+          notes: string | null;
+          status: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
+          status_reason: string | null;
+          dealer_level: 'bronze' | 'silver' | 'gold' | 'platinum';
+          credit_terms: number;
+          sales_rep_id: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          business_name: string;
+          owner_name: string;
+          business_email: string;
+          phone: string;
+          website?: string | null;
+          business_type: string;
+          years_in_business?: number | null;
+          country: string;
+          state: string;
+          city: string;
+          zip: string;
+          address: string;
+          monthly_purchase?: string | null;
+          products_interested?: string[];
+          sales_channels?: string[];
+          notes?: string | null;
+          status?: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
+          status_reason?: string | null;
+          dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
+          credit_terms?: number;
+          sales_rep_id?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          business_name?: string;
+          owner_name?: string;
+          business_email?: string;
+          phone?: string;
+          website?: string | null;
+          business_type?: string;
+          years_in_business?: number | null;
+          country?: string;
+          state?: string;
+          city?: string;
+          zip?: string;
+          address?: string;
+          monthly_purchase?: string | null;
+          products_interested?: string[];
+          sales_channels?: string[];
+          notes?: string | null;
+          status?: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
+          status_reason?: string | null;
+          dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
+          credit_terms?: number;
+          sales_rep_id?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      dealer_documents: {
+        Row: {
+          id: string;
+          application_id: string;
+          document_type: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
+          file_path: string;
+          file_name: string;
+          mime_type: string | null;
+          file_size: number | null;
+          is_verified: boolean;
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          document_type: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
+          file_path: string;
+          file_name: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          is_verified?: boolean;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          document_type?: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
+          file_path?: string;
+          file_name?: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          is_verified?: boolean;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+      };
+      dealer_notes: {
+        Row: {
+          id: string;
+          application_id: string;
+          admin_id: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          admin_id: string;
+          note: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          admin_id?: string;
+          note?: string;
+          created_at?: string;
+        };
+      };
+      dealer_audit_log: {
+        Row: {
+          id: string;
+          application_id: string;
+          actor_id: string | null;
+          action: string;
+          details: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          actor_id?: string | null;
+          action: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          actor_id?: string | null;
+          action?: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+      };
+      dealer_emails: {
+        Row: {
+          id: string;
+          application_id: string;
+          email_type: string;
+          sent_to: string;
+          subject: string;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          email_type: string;
+          sent_to: string;
+          subject: string;
+          sent_at?: string;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          email_type?: string;
+          sent_to?: string;
+          subject?: string;
+          sent_at?: string;
+        };
+      };
       contact_submissions: {
         Row: {
           id: string;
@@ -710,6 +930,12 @@ export type OrderItem = Tables<'order_items'>;
 export type BlogPost = Tables<'blog_posts'>;
 export type Notification = Tables<'notifications'>;
 export type Review = Tables<'reviews'>;
+export type DealerApplication = Tables<'dealer_applications'>;
+export type DealerDocument = Tables<'dealer_documents'>;
+export type DealerNote = Tables<'dealer_notes'>;
+export type DealerAuditLogEntry = Tables<'dealer_audit_log'>;
+export type DealerEmailLogEntry = Tables<'dealer_emails'>;
+export type DealerApplicationWithDocuments = DealerApplication & { dealer_documents: DealerDocument[] };
 
 // Product with relations
 export type ProductWithCategory = Product & {

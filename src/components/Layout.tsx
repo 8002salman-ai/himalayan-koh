@@ -118,6 +118,13 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                to="/dealer"
+                className="hidden md:inline-flex btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
+              >
+                Become a Dealer
+              </Link>
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -268,6 +275,19 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 </motion.div>
               ))}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: navLinks.length * 0.05 }}
+              >
+                <Link
+                  to="/dealer"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide text-himalayan hover:bg-warm-white transition-colors"
+                >
+                  Become a Dealer
+                </Link>
+              </motion.div>
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
