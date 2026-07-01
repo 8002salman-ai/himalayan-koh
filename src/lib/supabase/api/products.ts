@@ -2,6 +2,20 @@ import { normalizeProductSlug, productSlugFromName, slugsMatch } from '../../pro
 import { supabase } from '../client';
 import type { Product, Category, ProductWithCategory } from '../database.types';
 
+// Explicit column list for retail-facing queries. Excludes dealer_price,
+// distributor_price, cost_price, and moq/dealer_only — dealer-program-only
+// fields that must never appear in a retail API response, even if the
+// retail UI never renders them (select('*') would still ship them in the
+// raw JSON payload to every visitor's browser).
+const RETAIL_PRODUCT_COLUMNS = `
+  id, name, slug, description, short_description, price, compare_at_price,
+  sku, barcode, weight, weight_unit, category_id, images, thumbnail,
+  is_active, is_featured, grain_sizes, tags, meta_title, meta_description,
+  created_at, updated_at,
+  category:categories(*),
+  inventory(*)
+`;
+
 export interface ProductFilters {
   categorySlug?: string;
   search?: string;
@@ -19,12 +33,9 @@ export const productsApi = {
   async getProducts(filters: ProductFilters = {}): Promise<{ products: ProductWithCategory[]; count: number }> {
     let query = supabase
       .from('products')
-      .select(`
-        *,
-        category:categories(*),
-        inventory(*)
-      `, { count: 'exact' })
-      .eq('is_active', true);
+      .select(RETAIL_PRODUCT_COLUMNS, { count: 'exact' })
+      .eq('is_active', true)
+      .eq('dealer_only', false);
 
     // Apply filters
     if (filters.categorySlug) {
@@ -102,13 +113,10 @@ export const productsApi = {
 
     const { data, error } = await supabase
       .from('products')
-      .select(`
-        *,
-        category:categories(*),
-        inventory(*)
-      `)
+      .select(RETAIL_PRODUCT_COLUMNS)
       .eq('slug', normalizedSlug)
       .eq('is_active', true)
+      .eq('dealer_only', false)
       .maybeSingle();
 
     if (error) {
@@ -133,13 +141,10 @@ export const productsApi = {
   async getProductById(id: string): Promise<ProductWithCategory | null> {
     const { data, error } = await supabase
       .from('products')
-      .select(`
-        *,
-        category:categories(*),
-        inventory(*)
-      `)
+      .select(RETAIL_PRODUCT_COLUMNS)
       .eq('id', id)
       .eq('is_active', true)
+      .eq('dealer_only', false)
       .single();
 
     if (error) {
@@ -153,13 +158,10 @@ export const productsApi = {
   async getFeaturedProducts(limit = 6): Promise<ProductWithCategory[]> {
     const { data, error } = await supabase
       .from('products')
-      .select(`
-        *,
-        category:categories(*),
-        inventory(*)
-      `)
+      .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
       .eq('is_featured', true)
+      .eq('dealer_only', false)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -171,12 +173,9 @@ export const productsApi = {
   async getRelatedProducts(productId: string, categoryId: string | null, limit = 4): Promise<ProductWithCategory[]> {
     let query = supabase
       .from('products')
-      .select(`
-        *,
-        category:categories(*),
-        inventory(*)
-      `)
+      .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
+      .eq('dealer_only', false)
       .neq('id', productId)
       .limit(limit);
 
@@ -194,13 +193,14 @@ export const productsApi = {
   async searchProducts(query: string, limit = 10): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
+      .eq('dealer_only', false)
       .or(`name.ilike.%${query}%,description.ilike.%${query}%,tags.cs.{${query}}`)
       .limit(limit);
 
     if (error) throw error;
-    return data;
+    return data as unknown as Product[];
   },
 
   // Get all categories

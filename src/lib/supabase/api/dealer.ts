@@ -112,15 +112,23 @@ export const dealerApi = {
   },
 
   async getDealerCatalog(): Promise<Product[]> {
+    // Explicit column list — deliberately omits cost_price (internal cost
+    // basis, never sent to any client, dealer or retail).
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(
+        `id, name, slug, description, short_description, price, compare_at_price,
+         sku, barcode, weight, weight_unit, category_id, images, thumbnail,
+         is_active, is_featured, grain_sizes, tags, meta_title, meta_description,
+         dealer_price, distributor_price, moq, dealer_only, retail_only,
+         created_at, updated_at`
+      )
       .eq('is_active', true)
       .eq('retail_only', false)
       .order('name', { ascending: true });
 
     if (error) throw error;
-    return (data || []) as Product[];
+    return (data || []) as unknown as Product[];
   },
 };
 
