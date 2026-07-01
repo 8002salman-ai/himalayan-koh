@@ -681,6 +681,8 @@ export interface Database {
           status_reason: string | null;
           dealer_level: 'bronze' | 'silver' | 'gold' | 'platinum';
           credit_terms: number;
+          tax_exempt: boolean;
+          credit_limit: number | null;
           sales_rep_id: string | null;
           reviewed_by: string | null;
           reviewed_at: string | null;
@@ -710,6 +712,8 @@ export interface Database {
           status_reason?: string | null;
           dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
           credit_terms?: number;
+          tax_exempt?: boolean;
+          credit_limit?: number | null;
           sales_rep_id?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -739,6 +743,8 @@ export interface Database {
           status_reason?: string | null;
           dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
           credit_terms?: number;
+          tax_exempt?: boolean;
+          credit_limit?: number | null;
           sales_rep_id?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;

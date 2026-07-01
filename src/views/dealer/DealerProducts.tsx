@@ -82,7 +82,6 @@ export default function DealerProducts() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((product) => {
             const dealerPrice = dealerUnitPrice(product);
-            const hasDiscount = product.dealer_price != null && product.dealer_price < product.price;
             return (
               <div key={product.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="aspect-square bg-gray-50">
@@ -97,11 +96,9 @@ export default function DealerProducts() {
                   <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-10">
                     {product.name}
                   </h3>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="mb-1">
                     <span className="text-himalayan font-bold text-lg">${dealerPrice.toFixed(2)}</span>
-                    {hasDiscount && (
-                      <span className="text-xs text-charcoal-light line-through">${product.price.toFixed(2)}</span>
-                    )}
+                    <span className="text-xs text-charcoal-light ml-1.5 uppercase tracking-wide">Dealer Price</span>
                   </div>
                   <p className="text-xs text-charcoal-light mb-3">MOQ: {product.moq} units</p>
                   <button
