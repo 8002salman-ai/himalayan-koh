@@ -153,7 +153,7 @@ export default function AdminDealerApplicationDetail() {
     return (
       <div className="text-center py-20">
         <p className="text-charcoal-light">Application not found.</p>
-        <Link to="/admin/dealers" className="text-himalayan font-semibold hover:underline mt-2 inline-block">
+        <Link to="/admin/dealers/applications" className="text-himalayan font-semibold hover:underline mt-2 inline-block">
           Back to applications
         </Link>
       </div>
@@ -162,7 +162,7 @@ export default function AdminDealerApplicationDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/admin/dealers" className="inline-flex items-center gap-2 text-charcoal-light hover:text-charcoal text-sm">
+      <Link to="/admin/dealers/applications" className="inline-flex items-center gap-2 text-charcoal-light hover:text-charcoal text-sm">
         <ArrowLeft size={16} />
         Back to applications
       </Link>

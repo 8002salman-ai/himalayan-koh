@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, Search } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { SkeletonTable } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
+import DealerManagementTabs from '../../../components/admin/dealer/DealerManagementTabs';
 import { adminDealerApi } from '../../../lib/supabase/api';
 import { isSupabaseConfigured } from '../../../lib/supabase/client';
 import { getErrorMessage } from '../../../lib/errors';
@@ -29,10 +30,13 @@ const statusBadge: Record<DealerApplication['status'], string> = {
 };
 
 export default function AdminDealerApplications() {
+  const [searchParams] = useSearchParams();
+  const initialStatus = (searchParams.get('status') as DealerApplication['status'] | 'all' | null) || 'all';
+
   const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [status, setStatus] = useState<DealerApplication['status'] | 'all'>('all');
+  const [status, setStatus] = useState<DealerApplication['status'] | 'all'>(initialStatus);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -70,9 +74,11 @@ export default function AdminDealerApplications() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Applications</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
         <p className="text-charcoal-light">Review and manage dealer program applications</p>
       </div>
+
+      <DealerManagementTabs />
 
       <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
         <div className="flex flex-wrap gap-2">

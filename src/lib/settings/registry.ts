@@ -149,5 +149,36 @@ export const SETTINGS_REGISTRY: SettingsCategory[] = [
       },
     ],
   },
+  {
+    id: 'dealer_program',
+    label: 'Dealer Program — Defaults',
+    description: 'Default terms applied to new dealer approvals. Individual dealers can still be overridden in Dealer Management.',
+    fields: [
+      {
+        key: 'default_credit_terms',
+        label: 'Default Credit Terms (days)',
+        type: 'text',
+        placeholder: '30',
+        hint: 'Net terms applied to a dealer when first approved, e.g. 30 for Net 30.',
+        envFallback: 'DEALER_DEFAULT_CREDIT_TERMS',
+      },
+      {
+        key: 'min_order_value',
+        label: 'Minimum Dealer Order Value ($)',
+        type: 'text',
+        placeholder: '250',
+        hint: 'Informational minimum shown to dealers — not yet enforced at checkout.',
+        envFallback: 'DEALER_MIN_ORDER_VALUE',
+      },
+      {
+        key: 'support_email',
+        label: 'Dealer Support Email',
+        type: 'email',
+        placeholder: 'dealers@himalayankoh.com',
+        hint: 'Shown on the dealer support page and in approval emails.',
+        envFallback: 'DEALER_SUPPORT_EMAIL',
+      },
+    ],
+  },
   // ─── Add future services below ───────────────────────────────────────────────
 ];

@@ -272,6 +272,21 @@ async function seedDemoDealer() {
   }
   console.log(`Seeded ${demoOrders.length} demo wholesale orders with line items.`);
 
+  const demoNotifications = [
+    { type: 'system', title: 'Welcome to your Dealer Portal', message: 'Your Gold dealer account is approved and ready — browse dealer pricing and place your first order.' },
+    { type: 'order', title: 'Order shipped', message: 'Your recent wholesale order has shipped and is on its way.' },
+    { type: 'promotion', title: 'Wholesale Promotion', message: 'Order 50+ units this month to qualify for the next dealer tier.' },
+  ];
+  for (const note of demoNotifications) {
+    await adminClient.from('notifications').insert({
+      user_id: user.id,
+      type: note.type,
+      title: note.title,
+      message: note.message,
+    });
+  }
+  console.log('Seeded demo notifications.');
+
   await verifyLogin(demoDealer);
   console.log('✅ Demo wholesale account ready: demo@dealer.himalayankoh.com / Demo@12345');
   console.log('   Sign in at /dealer/login — it will land on /dealer/dashboard immediately (pre-approved).');
