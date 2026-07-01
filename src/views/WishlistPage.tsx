@@ -52,12 +52,12 @@ export default function WishlistPage() {
 
   return (
     <div className="min-h-screen bg-warm-white">
-      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-20">
+      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-20 md:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <motion.span
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4"
+            className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5"
           >
             Wishlist
           </motion.span>
@@ -65,7 +65,7 @@ export default function WishlistPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4"
+            className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5"
           >
             Saved Products
           </motion.h1>
@@ -73,7 +73,7 @@ export default function WishlistPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-white/70 text-lg max-w-2xl mx-auto"
+            className="text-white/75 text-lg max-w-2xl mx-auto"
           >
             Keep track of Himalayan Koh products you want to revisit.
           </motion.p>
@@ -111,7 +111,7 @@ export default function WishlistPage() {
                       <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2">
                         {item.product.name}
                       </h3>
-                      <p className="text-himalayan font-bold mb-4">${item.product.price.toFixed(2)}</p>
+                      <p className="text-himalayan font-bold mb-5">${item.product.price.toFixed(2)}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleAddToCart(item)}

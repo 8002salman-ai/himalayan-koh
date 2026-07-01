@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingCart, User, Menu, X, Phone, MapPin, Calculator, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } from 'lucide-react';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import CartDrawer from './CartDrawer';
@@ -63,23 +63,18 @@ export default function Layout({ children }: LayoutProps) {
       <div ref={headerRef} className="sticky top-0 z-nav">
       {/* Announcement Bar */}
       <div className="bg-warm-white border-b border-himalayan-line text-sm text-charcoal">
-        <motion.div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-center sm:text-left tracking-wide">
-            <strong className="font-extrabold text-himalayan-green">All Natural</strong>{' '}
+        <motion.div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <p className="text-center sm:text-left text-xs sm:text-sm tracking-wide flex-1">
+            <strong className="font-semibold text-himalayan">All Natural</strong>{' '}
             Himalayan salt for horses, cattle and deer
           </p>
-          <div className="flex items-center gap-4 text-xs sm:text-sm font-semibold">
-            <Link to="/contact" className="flex items-center gap-1 hover:text-himalayan-dark transition-colors">
-              <MapPin size={14} />
-              <span className="hidden md:inline">Product Locator</span>
-            </Link>
-            <Link to="/checkout" className="flex items-center gap-1 hover:text-himalayan-dark transition-colors">
-              <Calculator size={14} />
-              <span className="hidden md:inline">Calculate Shipping</span>
-            </Link>
-            <a href="tel:8322246466" className="flex items-center gap-1 text-himalayan-green hover:text-himalayan-dark transition-colors">
-              <Phone size={14} />
-              <strong>Call: (832) 224-6466</strong>
+          <div className="flex items-center gap-6 sm:gap-8 text-xs sm:text-sm font-medium flex-shrink-0">
+            <a href="tel:8322246466" className="flex items-center gap-1.5 text-charcoal hover:text-himalayan transition-colors whitespace-nowrap">
+              <Phone size={16} />
+              <span>(832) 224-6466</span>
+            </a>
+            <a href="https://wa.me/18322246466" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-charcoal hover:text-himalayan transition-colors" aria-label="WhatsApp">
+              <MessageCircle size={16} />
             </a>
           </div>
         </motion.div>

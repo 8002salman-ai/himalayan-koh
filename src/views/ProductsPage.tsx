@@ -167,7 +167,7 @@ export default function ProductsPage() {
         className={
           isCategoryHub
             ? 'bg-charcoal py-10 md:py-12 border-b border-white/10'
-            : 'bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-20'
+            : 'bg-gradient-to-r from-charcoal to-charcoal-light py-20 md:py-28'
         }
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
@@ -182,13 +182,13 @@ export default function ProductsPage() {
             </>
           ) : (
             <>
-              <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+              <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5">
                 Shop Now
               </span>
-              <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5">
                 Premium Salt Products
               </h1>
-              <p className="text-white/70 text-lg max-w-2xl mx-auto">
+              <p className="text-white/75 text-lg max-w-2xl mx-auto">
                 Handpicked from the heart of the Himalayas — pure, natural, and mineral-rich
               </p>
             </>

@@ -46,12 +46,12 @@ export default function BlogPage() {
   return (
     <div className="min-h-screen bg-warm-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-20">
+      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-20 md:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <motion.span
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4"
+            className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5"
           >
             Our Blog
           </motion.span>

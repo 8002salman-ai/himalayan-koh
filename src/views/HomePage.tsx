@@ -50,21 +50,23 @@ export default function HomePage() {
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
 
       {/* Livestock Salt Story */}
-      <section className="py-16 md:py-24 bg-white">
-        <div className="max-w-[88rem] mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+      <section className="py-16 md:py-28 bg-white">
+        <div className="max-w-[88rem] mx-auto px-4 sm:px-8 lg:px-6">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
-                World's Best for Livestock
-              </span>
-              <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal mb-5">
+              <div className="flex justify-center lg:justify-start mb-6">
+                <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full">
+                  World's Best for Livestock
+                </span>
+              </div>
+              <h2 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
                 Rich All Natural Himalayan Pink Salt
               </h2>
-              <div className="space-y-4 text-charcoal-light leading-relaxed">
+              <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
                   Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It's a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
                 </p>
@@ -75,11 +77,11 @@ export default function HomePage() {
                   Ensure your herd is healthy and happy. Shop our convenient premium Himalayan Pink Salt products and enjoy friendly customer service from Himalayan Koh.
                 </p>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3 mt-6">
+              <div className="grid sm:grid-cols-2 gap-4">
                 {livestockBenefits.map((benefit) => (
-                  <div key={benefit} className="p-4 bg-warm-white rounded-xl text-sm text-charcoal-light">
-                    <Star size={16} className="text-himalayan mb-2" />
-                    {benefit}
+                  <div key={benefit} className="p-4 bg-warm-white rounded-2xl text-sm text-charcoal-light border border-himalayan/10">
+                    <Star size={16} className="text-himalayan mb-2.5" />
+                    <p className="leading-relaxed">{benefit}</p>
                   </div>
                 ))}
               </div>
@@ -89,19 +91,19 @@ export default function HomePage() {
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-2 gap-5"
             >
               <img
                 src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
                 alt="Horse licking Himalayan salt"
-                className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80"
+                className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
               <img
                 src="https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg"
                 alt="Bowls of Himalayan salt"
-                className="rounded-2xl shadow-lg object-cover w-full h-64 md:h-80 mt-10"
+                className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
