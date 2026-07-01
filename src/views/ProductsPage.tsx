@@ -185,10 +185,10 @@ export default function ProductsPage() {
               <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5">
                 Shop Now
               </span>
-              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight">
                 Premium Salt Products
               </h1>
-              <p className="text-white/75 text-lg max-w-2xl mx-auto">
+              <p className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
                 Handpicked from the heart of the Himalayas — pure, natural, and mineral-rich
               </p>
             </>

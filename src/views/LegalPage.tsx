@@ -63,7 +63,7 @@ export default function LegalPage({ type }: LegalPageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5"
+            className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
             {page.title}
           </motion.h1>
@@ -71,7 +71,7 @@ export default function LegalPage({ type }: LegalPageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-white/75 text-lg max-w-2xl mx-auto"
+            className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
           >
             {page.description}
           </motion.p>

@@ -98,7 +98,7 @@ export default function TrackOrderPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="font-serif text-3xl md:text-4xl font-bold text-white mb-3"
+            className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
             Track Your Order
           </motion.h1>
@@ -106,7 +106,7 @@ export default function TrackOrderPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-white/75 text-lg max-w-xl mx-auto"
+            className="text-white/75 text-lg md:text-xl max-w-xl mx-auto leading-relaxed"
           >
             Enter your order number and email for live shipment updates.
           </motion.p>

@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Quote, Star, Award } from 'lucide-react';
+import { ArrowRight, Quote, Star, Award } from 'lucide-react';
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -76,6 +77,15 @@ export default function HomePage() {
                 <p>
                   Ensure your herd is healthy and happy. Shop our convenient premium Himalayan Pink Salt products and enjoy friendly customer service from Himalayan Koh.
                 </p>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 mb-8">
+                <Link to="/products" className="btn-hk-primary">
+                  Shop Now
+                  <ArrowRight size={16} className="ml-2" />
+                </Link>
+                <Link to="/about" className="btn-hk-ghost">
+                  Learn More
+                </Link>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {livestockBenefits.map((benefit) => (
