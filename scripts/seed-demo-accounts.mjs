@@ -1,11 +1,12 @@
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { loadEnv, missingRequiredVars } from './lib/env.mjs';
+import { createClients } from './lib/supabaseClients.mjs';
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-dotenv.config({ path: path.join(root, '.env.local') });
-dotenv.config({ path: path.join(root, '.env') });
+loadEnv();
+
+// Bump this whenever the shape of seeded demo data changes (new accounts,
+// new demo orders/documents, etc.) — `npm run info` reports it so it's
+// obvious which seed shape a given environment was last set up with.
+export const SEED_VERSION = '1.1.0';
 
 // This app's schema only distinguishes profiles.role = 'customer' | 'admin'
 // (see supabase/migrations/004_auth_profile_roles.sql). There is no
@@ -79,31 +80,13 @@ const demoDealerConfigs = [
  * can decide how to react.
  */
 export function createSeedClients() {
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-
-  const missing = [];
-  if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
-  if (!supabaseAnonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  if (!serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-
+  const missing = missingRequiredVars();
   if (missing.length > 0) {
     console.error('Missing required environment variable(s):');
     for (const name of missing) console.error(`  - ${name}`);
     return null;
   }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  return { supabaseUrl, adminClient, anonClient };
+  return createClients();
 }
 
 /**
