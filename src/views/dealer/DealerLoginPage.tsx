@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { dealerApi } from '../../lib/supabase/api';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 
 export default function DealerLoginPage() {
@@ -12,15 +13,34 @@ export default function DealerLoginPage() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, isAuthenticated } = useAuthContext();
+  const { signIn, isAuthenticated, user, loading } = useAuthContext();
   const navigate = useNavigate();
   const supabaseReady = isSupabaseConfigured();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dealer/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+    // Only skip straight to the portal if whoever is already signed in has
+    // a dealer application on file — DealerRoute then routes them to the
+    // right place (dashboard / pending / rejected / suspended). If there is
+    // no dealer application at all, the signed-in session belongs to a
+    // non-dealer account (e.g. a customer or admin still logged in from
+    // browsing the storefront), so this must fall through to the login form
+    // instead of bouncing that unrelated session into /dealer/register.
+    if (loading || !isAuthenticated || !user?.id || !supabaseReady) return;
+
+    let cancelled = false;
+    dealerApi
+      .getMyApplication(user.id)
+      .then((application) => {
+        if (!cancelled && application) {
+          navigate('/dealer/dashboard', { replace: true });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, isAuthenticated, user?.id, supabaseReady, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
