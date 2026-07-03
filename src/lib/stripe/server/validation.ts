@@ -1,5 +1,10 @@
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// The payment amount is always derived from orders.total (computed
+// server-side from real product prices in serverCreateOrder), never from
+// client-supplied item prices — see create-payment-intent/route.ts.
+// orderId is therefore required; `items` is accepted only to report an
+// item count in Stripe metadata and carries no price data.
 export function validateCreatePaymentIntentBody(body: unknown) {
   const record = body as Record<string, unknown>;
   const email = typeof record?.email === 'string' ? record.email.trim() : '';
@@ -13,27 +18,18 @@ export function validateCreatePaymentIntentBody(body: unknown) {
     return { ok: false as const, status: 400, error: 'A valid email is required.' };
   }
 
-  if (items.length === 0) {
-    return { ok: false as const, status: 400, error: 'Cart items are required to create a payment.' };
+  if (!orderId) {
+    return { ok: false as const, status: 400, error: 'orderId is required to create a payment.' };
   }
 
-  const lineItems = items
-    .map((item) => {
-      const row = item as Record<string, unknown>;
-      return {
-        quantity: Math.max(1, Math.floor(Number(row?.quantity) || 0)),
-        unitPrice: Math.max(0, Number(row?.price ?? row?.unitPrice) || 0),
-      };
-    })
-    .filter((item) => item.quantity > 0 && item.unitPrice > 0);
-
-  if (lineItems.length === 0) {
-    return { ok: false as const, status: 400, error: 'No valid cart line items were provided.' };
-  }
+  const itemCount = items.reduce((sum, item) => {
+    const row = item as Record<string, unknown>;
+    return sum + Math.max(1, Math.floor(Number(row?.quantity) || 0));
+  }, 0);
 
   return {
     ok: true as const,
-    data: { email, orderId, couponCode, shippingMethod, lineItems },
+    data: { email, orderId, couponCode, shippingMethod, itemCount },
   };
 }
 

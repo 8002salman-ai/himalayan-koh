@@ -7,6 +7,45 @@ import {
 import type { CartWithItems, Json, Order, OrderItem, OrderWithItems } from '@/lib/supabase/database.types';
 import { dispatchOrderCreatedNotifications } from '@/lib/orders/notifyOrderEvents';
 
+async function isApprovedDealer(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string | null
+): Promise<boolean> {
+  if (!userId) return false;
+  const { data, error } = await supabase
+    .from('dealer_applications')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'approved')
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
+/**
+ * Re-prices every cart line from the products table immediately before order
+ * creation. Cart_items.unit_price is client-writable (see cartApi.addToCart)
+ * and must never be trusted for money math — this is the single source of
+ * truth for what a customer actually gets charged. Also rejects the order
+ * outright if it contains a dealer_only product and the buyer isn't an
+ * approved dealer, so retail checkout can't be used to acquire dealer-only
+ * inventory even if it somehow ended up in a cart.
+ */
+function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer: boolean) {
+  return cartItems.map((item) => {
+    const product = item.product;
+    if (!product) {
+      throw new Error('One of the items in your cart is no longer available. Please remove it and try again.');
+    }
+    if (product.dealer_only && !isDealer) {
+      throw new Error('One of the items in your cart is restricted to approved dealer accounts.');
+    }
+    const unitPrice =
+      isDealer && product.dealer_price != null ? Number(product.dealer_price) : Number(product.price);
+    return { ...item, unitPrice };
+  });
+}
+
 async function loadCartForCheckout(
   userId: string | null,
   cartSessionId: string | null
@@ -44,10 +83,14 @@ export async function serverCreateOrder(
     throw new Error('Cart is empty. Add products again and retry checkout.');
   }
 
+  const supabase = getSupabaseAdmin();
+  const isDealer = await isApprovedDealer(supabase, options.userId ?? null);
+  const pricedItems = priceCartItems(cart.cart_items, isDealer);
+
   const totals = calculateOrderTotals(
-    cart.cart_items.map((item) => ({
+    pricedItems.map((item) => ({
       quantity: item.quantity,
-      unitPrice: item.unit_price,
+      unitPrice: item.unitPrice,
     })),
     {
       couponCode: data.couponCode,
@@ -56,7 +99,6 @@ export async function serverCreateOrder(
     }
   );
   const normalizedCoupon = data.couponCode?.trim().toUpperCase();
-  const supabase = getSupabaseAdmin();
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -96,15 +138,15 @@ export async function serverCreateOrder(
 
   if (orderError) throw orderError;
 
-  const orderItems = cart.cart_items.map((item) => ({
+  const orderItems = pricedItems.map((item) => ({
     order_id: (order as Order).id,
     product_id: item.product_id,
     product_name: item.product?.name || 'Unknown Product',
     product_image: item.product?.thumbnail || null,
     quantity: item.quantity,
     grain_size: item.grain_size,
-    unit_price: item.unit_price,
-    total_price: item.unit_price * item.quantity,
+    unit_price: item.unitPrice,
+    total_price: item.unitPrice * item.quantity,
   }));
 
   const { data: createdItems, error: itemsError } = await supabase

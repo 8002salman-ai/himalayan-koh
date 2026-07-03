@@ -45,29 +45,26 @@ if (failed) {
   process.exit(1);
 }
 
-const port = process.env.PORT || '3000';
-const base = (process.env.NEXT_PUBLIC_SITE_URL || `http://localhost:${port}`).replace(/\/$/, '');
+// Calls the Stripe API directly (not this app's /api/stripe/create-payment-intent
+// route) — that route now requires a real orderId and prices exclusively from
+// orders.total, by design, so it can't be smoke-tested with a fake line item.
+console.log('\nTesting Stripe API connectivity with STRIPE_SECRET_KEY ...');
 
-console.log(`\nTesting POST ${base}/api/stripe/create-payment-intent ...`);
+const { default: Stripe } = await import('stripe');
+const stripe = new Stripe(sk);
 
-const response = await fetch(`${base}/api/stripe/create-payment-intent`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    email: 'stripe-check@example.com',
-    couponCode: '',
-    shippingMethod: 'standard',
-    items: [{ id: 'check', name: 'Setup check', quantity: 1, price: 25 }],
-  }),
-});
-
-const body = await response.json().catch(() => ({}));
-if (!response.ok) {
-  console.error(`FAIL  HTTP ${response.status}: ${body.error || JSON.stringify(body)}`);
-  console.error('Restart dev server after editing .env.local: npm run dev:clean');
+try {
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: 100,
+    currency: 'usd',
+    automatic_payment_methods: { enabled: true },
+    description: 'himalayan-koh check-stripe-setup diagnostic (not charged)',
+  });
+  await stripe.paymentIntents.cancel(paymentIntent.id);
+  console.log('OK    PaymentIntent created and cancelled:', paymentIntent.id);
+  console.log('OK    Mode:', sk.startsWith('sk_live_') ? 'live' : 'test');
+  console.log('\nStripe is ready. Test card: 4242 4242 4242 4242 · any future expiry · any CVC.');
+} catch (error) {
+  console.error('FAIL  Stripe API call failed:', error.message);
   process.exit(1);
 }
-
-console.log('OK    PaymentIntent created:', body.paymentIntentId);
-console.log('OK    Mode:', body.mode);
-console.log('\nStripe is ready. Test card: 4242 4242 4242 4242 · any future expiry · any CVC.');

@@ -7,7 +7,9 @@ export { stripePublishableKey, isStripeConfigured, isStripeTestMode } from './co
 
 export interface CreatePaymentIntentPayload {
   email: string;
-  orderId?: string;
+  // Required — the server derives the charge amount solely from
+  // orders.total for this order, never from client-supplied item prices.
+  orderId: string;
   couponCode?: string;
   shippingMethod?: 'standard' | 'expedited';
   items: Pick<CartItem, 'id' | 'name' | 'quantity' | 'price' | 'grainSize'>[];

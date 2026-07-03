@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { calculateOrderTotals } from '@/lib/stripe/server/orderTotals';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getStripeClient, getStripeMode, stripeConfigError } from '@/lib/stripe/server/stripe';
 import { validateCreatePaymentIntentBody } from '@/lib/stripe/server/validation';
@@ -32,28 +31,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validated.error }, { status: validated.status });
   }
 
-  const { email, orderId, couponCode, shippingMethod, lineItems } = validated.data;
+  const { email, orderId, couponCode, shippingMethod, itemCount } = validated.data;
 
-  let amountCents: number;
+  const supabase = getSupabaseAdmin();
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('total')
+    .eq('id', orderId)
+    .maybeSingle();
 
-  if (orderId) {
-    const supabase = getSupabaseAdmin();
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('total')
-      .eq('id', orderId)
-      .maybeSingle();
-
-    if (orderError) throw orderError;
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
-    }
-
-    amountCents = Math.round(Number((order as { total: number }).total) * 100);
-  } else {
-    const totals = calculateOrderTotals(lineItems, { couponCode, shippingMethod });
-    amountCents = Math.round(totals.total * 100);
+  if (orderError) throw orderError;
+  if (!order) {
+    return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
   }
+
+  const amountCents = Math.round(Number((order as { total: number }).total) * 100);
 
   if (amountCents < MIN_AMOUNT_CENTS) {
     return NextResponse.json({ error: 'Order total is below the minimum charge amount.' }, { status: 400 });
@@ -71,7 +63,7 @@ export async function POST(request: Request) {
         ...(orderId ? { order_id: orderId } : {}),
         coupon_code: couponCode.trim().toUpperCase(),
         shipping_method: shippingMethod,
-        cart_item_count: String(lineItems.reduce((sum, item) => sum + item.quantity, 0)),
+        cart_item_count: String(itemCount),
         integration: 'himalayan_koh_checkout_v1',
       },
     });

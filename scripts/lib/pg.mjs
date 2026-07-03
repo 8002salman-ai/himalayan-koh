@@ -22,6 +22,7 @@ export const MIGRATIONS = [
   '015_dealer_program.sql',
   '016_dealer_demo_fields.sql',
   '017_dealer_only_product_rls.sql',
+  '018_cart_dealer_isolation.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */
