@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import {
   Elements,
   PaymentElement,
@@ -8,13 +8,11 @@ import {
 import { loadStripe, type StripeElementsOptions } from '@stripe/stripe-js';
 import { Loader2 } from 'lucide-react';
 import { getStripeSuccessUrl } from '../../lib/payments/checkoutUrls';
-import { stripePublishableKey } from '../../lib/stripe/config';
-
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 interface StripePaymentFormProps {
   clientSecret: string;
   amountLabel: string;
+  publishableKey: string;
   disabled?: boolean;
   onSuccess: () => Promise<void>;
   onError: (message: string) => void;
@@ -25,6 +23,7 @@ function PaymentFormInner({
   disabled,
   onSuccess,
   onError,
+  publishableKey,
 }: Omit<StripePaymentFormProps, 'clientSecret'>) {
   const stripe = useStripe();
   const elements = useElements();
@@ -84,14 +83,20 @@ function PaymentFormInner({
 export default function StripePaymentForm({
   clientSecret,
   amountLabel,
+  publishableKey,
   disabled,
   onSuccess,
   onError,
 }: StripePaymentFormProps) {
+  const stripePromise = useMemo(
+    () => (publishableKey ? loadStripe(publishableKey) : null),
+    [publishableKey],
+  );
+
   if (!stripePromise) {
     return (
       <p className="text-sm text-red-600">
-        Stripe publishable key is missing. Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_... to .env.local and restart the dev server.
+        Stripe publishable key is missing. Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_... to .env.local or Supabase site settings and restart the dev server.
       </p>
     );
   }
@@ -111,6 +116,7 @@ export default function StripePaymentForm({
     <Elements stripe={stripePromise} options={options}>
       <PaymentFormInner
         amountLabel={amountLabel}
+        publishableKey={publishableKey}
         disabled={disabled}
         onSuccess={onSuccess}
         onError={onError}

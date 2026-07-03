@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { getSetting } from '@/lib/settings/serverSettings';
 
-async function resolveStripeSecretKey(): Promise<string> {
+export async function resolveStripeSecretKey(): Promise<string> {
   const dbKey = await getSetting('stripe', 'secret_key');
   return dbKey || process.env.STRIPE_SECRET_KEY || '';
 }

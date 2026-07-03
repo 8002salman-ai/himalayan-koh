@@ -14,10 +14,9 @@ import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { publicEnv } from '../lib/env';
 import { useCart } from '../store/cartStore';
+import { getStripeClientConfig, type StripePublicConfig } from '../lib/stripe/clientConfig';
 import {
   createStripePaymentIntent,
-  isStripeConfigured,
-  isStripeTestMode,
   verifyStripeOrderPayment,
 } from '../lib/payments/stripe';
 import {
@@ -95,15 +94,20 @@ export default function CheckoutPage() {
   const [addressValidating, setAddressValidating] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
-    isStripeConfigured ? 'stripe' : 'invoice'
+    publicEnv.stripePublishableKey ? 'stripe' : 'invoice'
   );
   const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
   const [paymentCompleting, setPaymentCompleting] = useState(false);
+  const [stripeConfig, setStripeConfig] = useState<StripePublicConfig | null>(null);
+  const [stripeConfigLoaded, setStripeConfigLoaded] = useState(false);
   const stripePaymentRef = useRef<HTMLDivElement>(null);
 
   const shippoEnabled = publicEnv.shippoEnabled;
   const selectedShippoRate = shippoRates.find((rate) => rate.objectId === selectedShippoRateId) || null;
   const useLiveShippoRates = shippoEnabled && shippoRates.length > 0 && Boolean(selectedShippoRate);
+  const stripeEnabled = stripeConfig?.configured ?? Boolean(publicEnv.stripePublishableKey);
+  const stripePublishableKey = stripeConfig?.publishableKey ?? publicEnv.stripePublishableKey;
+  const stripeMode = stripeConfig?.mode ?? (stripePublishableKey.startsWith('pk_live_') ? 'live' : 'test');
 
   const totals = useMemo(
     () => calculateOrderTotals(
@@ -119,6 +123,13 @@ export default function CheckoutPage() {
     ),
     [couponCode, items, shippingMethod, useLiveShippoRates, selectedShippoRate?.amount]
   );
+
+  useEffect(() => {
+    getStripeClientConfig()
+      .then((config) => setStripeConfig(config))
+      .catch((error) => console.error('Unable to load Stripe config:', error))
+      .finally(() => setStripeConfigLoaded(true));
+  }, []);
 
   useEffect(() => {
     if (!shippoEnabled || items.length === 0) {
@@ -331,9 +342,9 @@ export default function CheckoutPage() {
       });
     }
 
-    if (paymentMethod === 'stripe' && !isStripeConfigured) {
+    if (paymentMethod === 'stripe' && !stripeEnabled) {
       nextErrors.coupon =
-        'Card payments need NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY in .env.local (test keys pk_test_ / sk_test_).';
+        'Card payments need a Stripe publishable key and secret key configured in environment variables or Supabase settings.';
     }
 
     setFieldErrors(nextErrors);
@@ -500,7 +511,7 @@ export default function CheckoutPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {(!isSupabaseConfigured() || (paymentMethod === 'stripe' && !isStripeConfigured)) && (
+        {(!isSupabaseConfigured() || (paymentMethod === 'stripe' && !stripeEnabled)) && (
           <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <p className="font-semibold">Payments not configured on this machine</p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
@@ -509,11 +520,10 @@ export default function CheckoutPage() {
                   Add Supabase keys to <code className="text-xs">.env.local</code> (URL + anon key + service role).
                 </li>
               )}
-              {paymentMethod === 'stripe' && !isStripeConfigured && (
+              {paymentMethod === 'stripe' && !stripeEnabled && (
                 <li>
-                  Add Stripe test keys to <code className="text-xs">.env.local</code>, restart with{' '}
-                  <code className="text-xs">npm run dev:clean</code>, then run{' '}
-                  <code className="text-xs">npm run check:stripe</code>.
+                  Add Stripe test keys to <code className="text-xs">.env.local</code> or Supabase site settings, then restart with{' '}
+                  <code className="text-xs">npm run dev:clean</code>.
                 </li>
               )}
             </ul>
@@ -732,7 +742,7 @@ export default function CheckoutPage() {
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-2">Payment</h2>
               <p className="text-sm text-charcoal-light mb-5">
-                {isStripeConfigured
+                {stripeEnabled
                   ? 'Pay securely with your card at checkout. Invoice is available for wholesale or manual billing.'
                   : 'Card payments are not configured on this site. Place your order and pay by invoice.'}
               </p>
@@ -740,7 +750,7 @@ export default function CheckoutPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <button
                   type="button"
-                  disabled={!isStripeConfigured}
+                  disabled={!stripeEnabled}
                   onClick={() => {
                     setPaymentMethod('stripe');
                     setStripeSession(null);
@@ -748,12 +758,12 @@ export default function CheckoutPage() {
                   className={`relative text-left rounded-2xl border p-4 transition-colors ${
                     paymentMethod === 'stripe'
                       ? 'border-himalayan bg-himalayan/10 ring-2 ring-himalayan/30'
-                      : isStripeConfigured
+                      : stripeEnabled
                         ? 'border-gray-200 hover:border-himalayan/40'
                         : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-80'
                   }`}
                 >
-                  {isStripeConfigured && (
+                  {stripeEnabled && (
                     <span className="absolute top-3 right-3 rounded-full bg-himalayan px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                       Recommended
                     </span>
@@ -761,8 +771,8 @@ export default function CheckoutPage() {
                   <CreditCard size={20} className="text-himalayan mb-2" />
                   <p className="font-semibold text-charcoal">Pay with Card</p>
                   <p className="text-sm text-charcoal-light mt-1">
-                    {isStripeConfigured
-                      ? isStripeTestMode
+                    {stripeEnabled
+                      ? stripeMode === 'test'
                         ? 'Enter card details after clicking Continue — test card 4242 4242 4242 4242.'
                         : 'Secure card payment via Stripe. Enter card number, expiry, and CVC on the next step.'
                       : 'Add Stripe keys to enable online card payment.'}
@@ -784,7 +794,7 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {paymentMethod === 'stripe' && isStripeConfigured && !stripeSession && (
+              {paymentMethod === 'stripe' && stripeEnabled && !stripeSession && (
                 <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-charcoal-light">
                   <p className="font-semibold text-charcoal mb-1">How card checkout works</p>
                   <ol className="list-decimal pl-5 space-y-1">
@@ -859,7 +869,7 @@ export default function CheckoutPage() {
               <div className="mt-5 flex items-start gap-2 text-xs text-charcoal-light">
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
                 <p>
-                  {paymentMethod === 'stripe' && isStripeConfigured
+                  {paymentMethod === 'stripe' && stripeEnabled
                     ? stripeSession
                       ? 'Complete card payment below to confirm your order.'
                       : 'Step 1: Continue to payment, then enter your card details on this page.'
@@ -902,6 +912,7 @@ export default function CheckoutPage() {
             </p>
             <StripePaymentForm
               clientSecret={stripeSession.clientSecret}
+              publishableKey={stripePublishableKey}
               amountLabel={`$${totals.total.toFixed(2)}`}
               disabled={submitting || paymentCompleting}
               onSuccess={handleStripePaymentSuccess}
