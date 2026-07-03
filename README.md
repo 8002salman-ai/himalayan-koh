@@ -2,7 +2,7 @@
 
 Next.js 15 (App Router) e-commerce storefront with a B2B dealer portal, backed entirely by Supabase (Auth, Postgres/RLS, Storage).
 
-For environment variable reference and Vercel deploy settings, see [DEPLOYMENT.md](./DEPLOYMENT.md). For a walkthrough of creating a Supabase project by hand, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). The workflow below is the fast path that replaces most of that manual work.
+For environment variable reference and Vercel deploy settings, see [DEPLOYMENT.md](./DEPLOYMENT.md). For a walkthrough of creating a Supabase project by hand, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). For how database migrations work in this repo (and which `supabase` CLI commands NOT to run), see [docs/MIGRATIONS.md](./docs/MIGRATIONS.md). The workflow below is the fast path that replaces most of that manual work.
 
 ## Prerequisites
 
@@ -73,3 +73,7 @@ Created by `npm run setup` (and refreshed by `npm run reset`):
 - `npm run dev` / `npm run build` / `npm run start` / `npm run lint` — standard Next.js scripts
 - `npm run verify:rls` / `npm run verify:phase0` — narrower legacy verification scripts, superseded day-to-day by `npm run verify`
 - `npm run check:stripe` / `npm run check:shippo` / `npm run check:packing` — third-party integration checks
+
+## Database migrations
+
+Migrations live in `supabase/migrations/` and are applied by a custom runner (`scripts/lib/pg.mjs`), tracked in `public._hk_migrations` — **not** by the Supabase CLI's native migration system. Do not run `supabase db push`, `supabase migration up`, or `supabase migration repair` against this project. See [docs/MIGRATIONS.md](./docs/MIGRATIONS.md) for why, and for the correct way to add a new migration.

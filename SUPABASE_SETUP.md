@@ -4,6 +4,10 @@
 
 For Vercel environment variables, build settings, smoke tests, and monitoring, see **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
 
+## Migrations
+
+This project applies migrations with a custom runner, not the Supabase CLI — see **[docs/MIGRATIONS.md](./docs/MIGRATIONS.md)** before running any `supabase migration`/`db push` command against this project.
+
 Verify order isolation (RLS) after seeding:
 
 ```bash
