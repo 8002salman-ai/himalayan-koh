@@ -1,13 +1,16 @@
-import { createElement } from 'react';
 import { NextResponse } from 'next/server';
-import { renderToBuffer } from '@react-pdf/renderer';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getErrorMessage } from '@/lib/errors';
-import { TaxInvoiceDocument, type TaxInvoiceData } from '@/lib/wholesale/pdf/TaxInvoiceDocument';
-import type { Json, Order, OrderItem, WholesalePurchaseRequest } from '@/lib/supabase/database.types';
+import { getLatestInvoicePdf } from '@/lib/wholesale/issueInvoice';
+import type { Json, WholesalePurchaseRequest } from '@/lib/supabase/database.types';
 
 export const runtime = 'nodejs';
 
+/**
+ * Serves the most recently issued Tax/Commercial Invoice PDF — issued
+ * once, immutably, at conversion time (see serverConvertPurchaseRequest.ts
+ * / issueInvoice.ts). Never a live re-render.
+ */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: requestId } = await params;
 
@@ -26,13 +29,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const { data: pr, error: prError } = await supabase
       .from('wholesale_purchase_requests')
-      .select('*, dealer_application:dealer_applications(business_name)')
+      .select('id, dealer_id, request_number, converted_order_id')
       .eq('id', requestId)
       .maybeSingle();
     if (prError) throw prError;
     if (!pr) return NextResponse.json({ error: 'Purchase request not found.' }, { status: 404 });
 
-    const request_ = pr as WholesalePurchaseRequest & { dealer_application: { business_name: string } | null };
+    const request_ = pr as Pick<WholesalePurchaseRequest, 'id' | 'dealer_id' | 'request_number' | 'converted_order_id'>;
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', userData.user.id).maybeSingle();
     const isAdmin = (profile as { role?: string } | null)?.role === 'admin';
@@ -47,43 +50,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       );
     }
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .eq('id', request_.converted_order_id)
-      .maybeSingle();
-    if (orderError) throw orderError;
-    if (!order) return NextResponse.json({ error: 'Converted order not found.' }, { status: 404 });
+    const invoice = await getLatestInvoicePdf(requestId, 'commercial');
+    if (!invoice) {
+      return NextResponse.json({ error: 'No tax/commercial invoice has been issued for this order yet.' }, { status: 404 });
+    }
 
-    const orderRow = order as Order & { order_items: OrderItem[] };
-
-    const data: TaxInvoiceData = {
-      orderNumber: orderRow.order_number,
-      requestNumber: request_.request_number,
-      createdAt: orderRow.created_at,
-      paymentStatus: orderRow.payment_status,
-      dealerBusinessName: request_.dealer_application?.business_name || 'Dealer',
-      shippingAddress: orderRow.shipping_address as unknown as TaxInvoiceData['shippingAddress'],
-      items: orderRow.order_items,
-      subtotal: Number(orderRow.subtotal),
-      shippingCost: Number(orderRow.shipping_cost),
-      taxAmount: Number(orderRow.tax_amount),
-      total: Number(orderRow.total),
-      currency: orderRow.currency,
-    };
-
-    const buffer = await renderToBuffer(
-      createElement(TaxInvoiceDocument, { data }) as unknown as Parameters<typeof renderToBuffer>[0]
-    );
-
-    return new NextResponse(buffer as unknown as BodyInit, {
+    return new NextResponse(invoice.buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${orderRow.order_number}-tax-invoice.pdf"`,
+        'Content-Disposition': `inline; filename="${request_.request_number}-tax-invoice.pdf"`,
       },
     });
   } catch (error) {
-    console.error('Tax invoice generation failed:', error);
-    return NextResponse.json({ error: getErrorMessage(error, 'Unable to generate tax invoice.') } as Json, { status: 500 });
+    console.error('Tax invoice download failed:', error);
+    return NextResponse.json({ error: getErrorMessage(error, 'Unable to fetch tax invoice.') } as Json, { status: 500 });
   }
 }

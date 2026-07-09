@@ -121,6 +121,7 @@ export const dealerApi = {
          sku, barcode, weight, weight_unit, category_id, images, thumbnail,
          is_active, is_featured, grain_sizes, tags, meta_title, meta_description,
          dealer_price, distributor_price, moq, dealer_only, retail_only,
+         pack_size, lead_time_days,
          created_at, updated_at`
       )
       .eq('is_active', true)

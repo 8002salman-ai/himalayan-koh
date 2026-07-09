@@ -4,6 +4,7 @@ import {
   Award,
   Bell,
   Building2,
+  ClipboardList,
   CreditCard,
   DollarSign,
   MapPin,
@@ -16,10 +17,16 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
-import { dealerApi, dealerUnitPrice, notificationsApi, ordersApi } from '../../lib/supabase/api';
+import { dealerApi, dealerUnitPrice, notificationsApi } from '../../lib/supabase/api';
+import { wholesalePurchaseRequestApi } from '../../lib/supabase/api/wholesale';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
-import { formatCustomerOrderStatus, orderStatusBadgeClass } from '../../lib/orders/status';
-import type { DealerApplicationWithDocuments, Notification, OrderWithItems, Product } from '../../lib/supabase/database.types';
+import { formatPurchaseRequestStatus, purchaseRequestStatusBadgeClass } from '../../lib/wholesale/status';
+import type {
+  DealerApplicationWithDocuments,
+  Notification,
+  Product,
+  WholesalePurchaseRequestWithItems,
+} from '../../lib/supabase/database.types';
 import { SkeletonDashboard } from '../../components/ui/Skeleton';
 
 const levelColors: Record<string, string> = {
@@ -29,12 +36,12 @@ const levelColors: Record<string, string> = {
   platinum: 'bg-purple-100 text-purple-700',
 };
 
-const UNPAID_STATUSES = new Set(['pending', 'processing']);
+const UNPAID_REQUEST_STATUSES = new Set(['submitted', 'ready_for_review', 'waiting_stock', 'stock_verified', 'approved', 'payment_pending']);
 
 export default function DealerDashboard() {
   const { user, profile } = useAuthContext();
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [requests, setRequests] = useState<WholesalePurchaseRequestWithItems[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,14 +53,14 @@ export default function DealerDashboard() {
         return;
       }
       try {
-        const [app, ordersResult, dealerCatalog, notes] = await Promise.all([
+        const [app, requestsResult, dealerCatalog, notes] = await Promise.all([
           dealerApi.getMyApplication(user.id),
-          ordersApi.getUserOrders(user.id),
+          wholesalePurchaseRequestApi.getMyRequests(user.id),
           dealerApi.getDealerCatalog(),
           notificationsApi.getNotifications(user.id).catch(() => []),
         ]);
         setApplication(app);
-        setOrders(ordersResult.orders);
+        setRequests(requestsResult);
         setCatalog(dealerCatalog);
         setNotifications(notes.slice(0, 5));
       } catch (err) {
@@ -67,13 +74,13 @@ export default function DealerDashboard() {
 
   if (loading) return <SkeletonDashboard />;
 
-  const pendingCount = orders.filter((o) => UNPAID_STATUSES.has(o.status)).length;
-  const totalSpend = orders.reduce((sum, o) => sum + o.total, 0);
-  const outstandingBalance = orders
-    .filter((o) => UNPAID_STATUSES.has(o.status))
-    .reduce((sum, o) => sum + o.total, 0);
+  const pendingCount = requests.filter((r) => UNPAID_REQUEST_STATUSES.has(r.status)).length;
+  const totalSpend = requests.reduce((sum, r) => sum + Number(r.total), 0);
+  const outstandingBalance = requests
+    .filter((r) => UNPAID_REQUEST_STATUSES.has(r.status))
+    .reduce((sum, r) => sum + Number(r.total), 0);
   const availableCredit = application?.credit_limit != null ? Math.max(application.credit_limit - outstandingBalance, 0) : null;
-  const recentOrders = orders.slice(0, 5);
+  const recentRequests = requests.slice(0, 5);
   const featuredProducts = catalog.filter((p) => p.is_featured).slice(0, 3);
   const recommendedProducts = catalog.filter((p) => !p.is_featured).slice(0, 3);
 
@@ -120,8 +127,8 @@ export default function DealerDashboard() {
           </span>
         </StatCard>
         <StatCard icon={<Percent size={18} />} label="Current Discount" value={avgDiscountPct > 0 ? `${avgDiscountPct.toFixed(0)}% off` : '—'} />
-        <StatCard icon={<ShoppingCart size={18} />} label="Total Orders" value={String(orders.length)} />
-        <StatCard icon={<Package size={18} />} label="Pending Orders" value={String(pendingCount)} />
+        <StatCard icon={<ClipboardList size={18} />} label="Purchase Requests" value={String(requests.length)} />
+        <StatCard icon={<Package size={18} />} label="In Progress" value={String(pendingCount)} />
         <StatCard icon={<DollarSign size={18} />} label="Total Spend" value={`$${totalSpend.toFixed(2)}`} />
         <StatCard icon={<CreditCard size={18} />} label="Available Credit" value={availableCredit != null ? `$${availableCredit.toFixed(2)}` : 'Due on receipt'} />
       </div>
@@ -183,34 +190,34 @@ export default function DealerDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
+        {/* Purchase Requests — the primary activity view for this dashboard */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-charcoal">Recent Orders</h2>
-            <Link to="/dealer/orders" className="text-sm font-semibold text-himalayan hover:underline flex items-center gap-1">
+            <h2 className="font-semibold text-charcoal">Purchase Requests</h2>
+            <Link to="/dealer/purchase-requests" className="text-sm font-semibold text-himalayan hover:underline flex items-center gap-1">
               View all
               <ChevronRight size={14} />
             </Link>
           </div>
-          {recentOrders.length === 0 ? (
-            <p className="text-sm text-charcoal-light">No orders yet.</p>
+          {recentRequests.length === 0 ? (
+            <p className="text-sm text-charcoal-light">No purchase requests yet — browse the catalog to get started.</p>
           ) : (
             <div className="space-y-2">
-              {recentOrders.map((order) => (
+              {recentRequests.map((request) => (
                 <Link
-                  key={order.id}
-                  to={`/orders/${order.id}`}
+                  key={request.id}
+                  to={`/dealer/purchase-requests/${request.id}`}
                   className="flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-charcoal truncate">{order.order_number}</p>
-                    <p className="text-xs text-charcoal-light">{new Date(order.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-charcoal truncate">{request.request_number}</p>
+                    <p className="text-xs text-charcoal-light">{new Date(request.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${orderStatusBadgeClass(order.status, order.payment_status)}`}>
-                      {formatCustomerOrderStatus(order.status, order.payment_status)}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${purchaseRequestStatusBadgeClass(request.status)}`}>
+                      {formatPurchaseRequestStatus(request.status)}
                     </span>
-                    <span className="text-sm font-semibold text-charcoal">${order.total.toFixed(2)}</span>
+                    <span className="text-sm font-semibold text-charcoal">${Number(request.total).toFixed(2)}</span>
                   </div>
                 </Link>
               ))}
@@ -279,10 +286,14 @@ export default function DealerDashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-4 gap-4">
         <Link to="/dealer/products" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
           <ShoppingCart size={20} className="text-himalayan mx-auto mb-2" />
-          <p className="text-sm font-semibold text-charcoal">Place an Order</p>
+          <p className="text-sm font-semibold text-charcoal">Submit Purchase Request</p>
+        </Link>
+        <Link to="/dealer/orders" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
+          <Package size={20} className="text-himalayan mx-auto mb-2" />
+          <p className="text-sm font-semibold text-charcoal">Converted Orders</p>
         </Link>
         <Link to="/dealer/invoices" className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow text-center">
           <DollarSign size={20} className="text-himalayan mx-auto mb-2" />

@@ -7,6 +7,8 @@ import {
 import { calculateOrderTotals } from '@/lib/supabase/api/orders';
 import type { Json, WholesalePurchaseRequest, WholesalePurchaseRequestItem } from '@/lib/supabase/database.types';
 import { dispatchPurchaseRequestSubmittedNotifications } from '@/lib/wholesale/notifyPurchaseRequestEvents';
+import { checkPurchaseRequestStock } from '@/lib/wholesale/checkPurchaseRequestStock';
+import { issueProformaInvoice } from '@/lib/wholesale/issueInvoice';
 import type { ShippingMethod } from '@/lib/supabase/api/orders';
 
 export interface CreatePurchaseRequestData {
@@ -108,10 +110,7 @@ export async function serverCreatePurchaseRequest(
     line_total: item.unitPrice * item.quantity,
   }));
 
-  const { data: createdItems, error: itemsError } = await supabase
-    .from('wholesale_purchase_request_items')
-    .insert(items as never)
-    .select();
+  const { error: itemsError } = await supabase.from('wholesale_purchase_request_items').insert(items as never);
 
   if (itemsError) throw itemsError;
 
@@ -124,10 +123,23 @@ export async function serverCreatePurchaseRequest(
 
   await supabase.from('cart_items').delete().eq('cart_id', cart.id);
 
+  // Automatic first-pass inventory check (business decision 2) — sets
+  // status to ready_for_review/waiting_stock. Advisory only; does not
+  // block submission and does not itself allow approval (see status.ts).
+  await checkPurchaseRequestStock(requestId);
+
+  // Issue Proforma Invoice v1 immediately so the submission emails below
+  // have a real, permanent PDF to attach — not a promise of one.
+  await issueProformaInvoice(requestId, null);
+
   dispatchPurchaseRequestSubmittedNotifications(requestId);
 
-  return {
-    ...(purchaseRequest as WholesalePurchaseRequest),
-    wholesale_purchase_request_items: createdItems as WholesalePurchaseRequestItem[],
-  };
+  const { data: finalRequest, error: finalError } = await supabase
+    .from('wholesale_purchase_requests')
+    .select('*, wholesale_purchase_request_items(*)')
+    .eq('id', requestId)
+    .single();
+  if (finalError) throw finalError;
+
+  return finalRequest as PurchaseRequestWithItems;
 }

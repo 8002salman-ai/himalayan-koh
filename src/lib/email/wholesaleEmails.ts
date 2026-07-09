@@ -15,7 +15,7 @@ const statusCopy: Partial<Record<PurchaseRequestStatus, { subject: string; headi
   submitted: {
     subject: 'Purchase request received',
     heading: 'Purchase request received',
-    body: (n) => `We've received your purchase request ${n}. A proforma invoice is attached/available in your dealer portal. Our team will verify stock and follow up shortly.`,
+    body: (n) => `We've received your purchase request ${n}. The proforma invoice is attached (also available in your dealer portal). Our team will verify stock and follow up shortly.`,
   },
   waiting_stock: {
     subject: 'Verifying stock for your purchase request',
@@ -59,13 +59,15 @@ export async function sendPurchaseRequestDealerEmail(params: {
   requestNumber: string;
   status: PurchaseRequestStatus;
   reason?: string | null;
+  proformaPdf?: Buffer;
 }): Promise<{ subject: string } | null> {
   const copy = statusCopy[params.status];
   if (!copy) return null;
 
+  const subject = `${copy.subject} — ${params.requestNumber}`;
   const sent = await sendEmail({
     to: params.to,
-    subject: `${copy.subject} — ${params.requestNumber}`,
+    subject,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
         <h1 style="color:#b86452">Himalayan Koh Wholesale</h1>
@@ -80,15 +82,19 @@ export async function sendPurchaseRequestDealerEmail(params: {
         <p style="font-size:12px;color:#666;margin-top:24px">12620 FM 1960 W Ste A-4, Houston, TX 77065 · (832) 224-6466</p>
       </div>
     `,
+    attachments: params.proformaPdf
+      ? [{ filename: `${params.requestNumber}-proforma-invoice.pdf`, content: params.proformaPdf }]
+      : undefined,
   });
 
-  return sent ? { subject: `${copy.subject} — ${params.requestNumber}` } : null;
+  return sent ? { subject } : null;
 }
 
 export async function sendPurchaseRequestConvertedEmail(params: {
   to: string;
   requestNumber: string;
   orderNumber: string;
+  taxInvoicePdf?: Buffer;
 }): Promise<{ subject: string } | null> {
   const subject = `Purchase request ${params.requestNumber} is now order ${params.orderNumber}`;
   const sent = await sendEmail({
@@ -99,7 +105,7 @@ export async function sendPurchaseRequestConvertedEmail(params: {
         <h1 style="color:#b86452">Himalayan Koh Wholesale</h1>
         <h2>Your order has been created</h2>
         <p>Purchase request <strong>${params.requestNumber}</strong> has been converted into order <strong>${params.orderNumber}</strong>.</p>
-        <p>A tax/commercial invoice is available in your dealer portal, and you'll receive shipment tracking as your order progresses.</p>
+        <p>The tax/commercial invoice is attached, and also available in your dealer portal. You'll receive shipment tracking as your order progresses.</p>
         <p style="margin-top:24px">
           <a href="${siteBaseUrl()}/dealer/purchase-requests" style="background:#b86452;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">
             View in Dealer Portal
@@ -107,6 +113,9 @@ export async function sendPurchaseRequestConvertedEmail(params: {
         </p>
       </div>
     `,
+    attachments: params.taxInvoicePdf
+      ? [{ filename: `${params.orderNumber}-tax-invoice.pdf`, content: params.taxInvoicePdf }]
+      : undefined,
   });
   return sent ? { subject } : null;
 }
@@ -116,6 +125,7 @@ export async function sendPurchaseRequestAdminAlert(params: {
   dealerBusinessName: string;
   total: number;
   itemCount: number;
+  proformaPdf?: Buffer;
 }): Promise<boolean> {
   const recipients = adminNotificationEmails();
   if (recipients.length === 0) return false;
@@ -134,5 +144,8 @@ export async function sendPurchaseRequestAdminAlert(params: {
       </div>
     `,
     text: `New purchase request ${params.requestNumber} from ${params.dealerBusinessName} — ${params.itemCount} items, $${params.total.toFixed(2)}. Review: ${adminUrl}`,
+    attachments: params.proformaPdf
+      ? [{ filename: `${params.requestNumber}-purchase-request.pdf`, content: params.proformaPdf }]
+      : undefined,
   });
 }

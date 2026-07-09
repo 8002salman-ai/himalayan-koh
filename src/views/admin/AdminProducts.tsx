@@ -133,6 +133,8 @@ export default function AdminProducts() {
         moq: 1,
         dealer_only: false,
         retail_only: false,
+        pack_size: null,
+        lead_time_days: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         category: { id: '1', name: p.category, slug: p.category.toLowerCase(), description: null, image_url: null, parent_id: null, sort_order: 0, is_active: true, created_at: '', updated_at: '' },

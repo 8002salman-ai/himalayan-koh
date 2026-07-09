@@ -5,6 +5,7 @@ import {
   sendPurchaseRequestConvertedEmail,
   sendPurchaseRequestDealerEmail,
 } from '@/lib/email/wholesaleEmails';
+import { getLatestInvoicePdf } from '@/lib/wholesale/issueInvoice';
 import type { WholesalePurchaseRequest } from '@/lib/supabase/database.types';
 
 interface PurchaseRequestNotifyRow {
@@ -55,17 +56,24 @@ export function dispatchPurchaseRequestSubmittedNotifications(requestId: string)
       const loaded = await loadRequestWithDealer(requestId);
       if (!loaded || !loaded.email) return;
 
+      // Proforma Invoice v1 is issued synchronously during submission
+      // (serverCreatePurchaseRequest.ts) before this fires, so it always
+      // exists by the time these emails go out.
+      const proforma = await getLatestInvoicePdf(requestId, 'proforma').catch(() => null);
+
       const [dealerResult] = await Promise.all([
         sendPurchaseRequestDealerEmail({
           to: loaded.email,
           requestNumber: loaded.row.request_number,
           status: 'submitted',
+          proformaPdf: proforma?.buffer,
         }),
         sendPurchaseRequestAdminAlert({
           requestNumber: loaded.row.request_number,
           dealerBusinessName: loaded.businessName,
           total: Number(loaded.row.total),
           itemCount: 0,
+          proformaPdf: proforma?.buffer,
         }),
         notifyAdmins(
           'New wholesale purchase request',
@@ -110,10 +118,15 @@ export function dispatchPurchaseRequestConvertedNotifications(requestId: string,
       const loaded = await loadRequestWithDealer(requestId);
       if (!loaded || !loaded.email) return;
 
+      // Tax/Commercial invoice is issued synchronously right after
+      // conversion (serverConvertPurchaseRequest.ts) before this fires.
+      const taxInvoice = await getLatestInvoicePdf(requestId, 'commercial').catch(() => null);
+
       const result = await sendPurchaseRequestConvertedEmail({
         to: loaded.email,
         requestNumber: loaded.row.request_number,
         orderNumber,
+        taxInvoicePdf: taxInvoice?.buffer,
       });
       if (result) {
         await logEmail(requestId, 'converted', loaded.email, result.subject);

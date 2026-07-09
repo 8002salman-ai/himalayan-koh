@@ -3,9 +3,11 @@ import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getErrorMessage } from '@/lib/errors';
 import { TAX_RATE } from '@/lib/supabase/api/orders';
-import { allowedNextStatuses } from '@/lib/wholesale/status';
+import { allowedNextStatuses, canVerifyStock } from '@/lib/wholesale/status';
 import { dispatchPurchaseRequestStatusChangedNotifications } from '@/lib/wholesale/notifyPurchaseRequestEvents';
 import type { Json, WholesalePurchaseRequest, WholesalePurchaseRequestItem } from '@/lib/supabase/database.types';
+
+const VALID_PAYMENT_METHODS = ['bank_transfer', 'cash'];
 
 interface ReviewBody {
   status?: WholesalePurchaseRequest['status'];
@@ -57,6 +59,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       );
     }
 
+    // Business decision 1: wholesale payment is bank transfer or cash
+    // only — reject anything else outright, regardless of what the UI
+    // sends. This is the authoritative enforcement point; the UI select
+    // is a convenience, not the boundary.
+    if (body.paymentMethod && !VALID_PAYMENT_METHODS.includes(body.paymentMethod)) {
+      return NextResponse.json(
+        { error: `Invalid payment method "${body.paymentMethod}" — must be "bank_transfer" or "cash".` },
+        { status: 400 }
+      );
+    }
+
+    // Business decision 3: approval is only ever reachable from
+    // 'stock_verified' — allowedNextStatuses() above already guarantees
+    // this structurally (there is no other case that lists 'approved'),
+    // but this is a second, explicit check on the exact same rule so a
+    // future edit to the status graph can't silently reopen the gap.
+    if (body.status === 'approved' && current.status !== 'stock_verified') {
+      return NextResponse.json(
+        { error: 'Approval is only possible after stock verification is complete.' },
+        { status: 400 }
+      );
+    }
+
     // 1. Apply per-item stock-check / quantity / price adjustments, if any.
     if (body.items?.length) {
       for (const item of body.items) {
@@ -102,6 +127,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .update({ subtotal, tax_amount: taxAmount, total } as never)
         .eq('id', requestId);
       if (totalsUpdateError) throw totalsUpdateError;
+    }
+
+    // Business decision 3 (continued): every line must be either
+    // auto-available or explicitly overridden by this admin before the
+    // request can move to 'stock_verified' — using the freshest item
+    // state, i.e. after the edits applied just above.
+    if (body.status === 'stock_verified') {
+      const { data: currentItems, error: currentItemsError } = await supabase
+        .from('wholesale_purchase_request_items')
+        .select('auto_stock_check, stock_verified')
+        .eq('purchase_request_id', requestId);
+      if (currentItemsError) throw currentItemsError;
+
+      if (!canVerifyStock((currentItems as { auto_stock_check: string | null; stock_verified: boolean }[]) || [])) {
+        return NextResponse.json(
+          { error: 'Every line must be in stock or explicitly overridden before stock can be verified.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 2. Apply dispatch date / payment method updates.

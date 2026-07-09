@@ -1,10 +1,22 @@
 import { supabase } from '../client';
 import type {
+  Order,
+  OrderItem,
   WholesalePurchaseRequestAuditEntry,
   WholesalePurchaseRequestMessage,
   WholesalePurchaseRequestNote,
   WholesalePurchaseRequestWithItems,
 } from '../database.types';
+
+export interface AdminWholesaleOrderRow extends Order {
+  order_items: OrderItem[];
+  wholesale_purchase_requests: { request_number: string; dealer_application: { business_name: string } | null } | null;
+}
+
+/** Fulfilment-stage filters for the Wholesale Orders admin view — these
+ * are order-level states (post-conversion), distinct from the
+ * pre-conversion pipeline statuses on wholesale_purchase_requests. */
+export type WholesaleOrderFilter = 'all' | 'pending_payment' | 'paid' | 'shipped' | 'delivered';
 
 export interface AdminPurchaseRequestFilters {
   status?: string;
@@ -90,6 +102,29 @@ export const adminWholesaleApi = {
       audit: (audit as WholesalePurchaseRequestAuditEntry[]) || [],
       messages: (messages as WholesalePurchaseRequestMessage[]) || [],
     };
+  },
+
+  /** Real orders that originated from a converted wholesale purchase
+   * request — kept as a dedicated view, separate from retail orders
+   * (/admin/orders), per the business requirement that these are
+   * different processes. */
+  async getWholesaleOrders(filter: WholesaleOrderFilter = 'all'): Promise<AdminWholesaleOrderRow[]> {
+    let query = supabase
+      .from('orders')
+      .select(
+        '*, order_items(*), wholesale_purchase_requests!inner(request_number, dealer_application:dealer_applications(business_name))'
+      )
+      .not('source_purchase_request_id', 'is', null)
+      .order('created_at', { ascending: false });
+
+    if (filter === 'pending_payment') query = query.eq('payment_status', 'pending');
+    if (filter === 'paid') query = query.eq('payment_status', 'paid').in('status', ['processing', 'packed', 'confirmed']);
+    if (filter === 'shipped') query = query.eq('status', 'shipped');
+    if (filter === 'delivered') query = query.eq('status', 'delivered');
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as unknown as AdminWholesaleOrderRow[];
   },
 
   async addNote(requestId: string, adminId: string, note: string): Promise<WholesalePurchaseRequestNote> {

@@ -3,12 +3,18 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Package, ShoppingCart } from 'lucide-react';
 import { formatCustomerOrderStatus, orderStatusBadgeClass } from '../../lib/orders/status';
 import { useAuthContext } from '../../context/AuthContext';
-import { ordersApi } from '../../lib/supabase/api';
+import { wholesalePurchaseRequestApi } from '../../lib/supabase/api/wholesale';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import type { OrderWithItems } from '../../lib/supabase/database.types';
 import { SkeletonOrderList } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 
+/**
+ * "Converted Orders" — real orders that came from a Purchase Request
+ * being approved, paid, and converted. This is deliberately NOT a
+ * general order history; Purchase Requests (still open/in review) live
+ * on /dealer/purchase-requests, not here. See status.ts.
+ */
 export default function DealerOrders() {
   const { user } = useAuthContext();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -21,10 +27,10 @@ export default function DealerOrders() {
         return;
       }
       try {
-        const { orders } = await ordersApi.getUserOrders(user.id);
-        setOrders(orders);
+        const converted = await wholesalePurchaseRequestApi.getMyConvertedOrders(user.id);
+        setOrders(converted as OrderWithItems[]);
       } catch (err) {
-        console.error('Failed to load dealer orders:', err);
+        console.error('Failed to load converted orders:', err);
       } finally {
         setLoading(false);
       }
@@ -35,8 +41,8 @@ export default function DealerOrders() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Orders</h1>
-        <p className="text-charcoal-light">Your dealer order history</p>
+        <h1 className="text-2xl font-bold text-charcoal">Converted Orders</h1>
+        <p className="text-charcoal-light">Purchase requests that have been approved, paid, and converted into orders</p>
       </div>
 
       {loading ? (
@@ -44,9 +50,9 @@ export default function DealerOrders() {
       ) : orders.length === 0 ? (
         <EmptyState
           icon={<ShoppingCart size={40} />}
-          title="No orders yet"
-          description="Orders you place from the dealer catalog will appear here."
-          action={{ label: 'Browse Catalog', href: '/dealer/products' }}
+          title="No converted orders yet"
+          description="Submit a purchase request, and once it's approved, paid, and converted, it will appear here."
+          action={{ label: 'View Purchase Requests', href: '/dealer/purchase-requests' }}
         />
       ) : (
         <div className="space-y-3">

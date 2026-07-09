@@ -14,7 +14,9 @@ import type { WholesalePurchaseRequest } from '../../../lib/supabase/database.ty
 const STATUS_TABS: { label: string; value: WholesalePurchaseRequest['status'] | 'all' }[] = [
   { label: 'All', value: 'all' },
   { label: 'Submitted', value: 'submitted' },
+  { label: 'Ready for Review', value: 'ready_for_review' },
   { label: 'Waiting for Stock', value: 'waiting_stock' },
+  { label: 'Stock Verified', value: 'stock_verified' },
   { label: 'Approved', value: 'approved' },
   { label: 'Changes Requested', value: 'changes_requested' },
   { label: 'Payment Pending', value: 'payment_pending' },

@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, FileCheck2, Send } from 'lucide-react';
+import { ArrowLeft, Download, FileCheck2, RefreshCw, Send } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { useAuthContext } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { adminWholesaleApi, type AdminPurchaseRequestListRow } from '../../../lib/supabase/api/adminWholesale';
 import { reviewWholesalePurchaseRequest } from '../../../lib/admin/updateWholesalePurchaseRequestClient';
 import { convertWholesalePurchaseRequest } from '../../../lib/admin/convertWholesalePurchaseRequestClient';
+import { issueWholesaleProformaInvoice } from '../../../lib/admin/issueWholesaleInvoiceClient';
 import { getErrorMessage } from '../../../lib/errors';
 import {
   allowedNextStatuses,
+  canVerifyStock,
   formatPurchaseRequestStatus,
   purchaseRequestStatusBadgeClass,
 } from '../../../lib/wholesale/status';
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'Select payment method…' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'cash', label: 'Cash' },
+] as const;
 import type {
   WholesalePurchaseRequestAuditEntry,
   WholesalePurchaseRequestItem,
@@ -85,6 +93,12 @@ export default function AdminWholesalePurchaseRequestDetail() {
 
   const items: WholesalePurchaseRequestItem[] = request.wholesale_purchase_request_items || [];
   const nextStatuses = allowedNextStatuses(request.status);
+  const stockGateOk = canVerifyStock(
+    items.map((item) => ({
+      auto_stock_check: item.auto_stock_check,
+      stock_verified: itemEdits[item.id]?.stockVerified ?? item.stock_verified,
+    }))
+  );
 
   const setItemEdit = (itemId: string, patch: Partial<{ stockVerified: boolean; adjustedQuantity: number; adjustedUnitPrice: number }>) => {
     setItemEdits((prev) => ({ ...prev, [itemId]: { ...prev[itemId], ...patch } }));
@@ -179,6 +193,20 @@ export default function AdminWholesalePurchaseRequestDetail() {
     }
   };
 
+  const handleIssueInvoice = async () => {
+    if (!session?.access_token) return;
+    setSaving(true);
+    try {
+      const result = await issueWholesaleProformaInvoice(session.access_token, request.id, reasonText || undefined);
+      toast.success(`Proforma invoice ${result.invoiceNumber} (v${result.version}) issued — never overwrites earlier versions.`);
+      await load();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to issue invoice.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -207,6 +235,15 @@ export default function AdminWholesalePurchaseRequestDetail() {
           }
         >
           Proforma Invoice
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<RefreshCw size={14} />}
+          isLoading={saving}
+          onClick={handleIssueInvoice}
+        >
+          Issue Revised Proforma Invoice
         </Button>
         {request.converted_order_id && (
           <Button
@@ -240,7 +277,8 @@ export default function AdminWholesalePurchaseRequestDetail() {
                 <th className="text-left py-2 pr-2">Product</th>
                 <th className="text-right py-2 pr-2">Requested Qty</th>
                 <th className="text-right py-2 pr-2">Unit Price</th>
-                <th className="text-center py-2 pr-2">Stock Verified</th>
+                <th className="text-center py-2 pr-2">Auto Check</th>
+                <th className="text-center py-2 pr-2">Stock Verified / Override</th>
                 <th className="text-right py-2 pr-2">Adjusted Qty</th>
                 <th className="text-right py-2">Adjusted Price</th>
               </tr>
@@ -254,10 +292,24 @@ export default function AdminWholesalePurchaseRequestDetail() {
                     <td className="py-2 pr-2 text-right">{item.quantity}</td>
                     <td className="py-2 pr-2 text-right">${Number(item.unit_price).toFixed(2)}</td>
                     <td className="py-2 pr-2 text-center">
+                      {item.auto_stock_check === 'available' ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          In stock ({item.auto_stock_available_qty ?? 0})
+                        </span>
+                      ) : item.auto_stock_check === 'insufficient' ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                          Insufficient ({item.auto_stock_available_qty ?? 0} avail.)
+                        </span>
+                      ) : (
+                        <span className="text-xs text-charcoal-light">Not checked</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 text-center">
                       <input
                         type="checkbox"
                         checked={edit.stockVerified ?? item.stock_verified}
                         onChange={(e) => setItemEdit(item.id, { stockVerified: e.target.checked })}
+                        title="Check to manually confirm/override this line's stock availability"
                       />
                     </td>
                     <td className="py-2 pr-2 text-right">
@@ -299,6 +351,11 @@ export default function AdminWholesalePurchaseRequestDetail() {
       {/* Status actions */}
       <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
         <h2 className="font-semibold text-charcoal">Review actions</h2>
+        {(request.status === 'ready_for_review' || request.status === 'waiting_stock') && !stockGateOk && (
+          <p className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+            Every line must show &ldquo;In stock&rdquo; or have &ldquo;Stock Verified / Override&rdquo; checked before this request can move to Stock Verified — approval is not possible until then.
+          </p>
+        )}
         {(request.status === 'rejected' ? false : nextStatuses.includes('rejected') || nextStatuses.includes('changes_requested')) && (
           <textarea
             value={reasonText}
@@ -309,26 +366,35 @@ export default function AdminWholesalePurchaseRequestDetail() {
           />
         )}
         {(nextStatuses.includes('payment_pending') || nextStatuses.includes('paid')) && (
-          <input
-            type="text"
+          <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
-            placeholder="Payment method (e.g. Bank transfer, Cash)"
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-          />
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"
+          >
+            {PAYMENT_METHOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         )}
         <div className="flex flex-wrap gap-2">
-          {nextStatuses.map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={s === 'rejected' || s === 'cancelled' ? 'destructive' : 'primary'}
-              isLoading={saving}
-              onClick={() => handleStatusChange(s)}
-            >
-              {formatPurchaseRequestStatus(s)}
-            </Button>
-          ))}
+          {nextStatuses.map((s) => {
+            const disabled = s === 'stock_verified' && !stockGateOk;
+            return (
+              <Button
+                key={s}
+                size="sm"
+                variant={s === 'rejected' || s === 'cancelled' ? 'destructive' : 'primary'}
+                isLoading={saving}
+                disabled={disabled}
+                title={disabled ? 'Resolve every line’s stock status first.' : undefined}
+                onClick={() => handleStatusChange(s)}
+              >
+                {formatPurchaseRequestStatus(s)}
+              </Button>
+            );
+          })}
           {request.status === 'paid' && (
             <Button size="sm" variant="primary" isLoading={saving} onClick={handleConvert}>
               Convert to Order

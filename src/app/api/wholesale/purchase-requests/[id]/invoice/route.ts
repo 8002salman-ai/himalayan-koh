@@ -1,10 +1,8 @@
-import { createElement } from 'react';
 import { NextResponse } from 'next/server';
-import { renderToBuffer } from '@react-pdf/renderer';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getErrorMessage } from '@/lib/errors';
-import { ProformaInvoiceDocument, type ProformaInvoiceData } from '@/lib/wholesale/pdf/ProformaInvoiceDocument';
-import type { Json, WholesalePurchaseRequest, WholesalePurchaseRequestItem } from '@/lib/supabase/database.types';
+import { getLatestInvoicePdf } from '@/lib/wholesale/issueInvoice';
+import type { Json, WholesalePurchaseRequest } from '@/lib/supabase/database.types';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +17,7 @@ async function authorize(request: Request, requestId: string) {
 
   const { data: pr, error: prError } = await supabase
     .from('wholesale_purchase_requests')
-    .select('*, dealer_application:dealer_applications(business_name, address, city, state, zip, country)')
+    .select('id, dealer_id, request_number')
     .eq('id', requestId)
     .maybeSingle();
   if (prError) throw prError;
@@ -27,9 +25,7 @@ async function authorize(request: Request, requestId: string) {
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', userData.user.id).maybeSingle();
   const isAdmin = (profile as { role?: string } | null)?.role === 'admin';
-  const request_ = pr as WholesalePurchaseRequest & {
-    dealer_application: { business_name: string; address: string; city: string; state: string; zip: string; country: string } | null;
-  };
+  const request_ = pr as Pick<WholesalePurchaseRequest, 'id' | 'dealer_id' | 'request_number'>;
 
   if (!isAdmin && request_.dealer_id !== userData.user.id) {
     return { ok: false as const, status: 403, error: 'Not authorized to view this invoice.' };
@@ -38,6 +34,11 @@ async function authorize(request: Request, requestId: string) {
   return { ok: true as const, purchaseRequest: request_ };
 }
 
+/**
+ * Serves the most recently issued Proforma Invoice PDF — the exact bytes
+ * stored when it was issued (submission time, or a later explicit
+ * re-issue after an edit), never a live re-render. See issueInvoice.ts.
+ */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: requestId } = await params;
 
@@ -47,43 +48,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const supabase = getSupabaseAdmin();
-    const { data: items, error: itemsError } = await supabase
-      .from('wholesale_purchase_request_items')
-      .select('*')
-      .eq('purchase_request_id', requestId);
-    if (itemsError) throw itemsError;
+    const invoice = await getLatestInvoicePdf(requestId, 'proforma');
+    if (!invoice) {
+      return NextResponse.json({ error: 'No proforma invoice has been issued for this request yet.' }, { status: 404 });
+    }
 
-    const pr = auth.purchaseRequest;
-    const data: ProformaInvoiceData = {
-      requestNumber: pr.request_number,
-      status: pr.status,
-      createdAt: pr.created_at,
-      dealerBusinessName: pr.dealer_application?.business_name || 'Dealer',
-      dealerAddress: '',
-      shippingAddress: pr.shipping_address as unknown as ProformaInvoiceData['shippingAddress'],
-      items: (items as WholesalePurchaseRequestItem[]) || [],
-      subtotal: Number(pr.subtotal),
-      shippingCost: Number(pr.shipping_cost),
-      taxAmount: Number(pr.tax_amount),
-      total: Number(pr.total),
-      currency: pr.currency,
-    };
-
-    const buffer = await renderToBuffer(
-      createElement(ProformaInvoiceDocument, { data }) as unknown as Parameters<typeof renderToBuffer>[0]
-    );
-
-    return new NextResponse(buffer as unknown as BodyInit, {
+    return new NextResponse(invoice.buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${pr.request_number}-proforma-invoice.pdf"`,
+        'Content-Disposition': `inline; filename="${auth.purchaseRequest.request_number}-proforma-invoice.pdf"`,
       },
     });
   } catch (error) {
-    console.error('Proforma invoice generation failed:', error);
+    console.error('Proforma invoice download failed:', error);
     return NextResponse.json(
-      { error: getErrorMessage(error, 'Unable to generate proforma invoice.') } as Json,
+      { error: getErrorMessage(error, 'Unable to fetch proforma invoice.') } as Json,
       { status: 500 }
     );
   }

@@ -25,6 +25,7 @@ export const MIGRATIONS = [
   '018_cart_dealer_isolation.sql',
   '019_wholesale_purchase_requests.sql',
   '020_order_status_packed.sql',
+  '021_wholesale_phase4.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */
@@ -50,6 +51,7 @@ export const REQUIRED_TABLES = [
   'wholesale_purchase_request_audit',
   'wholesale_purchase_request_emails',
   'wholesale_purchase_request_messages',
+  'wholesale_purchase_request_invoices',
 ];
 
 export const REQUIRED_STORAGE_BUCKETS = ['products', 'avatars', 'blog', 'categories', 'dealer-documents'];

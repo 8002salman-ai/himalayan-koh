@@ -169,6 +169,8 @@ export const adminDealerApi = {
       moq?: number;
       dealerOnly?: boolean;
       retailOnly?: boolean;
+      packSize?: string | null;
+      leadTimeDays?: number | null;
     }
   ): Promise<void> {
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -177,6 +179,8 @@ export const adminDealerApi = {
     if (updates.moq !== undefined) payload.moq = updates.moq;
     if (updates.dealerOnly !== undefined) payload.dealer_only = updates.dealerOnly;
     if (updates.retailOnly !== undefined) payload.retail_only = updates.retailOnly;
+    if (updates.packSize !== undefined) payload.pack_size = updates.packSize;
+    if (updates.leadTimeDays !== undefined) payload.lead_time_days = updates.leadTimeDays;
 
     const { error } = await supabase.from('products').update(payload as never).eq('id', productId);
     if (error) throw error;

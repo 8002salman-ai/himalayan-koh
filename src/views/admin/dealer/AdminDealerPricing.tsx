@@ -18,7 +18,9 @@ export default function AdminDealerPricing() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, { dealer_price: string; moq: string; dealer_only: boolean; retail_only: boolean }>>({});
+  const [drafts, setDrafts] = useState<
+    Record<string, { dealer_price: string; moq: string; dealer_only: boolean; retail_only: boolean; pack_size: string; lead_time_days: string }>
+  >({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,6 +37,8 @@ export default function AdminDealerPricing() {
               moq: String(p.moq ?? 1),
               dealer_only: p.dealer_only,
               retail_only: p.retail_only,
+              pack_size: p.pack_size ?? '',
+              lead_time_days: p.lead_time_days != null ? String(p.lead_time_days) : '',
             },
           ])
         )
@@ -61,6 +65,8 @@ export default function AdminDealerPricing() {
         moq: Number(draft.moq) || 1,
         dealerOnly: draft.dealer_only,
         retailOnly: draft.retail_only,
+        packSize: draft.pack_size || null,
+        leadTimeDays: draft.lead_time_days ? Number(draft.lead_time_days) : null,
       });
       toast.success('Dealer pricing updated.');
       await load();
@@ -107,6 +113,8 @@ export default function AdminDealerPricing() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Retail Price</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Dealer Price</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">MOQ</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden lg:table-cell">Pack Size</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden lg:table-cell">Lead Time (days)</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Dealer Only</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Retail Only</th>
                   <th className="px-4 py-3" />
@@ -137,6 +145,25 @@ export default function AdminDealerPricing() {
                           value={draft.moq}
                           onChange={(e) => setDrafts((d) => ({ ...d, [product.id]: { ...d[product.id], moq: e.target.value } }))}
                           className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+                        />
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <input
+                          type="text"
+                          value={draft.pack_size}
+                          onChange={(e) => setDrafts((d) => ({ ...d, [product.id]: { ...d[product.id], pack_size: e.target.value } }))}
+                          placeholder="e.g. 12 x 5lb"
+                          className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+                        />
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.lead_time_days}
+                          onChange={(e) => setDrafts((d) => ({ ...d, [product.id]: { ...d[product.id], lead_time_days: e.target.value } }))}
+                          placeholder="—"
+                          className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
                         />
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">

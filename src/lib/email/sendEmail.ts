@@ -1,8 +1,15 @@
+interface SendEmailAttachment {
+  filename: string;
+  /** Raw PDF (or other) bytes — base64-encoded before sending to Resend. */
+  content: Buffer;
+}
+
 interface SendEmailInput {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  attachments?: SendEmailAttachment[];
 }
 
 export function isEmailConfigured(): boolean {
@@ -32,6 +39,10 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
       subject: input.subject,
       html: input.html,
       text: input.text,
+      attachments: input.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content.toString('base64'),
+      })),
     }),
   });
 

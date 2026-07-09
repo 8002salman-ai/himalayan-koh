@@ -107,6 +107,8 @@ export interface Database {
           moq: number;
           dealer_only: boolean;
           retail_only: boolean;
+          pack_size: string | null;
+          lead_time_days: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -137,6 +139,8 @@ export interface Database {
           moq?: number;
           dealer_only?: boolean;
           retail_only?: boolean;
+          pack_size?: string | null;
+          lead_time_days?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -167,6 +171,8 @@ export interface Database {
           moq?: number;
           dealer_only?: boolean;
           retail_only?: boolean;
+          pack_size?: string | null;
+          lead_time_days?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -402,7 +408,7 @@ export interface Database {
           user_id: string | null;
           email: string;
           phone: string | null;
-          status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+          status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
           payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
           payment_method: string | null;
           subtotal: number;
@@ -423,6 +429,7 @@ export interface Database {
           label_url: string | null;
           shipped_at: string | null;
           delivered_at: string | null;
+          source_purchase_request_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -432,7 +439,7 @@ export interface Database {
           user_id?: string | null;
           email: string;
           phone?: string | null;
-          status?: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+          status?: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
           payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
           payment_method?: string | null;
           subtotal: number;
@@ -453,6 +460,7 @@ export interface Database {
           label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
+          source_purchase_request_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -462,7 +470,7 @@ export interface Database {
           user_id?: string | null;
           email?: string;
           phone?: string | null;
-          status?: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+          status?: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
           payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
           payment_method?: string | null;
           subtotal?: number;
@@ -483,6 +491,7 @@ export interface Database {
           label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
+          source_purchase_request_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -905,7 +914,9 @@ export interface Database {
           dealer_application_id: string;
           status:
             | 'submitted'
+            | 'ready_for_review'
             | 'waiting_stock'
+            | 'stock_verified'
             | 'approved'
             | 'rejected'
             | 'changes_requested'
@@ -925,7 +936,7 @@ export interface Database {
           rejection_reason: string | null;
           change_request_note: string | null;
           expected_dispatch_date: string | null;
-          payment_method: string | null;
+          payment_method: 'bank_transfer' | 'cash' | null;
           payment_confirmed_at: string | null;
           reviewed_by: string | null;
           reviewed_at: string | null;
@@ -942,7 +953,9 @@ export interface Database {
           dealer_application_id: string;
           status?:
             | 'submitted'
+            | 'ready_for_review'
             | 'waiting_stock'
+            | 'stock_verified'
             | 'approved'
             | 'rejected'
             | 'changes_requested'
@@ -962,7 +975,7 @@ export interface Database {
           rejection_reason?: string | null;
           change_request_note?: string | null;
           expected_dispatch_date?: string | null;
-          payment_method?: string | null;
+          payment_method?: 'bank_transfer' | 'cash' | null;
           payment_confirmed_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -979,7 +992,9 @@ export interface Database {
           dealer_application_id?: string;
           status?:
             | 'submitted'
+            | 'ready_for_review'
             | 'waiting_stock'
+            | 'stock_verified'
             | 'approved'
             | 'rejected'
             | 'changes_requested'
@@ -999,7 +1014,7 @@ export interface Database {
           rejection_reason?: string | null;
           change_request_note?: string | null;
           expected_dispatch_date?: string | null;
-          payment_method?: string | null;
+          payment_method?: 'bank_transfer' | 'cash' | null;
           payment_confirmed_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -1023,6 +1038,8 @@ export interface Database {
           admin_adjusted_unit_price: number | null;
           admin_adjusted_quantity: number | null;
           stock_verified: boolean;
+          auto_stock_check: 'available' | 'insufficient' | null;
+          auto_stock_available_qty: number | null;
           line_total: number;
           created_at: string;
           updated_at: string;
@@ -1039,6 +1056,8 @@ export interface Database {
           admin_adjusted_unit_price?: number | null;
           admin_adjusted_quantity?: number | null;
           stock_verified?: boolean;
+          auto_stock_check?: 'available' | 'insufficient' | null;
+          auto_stock_available_qty?: number | null;
           line_total: number;
           created_at?: string;
           updated_at?: string;
@@ -1055,6 +1074,8 @@ export interface Database {
           admin_adjusted_unit_price?: number | null;
           admin_adjusted_quantity?: number | null;
           stock_verified?: boolean;
+          auto_stock_check?: 'available' | 'insufficient' | null;
+          auto_stock_available_qty?: number | null;
           line_total?: number;
           created_at?: string;
           updated_at?: string;
@@ -1161,12 +1182,57 @@ export interface Database {
           created_at?: string;
         };
       };
+      wholesale_purchase_request_invoices: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          invoice_type: 'proforma' | 'commercial';
+          version: number;
+          invoice_number: string;
+          snapshot: Json;
+          pdf_path: string;
+          issued_by: string | null;
+          issued_at: string;
+          supersede_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          invoice_type: 'proforma' | 'commercial';
+          version: number;
+          invoice_number?: string;
+          snapshot: Json;
+          pdf_path: string;
+          issued_by?: string | null;
+          issued_at?: string;
+          supersede_reason?: string | null;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          invoice_type?: 'proforma' | 'commercial';
+          version?: number;
+          invoice_number?: string;
+          snapshot?: Json;
+          pdf_path?: string;
+          issued_by?: string | null;
+          issued_at?: string;
+          supersede_reason?: string | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      convert_wholesale_purchase_request: {
+        Args: { p_request_id: string; p_admin_id: string };
+        // Not self-referencing Database['public']['Tables']['orders']['Row']
+        // here — that circular reference confuses the .rpc() generic
+        // resolution. The caller (serverConvertPurchaseRequest.ts) casts
+        // the result to Order explicitly.
+        Returns: Record<string, unknown>;
+      };
     };
     Enums: {
       order_status:
@@ -1220,6 +1286,7 @@ export type WholesalePurchaseRequestNote = Tables<'wholesale_purchase_request_no
 export type WholesalePurchaseRequestAuditEntry = Tables<'wholesale_purchase_request_audit'>;
 export type WholesalePurchaseRequestEmailLogEntry = Tables<'wholesale_purchase_request_emails'>;
 export type WholesalePurchaseRequestMessage = Tables<'wholesale_purchase_request_messages'>;
+export type WholesalePurchaseRequestInvoice = Tables<'wholesale_purchase_request_invoices'>;
 export type WholesalePurchaseRequestWithItems = WholesalePurchaseRequest & {
   wholesale_purchase_request_items: WholesalePurchaseRequestItem[];
 };

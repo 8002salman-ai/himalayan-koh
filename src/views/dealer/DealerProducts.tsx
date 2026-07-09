@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Search, ShoppingCart, Zap } from 'lucide-react';
 import { dealerApi, dealerUnitPrice } from '../../lib/supabase/api';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase/client';
 import { useCart } from '../../store/cartStore';
 import { useToast } from '../../context/ToastContext';
 import type { Product } from '../../lib/supabase/database.types';
+import { getAvailability, type InventoryLike } from '../../lib/inventory/availability';
 import { SkeletonProductGrid } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 
 export default function DealerProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [inventoryByProduct, setInventoryByProduct] = useState<Record<string, InventoryLike>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -26,6 +28,19 @@ export default function DealerProducts() {
         const catalog = await dealerApi.getDealerCatalog();
         setProducts(catalog);
         setQuantities(Object.fromEntries(catalog.map((p) => [p.id, p.moq || 1])));
+
+        // Availability is advisory here — the authoritative check happens
+        // server-side on submission and again at conversion (see
+        // checkPurchaseRequestStock.ts / migration 021).
+        const { data: inventoryRows } = await supabase
+          .from('inventory')
+          .select('product_id, quantity, reserved_quantity, low_stock_threshold, track_inventory, allow_backorder')
+          .in('product_id', catalog.map((p) => p.id));
+        const map: Record<string, InventoryLike> = {};
+        for (const row of (inventoryRows || []) as (InventoryLike & { product_id: string })[]) {
+          map[row.product_id] = row;
+        }
+        setInventoryByProduct(map);
       } catch (err) {
         console.error('Failed to load dealer catalog:', err);
       } finally {
@@ -92,15 +107,19 @@ export default function DealerProducts() {
             const dealerPrice = dealerUnitPrice(product);
             const moq = product.moq || 1;
             const quantity = quantities[product.id] || moq;
+            const availability = getAvailability(inventoryByProduct[product.id]);
             return (
               <div key={product.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="aspect-square bg-gray-50">
+                <div className="aspect-square bg-gray-50 relative">
                   <img
                     src={product.thumbnail || product.images?.[0] || '/images/placeholder-product.svg'}
                     alt={product.name}
                     className="w-full h-full object-cover"
                     onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                   />
+                  <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-xs font-semibold ${availability.badgeClass}`}>
+                    {availability.label}
+                  </span>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-10">
@@ -110,7 +129,14 @@ export default function DealerProducts() {
                     <span className="text-himalayan font-bold text-lg">${dealerPrice.toFixed(2)}</span>
                     <span className="text-xs text-charcoal-light ml-1.5 uppercase tracking-wide">Dealer Price</span>
                   </div>
-                  <p className="text-xs text-charcoal-light mb-3">MOQ: {moq} units · Bulk quantity supported</p>
+                  <p className="text-xs text-charcoal-light mb-1">MOQ: {moq} units · Bulk quantity supported</p>
+                  {product.pack_size && (
+                    <p className="text-xs text-charcoal-light mb-1">Pack size: {product.pack_size}</p>
+                  )}
+                  {product.lead_time_days != null && (
+                    <p className="text-xs text-charcoal-light mb-3">Lead time: ~{product.lead_time_days} day{product.lead_time_days === 1 ? '' : 's'}</p>
+                  )}
+                  {!product.pack_size && product.lead_time_days == null && <div className="mb-3" />}
 
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">

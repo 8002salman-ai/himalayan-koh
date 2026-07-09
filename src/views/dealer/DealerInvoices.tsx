@@ -1,16 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, ExternalLink } from 'lucide-react';
+import { Download, Receipt } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
-import { ordersApi } from '../../lib/supabase/api';
+import { useToast } from '../../context/ToastContext';
+import { wholesalePurchaseRequestApi, type DealerInvoiceRow } from '../../lib/supabase/api/wholesale';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
-import type { OrderWithItems } from '../../lib/supabase/database.types';
+import { getErrorMessage } from '../../lib/errors';
 import { SkeletonOrderList } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 
+async function downloadPdf(url: string, accessToken: string, filename: string) {
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || 'Unable to download invoice.');
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+/**
+ * Every issued invoice (Proforma and Tax/Commercial) across every one of
+ * this dealer's purchase requests. Each row is one immutable version —
+ * older versions of the same invoice remain listed, never overwritten.
+ */
 export default function DealerInvoices() {
-  const { user } = useAuthContext();
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const { user, session } = useAuthContext();
+  const toast = useToast();
+  const [invoices, setInvoices] = useState<DealerInvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,8 +42,8 @@ export default function DealerInvoices() {
         return;
       }
       try {
-        const { orders } = await ordersApi.getUserOrders(user.id);
-        setOrders(orders);
+        const rows = await wholesalePurchaseRequestApi.getMyInvoices(user.id);
+        setInvoices(rows);
       } catch (err) {
         console.error('Failed to load invoices:', err);
       } finally {
@@ -31,17 +53,32 @@ export default function DealerInvoices() {
     load();
   }, [user?.id]);
 
+  const handleDownload = (invoice: DealerInvoiceRow) => {
+    if (!session?.access_token) return;
+    const kind = invoice.invoice_type === 'commercial' ? 'tax-invoice' : 'invoice';
+    downloadPdf(
+      `/api/wholesale/purchase-requests/${invoice.purchase_request_id}/${kind}`,
+      session.access_token,
+      `${invoice.invoice_number}.pdf`
+    ).catch((err) => toast.error(getErrorMessage(err, 'Failed to download invoice.')));
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Invoices</h1>
-        <p className="text-charcoal-light">Each order generates an invoice you can view in detail</p>
+        <p className="text-charcoal-light">Proforma invoices from your purchase requests, and tax/commercial invoices from converted orders</p>
       </div>
 
       {loading ? (
         <SkeletonOrderList count={3} />
-      ) : orders.length === 0 ? (
-        <EmptyState icon={<Receipt size={40} />} title="No invoices yet" description="Invoices appear here once you place an order." />
+      ) : invoices.length === 0 ? (
+        <EmptyState
+          icon={<Receipt size={40} />}
+          title="No invoices yet"
+          description="A proforma invoice is issued automatically when you submit a purchase request."
+          action={{ label: 'Browse Catalog', href: '/dealer/products' }}
+        />
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -49,29 +86,44 @@ export default function DealerInvoices() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Invoice</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Total</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Payment</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Purchase Request</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Issued</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-charcoal">{order.order_number}</td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
-                      {new Date(order.created_at).toLocaleDateString()}
+                {invoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-charcoal">
+                      {invoice.invoice_number} <span className="text-charcoal-light">· v{invoice.version}</span>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-charcoal">${order.total.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light capitalize hidden sm:table-cell">{order.payment_status}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          invoice.invoice_type === 'commercial' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {invoice.invoice_type === 'commercial' ? 'Tax / Commercial' : 'Proforma'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
+                      <Link to={`/dealer/purchase-requests/${invoice.purchase_request_id}`} className="hover:underline">
+                        {invoice.wholesale_purchase_requests?.request_number || '—'}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
+                      {new Date(invoice.issued_at).toLocaleDateString()}
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        to={`/orders/${order.id}`}
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(invoice)}
                         className="inline-flex items-center gap-1 text-sm font-semibold text-himalayan hover:underline"
                       >
-                        View
-                        <ExternalLink size={14} />
-                      </Link>
+                        Download
+                        <Download size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
