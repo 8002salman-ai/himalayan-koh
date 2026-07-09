@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Search, ShoppingCart, Zap } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, Search, ShoppingCart, Zap } from 'lucide-react';
 import { dealerApi, dealerUnitPrice } from '../../lib/supabase/api';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase/client';
 import { useCart } from '../../store/cartStore';
 import { useToast } from '../../context/ToastContext';
+import { getErrorMessage } from '../../lib/errors';
 import type { Product } from '../../lib/supabase/database.types';
 import { getAvailability, type InventoryLike } from '../../lib/inventory/availability';
+import { Button } from '../../components/ui';
 import { SkeletonProductGrid } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 
@@ -13,42 +15,54 @@ export default function DealerProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [inventoryByProduct, setInventoryByProduct] = useState<Record<string, InventoryLike>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { addItem } = useCart();
   const toast = useToast();
 
-  useEffect(() => {
-    const load = async () => {
-      if (!isSupabaseConfigured()) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const catalog = await dealerApi.getDealerCatalog();
-        setProducts(catalog);
-        setQuantities(Object.fromEntries(catalog.map((p) => [p.id, p.moq || 1])));
+  // A failed fetch (schema drift, RLS misconfiguration, network error, ...)
+  // must never look identical to "there genuinely are no products" — that
+  // conflation is exactly what hid a real bug (a pending migration) behind
+  // a misleading empty state previously. See docs/MIGRATIONS.md.
+  const load = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const catalog = await dealerApi.getDealerCatalog();
+      setProducts(catalog);
+      setQuantities(Object.fromEntries(catalog.map((p) => [p.id, p.moq || 1])));
 
-        // Availability is advisory here — the authoritative check happens
-        // server-side on submission and again at conversion (see
-        // checkPurchaseRequestStock.ts / migration 021).
-        const { data: inventoryRows } = await supabase
-          .from('inventory')
-          .select('product_id, quantity, reserved_quantity, low_stock_threshold, track_inventory, allow_backorder')
-          .in('product_id', catalog.map((p) => p.id));
-        const map: Record<string, InventoryLike> = {};
-        for (const row of (inventoryRows || []) as (InventoryLike & { product_id: string })[]) {
-          map[row.product_id] = row;
-        }
-        setInventoryByProduct(map);
-      } catch (err) {
-        console.error('Failed to load dealer catalog:', err);
-      } finally {
-        setLoading(false);
+      // Availability is advisory here — the authoritative check happens
+      // server-side on submission and again at conversion (see
+      // checkPurchaseRequestStock.ts / migration 021).
+      const { data: inventoryRows } = await supabase
+        .from('inventory')
+        .select('product_id, quantity, reserved_quantity, low_stock_threshold, track_inventory, allow_backorder')
+        .in('product_id', catalog.map((p) => p.id));
+      const map: Record<string, InventoryLike> = {};
+      for (const row of (inventoryRows || []) as (InventoryLike & { product_id: string })[]) {
+        map[row.product_id] = row;
       }
-    };
-    load();
+      setInventoryByProduct(map);
+    } catch (err) {
+      const message = getErrorMessage(err, 'Failed to load dealer catalog.');
+      console.error('Failed to load dealer catalog:', err);
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -94,6 +108,15 @@ export default function DealerProducts() {
 
       {loading ? (
         <SkeletonProductGrid count={6} />
+      ) : loadError ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <AlertTriangle size={32} className="mx-auto text-red-500 mb-3" />
+          <p className="font-semibold text-red-700 mb-1">The dealer catalog couldn't be loaded</p>
+          <p className="text-sm text-red-600 mb-4">{loadError}</p>
+          <Button variant="destructive" size="sm" onClick={load}>
+            Retry
+          </Button>
+        </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<ShoppingCart size={40} />}
