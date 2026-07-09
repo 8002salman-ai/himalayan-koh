@@ -6,6 +6,7 @@ import type {
   DealerDocument,
   DealerEmailLogEntry,
   DealerNote,
+  Product,
   Profile,
 } from '../database.types';
 
@@ -158,6 +159,32 @@ export const adminDealerApi = {
 
     if (error) throw error;
     return (data || []) as Pick<Profile, 'id' | 'full_name' | 'email'>[];
+  },
+
+  /**
+   * All active products for the dealer-pricing admin panel — deliberately
+   * NOT filtered by retail_only (unlike dealerApi.getDealerCatalog, which
+   * the dealer-facing catalog correctly filters by). This is the one place
+   * an admin can see and reverse that flag: if the panel used the filtered
+   * dealer catalog instead, checking "Retail Only" on a product would
+   * remove it from the very panel meant to manage that flag, with no way
+   * to undo it through the UI.
+   */
+  async getAllProductsForPricing(): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('products')
+      .select(
+        `id, name, slug, description, short_description, price, compare_at_price,
+         sku, barcode, weight, weight_unit, category_id, images, thumbnail,
+         is_active, is_featured, grain_sizes, tags, meta_title, meta_description,
+         dealer_price, distributor_price, moq, dealer_only, retail_only,
+         pack_size, lead_time_days, created_at, updated_at`
+      )
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return (data || []) as unknown as Product[];
   },
 
   async updateProductPricing(

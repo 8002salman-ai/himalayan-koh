@@ -4,7 +4,7 @@ import DealerManagementTabs from '../../../components/admin/dealer/DealerManagem
 import { Button } from '../../../components/ui';
 import { SkeletonTable } from '../../../components/ui/Skeleton';
 import EmptyState from '../../../components/ui/EmptyState';
-import { adminDealerApi, dealerApi } from '../../../lib/supabase/api';
+import { adminDealerApi } from '../../../lib/supabase/api';
 import { useAuthContext } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { isSupabaseConfigured } from '../../../lib/supabase/client';
@@ -26,7 +26,7 @@ export default function AdminDealerPricing() {
     setLoading(true);
     if (!isSupabaseConfigured()) { setLoading(false); return; }
     try {
-      const catalog = await dealerApi.getDealerCatalog();
+      const catalog = await adminDealerApi.getAllProductsForPricing();
       setProducts(catalog);
       setDrafts(
         Object.fromEntries(
