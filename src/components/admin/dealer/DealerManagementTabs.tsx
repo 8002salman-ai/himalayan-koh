@@ -4,6 +4,7 @@ const TABS = [
   { label: 'Dashboard', path: '/admin/dealers' },
   { label: 'Applications', path: '/admin/dealers/applications' },
   { label: 'Dealers', path: '/admin/dealers/dealers' },
+  { label: 'Purchase Requests', path: '/admin/dealers/purchase-requests' },
   { label: 'Dealer Levels', path: '/admin/dealers/levels' },
   { label: 'Pricing', path: '/admin/dealers/pricing' },
   { label: 'Credit & Finance', path: '/admin/dealers/credit' },

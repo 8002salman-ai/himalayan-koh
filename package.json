@@ -26,6 +26,7 @@
     "check:packing": "node scripts/check-shippo-packing.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "@stripe/react-stripe-js": "^3.10.0",
     "@stripe/stripe-js": "^5.10.0",
     "@supabase/supabase-js": "^2.105.4",

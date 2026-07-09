@@ -13,6 +13,12 @@ export function getOrderProgressIndex(status: string, paymentStatus: string): nu
     pending: 0,
     confirmed: 0,
     processing: 1,
+    // 'packed' is the tail end of the packing stage (added for the wholesale
+    // conversion workflow, but applies to any order) — same progress-bar
+    // position as 'processing' so the existing 4-step retail tracker layout
+    // is unaffected; formatCustomerOrderStatus/formatAdminOrderStatus give it
+    // a distinct label.
+    packed: 1,
     shipped: 2,
     delivered: 3,
   };
@@ -24,6 +30,7 @@ export function formatCustomerOrderStatus(status: string, paymentStatus: string)
   if (status === 'cancelled') return 'Cancelled';
   if (status === 'delivered') return 'Delivered';
   if (status === 'shipped') return 'Shipped';
+  if (status === 'packed') return 'Packed — ready to ship';
   if (status === 'processing') return 'Packing';
   if (paymentStatus === 'paid' && status === 'pending') return 'Order received';
   if (paymentStatus === 'pending') return 'Awaiting payment';
@@ -42,6 +49,9 @@ export function formatCustomerStatusDetail(
       ? 'Your package is on the way — use tracking below for live updates from the carrier.'
       : 'Your order has shipped. Tracking will appear shortly.';
   }
+  if (status === 'packed') {
+    return 'Your order is packed and ready to ship.';
+  }
   if (status === 'processing' || (paymentStatus === 'paid' && status === 'pending')) {
     return 'Payment confirmed. We received your order and are preparing it for shipment.';
   }
@@ -52,6 +62,7 @@ export function formatCustomerStatusDetail(
 }
 
 export function formatAdminOrderStatus(status: string, paymentStatus: string): string {
+  if (status === 'packed') return 'Packed — ready to ship';
   if (status === 'processing') return 'Processing & packing';
   if (paymentStatus === 'paid' && status === 'pending') return 'Paid — ready to pack';
   if (status === 'pending') return 'Awaiting fulfillment';
@@ -70,7 +81,7 @@ export function getAdminWorkflowHint(order: {
   if (order.tracking_number) {
     return 'Label created. Carrier scans will update tracking automatically for the customer.';
   }
-  if (order.status === 'processing' || order.status === 'pending') {
+  if (order.status === 'packed' || order.status === 'processing' || order.status === 'pending') {
     return 'Next step: create a Shippo label. Status will move to Shipped and the customer gets tracking by email.';
   }
   if (order.status === 'shipped') {
@@ -83,7 +94,7 @@ export function orderStatusBadgeClass(status: string, paymentStatus: string): st
   if (status === 'cancelled') return 'bg-red-100 text-red-700';
   if (status === 'delivered') return 'bg-green-100 text-green-700';
   if (status === 'shipped') return 'bg-indigo-100 text-indigo-700';
-  if (status === 'processing' || (paymentStatus === 'paid' && status === 'pending')) {
+  if (status === 'packed' || status === 'processing' || (paymentStatus === 'paid' && status === 'pending')) {
     return 'bg-purple-100 text-purple-700';
   }
   if (paymentStatus === 'paid') return 'bg-green-100 text-green-700';

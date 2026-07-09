@@ -7,7 +7,7 @@ import {
 import type { CartWithItems, Json, Order, OrderItem, OrderWithItems } from '@/lib/supabase/database.types';
 import { dispatchOrderCreatedNotifications } from '@/lib/orders/notifyOrderEvents';
 
-async function isApprovedDealer(
+export async function isApprovedDealer(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   userId: string | null
 ): Promise<boolean> {
@@ -31,7 +31,7 @@ async function isApprovedDealer(
  * approved dealer, so retail checkout can't be used to acquire dealer-only
  * inventory even if it somehow ended up in a cart.
  */
-function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer: boolean) {
+export function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer: boolean) {
   return cartItems.map((item) => {
     const product = item.product;
     if (!product) {
@@ -46,7 +46,7 @@ function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer: boolea
   });
 }
 
-async function loadCartForCheckout(
+export async function loadCartForCheckout(
   userId: string | null,
   cartSessionId: string | null
 ): Promise<CartWithItems | null> {

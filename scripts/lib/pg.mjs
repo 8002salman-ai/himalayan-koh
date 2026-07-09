@@ -23,6 +23,8 @@ export const MIGRATIONS = [
   '016_dealer_demo_fields.sql',
   '017_dealer_only_product_rls.sql',
   '018_cart_dealer_isolation.sql',
+  '019_wholesale_purchase_requests.sql',
+  '020_order_status_packed.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */
@@ -42,6 +44,12 @@ export const REQUIRED_TABLES = [
   'dealer_emails',
   'site_settings',
   'contact_submissions',
+  'wholesale_purchase_requests',
+  'wholesale_purchase_request_items',
+  'wholesale_purchase_request_notes',
+  'wholesale_purchase_request_audit',
+  'wholesale_purchase_request_emails',
+  'wholesale_purchase_request_messages',
 ];
 
 export const REQUIRED_STORAGE_BUCKETS = ['products', 'avatars', 'blog', 'categories', 'dealer-documents'];

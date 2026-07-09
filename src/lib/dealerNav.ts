@@ -8,11 +8,13 @@ import {
   FolderOpen,
   LifeBuoy,
   Menu,
+  ClipboardList,
 } from 'lucide-react';
 
 export const DEALER_NAV_ITEMS = [
   { label: 'Dashboard', path: '/dealer/dashboard', icon: LayoutDashboard },
   { label: 'Products', path: '/dealer/products', icon: Package },
+  { label: 'Purchase Requests', path: '/dealer/purchase-requests', icon: ClipboardList },
   { label: 'Orders', path: '/dealer/orders', icon: ShoppingCart },
   { label: 'Invoices', path: '/dealer/invoices', icon: Receipt },
   { label: 'Statements', path: '/dealer/statements', icon: FileBarChart },

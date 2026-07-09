@@ -3,6 +3,7 @@ import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../store/cartStore';
 import { useToast } from '../context/ToastContext';
+import { useApprovedDealer } from '../hooks/useApprovedDealer';
 import EmptyState from './ui/EmptyState';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 export default function CartDrawer({ isOpen, onClose }: Props) {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart();
   const toast = useToast();
+  const { isApprovedDealer } = useApprovedDealer();
 
   const handleRemove = async (id: string, grainSize?: string) => {
     try {
@@ -153,11 +155,11 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                 </div>
                 <p className="text-xs text-charcoal-light">Shipping calculated at checkout</p>
                 <Link
-                  to="/checkout"
+                  to={isApprovedDealer ? '/dealer/checkout' : '/checkout'}
                   onClick={onClose}
                   className="w-full flex items-center justify-center gap-2 min-h-12 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors shadow-lg shadow-himalayan/25"
                 >
-                  Proceed to Checkout
+                  {isApprovedDealer ? 'Submit Purchase Request' : 'Proceed to Checkout'}
                   <ArrowRight size={18} />
                 </Link>
                 <button

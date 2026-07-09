@@ -897,6 +897,270 @@ export interface Database {
           created_at?: string;
         };
       };
+      wholesale_purchase_requests: {
+        Row: {
+          id: string;
+          request_number: string;
+          dealer_id: string;
+          dealer_application_id: string;
+          status:
+            | 'submitted'
+            | 'waiting_stock'
+            | 'approved'
+            | 'rejected'
+            | 'changes_requested'
+            | 'payment_pending'
+            | 'paid'
+            | 'converted'
+            | 'cancelled';
+          dealer_po_reference: string | null;
+          subtotal: number;
+          shipping_cost: number;
+          tax_amount: number;
+          total: number;
+          currency: string;
+          shipping_address: Json;
+          billing_address: Json | null;
+          dealer_notes: string | null;
+          rejection_reason: string | null;
+          change_request_note: string | null;
+          expected_dispatch_date: string | null;
+          payment_method: string | null;
+          payment_confirmed_at: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          converted_order_id: string | null;
+          converted_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_number?: string;
+          dealer_id: string;
+          dealer_application_id: string;
+          status?:
+            | 'submitted'
+            | 'waiting_stock'
+            | 'approved'
+            | 'rejected'
+            | 'changes_requested'
+            | 'payment_pending'
+            | 'paid'
+            | 'converted'
+            | 'cancelled';
+          dealer_po_reference?: string | null;
+          subtotal?: number;
+          shipping_cost?: number;
+          tax_amount?: number;
+          total?: number;
+          currency?: string;
+          shipping_address: Json;
+          billing_address?: Json | null;
+          dealer_notes?: string | null;
+          rejection_reason?: string | null;
+          change_request_note?: string | null;
+          expected_dispatch_date?: string | null;
+          payment_method?: string | null;
+          payment_confirmed_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          converted_order_id?: string | null;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          request_number?: string;
+          dealer_id?: string;
+          dealer_application_id?: string;
+          status?:
+            | 'submitted'
+            | 'waiting_stock'
+            | 'approved'
+            | 'rejected'
+            | 'changes_requested'
+            | 'payment_pending'
+            | 'paid'
+            | 'converted'
+            | 'cancelled';
+          dealer_po_reference?: string | null;
+          subtotal?: number;
+          shipping_cost?: number;
+          tax_amount?: number;
+          total?: number;
+          currency?: string;
+          shipping_address?: Json;
+          billing_address?: Json | null;
+          dealer_notes?: string | null;
+          rejection_reason?: string | null;
+          change_request_note?: string | null;
+          expected_dispatch_date?: string | null;
+          payment_method?: string | null;
+          payment_confirmed_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          converted_order_id?: string | null;
+          converted_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      wholesale_purchase_request_items: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          product_id: string;
+          product_name: string;
+          product_image: string | null;
+          moq_snapshot: number;
+          unit_price: number;
+          quantity: number;
+          admin_adjusted_unit_price: number | null;
+          admin_adjusted_quantity: number | null;
+          stock_verified: boolean;
+          line_total: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          product_id: string;
+          product_name: string;
+          product_image?: string | null;
+          moq_snapshot?: number;
+          unit_price: number;
+          quantity: number;
+          admin_adjusted_unit_price?: number | null;
+          admin_adjusted_quantity?: number | null;
+          stock_verified?: boolean;
+          line_total: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          product_id?: string;
+          product_name?: string;
+          product_image?: string | null;
+          moq_snapshot?: number;
+          unit_price?: number;
+          quantity?: number;
+          admin_adjusted_unit_price?: number | null;
+          admin_adjusted_quantity?: number | null;
+          stock_verified?: boolean;
+          line_total?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      wholesale_purchase_request_notes: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          admin_id: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          admin_id: string;
+          note: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          admin_id?: string;
+          note?: string;
+          created_at?: string;
+        };
+      };
+      wholesale_purchase_request_audit: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          actor_id: string | null;
+          action: string;
+          details: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          actor_id?: string | null;
+          action: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          actor_id?: string | null;
+          action?: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+      };
+      wholesale_purchase_request_emails: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          email_type: string;
+          sent_to: string;
+          subject: string;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          email_type: string;
+          sent_to: string;
+          subject: string;
+          sent_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          email_type?: string;
+          sent_to?: string;
+          subject?: string;
+          sent_at?: string;
+        };
+      };
+      wholesale_purchase_request_messages: {
+        Row: {
+          id: string;
+          purchase_request_id: string;
+          sender_id: string;
+          sender_role: 'dealer' | 'admin';
+          message: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_request_id: string;
+          sender_id: string;
+          sender_role: 'dealer' | 'admin';
+          message: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_request_id?: string;
+          sender_id?: string;
+          sender_role?: 'dealer' | 'admin';
+          message?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -905,7 +1169,15 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      order_status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+      order_status:
+        | 'pending'
+        | 'confirmed'
+        | 'processing'
+        | 'packed'
+        | 'shipped'
+        | 'delivered'
+        | 'cancelled'
+        | 'refunded';
       payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
       user_role: 'customer' | 'admin';
       notification_type: 'order' | 'promotion' | 'system' | 'reminder';
@@ -942,6 +1214,15 @@ export type DealerNote = Tables<'dealer_notes'>;
 export type DealerAuditLogEntry = Tables<'dealer_audit_log'>;
 export type DealerEmailLogEntry = Tables<'dealer_emails'>;
 export type DealerApplicationWithDocuments = DealerApplication & { dealer_documents: DealerDocument[] };
+export type WholesalePurchaseRequest = Tables<'wholesale_purchase_requests'>;
+export type WholesalePurchaseRequestItem = Tables<'wholesale_purchase_request_items'>;
+export type WholesalePurchaseRequestNote = Tables<'wholesale_purchase_request_notes'>;
+export type WholesalePurchaseRequestAuditEntry = Tables<'wholesale_purchase_request_audit'>;
+export type WholesalePurchaseRequestEmailLogEntry = Tables<'wholesale_purchase_request_emails'>;
+export type WholesalePurchaseRequestMessage = Tables<'wholesale_purchase_request_messages'>;
+export type WholesalePurchaseRequestWithItems = WholesalePurchaseRequest & {
+  wholesale_purchase_request_items: WholesalePurchaseRequestItem[];
+};
 
 // Product with relations
 export type ProductWithCategory = Product & {
