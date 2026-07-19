@@ -906,7 +906,96 @@ export interface Database {
           created_at?: string;
         };
       };
+      crm_leads: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          phone: string | null;
+          company: string | null;
+          source: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          contact_submission_id: string | null;
+          dealer_application_id: string | null;
+          profile_id: string | null;
+          status: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
+          subject: string | null;
+          notes: string | null;
+          assigned_to: string | null;
+          last_contacted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email: string;
+          phone?: string | null;
+          company?: string | null;
+          source?: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          contact_submission_id?: string | null;
+          dealer_application_id?: string | null;
+          profile_id?: string | null;
+          status?: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
+          subject?: string | null;
+          notes?: string | null;
+          assigned_to?: string | null;
+          last_contacted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          email?: string;
+          phone?: string | null;
+          company?: string | null;
+          source?: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          contact_submission_id?: string | null;
+          dealer_application_id?: string | null;
+          profile_id?: string | null;
+          status?: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
+          subject?: string | null;
+          notes?: string | null;
+          assigned_to?: string | null;
+          last_contacted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      crm_activities: {
+        Row: {
+          id: string;
+          lead_id: string;
+          admin_id: string | null;
+          activity_type: 'note' | 'call' | 'email' | 'meeting' | 'status_change' | 'follow_up';
+          body: string;
+          due_at: string | null;
+          completed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          admin_id?: string | null;
+          activity_type?: 'note' | 'call' | 'email' | 'meeting' | 'status_change' | 'follow_up';
+          body: string;
+          due_at?: string | null;
+          completed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          lead_id?: string;
+          admin_id?: string | null;
+          activity_type?: 'note' | 'call' | 'email' | 'meeting' | 'status_change' | 'follow_up';
+          body?: string;
+          due_at?: string | null;
+          completed?: boolean;
+          created_at?: string;
+        };
+      };
       wholesale_purchase_requests: {
+
         Row: {
           id: string;
           request_number: string;
@@ -1290,6 +1379,14 @@ export type WholesalePurchaseRequestInvoice = Tables<'wholesale_purchase_request
 export type WholesalePurchaseRequestWithItems = WholesalePurchaseRequest & {
   wholesale_purchase_request_items: WholesalePurchaseRequestItem[];
 };
+
+// CRM
+export type CrmLead = Tables<'crm_leads'>;
+export type CrmActivity = Tables<'crm_activities'>;
+export type CrmLeadWithAssignee = CrmLead & {
+  assignee: Pick<Profile, 'id' | 'full_name' | 'email'> | null;
+};
+
 
 // Product with relations
 export type ProductWithCategory = Product & {

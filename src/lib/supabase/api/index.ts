@@ -9,6 +9,8 @@ export { adminApi } from './admin';
 export { addressesApi } from './addresses';
 export { dealerApi, dealerUnitPrice } from './dealer';
 export { adminDealerApi } from './adminDealer';
+export { crmApi } from './crm';
+
 
 // Re-export types
 export type { SignUpData, SignInData } from './auth';

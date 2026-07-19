@@ -12,7 +12,9 @@ import {
   BarChart3,
   LayoutGrid,
   Building2,
+  Contact,
 } from 'lucide-react';
+
 
 export const ADMIN_NAV_ITEMS = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -21,7 +23,9 @@ export const ADMIN_NAV_ITEMS = [
   { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
   { label: 'Shipping Labels', path: '/admin/labels', icon: Truck },
   { label: 'Customers', path: '/admin/customers', icon: Users },
+  { label: 'CRM', path: '/admin/crm', icon: Contact },
   { label: 'Dealers', path: '/admin/dealers', icon: Building2 },
+
   { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
   { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },

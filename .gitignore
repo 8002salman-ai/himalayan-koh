@@ -13,3 +13,4 @@ dist
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+.DS_Store
