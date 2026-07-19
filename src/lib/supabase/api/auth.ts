@@ -53,11 +53,21 @@ export const authApi = {
     return data;
   },
 
-  // Sign out
+  // Sign out. Clears the local session first (scope: 'local') so the user is
+  // signed out on this device even if the network/global revoke call fails.
+  // "Auth session missing" style errors are benign — the user is already out.
   async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error && !/session|missing|not.*found|expired/i.test(error.message)) {
+        throw error;
+      }
+    } catch (err) {
+      // Never let a sign-out failure trap the user in a logged-in UI.
+      console.warn('Supabase signOut error (ignored):', err);
+    }
   },
+
 
   // Get current session
   async getSession() {

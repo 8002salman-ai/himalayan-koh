@@ -243,20 +243,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null);
+    // Clear local auth state first and unconditionally, so the UI reflects a
+    // signed-out state immediately — even if the Supabase revoke call fails
+    // (e.g. an already-expired/missing session). This is what fixes sign-out
+    // appearing to "not work" across the customer, admin, and dealer portals.
+    profileRequestId.current += 1;
+    setUser(null);
+    setProfile(null);
+    setSession(null);
     try {
       await authApi.signOut();
-      profileRequestId.current += 1;
-      setUser(null);
-      setProfile(null);
-      setSession(null);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Sign out failed';
-      setError(errorMsg);
-      throw err;
+      // authApi.signOut already swallows benign errors; log anything else but
+      // never re-throw — the user is signed out locally regardless.
+      console.warn('Sign out completed with a non-fatal error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
+
 
   const updateProfile = useCallback(async (updates: { full_name?: string; phone?: string; avatar_url?: string }) => {
     if (!user) throw new Error('Not authenticated');
