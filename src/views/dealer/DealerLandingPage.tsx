@@ -20,7 +20,7 @@ import { useState } from 'react';
 const whyPartner = [
   {
     icon: Percent,
-    title: 'Tiered Dealer Pricing',
+    title: 'Tiered Wholesale Pricing',
     text: 'Bronze through Platinum discount tiers that grow with your purchase volume.',
   },
   {
@@ -36,7 +36,7 @@ const whyPartner = [
   {
     icon: HandCoins,
     title: 'Flexible Terms',
-    text: 'Credit terms and account structures designed for growing dealer partners.',
+    text: 'Credit terms and account structures designed for growing wholesale partners.',
   },
 ];
 
@@ -52,18 +52,18 @@ const whoCanApply = [
 const howItWorks = [
   { step: '1', title: 'Apply', text: 'Submit your business details and required documents online.' },
   { step: '2', title: 'Review', text: 'Our team verifies your business and reseller documentation.' },
-  { step: '3', title: 'Approval', text: 'Get approved and assigned a dealer level and account terms.' },
-  { step: '4', title: 'Start Ordering', text: 'Sign in to your dealer portal and place orders at dealer pricing.' },
+  { step: '3', title: 'Approval', text: 'Get approved and assigned a wholesale level and account terms.' },
+  { step: '4', title: 'Start Ordering', text: 'Sign in to your wholesale portal and place orders at wholesale pricing.' },
 ];
 
 const faqs = [
   {
-    q: 'Who is eligible to become a Himalayan Koh dealer?',
+    q: 'Who is eligible to become a Himalayan Koh wholesale partner?',
     a: 'Retail stores, farm & ranch suppliers, veterinary clinics, distributors, and online sellers with a valid business license are welcome to apply.',
   },
   {
     q: 'What documents do I need to apply?',
-    a: 'A reseller permit, business license, and tax certificate. Additional supporting documents can be uploaded if helpful.',
+    a: 'Just your reseller certificate — plus a few business details. That is all we need to get started.',
   },
   {
     q: 'How long does approval take?',
@@ -71,11 +71,11 @@ const faqs = [
   },
   {
     q: 'Is there a minimum order quantity?',
-    a: 'Yes — minimum order quantities vary by product and are shown in your dealer portal once approved.',
+    a: 'Yes — minimum order quantities vary by product and are shown in your wholesale portal once approved.',
   },
   {
-    q: 'Do dealer discounts increase over time?',
-    a: 'Yes. Dealers move through Bronze, Silver, Gold, and Platinum tiers as purchase volume grows, unlocking better pricing.',
+    q: 'Do wholesale discounts increase over time?',
+    a: 'Yes. Partners move through Bronze, Silver, Gold, and Platinum tiers as purchase volume grows, unlocking better pricing.',
   },
 ];
 
@@ -107,7 +107,7 @@ export default function DealerLandingPage() {
             <img src="/logo.svg" alt="Himalayan Koh" className="h-10 md:h-12 w-auto" />
           </Link>
           <Link to="/dealer/login" className="btn-hk-ghost !min-h-[44px] !px-4 !py-2 !text-xs">
-            Dealer Login
+            Wholesale Login
           </Link>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function DealerLandingPage() {
             animate={{ opacity: 1, y: 0 }}
             className="inline-block px-5 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5"
           >
-            Dealer Program
+            Wholesale Program
           </motion.span>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -128,7 +128,7 @@ export default function DealerLandingPage() {
             transition={{ delay: 0.1 }}
             className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
-            Become an Authorized Himalayan Koh Dealer
+            Become an Authorized Himalayan Koh Wholesale Partner
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -136,7 +136,7 @@ export default function DealerLandingPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-8"
           >
-            Partner with us for tiered wholesale pricing, reliable bulk supply, and dedicated dealer support.
+            Partner with us for tiered wholesale pricing, reliable bulk supply, and dedicated wholesale support.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -149,7 +149,7 @@ export default function DealerLandingPage() {
               <ArrowRight size={16} className="ml-2" />
             </Link>
             <Link to="/dealer/login" className="btn-hk-ghost !bg-white/10 !text-white !border-white/20">
-              Dealer Login
+              Wholesale Login
             </Link>
           </motion.div>
         </div>
@@ -163,7 +163,7 @@ export default function DealerLandingPage() {
               Why Partner With Us
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal">
-              Built for Growing Dealer Partners
+              Built for Growing Wholesale Partners
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -219,7 +219,7 @@ export default function DealerLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
-              Dealer Benefits
+              Wholesale Benefits
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal">
               Tiers That Grow With Your Business
@@ -239,7 +239,7 @@ export default function DealerLandingPage() {
                 <div className="relative">
                   <Award size={24} className="text-himalayan mx-auto mb-3" />
                   <h3 className="font-serif text-xl font-bold text-white">{tier}</h3>
-                  <p className="text-white/70 text-xs mt-1">Dealer Tier</p>
+                  <p className="text-white/70 text-xs mt-1">Wholesale Tier</p>
                 </div>
               </motion.div>
             ))}
@@ -290,9 +290,9 @@ export default function DealerLandingPage() {
       {/* Final CTA */}
       <section className="py-16 md:py-24 bg-charcoal text-white text-center">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-4 text-white">Become a Dealer Today</h2>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-4 text-white">Become a Wholesale Partner Today</h2>
           <p className="text-white/70 mb-8 leading-relaxed">
-            Join the Himalayan Koh dealer network and start offering premium Himalayan pink salt to your customers.
+            Join the Himalayan Koh wholesale network and start offering premium Himalayan pink salt to your customers.
           </p>
           <Link to="/dealer/register" className="btn-hk-primary">
             Apply Now

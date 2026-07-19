@@ -89,8 +89,8 @@ export default function DealerProducts() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Catalog</h1>
-        <p className="text-charcoal-light">Products shown at your dealer pricing — set a quantity and add straight to your order</p>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Catalog</h1>
+        <p className="text-charcoal-light">Products shown at your wholesale pricing — set a quantity and add straight to your order</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-4">
@@ -111,7 +111,7 @@ export default function DealerProducts() {
       ) : loadError ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <AlertTriangle size={32} className="mx-auto text-red-500 mb-3" />
-          <p className="font-semibold text-red-700 mb-1">The dealer catalog couldn't be loaded</p>
+          <p className="font-semibold text-red-700 mb-1">The wholesale catalog couldn't be loaded</p>
           <p className="text-sm text-red-600 mb-4">{loadError}</p>
           <Button variant="destructive" size="sm" onClick={load}>
             Retry
@@ -121,7 +121,7 @@ export default function DealerProducts() {
         <EmptyState
           icon={<ShoppingCart size={40} />}
           title="No products found"
-          description="Dealer products will appear here once available."
+          description="Wholesale products will appear here once available."
           size="compact"
         />
       ) : (
@@ -150,7 +150,7 @@ export default function DealerProducts() {
                   </h3>
                   <div className="mb-1">
                     <span className="text-himalayan font-bold text-lg">${dealerPrice.toFixed(2)}</span>
-                    <span className="text-xs text-charcoal-light ml-1.5 uppercase tracking-wide">Dealer Price</span>
+                    <span className="text-xs text-charcoal-light ml-1.5 uppercase tracking-wide">Wholesale Price</span>
                   </div>
                   <p className="text-xs text-charcoal-light mb-1">MOQ: {moq} units · Bulk quantity supported</p>
                   {product.pack_size && (

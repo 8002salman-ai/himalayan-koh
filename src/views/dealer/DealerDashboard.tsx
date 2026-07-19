@@ -109,7 +109,7 @@ export default function DealerDashboard() {
           <div>
             <h3 className="font-serif text-lg font-bold text-white">Wholesale Promotion</h3>
             <p className="text-white/70 text-sm mt-0.5">
-              Order 50+ units this month to qualify for the next dealer tier and better discounts.
+              Order 50+ units this month to qualify for the next wholesale tier and better discounts.
             </p>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function DealerDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard icon={<Award size={18} />} label="Dealer Tier">
+        <StatCard icon={<Award size={18} />} label="Wholesale Tier">
           <span
             className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
               levelColors[application?.dealer_level || 'bronze']

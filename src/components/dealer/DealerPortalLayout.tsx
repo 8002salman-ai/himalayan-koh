@@ -34,7 +34,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
           {sidebarOpen && (
             <Link to="/dealer/dashboard" className="flex items-center gap-2">
               <img src="/logo.svg" alt="Himalayan Koh" className="h-8 brightness-0 invert" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-himalayan">Dealer</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-himalayan">Wholesale</span>
             </Link>
           )}
           <button
@@ -99,7 +99,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <img src="/logo.svg" alt="Himalayan Koh" className="h-7 brightness-0 invert" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-himalayan">Dealer</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-himalayan">Wholesale</span>
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
                   <X size={18} />
@@ -151,7 +151,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
             >
               <Menu size={20} />
             </button>
-            <h1 className="text-lg font-semibold text-charcoal hidden sm:block">Dealer Portal</h1>
+            <h1 className="text-lg font-semibold text-charcoal hidden sm:block">Wholesale Portal</h1>
           </div>
 
           <div className="relative">
@@ -163,7 +163,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
                 <span className="text-himalayan font-semibold text-sm">{profile?.full_name?.[0] || 'D'}</span>
               </div>
               <span className="hidden sm:block text-sm font-medium text-charcoal">
-                {profile?.full_name || 'Dealer'}
+                {profile?.full_name || 'Wholesale'}
               </span>
               <ChevronDown size={16} className="text-charcoal-light" />
             </button>

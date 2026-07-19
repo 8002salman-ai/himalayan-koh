@@ -18,7 +18,7 @@ export default function DealerSupport() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: profile?.full_name || 'Dealer',
+          name: profile?.full_name || 'Wholesale',
           email: user?.email || '',
           subject: 'dealer',
           message,
@@ -61,7 +61,7 @@ export default function DealerSupport() {
                 rows={5}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="How can we help with your dealer account?"
+                placeholder="How can we help with your wholesale account?"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all resize-none"
               />
             </div>

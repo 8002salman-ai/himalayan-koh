@@ -55,7 +55,7 @@ export default function DealerStatements() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Statements</h1>
-        <p className="text-charcoal-light">Monthly summary of your dealer purchases</p>
+        <p className="text-charcoal-light">Monthly summary of your wholesale purchases</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

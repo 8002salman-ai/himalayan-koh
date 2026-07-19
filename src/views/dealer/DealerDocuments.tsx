@@ -60,7 +60,7 @@ export default function DealerDocuments() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Documents</h1>
-        <p className="text-charcoal-light">Documents submitted with your dealer application</p>
+        <p className="text-charcoal-light">Documents submitted with your wholesale application</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

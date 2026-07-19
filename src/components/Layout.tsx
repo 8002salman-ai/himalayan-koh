@@ -122,7 +122,7 @@ export default function Layout({ children }: LayoutProps) {
                 to="/dealer"
                 className="hidden md:inline-flex btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
               >
-                Become a Dealer
+                Wholesale
               </Link>
 
               <motion.button
@@ -285,7 +285,7 @@ export default function Layout({ children }: LayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className="block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide text-himalayan hover:bg-warm-white transition-colors"
                 >
-                  Become a Dealer
+                  Wholesale
                 </Link>
               </motion.div>
               <motion.div

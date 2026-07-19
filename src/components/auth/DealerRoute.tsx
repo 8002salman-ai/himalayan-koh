@@ -17,27 +17,27 @@ const statusGate: Record<
   pending: {
     icon: <Clock size={40} />,
     title: 'Application received',
-    body: "Thanks for applying. Our team is reviewing your dealer application — we'll email you once a decision is made.",
+    body: "Thanks for applying. Our team is reviewing your wholesale application — we'll email you once a decision is made.",
   },
   under_review: {
     icon: <Clock size={40} />,
     title: 'Application under review',
-    body: "Your dealer application is currently being reviewed by our team. We'll follow up shortly.",
+    body: "Your wholesale application is currently being reviewed by our team. We'll follow up shortly.",
   },
   need_more_info: {
     icon: <ClipboardEdit size={40} />,
     title: 'More information needed',
-    body: 'Our team needs a bit more information before we can approve your dealer account. Please check your email or contact support.',
+    body: 'Our team needs a bit more information before we can approve your wholesale account. Please check your email or contact support.',
   },
   rejected: {
     icon: <XCircle size={40} />,
     title: 'Application not approved',
-    body: 'Unfortunately your dealer application was not approved. Contact support if you have questions.',
+    body: 'Unfortunately your wholesale application was not approved. Contact support if you have questions.',
   },
   suspended: {
     icon: <ShieldAlert size={40} />,
     title: 'Account suspended',
-    body: 'Your dealer account is currently suspended. Please contact our support team for details.',
+    body: 'Your wholesale account is currently suspended. Please contact our support team for details.',
   },
 };
 
@@ -78,7 +78,7 @@ export default function DealerRoute({ children }: DealerRouteProps) {
       <div className="min-h-screen flex items-center justify-center bg-charcoal">
         <div className="text-center">
           <Loader2 size={40} className="animate-spin text-himalayan mx-auto mb-4" />
-          <p className="text-white/70">Loading dealer portal...</p>
+          <p className="text-white/70">Loading wholesale portal...</p>
         </div>
       </div>
     );

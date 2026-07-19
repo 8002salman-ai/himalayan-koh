@@ -67,9 +67,9 @@ export default function DealerCheckoutPage() {
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <ClipboardCheck size={40} className="mx-auto text-charcoal-light mb-4" />
         <h1 className="text-xl font-bold text-charcoal mb-2">Your cart is empty</h1>
-        <p className="text-charcoal-light mb-6">Add products from the dealer catalog before submitting a purchase request.</p>
+        <p className="text-charcoal-light mb-6">Add products from the wholesale catalog before submitting a purchase request.</p>
         <Link to="/dealer/products" className="text-himalayan font-semibold hover:underline">
-          Browse dealer catalog
+          Browse wholesale catalog
         </Link>
       </div>
     );

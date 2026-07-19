@@ -53,7 +53,7 @@ export default function DealerPurchaseRequests() {
         <EmptyState
           icon={<ClipboardList size={40} />}
           title="No purchase requests yet"
-          description="Submit a purchase request from the dealer catalog to get a proforma invoice and stock verification."
+          description="Submit a purchase request from the wholesale catalog to get a proforma invoice and stock verification."
           action={{ label: 'Browse Catalog', href: '/dealer/products' }}
         />
       ) : (

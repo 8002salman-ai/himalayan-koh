@@ -67,7 +67,7 @@ export default function DealerProfile() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Profile</h1>
-        <p className="text-charcoal-light">Manage your dealer account details</p>
+        <p className="text-charcoal-light">Manage your wholesale account details</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
@@ -113,7 +113,7 @@ export default function DealerProfile() {
         <ReadOnlyRow label="Business Name" value={application?.business_name} />
         <ReadOnlyRow label="Business Type" value={application?.business_type} />
         <ReadOnlyRow label="Address" value={application ? `${application.address}, ${application.city}, ${application.state} ${application.zip}` : undefined} />
-        <ReadOnlyRow label="Dealer Level" value={application?.dealer_level} capitalize />
+        <ReadOnlyRow label="Wholesale Level" value={application?.dealer_level} capitalize />
         <ReadOnlyRow label="Credit Terms" value={application?.credit_terms ? `Net ${application.credit_terms}` : 'Due on receipt'} />
         <p className="text-xs text-charcoal-light pt-2">
           To change your business name, type, or address, please contact support.
