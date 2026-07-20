@@ -35,6 +35,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [loading, setLoading] = useState(isSupabaseConfigured());
   const prevCategoryKey = useRef<string | null>(null);
+  const hasLoadedOnce = useRef(false);
+  const fetchSeq = useRef(0);
 
   const { content: categoryContent, loading: hubContentLoading } = useCategoryHubContent(categoryKey);
 
@@ -69,35 +71,66 @@ export default function ProductsPage() {
   }, [categoryKey]);
 
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const fetchProducts = async () => {
       if (!isSupabaseConfigured()) {
         setProducts(fallbackProducts);
         setLoading(false);
+        hasLoadedOnce.current = true;
         return;
       }
 
+      // Guard against out-of-order responses: only the latest request may
+      // commit state. Prevents an older/slower fetch from overwriting a newer
+      // one and causing the list to flip between results.
+      const seq = ++fetchSeq.current;
+
       try {
         const { products: supabaseProducts } = await productsApi.getProducts();
+        if (seq !== fetchSeq.current) return;
         setProducts(supabaseProducts.map(mapSupabaseProduct));
+        hasLoadedOnce.current = true;
       } catch (err) {
         console.error('Failed to fetch products:', err);
-        setProducts(fallbackProducts);
+        if (seq !== fetchSeq.current) return;
+        // Only fall back to the bundled catalog on the FIRST load. A failed
+        // background refetch (e.g. a realtime-triggered one) must NOT replace
+        // the products already on screen — that swap is what made the grid
+        // flicker between the live list and the fallback list.
+        if (!hasLoadedOnce.current) {
+          setProducts(fallbackProducts);
+        }
       } finally {
-        setLoading(false);
+        if (seq === fetchSeq.current) setLoading(false);
       }
+    };
+
+    // Coalesce bursts of realtime events into a single refetch so the grid
+    // doesn't re-render (and re-animate) on every individual row change.
+    const scheduleFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchProducts();
+      }, 400);
     };
 
     fetchProducts();
 
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      return () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+      };
+    }
 
     const channel = supabase
       .channel('shop-products-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchProducts())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchProducts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => scheduleFetch())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => scheduleFetch())
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       channel.unsubscribe();
     };
   }, []);
