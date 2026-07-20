@@ -26,6 +26,7 @@ import { useToast } from '../../context/ToastContext';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { createShippoLabel } from '../../lib/shippo/client';
+import { getShippoClientConfig } from '../../lib/shippo/clientConfig';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
 import { updateAdminOrderStatus } from '../../lib/admin/updateOrderStatusClient';
 import { publicEnv } from '../../lib/env';
@@ -77,7 +78,8 @@ export default function AdminOrders() {
   const { session } = useAuthContext();
   const toast = useToast();
   const [searchParams] = useSearchParams();
-  const shippoEnabled = publicEnv.shippoEnabled;
+  const [shippoRuntimeEnabled, setShippoRuntimeEnabled] = useState<boolean | null>(null);
+  const shippoEnabled = shippoRuntimeEnabled ?? publicEnv.shippoEnabled;
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [analytics, setAnalytics] = useState<AdminOrderAnalytics | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
@@ -143,6 +145,12 @@ export default function AdminOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    getShippoClientConfig()
+      .then((config) => setShippoRuntimeEnabled(config.enabled))
+      .catch(() => setShippoRuntimeEnabled(false));
+  }, []);
 
   useEffect(() => {
     setPage(1);

@@ -6,12 +6,14 @@ import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
 import { createShippoLabel } from '../../lib/shippo/client';
+import { getShippoClientConfig } from '../../lib/shippo/clientConfig';
 import { publicEnv } from '../../lib/env';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
 
 export default function AdminShippingLabels() {
   const { session } = useAuthContext();
-  const shippoEnabled = publicEnv.shippoEnabled;
+  const [shippoRuntimeEnabled, setShippoRuntimeEnabled] = useState<boolean | null>(null);
+  const shippoEnabled = shippoRuntimeEnabled ?? publicEnv.shippoEnabled;
   const [ready, setReady] = useState<AdminOrder[]>([]);
   const [pending, setPending] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,12 @@ export default function AdminShippingLabels() {
   useEffect(() => {
     fetchLabels();
   }, [fetchLabels]);
+
+  useEffect(() => {
+    getShippoClientConfig()
+      .then((config) => setShippoRuntimeEnabled(config.enabled))
+      .catch(() => setShippoRuntimeEnabled(false));
+  }, []);
 
   const filterOrder = (order: AdminOrder) => {
     if (!search.trim()) return true;

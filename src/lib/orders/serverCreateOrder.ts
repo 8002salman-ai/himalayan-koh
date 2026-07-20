@@ -3,9 +3,57 @@ import {
   calculateOrderTotals,
   supportedCoupons,
   type CreateOrderData,
+  type ShippingMethod,
 } from '@/lib/supabase/api/orders';
 import type { CartWithItems, Json, Order, OrderItem, OrderWithItems } from '@/lib/supabase/database.types';
 import { dispatchOrderCreatedNotifications } from '@/lib/orders/notifyOrderEvents';
+import { resolveShippoConfigError } from '@/lib/shippo/config';
+import { fetchShippoRatesForOrder, pickRateForShippingMethod } from '@/lib/shippo/server/rates';
+import type { CheckoutShippingAddress, RatesLineItem } from '@/lib/shippo/types';
+
+/**
+ * Authoritative server-side shipping cost. The client-supplied
+ * `shippingCostOverride` is NEVER trusted for money math — a tampered request
+ * could otherwise set shipping to $0. When Shippo is configured we re-fetch
+ * live rates and use the amount for the customer's chosen rate (matched by
+ * shippoRateId, else picked by shipping method). If Shippo is not configured or
+ * returns no rates, we fall back to the flat-rate table in calculateOrderTotals
+ * (which ignores the override when we pass undefined).
+ */
+async function resolveServerShippingCost(params: {
+  shippingAddress: CreateOrderData['shippingAddress'];
+  email: string;
+  shippingMethod: ShippingMethod;
+  shippoRateId?: string;
+  lineItems: RatesLineItem[];
+}): Promise<{ shippingCostOverride: number | undefined; shippoRateId: string | null; carrier: string | null; service: string | null }> {
+  const configError = await resolveShippoConfigError();
+  if (configError) {
+    // Shippo off — flat-rate fallback, ignore any client override entirely.
+    return { shippingCostOverride: undefined, shippoRateId: null, carrier: null, service: null };
+  }
+
+  try {
+    const rates = await fetchShippoRatesForOrder({
+      email: params.email,
+      shippingAddress: params.shippingAddress as CheckoutShippingAddress,
+      lineItems: params.lineItems,
+    });
+    const chosen = pickRateForShippingMethod(rates, params.shippingMethod, params.shippoRateId || null);
+    if (chosen) {
+      return {
+        shippingCostOverride: chosen.amount,
+        shippoRateId: chosen.objectId,
+        carrier: chosen.provider,
+        service: chosen.serviceName,
+      };
+    }
+  } catch (error) {
+    console.error('[Order] Server-side Shippo rate verification failed, using flat rate:', error);
+  }
+  // No usable live rate — flat-rate fallback, still ignoring client override.
+  return { shippingCostOverride: undefined, shippoRateId: null, carrier: null, service: null };
+}
 
 export async function isApprovedDealer(
   supabase: ReturnType<typeof getSupabaseAdmin>,
@@ -87,6 +135,19 @@ export async function serverCreateOrder(
   const isDealer = await isApprovedDealer(supabase, options.userId ?? null);
   const pricedItems = priceCartItems(cart.cart_items, isDealer);
 
+  // Recompute shipping server-side; never trust data.shippingCostOverride.
+  const shippingMethod = (data.shippingMethod || 'standard') as ShippingMethod;
+  const resolvedShipping = await resolveServerShippingCost({
+    shippingAddress: data.shippingAddress,
+    email: data.email,
+    shippingMethod,
+    shippoRateId: data.shippoRateId,
+    lineItems: pricedItems.map((item) => ({
+      productId: item.product_id ?? undefined,
+      quantity: item.quantity,
+    })),
+  });
+
   const totals = calculateOrderTotals(
     pricedItems.map((item) => ({
       quantity: item.quantity,
@@ -94,11 +155,15 @@ export async function serverCreateOrder(
     })),
     {
       couponCode: data.couponCode,
-      shippingMethod: data.shippingMethod,
-      shippingCostOverride: data.shippingCostOverride,
+      shippingMethod,
+      shippingCostOverride: resolvedShipping.shippingCostOverride,
     }
   );
   const normalizedCoupon = data.couponCode?.trim().toUpperCase();
+
+  const resolvedRateId = resolvedShipping.shippoRateId;
+  const resolvedCarrier = resolvedShipping.carrier ?? data.shippingCarrier ?? null;
+  const resolvedService = resolvedShipping.service ?? data.shippingService ?? null;
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -117,13 +182,13 @@ export async function serverCreateOrder(
       billing_address: {
         ...(data.billingAddress || data.shippingAddress),
         shippingMethod: data.shippingMethod || 'standard',
-        shippoRateId: data.shippoRateId || null,
-        shippingCarrier: data.shippingCarrier || null,
-        shippingService: data.shippingService || null,
+        shippoRateId: resolvedRateId,
+        shippingCarrier: resolvedCarrier,
+        shippingService: resolvedService,
       } as unknown as Json,
-      shippo_rate_id: data.shippoRateId || null,
-      shipping_carrier: data.shippingCarrier || null,
-      shipping_service: data.shippingService || null,
+      shippo_rate_id: resolvedRateId,
+      shipping_carrier: resolvedCarrier,
+      shipping_service: resolvedService,
       payment_method: data.paymentMethod || data.paymentProvider || null,
       notes: [
         data.notes,

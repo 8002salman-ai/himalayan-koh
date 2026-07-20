@@ -33,7 +33,7 @@ export default function ShippingLabelPanel({
   if (!shippoEnabled) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Shippo is disabled. Enable <code className="text-xs">NEXT_PUBLIC_SHIPPO_ENABLED</code> to create labels.
+        Shippo is not set up yet. Add your Shippo API key and warehouse address in <strong>Admin → Settings → Shippo</strong> to create labels.
       </div>
     );
   }

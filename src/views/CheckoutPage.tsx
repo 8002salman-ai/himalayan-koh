@@ -15,6 +15,7 @@ import { isSupabaseConfigured } from '../lib/supabase/client';
 import { publicEnv } from '../lib/env';
 import { useCart } from '../store/cartStore';
 import { getStripeClientConfig, type StripePublicConfig } from '../lib/stripe/clientConfig';
+import { getShippoClientConfig } from '../lib/shippo/clientConfig';
 import {
   createStripePaymentIntent,
   verifyStripeOrderPayment,
@@ -100,9 +101,10 @@ export default function CheckoutPage() {
   const [paymentCompleting, setPaymentCompleting] = useState(false);
   const [stripeConfig, setStripeConfig] = useState<StripePublicConfig | null>(null);
   const [stripeConfigLoaded, setStripeConfigLoaded] = useState(false);
+  const [shippoRuntimeEnabled, setShippoRuntimeEnabled] = useState<boolean | null>(null);
   const stripePaymentRef = useRef<HTMLDivElement>(null);
 
-  const shippoEnabled = publicEnv.shippoEnabled;
+  const shippoEnabled = shippoRuntimeEnabled ?? publicEnv.shippoEnabled;
   const selectedShippoRate = shippoRates.find((rate) => rate.objectId === selectedShippoRateId) || null;
   const useLiveShippoRates = shippoEnabled && shippoRates.length > 0 && Boolean(selectedShippoRate);
   const stripeEnabled = stripeConfig?.configured ?? Boolean(publicEnv.stripePublishableKey);
@@ -129,6 +131,15 @@ export default function CheckoutPage() {
       .then((config) => setStripeConfig(config))
       .catch((error) => console.error('Unable to load Stripe config:', error))
       .finally(() => setStripeConfigLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    getShippoClientConfig()
+      .then((config) => setShippoRuntimeEnabled(config.enabled))
+      .catch((error) => {
+        console.error('Unable to load Shippo config:', error);
+        setShippoRuntimeEnabled(false);
+      });
   }, []);
 
   useEffect(() => {

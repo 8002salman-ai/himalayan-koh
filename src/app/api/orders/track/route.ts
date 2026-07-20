@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveTrackingUrl } from '@/lib/orders/tracking';
 import { fetchShippoTracking } from '@/lib/shippo/server/tracking';
-import { shippoConfigError } from '@/lib/shippo/config';
+import { resolveShippoConfigError } from '@/lib/shippo/config';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { checkRateLimit } from '@/lib/rateLimit';
 
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     const trackingUrl = resolveTrackingUrl(row);
     let liveTracking: Awaited<ReturnType<typeof fetchShippoTracking>> | null = null;
 
-    if (row.tracking_number && row.shipping_carrier && !shippoConfigError()) {
+    if (row.tracking_number && row.shipping_carrier && !(await resolveShippoConfigError())) {
       try {
         liveTracking = await fetchShippoTracking(row.shipping_carrier, row.tracking_number);
       } catch (trackError) {
