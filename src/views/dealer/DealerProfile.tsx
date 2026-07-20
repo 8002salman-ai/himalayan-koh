@@ -113,7 +113,6 @@ export default function DealerProfile() {
         <ReadOnlyRow label="Business Name" value={application?.business_name} />
         <ReadOnlyRow label="Business Type" value={application?.business_type} />
         <ReadOnlyRow label="Address" value={application ? `${application.address}, ${application.city}, ${application.state} ${application.zip}` : undefined} />
-        <ReadOnlyRow label="Wholesale Level" value={application?.dealer_level} capitalize />
         <ReadOnlyRow label="Credit Terms" value={application?.credit_terms ? `Net ${application.credit_terms}` : 'Due on receipt'} />
         <p className="text-xs text-charcoal-light pt-2">
           To change your business name, type, or address, please contact support.

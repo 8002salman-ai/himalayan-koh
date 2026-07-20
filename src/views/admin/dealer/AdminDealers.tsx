@@ -11,13 +11,6 @@ import { getErrorMessage } from '../../../lib/errors';
 
 type Dealer = Awaited<ReturnType<typeof adminDealerApi.getDealers>>['dealers'][number];
 
-const levelColors: Record<string, string> = {
-  bronze: 'bg-amber-100 text-amber-700',
-  silver: 'bg-gray-200 text-gray-700',
-  gold: 'bg-yellow-100 text-yellow-700',
-  platinum: 'bg-purple-100 text-purple-700',
-};
-
 export default function AdminDealers() {
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +90,6 @@ export default function AdminDealers() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Business</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Level</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Sales Rep</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Orders</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Total Spend</th>
@@ -110,11 +102,6 @@ export default function AdminDealers() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-charcoal">{dealer.business_name}</p>
                       <p className="text-xs text-charcoal-light">{dealer.owner_name}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${levelColors[dealer.dealer_level]}`}>
-                        {dealer.dealer_level}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
                       {dealer.sales_rep?.full_name || dealer.sales_rep?.email || 'Unassigned'}

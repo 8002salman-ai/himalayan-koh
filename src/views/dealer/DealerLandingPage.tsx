@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  Award,
   Boxes,
   ChevronDown,
   HandCoins,
@@ -20,8 +19,8 @@ import { useState } from 'react';
 const whyPartner = [
   {
     icon: Percent,
-    title: 'Tiered Wholesale Pricing',
-    text: 'Bronze through Platinum discount tiers that grow with your purchase volume.',
+    title: 'Wholesale Pricing',
+    text: 'Straightforward wholesale pricing on every product — no confusing tiers to unlock.',
   },
   {
     icon: Truck,
@@ -52,7 +51,7 @@ const whoCanApply = [
 const howItWorks = [
   { step: '1', title: 'Apply', text: 'Submit your business details and required documents online.' },
   { step: '2', title: 'Review', text: 'Our team verifies your business and reseller documentation.' },
-  { step: '3', title: 'Approval', text: 'Get approved and assigned a wholesale level and account terms.' },
+  { step: '3', title: 'Approval', text: 'Get approved and set up with your wholesale account terms.' },
   { step: '4', title: 'Start Ordering', text: 'Sign in to your wholesale portal and place orders at wholesale pricing.' },
 ];
 
@@ -75,7 +74,7 @@ const faqs = [
   },
   {
     q: 'Do wholesale discounts increase over time?',
-    a: 'Yes. Partners move through Bronze, Silver, Gold, and Platinum tiers as purchase volume grows, unlocking better pricing.',
+    a: 'All approved partners get the same clear wholesale pricing from day one — no tiers to climb. Minimum order quantities and pricing are shown in your wholesale portal.',
   },
 ];
 
@@ -136,7 +135,7 @@ export default function DealerLandingPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-8"
           >
-            Partner with us for tiered wholesale pricing, reliable bulk supply, and dedicated wholesale support.
+            Partner with us for clear wholesale pricing, reliable bulk supply, and dedicated wholesale support.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -214,7 +213,7 @@ export default function DealerLandingPage() {
         </div>
       </section>
 
-      {/* Dealer Benefits (Tiers) */}
+      {/* Wholesale Benefits */}
       <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
@@ -222,13 +221,18 @@ export default function DealerLandingPage() {
               Wholesale Benefits
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal">
-              Tiers That Grow With Your Business
+              Everything You Need To Resell With Confidence
             </h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {['Bronze', 'Silver', 'Gold', 'Platinum'].map((tier, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { icon: Percent, title: 'Clear Wholesale Pricing', text: 'One transparent wholesale price on every product — no tiers to unlock.' },
+              { icon: HandCoins, title: 'Flexible Credit Terms', text: 'Account terms designed to help your business grow.' },
+              { icon: Truck, title: 'Dependable Bulk Supply', text: 'Quality-tested Himalayan pink salt with reliable lead times.' },
+              { icon: Headset, title: 'Dedicated Support', text: 'A direct line to our team for orders, reorders, and account questions.' },
+            ].map((item, i) => (
               <motion.div
-                key={tier}
+                key={item.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -237,9 +241,9 @@ export default function DealerLandingPage() {
               >
                 <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-himalayan/20" />
                 <div className="relative">
-                  <Award size={24} className="text-himalayan mx-auto mb-3" />
-                  <h3 className="font-serif text-xl font-bold text-white">{tier}</h3>
-                  <p className="text-white/70 text-xs mt-1">Wholesale Tier</p>
+                  <item.icon size={24} className="text-himalayan mx-auto mb-3" />
+                  <h3 className="font-serif text-lg font-bold text-white">{item.title}</h3>
+                  <p className="text-white/70 text-xs mt-2 leading-relaxed">{item.text}</p>
                 </div>
               </motion.div>
             ))}

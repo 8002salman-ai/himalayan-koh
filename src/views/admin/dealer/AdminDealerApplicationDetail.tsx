@@ -46,7 +46,6 @@ export default function AdminDealerApplicationDetail() {
   const [statusReason, setStatusReason] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
 
-  const [dealerLevel, setDealerLevel] = useState<DealerApplication['dealer_level']>('bronze');
   const [creditTerms, setCreditTerms] = useState(0);
   const [salesRepId, setSalesRepId] = useState('');
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -63,7 +62,6 @@ export default function AdminDealerApplicationDetail() {
       setSalesReps(reps);
       if (detail) {
         setStatusValue(detail.status);
-        setDealerLevel(detail.dealer_level);
         setCreditTerms(detail.credit_terms);
         setSalesRepId(detail.sales_rep_id || '');
       }
@@ -103,7 +101,6 @@ export default function AdminDealerApplicationDetail() {
     setSettingsSaving(true);
     try {
       await adminDealerApi.updateDealerSettings(id, user.id, {
-        dealerLevel,
         creditTerms,
         salesRepId: salesRepId || null,
       });
@@ -317,18 +314,6 @@ export default function AdminDealerApplicationDetail() {
           <section className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="font-semibold text-charcoal mb-4">Wholesale Settings</h2>
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1.5">Dealer Level</label>
-                <select
-                  value={dealerLevel}
-                  onChange={(e) => setDealerLevel(e.target.value as DealerApplication['dealer_level'])}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl capitalize focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
-                >
-                  {(['bronze', 'silver', 'gold', 'platinum'] as const).map((level) => (
-                    <option key={level} value={level}>{level}</option>
-                  ))}
-                </select>
-              </div>
               <div>
                 <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1.5">Credit Terms (days)</label>
                 <input

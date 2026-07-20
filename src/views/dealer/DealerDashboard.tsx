@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Award,
   ClipboardList,
   CreditCard,
   DollarSign,
@@ -22,13 +21,6 @@ import type {
   WholesalePurchaseRequestWithItems,
 } from '../../lib/supabase/database.types';
 import { SkeletonDashboard } from '../../components/ui/Skeleton';
-
-const levelColors: Record<string, string> = {
-  bronze: 'bg-amber-100 text-amber-700',
-  silver: 'bg-gray-200 text-gray-700',
-  gold: 'bg-yellow-100 text-yellow-700',
-  platinum: 'bg-purple-100 text-purple-700',
-};
 
 const UNPAID_REQUEST_STATUSES = new Set([
   'submitted',
@@ -95,14 +87,6 @@ export default function DealerDashboard() {
           </h1>
           <p className="text-charcoal-light">{application?.business_name}</p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold capitalize ${
-            levelColors[application?.dealer_level || 'bronze']
-          }`}
-        >
-          <Award size={15} />
-          {application?.dealer_level || 'Bronze'} Tier
-        </span>
       </div>
 
       {/* Key stats — only the 4 numbers that matter */}
@@ -128,7 +112,7 @@ export default function DealerDashboard() {
           </div>
           <div>
             <p className="font-semibold">Browse Wholesale Catalog</p>
-            <p className="text-white/70 text-sm">Submit a new purchase request at your tier pricing</p>
+            <p className="text-white/70 text-sm">Submit a new purchase request at your wholesale pricing</p>
           </div>
         </div>
         <ChevronRight size={20} className="flex-shrink-0" />

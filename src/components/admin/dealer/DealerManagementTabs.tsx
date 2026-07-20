@@ -6,7 +6,6 @@ const TABS = [
   { label: 'Wholesalers', path: '/admin/dealers/dealers' },
   { label: 'Purchase Requests', path: '/admin/dealers/purchase-requests' },
   { label: 'Wholesale Orders', path: '/admin/dealers/wholesale-orders' },
-  { label: 'Wholesale Levels', path: '/admin/dealers/levels' },
   { label: 'Pricing', path: '/admin/dealers/pricing' },
   { label: 'Credit & Finance', path: '/admin/dealers/credit' },
   { label: 'Sales Representatives', path: '/admin/dealers/sales-reps' },

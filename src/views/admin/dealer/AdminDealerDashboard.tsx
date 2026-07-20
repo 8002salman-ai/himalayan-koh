@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Clock, DollarSign, FileCheck, ShoppingCart, Users } from 'lucide-react';
+import { Building2, Clock, DollarSign, FileCheck, ShoppingCart } from 'lucide-react';
 import DealerManagementTabs from '../../../components/admin/dealer/DealerManagementTabs';
 import { SkeletonDashboard } from '../../../components/ui/Skeleton';
 import { adminDealerApi } from '../../../lib/supabase/api';
@@ -9,13 +9,6 @@ import { getErrorMessage } from '../../../lib/errors';
 import { useToast } from '../../../context/ToastContext';
 
 type Stats = Awaited<ReturnType<typeof adminDealerApi.getDashboardStats>>;
-
-const levelColors: Record<string, string> = {
-  bronze: 'bg-amber-100 text-amber-700',
-  silver: 'bg-gray-200 text-gray-700',
-  gold: 'bg-yellow-100 text-yellow-700',
-  platinum: 'bg-purple-100 text-purple-700',
-};
 
 export default function AdminDealerDashboard() {
   const toast = useToast();
@@ -62,7 +55,7 @@ export default function AdminDealerDashboard() {
             <StatCard icon={<DollarSign size={18} />} label="Wholesale Revenue" value={`$${stats.totalDealerRevenue.toFixed(2)}`} />
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid gap-6">
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h2 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
                 <Clock size={18} className="text-himalayan" />
@@ -78,23 +71,6 @@ export default function AdminDealerDashboard() {
                     <span className="text-sm text-charcoal capitalize">{status.replace(/_/g, ' ')}</span>
                     <span className="text-sm font-semibold text-charcoal">{count}</span>
                   </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                <Users size={18} className="text-himalayan" />
-                Dealers by Level
-              </h2>
-              <div className="space-y-2">
-                {(Object.entries(stats.byLevel) as [string, number][]).map(([level, count]) => (
-                  <div key={level} className="flex items-center justify-between px-3 py-2">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${levelColors[level]}`}>
-                      {level}
-                    </span>
-                    <span className="text-sm font-semibold text-charcoal">{count}</span>
-                  </div>
                 ))}
               </div>
             </div>

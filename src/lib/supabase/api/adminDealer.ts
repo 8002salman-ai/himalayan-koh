@@ -217,21 +217,18 @@ export const adminDealerApi = {
   async getDashboardStats(): Promise<{
     totalApplications: number;
     byStatus: Record<DealerApplication['status'], number>;
-    byLevel: Record<DealerApplication['dealer_level'], number>;
     totalDealerRevenue: number;
     totalDealerOrders: number;
   }> {
     const { data: applications, error } = await supabase
       .from('dealer_applications')
-      .select('user_id, status, dealer_level');
+      .select('user_id, status');
     if (error) throw error;
 
-    const apps = (applications || []) as Pick<DealerApplication, 'user_id' | 'status' | 'dealer_level'>[];
+    const apps = (applications || []) as Pick<DealerApplication, 'user_id' | 'status'>[];
     const byStatus: Record<string, number> = { pending: 0, under_review: 0, need_more_info: 0, approved: 0, rejected: 0, suspended: 0 };
-    const byLevel: Record<string, number> = { bronze: 0, silver: 0, gold: 0, platinum: 0 };
     for (const app of apps) {
       byStatus[app.status] = (byStatus[app.status] || 0) + 1;
-      byLevel[app.dealer_level] = (byLevel[app.dealer_level] || 0) + 1;
     }
 
     const approvedUserIds = apps.filter((a) => a.status === 'approved').map((a) => a.user_id);
@@ -250,7 +247,6 @@ export const adminDealerApi = {
     return {
       totalApplications: apps.length,
       byStatus: byStatus as Record<DealerApplication['status'], number>,
-      byLevel: byLevel as Record<DealerApplication['dealer_level'], number>,
       totalDealerRevenue,
       totalDealerOrders,
     };
