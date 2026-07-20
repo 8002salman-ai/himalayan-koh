@@ -45,12 +45,23 @@ export default function DealerRoute({ children }: DealerRouteProps) {
   const { isAuthenticated, loading, user, signOut } = useAuthContext();
   const location = useLocation();
 
-  const handleGateSignOut = async () => {
+  const handleGateSignOut = () => {
+    // See DealerPortalLayout.handleSignOut: never await Supabase signOut (it can
+    // hang). Fire it best-effort, drop the persisted token synchronously, then
+    // hard-navigate.
     try {
-      await signOut();
-    } finally {
-      window.location.assign('/dealer/signed-out');
+      void signOut();
+    } catch {
+      /* ignore */
     }
+    try {
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
+    window.location.assign('/dealer/signed-out');
   };
   const [checking, setChecking] = useState(true);
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);

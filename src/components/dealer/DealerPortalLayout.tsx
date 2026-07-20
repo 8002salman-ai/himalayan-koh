@@ -16,17 +16,27 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
   const location = useLocation();
   const { profile, signOut } = useAuthContext();
 
-  const handleSignOut = async () => {
-    // Clear the Supabase session, then force a full browser navigation to the
-    // confirmation page. We deliberately do NOT rely on React re-rendering the
-    // DealerRoute guard to redirect: that client-side chain can be swallowed by
-    // auth-listener timing / one-shot render races, which made sign-out appear
-    // to "do nothing". A hard location change cannot be raced away.
+  const handleSignOut = () => {
+    // Do NOT await anything here. Supabase's auth.signOut() can hang on the
+    // navigator.locks mechanism, and awaiting it made the whole sign-out
+    // appear dead (the redirect never ran). Instead:
+    //   1. fire the server-side revoke best-effort (no await),
+    //   2. synchronously drop the persisted session so the next page load is
+    //      genuinely logged out even if that revoke never resolves,
+    //   3. hard-navigate to the confirmation page — unconditional, unraceable.
     try {
-      await signOut();
-    } finally {
-      window.location.assign('/dealer/signed-out');
+      void signOut();
+    } catch {
+      /* ignore — navigation below handles the UX regardless */
     }
+    try {
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* localStorage unavailable — ignore */
+    }
+    window.location.assign('/dealer/signed-out');
   };
 
   return (
