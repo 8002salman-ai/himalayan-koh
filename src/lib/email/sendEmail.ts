@@ -69,6 +69,6 @@ export function adminNotificationEmails(): string[] {
 export function siteBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
-    'https://himalayan-koh.vercel.app'
+    'https://himalayankoh.com'
   );
 }

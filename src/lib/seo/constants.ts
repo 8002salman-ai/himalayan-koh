@@ -4,8 +4,7 @@ export const DEFAULT_TITLE =
   'Himalayan Koh - Premium Himalayan Pink Salt for Livestock & Cooking';
 export const DEFAULT_DESCRIPTION =
   'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
-export const DEFAULT_OG_IMAGE =
-  'https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp';
+export const DEFAULT_OG_IMAGE = '/logo.svg';
 
 export const ORGANIZATION_JSON_LD = {
   '@context': 'https://schema.org',

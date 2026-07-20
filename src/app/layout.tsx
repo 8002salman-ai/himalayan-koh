@@ -1,15 +1,31 @@
 import type { Metadata } from 'next';
 import Providers from './providers';
 import './globals.css';
-import { publicEnv } from '@/lib/env';
+import { siteOrigin } from '@/lib/seo/server';
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, SITE_NAME } from '@/lib/seo/constants';
 
-const siteOrigin = publicEnv.siteUrl?.trim() || 'https://himalayankoh.com';
+const origin = siteOrigin();
 
 export const metadata: Metadata = {
-  title: 'Himalayan Koh – Premium Himalayan Pink Salt for Livestock & Cooking',
-  description:
-    'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, 84 trace minerals.',
-  metadataBase: new URL(siteOrigin),
+  title: {
+    default: DEFAULT_TITLE,
+    template: '%s',
+  },
+  description: DEFAULT_DESCRIPTION,
+  metadataBase: new URL(origin),
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: origin,
+    siteName: SITE_NAME,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  },
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
