@@ -51,4 +51,23 @@ export const clearSupabaseSession = () => {
       /* storage unavailable — ignore */
     }
   }
+  // Also expire any cookie-based Supabase session (sb-<ref>-auth-token). If the
+  // session lives in a cookie, clearing storage alone leaves it alive and the
+  // user is re-authenticated on the very next page load — which is exactly what
+  // kept bouncing admins back after "Sign Out".
+  try {
+    const host = window.location.hostname;
+    const domains = ['', `; domain=${host}`, `; domain=.${host}`];
+    document.cookie
+      .split(';')
+      .map((c) => c.split('=')[0].trim())
+      .filter((name) => name.startsWith('sb-') || name.startsWith('supabase'))
+      .forEach((name) => {
+        domains.forEach((d) => {
+          document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${d}`;
+        });
+      });
+  } catch {
+    /* cookies unavailable — ignore */
+  }
 };

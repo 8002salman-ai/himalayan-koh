@@ -42,18 +42,11 @@ const statusGate: Record<
 };
 
 export default function DealerRoute({ children }: DealerRouteProps) {
-  const { isAuthenticated, loading, user, signOut } = useAuthContext();
+  const { isAuthenticated, loading, user } = useAuthContext();
   const location = useLocation();
 
   const handleGateSignOut = () => {
-    // See DealerPortalLayout.handleSignOut: never await Supabase signOut (it can
-    // hang). Fire it best-effort, wipe the persisted session synchronously, then
-    // hard-navigate.
-    try {
-      void signOut();
-    } catch {
-      /* ignore */
-    }
+    // Client-side sign-out — see DealerPortalLayout.handleSignOut.
     clearSupabaseSession();
     window.location.assign('/dealer/signed-out');
   };

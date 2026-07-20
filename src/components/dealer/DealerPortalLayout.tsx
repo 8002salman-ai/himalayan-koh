@@ -15,21 +15,13 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
-  const { profile, signOut } = useAuthContext();
+  const { profile } = useAuthContext();
 
   const handleSignOut = () => {
-    // Do NOT await anything here. Supabase's auth.signOut() can hang on the
-    // navigator.locks mechanism, and awaiting it made the whole sign-out
-    // appear dead (the redirect never ran). Instead:
-    //   1. fire the server-side revoke best-effort (no await),
-    //   2. synchronously drop the persisted session so the next page load is
-    //      genuinely logged out even if that revoke never resolves,
-    //   3. hard-navigate to the confirmation page — unconditional, unraceable.
-    try {
-      void signOut();
-    } catch {
-      /* ignore — navigation below handles the UX regardless */
-    }
+    // Client-side sign-out: wipe the persisted session synchronously, then
+    // hard-navigate to the confirmation page. We do NOT call
+    // supabase.auth.signOut() — it can hang on navigator.locks and can
+    // re-persist the session right after we clear it.
     clearSupabaseSession();
     window.location.assign('/dealer/signed-out');
   };

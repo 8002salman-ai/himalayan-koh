@@ -32,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { totalItems } = useCart();
-  const { isAuthenticated, profile, signOut, user } = useAuthContext();
+  const { isAuthenticated, profile, user } = useAuthContext();
 
   useEffect(() => {
     const el = headerRef.current;
@@ -48,15 +48,9 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const handleSignOut = () => {
-    // Never await Supabase signOut (it can hang on navigator.locks). Fire it
-    // best-effort, wipe the persisted session synchronously (all sb-* keys
-    // incl. chunked *.0/.1), close the menu, and hard-navigate home so the
-    // signed-out state is guaranteed.
-    try {
-      void signOut();
-    } catch {
-      /* ignore */
-    }
+    // Client-side sign-out: wipe the persisted session synchronously, close the
+    // menu, hard-navigate home. See AdminLayout — we don't call
+    // supabase.auth.signOut() (it can hang and can re-persist the session).
     clearSupabaseSession();
     setUserMenuOpen(false);
     window.location.assign('/');

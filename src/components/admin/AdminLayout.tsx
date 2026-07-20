@@ -39,19 +39,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const location = useLocation();
-  const { profile, signOut, user } = useAuthContext();
+  const { profile, user } = useAuthContext();
   const unreadCount = alerts.filter((alert) => !alert.read).length;
 
   const handleSignOut = () => {
-    // Do NOT await Supabase signOut — it can hang on navigator.locks, which
-    // left the navigate() below unreachable so "Sign Out" appeared dead. Fire
-    // the revoke best-effort, wipe the persisted session synchronously (all
-    // sb-* keys incl. chunked *.0/.1), then hard-navigate to login.
-    try {
-      void signOut();
-    } catch {
-      /* ignore — navigation below handles the UX regardless */
-    }
+    // Sign out entirely client-side: wipe the persisted session synchronously
+    // (all sb-* storage keys + cookies), then hard-navigate. We deliberately do
+    // NOT call supabase.auth.signOut() here — it can hang on navigator.locks,
+    // and worse, its async internals can re-persist the session to localStorage
+    // right after we clear it, which kept re-authenticating admins on the next
+    // page load. A best-effort server revoke isn't needed for the UX; the local
+    // token is gone, so the user is signed out.
     clearSupabaseSession();
     window.location.assign('/login');
   };
