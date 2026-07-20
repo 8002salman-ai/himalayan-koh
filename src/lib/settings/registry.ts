@@ -180,5 +180,21 @@ export const SETTINGS_REGISTRY: SettingsCategory[] = [
       },
     ],
   },
+  {
+    id: 'hubspot',
+    label: 'HubSpot — CRM Sync',
+    description: 'Push new CRM leads to HubSpot as contacts, keep their status/notes in sync, and import HubSpot contacts back into the CRM.',
+    docsHref: 'https://app.hubspot.com/private-apps',
+    fields: [
+      {
+        key: 'access_token',
+        label: 'HubSpot Private App Token',
+        type: 'password',
+        placeholder: 'pat-na1-...',
+        hint: 'HubSpot → Settings → Integrations → Private Apps → create an app with crm.objects.contacts read + write scopes, then copy the access token.',
+        envFallback: 'HUBSPOT_ACCESS_TOKEN',
+      },
+    ],
+  },
   // ─── Add future services below ───────────────────────────────────────────────
 ];

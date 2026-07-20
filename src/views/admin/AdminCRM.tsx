@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Contact,
+  DownloadCloud,
   KanbanSquare,
   Mail,
   MessageSquarePlus,
@@ -24,6 +25,11 @@ import {
   CrmFollowUp,
 } from '../../lib/supabase/api/crm';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import {
+  fetchHubspotStatus,
+  syncLeadToHubspot,
+  importFromHubspot,
+} from '../../lib/hubspot/adminClient';
 import { getErrorMessage } from '../../lib/errors';
 import { useToast } from '../../context/ToastContext';
 import type { CrmLeadWithAssignee, CrmActivity, Order } from '../../lib/supabase/database.types';
@@ -74,6 +80,18 @@ export default function AdminCRM() {
 
   const [selectedLead, setSelectedLead] = useState<CrmLeadWithAssignee | null>(null);
   const [showNewLead, setShowNewLead] = useState(false);
+  const [hubspotEnabled, setHubspotEnabled] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchHubspotStatus().then((enabled) => {
+      if (active) setHubspotEnabled(enabled);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -154,8 +172,39 @@ export default function AdminCRM() {
       toast.success('Lead status updated');
       fetchMeta();
       if (view === 'board') fetchBoard();
+      // Best-effort: keep HubSpot in sync with the new status.
+      if (hubspotEnabled) {
+        syncLeadToHubspot({
+          email: lead.email,
+          name: lead.name,
+          phone: lead.phone,
+          company: lead.company,
+          status,
+          notes: lead.notes,
+        }).then((r) => {
+          if (!r.ok) toast.error(`Saved locally, but HubSpot sync failed: ${r.error}`);
+        });
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not update status.'));
+    }
+  };
+
+  const handleImportHubspot = async () => {
+    setImporting(true);
+    try {
+      const { imported, skipped } = await importFromHubspot();
+      toast.success(
+        imported > 0
+          ? `Imported ${imported} contact${imported === 1 ? '' : 's'} from HubSpot${skipped ? ` (${skipped} already in CRM)` : ''}.`
+          : 'No new HubSpot contacts to import.',
+      );
+      setPage(1);
+      refreshAll();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'HubSpot import failed.'));
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -204,6 +253,16 @@ export default function AdminCRM() {
           <Button onClick={() => setShowNewLead(true)} className="gap-1.5">
             <Plus size={16} /> New Lead
           </Button>
+          {hubspotEnabled && (
+            <Button
+              variant="secondary"
+              onClick={handleImportHubspot}
+              disabled={importing}
+              className="gap-1.5"
+            >
+              <DownloadCloud size={16} /> {importing ? 'Importing…' : 'Import from HubSpot'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -824,6 +883,18 @@ function NewLeadModal({
         source: 'manual',
       });
       toast.success('Lead created');
+      // Best-effort push to HubSpot (no-op / soft warning if not configured).
+      const sync = await syncLeadToHubspot({
+        email: form.email.trim(),
+        name: form.name.trim(),
+        phone: form.phone.trim() || null,
+        company: form.company.trim() || null,
+        status: 'new',
+        notes: form.notes.trim() || null,
+      });
+      if (!sync.ok && sync.error && !/not configured/i.test(sync.error)) {
+        toast.error(`Lead saved, but HubSpot sync failed: ${sync.error}`);
+      }
       onCreated();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not create lead.'));
