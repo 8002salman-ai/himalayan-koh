@@ -244,7 +244,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
         </div>
       </nav>
 
-      {userMenuOpen && <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />}
+      {userMenuOpen && <div className="fixed inset-0 z-20" onClick={() => setUserMenuOpen(false)} />}
     </div>
   );
 }
