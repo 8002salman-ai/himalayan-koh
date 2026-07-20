@@ -60,9 +60,9 @@ const demoDealerConfigs = [
   {
     email: 'dealer@himalayankoh.com',
     password: 'Dealer@123',
-    fullName: 'Demo Gold Dealer',
+    fullName: 'Demo Gold Wholesaler',
     phone: '(832) 555-0100',
-    businessName: 'Himalayan Koh Demo Dealer LLC',
+    businessName: 'Himalayan Koh Demo Wholesale LLC',
   },
   {
     email: 'demo@dealer.himalayankoh.com',
@@ -266,7 +266,7 @@ async function seedDemoDealer(adminClient, anonClient, config) {
         monthly_purchase: '$5,000 - $10,000',
         products_interested: ['Salt for Cattle', 'Salt Lick for Horses'],
         sales_channels: ['Store', 'Website'],
-        notes: 'DEMO ACCOUNT — created for development/testing only. Not a real dealer application; bypasses the approval workflow intentionally.',
+        notes: 'DEMO ACCOUNT — created for development/testing only. Not a real wholesale application; bypasses the approval workflow intentionally.',
         status: 'approved',
         status_reason: 'Auto-approved demo account for testing.',
         dealer_level: 'gold',
@@ -428,9 +428,9 @@ async function seedDemoDealer(adminClient, anonClient, config) {
   console.log(`Seeded ${result.orders} demo wholesale orders with line items.`);
 
   const demoNotifications = [
-    { type: 'system', title: 'Welcome to your Dealer Portal', message: 'Your Gold dealer account is approved and ready — browse dealer pricing and place your first order.' },
+    { type: 'system', title: 'Welcome to your Wholesale Portal', message: 'Your Gold wholesale account is approved and ready — browse wholesale pricing and place your first order.' },
     { type: 'order', title: 'Order shipped', message: 'Your recent wholesale order has shipped and is on its way.' },
-    { type: 'promotion', title: 'Wholesale Promotion', message: 'Order 50+ units this month to qualify for the next dealer tier.' },
+    { type: 'promotion', title: 'Wholesale Promotion', message: 'Order 50+ units this month to qualify for the next wholesale tier.' },
   ];
   for (const note of demoNotifications) {
     await adminClient.from('notifications').insert({
