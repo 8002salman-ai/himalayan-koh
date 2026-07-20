@@ -46,8 +46,11 @@ export default function DealerRoute({ children }: DealerRouteProps) {
   const location = useLocation();
 
   const handleGateSignOut = async () => {
-    sessionStorage.setItem('dealer-signed-out', '1');
-    await signOut();
+    try {
+      await signOut();
+    } finally {
+      window.location.assign('/dealer/signed-out');
+    }
   };
   const [checking, setChecking] = useState(true);
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);
@@ -90,13 +93,9 @@ export default function DealerRoute({ children }: DealerRouteProps) {
   }
 
   if (!isAuthenticated) {
-    // If the user just clicked "Sign out" inside the portal, show the
-    // confirmation page. Otherwise (expired session, direct visit) send them
-    // to the login form. The flag is one-shot so a later visit still logs in.
-    if (typeof window !== 'undefined' && sessionStorage.getItem('dealer-signed-out')) {
-      sessionStorage.removeItem('dealer-signed-out');
-      return <Navigate to="/dealer/signed-out" replace />;
-    }
+    // Expired session or direct visit while logged out — send to the login
+    // form. Intentional sign-out is handled by the Sign Out button itself,
+    // which hard-navigates to /dealer/signed-out before this guard re-renders.
     return <Navigate to="/dealer/login" state={{ from: location.pathname }} replace />;
   }
 
