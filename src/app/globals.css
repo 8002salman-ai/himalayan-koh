@@ -60,17 +60,22 @@
   --color-cream: #fffdf8;               /* Card / panel surface  */
 
   /* ── Z-Index Scale ──────────────────────────────────── */
-  --z-dropdown: 20;         /* Floating menus, autocomplete           */
-  --z-sticky: 30;           /* Admin sidebar, sticky subheaders       */
-  --z-nav-overlay: 40;      /* Mobile menu / click-outside (below nav) */
-  --z-nav: 50;              /* Main navigation (public site)          */
-  --z-fab: 80;              /* Floating action buttons (chat, scroll) */
-  --z-drawer-backdrop: 90;  /* Cart / off-canvas backdrop             */
-  --z-drawer: 95;           /* Cart drawer, off-canvas panels         */
-  --z-modal: 100;           /* Modals, dialogs, search overlay        */
-  --z-chat: 105;            /* Chat widget above modal on mobile      */
-  --z-skip: 120;            /* Skip-to-content accessibility link     */
-  --z-overlay: 200;         /* Full-screen PDF / image overlays       */
+  /* Tailwind v4 generates z-* utilities from the --z-index-* namespace only.
+     (These were named --z-* before, which produced NO utilities at all, so
+     every z-nav / z-dropdown / z-nav-overlay class was a silent no-op and
+     stacking fell back to DOM order — which made dropdown menu items
+     unclickable behind the click-outside overlay.) */
+  --z-index-dropdown: 20;   /* Floating menus, autocomplete           */
+  --z-index-sticky: 30;     /* Admin sidebar, sticky subheaders       */
+  --z-index-nav-overlay: 40;/* Mobile menu / click-outside (below nav) */
+  --z-index-nav: 50;        /* Main navigation (public site)          */
+  --z-index-fab: 80;        /* Floating action buttons (chat, scroll) */
+  --z-index-drawer-backdrop: 90; /* Cart / off-canvas backdrop        */
+  --z-index-drawer: 95;     /* Cart drawer, off-canvas panels         */
+  --z-index-modal: 100;     /* Modals, dialogs, search overlay        */
+  --z-index-chat: 105;      /* Chat widget above modal on mobile      */
+  --z-index-skip: 120;      /* Skip-to-content accessibility link     */
+  --z-index-overlay: 200;   /* Full-screen PDF / image overlays       */
 
   /* ── Typography ─────────────────────────────────────── */
   --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
