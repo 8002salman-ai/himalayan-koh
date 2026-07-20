@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Loader2, Clock, ShieldAlert, ClipboardEdit, XCircle } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { dealerApi } from '../../lib/supabase/api';
@@ -44,11 +44,10 @@ const statusGate: Record<
 export default function DealerRoute({ children }: DealerRouteProps) {
   const { isAuthenticated, loading, user, signOut } = useAuthContext();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const handleGateSignOut = async () => {
+    sessionStorage.setItem('dealer-signed-out', '1');
     await signOut();
-    navigate('/dealer/signed-out');
   };
   const [checking, setChecking] = useState(true);
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);
@@ -91,6 +90,13 @@ export default function DealerRoute({ children }: DealerRouteProps) {
   }
 
   if (!isAuthenticated) {
+    // If the user just clicked "Sign out" inside the portal, show the
+    // confirmation page. Otherwise (expired session, direct visit) send them
+    // to the login form. The flag is one-shot so a later visit still logs in.
+    if (typeof window !== 'undefined' && sessionStorage.getItem('dealer-signed-out')) {
+      sessionStorage.removeItem('dealer-signed-out');
+      return <Navigate to="/dealer/signed-out" replace />;
+    }
     return <Navigate to="/dealer/login" state={{ from: location.pathname }} replace />;
   }
 

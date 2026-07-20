@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, Menu, X, ChevronDown, Home } from 'lucide-react';
 import { DEALER_NAV_ITEMS, DEALER_MOBILE_NAV_ITEMS } from '../../lib/dealerNav';
@@ -14,12 +14,15 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { profile, signOut } = useAuthContext();
 
   const handleSignOut = async () => {
+    // Mark this as an intentional sign-out so DealerRoute routes the now
+    // logged-out session to the confirmation page instead of the login form.
+    // Navigating here directly would race DealerRoute, which re-renders the
+    // moment auth state clears and would otherwise win.
+    sessionStorage.setItem('dealer-signed-out', '1');
     await signOut();
-    navigate('/dealer/signed-out');
   };
 
   return (
