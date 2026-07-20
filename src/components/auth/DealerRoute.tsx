@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Loader2, Clock, ShieldAlert, ClipboardEdit, XCircle } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { dealerApi } from '../../lib/supabase/api';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { isSupabaseConfigured, clearSupabaseSession } from '../../lib/supabase/client';
 import type { DealerApplicationWithDocuments } from '../../lib/supabase/database.types';
 
 interface DealerRouteProps {
@@ -47,20 +47,14 @@ export default function DealerRoute({ children }: DealerRouteProps) {
 
   const handleGateSignOut = () => {
     // See DealerPortalLayout.handleSignOut: never await Supabase signOut (it can
-    // hang). Fire it best-effort, drop the persisted token synchronously, then
+    // hang). Fire it best-effort, wipe the persisted session synchronously, then
     // hard-navigate.
     try {
       void signOut();
     } catch {
       /* ignore */
     }
-    try {
-      Object.keys(window.localStorage)
-        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
-        .forEach((k) => window.localStorage.removeItem(k));
-    } catch {
-      /* ignore */
-    }
+    clearSupabaseSession();
     window.location.assign('/dealer/signed-out');
   };
   const [checking, setChecking] = useState(true);

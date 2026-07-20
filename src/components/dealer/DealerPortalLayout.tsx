@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, Menu, X, ChevronDown, Home } from 'lucide-react';
 import { DEALER_NAV_ITEMS, DEALER_MOBILE_NAV_ITEMS } from '../../lib/dealerNav';
 import { useAuthContext } from '../../context/AuthContext';
+import { clearSupabaseSession } from '../../lib/supabase/client';
 
 interface DealerPortalLayoutProps {
   children: React.ReactNode;
@@ -29,13 +30,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
     } catch {
       /* ignore — navigation below handles the UX regardless */
     }
-    try {
-      Object.keys(window.localStorage)
-        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
-        .forEach((k) => window.localStorage.removeItem(k));
-    } catch {
-      /* localStorage unavailable — ignore */
-    }
+    clearSupabaseSession();
     window.location.assign('/dealer/signed-out');
   };
 

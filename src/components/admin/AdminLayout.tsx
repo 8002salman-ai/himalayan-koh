@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ADMIN_NAV_ITEMS, ADMIN_MOBILE_NAV_ITEMS } from '../../lib/adminNav';
 import { useAuthContext } from '../../context/AuthContext';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { isSupabaseConfigured, supabase, clearSupabaseSession } from '../../lib/supabase/client';
 import AIChatWidget from '../AIChatWidget';
 
 interface AdminAlert {
@@ -45,20 +45,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const handleSignOut = () => {
     // Do NOT await Supabase signOut — it can hang on navigator.locks, which
     // left the navigate() below unreachable so "Sign Out" appeared dead. Fire
-    // the revoke best-effort, drop the persisted session token synchronously,
-    // then hard-navigate to the login page (unconditional, unraceable).
+    // the revoke best-effort, wipe the persisted session synchronously (all
+    // sb-* keys incl. chunked *.0/.1), then hard-navigate to login.
     try {
       void signOut();
     } catch {
       /* ignore — navigation below handles the UX regardless */
     }
-    try {
-      Object.keys(window.localStorage)
-        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
-        .forEach((k) => window.localStorage.removeItem(k));
-    } catch {
-      /* localStorage unavailable — ignore */
-    }
+    clearSupabaseSession();
     window.location.assign('/login');
   };
 

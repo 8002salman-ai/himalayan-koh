@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } from 'lucide-react';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
+import { clearSupabaseSession } from '../lib/supabase/client';
 import CartDrawer from './CartDrawer';
 import SearchModal from './SearchModal';
 import AuthModal from './AuthModal';
@@ -48,20 +49,15 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleSignOut = () => {
     // Never await Supabase signOut (it can hang on navigator.locks). Fire it
-    // best-effort, drop the persisted session token synchronously, close the
-    // menu, and hard-navigate home so the signed-out state is guaranteed.
+    // best-effort, wipe the persisted session synchronously (all sb-* keys
+    // incl. chunked *.0/.1), close the menu, and hard-navigate home so the
+    // signed-out state is guaranteed.
     try {
       void signOut();
     } catch {
       /* ignore */
     }
-    try {
-      Object.keys(window.localStorage)
-        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
-        .forEach((k) => window.localStorage.removeItem(k));
-    } catch {
-      /* ignore */
-    }
+    clearSupabaseSession();
     setUserMenuOpen(false);
     window.location.assign('/');
   };
