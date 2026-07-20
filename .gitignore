@@ -14,3 +14,7 @@ dist
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
 .DS_Store
+
+# Supabase CLI local cache
+supabase/.temp/
+.branches
