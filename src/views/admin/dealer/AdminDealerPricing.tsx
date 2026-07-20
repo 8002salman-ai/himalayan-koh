@@ -68,7 +68,7 @@ export default function AdminDealerPricing() {
         packSize: draft.pack_size || null,
         leadTimeDays: draft.lead_time_days ? Number(draft.lead_time_days) : null,
       });
-      toast.success('Dealer pricing updated.');
+      toast.success('Wholesale pricing updated.');
       await load();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to save pricing.'));
@@ -80,7 +80,7 @@ export default function AdminDealerPricing() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Set dealer/wholesale pricing, MOQ, and catalog visibility per product</p>
       </div>
 

@@ -129,7 +129,7 @@ export default function AdminWholesalePurchaseRequests() {
           <EmptyState
             icon={<ClipboardList size={40} />}
             title="No purchase requests found"
-            description={search ? 'No requests match your search' : 'Dealer purchase requests will appear here once submitted'}
+            description={search ? 'No requests match your search' : 'Wholesale purchase requests will appear here once submitted'}
             size="compact"
             className="border-0 shadow-none rounded-none py-16"
           />

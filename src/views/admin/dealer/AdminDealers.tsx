@@ -53,7 +53,7 @@ export default function AdminDealers() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Approved dealers and their account standing</p>
       </div>
 
@@ -74,7 +74,7 @@ export default function AdminDealers() {
 
       {fetchError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Dealers could not be loaded.</p>
+          <p className="font-semibold">Wholesalers could not be loaded.</p>
           <p className="mt-1">{fetchError}</p>
           <Button variant="destructive" size="sm" onClick={fetchDealers} className="mt-2">Retry</Button>
         </div>

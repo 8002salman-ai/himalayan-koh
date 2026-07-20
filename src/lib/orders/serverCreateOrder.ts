@@ -38,7 +38,7 @@ export function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer:
       throw new Error('One of the items in your cart is no longer available. Please remove it and try again.');
     }
     if (product.dealer_only && !isDealer) {
-      throw new Error('One of the items in your cart is restricted to approved dealer accounts.');
+      throw new Error('One of the items in your cart is restricted to approved wholesale accounts.');
     }
     const unitPrice =
       isDealer && product.dealer_price != null ? Number(product.dealer_price) : Number(product.price);

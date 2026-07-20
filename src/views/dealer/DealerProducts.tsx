@@ -50,7 +50,7 @@ export default function DealerProducts() {
       }
       setInventoryByProduct(map);
     } catch (err) {
-      const message = getErrorMessage(err, 'Failed to load dealer catalog.');
+      const message = getErrorMessage(err, 'Failed to load wholesale catalog.');
       console.error('Failed to load dealer catalog:', err);
       setLoadError(message);
       toast.error(message);

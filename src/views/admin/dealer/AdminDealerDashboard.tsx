@@ -43,7 +43,7 @@ export default function AdminDealerDashboard() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Applications, approved dealers, pricing, and program reporting</p>
       </div>
 
@@ -57,9 +57,9 @@ export default function AdminDealerDashboard() {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={<FileCheck size={18} />} label="Pending Review" value={String(stats.byStatus.pending + stats.byStatus.under_review + stats.byStatus.need_more_info)} />
-            <StatCard icon={<Building2 size={18} />} label="Approved Dealers" value={String(stats.byStatus.approved)} />
-            <StatCard icon={<ShoppingCart size={18} />} label="Dealer Orders" value={String(stats.totalDealerOrders)} />
-            <StatCard icon={<DollarSign size={18} />} label="Dealer Revenue" value={`$${stats.totalDealerRevenue.toFixed(2)}`} />
+            <StatCard icon={<Building2 size={18} />} label="Approved Wholesalers" value={String(stats.byStatus.approved)} />
+            <StatCard icon={<ShoppingCart size={18} />} label="Wholesale Orders" value={String(stats.totalDealerOrders)} />
+            <StatCard icon={<DollarSign size={18} />} label="Wholesale Revenue" value={`$${stats.totalDealerRevenue.toFixed(2)}`} />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">

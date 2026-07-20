@@ -15,7 +15,7 @@ const statusCopy: Partial<Record<PurchaseRequestStatus, { subject: string; headi
   submitted: {
     subject: 'Purchase request received',
     heading: 'Purchase request received',
-    body: (n) => `We've received your purchase request ${n}. The proforma invoice is attached (also available in your dealer portal). Our team will verify stock and follow up shortly.`,
+    body: (n) => `We've received your purchase request ${n}. The proforma invoice is attached (also available in your wholesale portal). Our team will verify stock and follow up shortly.`,
   },
   waiting_stock: {
     subject: 'Verifying stock for your purchase request',
@@ -25,7 +25,7 @@ const statusCopy: Partial<Record<PurchaseRequestStatus, { subject: string; headi
   approved: {
     subject: 'Your purchase request was approved',
     heading: 'Approved — payment pending',
-    body: (n) => `Purchase request ${n} has been approved. Please arrange payment (bank transfer or cash) to proceed — see your dealer portal for details.`,
+    body: (n) => `Purchase request ${n} has been approved. Please arrange payment (bank transfer or cash) to proceed — see your wholesale portal for details.`,
   },
   rejected: {
     subject: 'Update on your purchase request',
@@ -35,7 +35,7 @@ const statusCopy: Partial<Record<PurchaseRequestStatus, { subject: string; headi
   changes_requested: {
     subject: 'Changes requested on your purchase request',
     heading: 'Changes requested',
-    body: (n) => `We need to adjust purchase request ${n} before it can proceed. Please review the notes in your dealer portal.`,
+    body: (n) => `We need to adjust purchase request ${n} before it can proceed. Please review the notes in your wholesale portal.`,
   },
   payment_pending: {
     subject: 'Payment pending for your purchase request',
@@ -76,7 +76,7 @@ export async function sendPurchaseRequestDealerEmail(params: {
         ${params.reason ? `<p><strong>Note from our team:</strong> ${params.reason}</p>` : ''}
         <p style="margin-top:24px">
           <a href="${siteBaseUrl()}/dealer/purchase-requests" style="background:#b86452;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">
-            View in Dealer Portal
+            View in Wholesale Portal
           </a>
         </p>
         <p style="font-size:12px;color:#666;margin-top:24px">12620 FM 1960 W Ste A-4, Houston, TX 77065 · (832) 224-6466</p>
@@ -105,10 +105,10 @@ export async function sendPurchaseRequestConvertedEmail(params: {
         <h1 style="color:#b86452">Himalayan Koh Wholesale</h1>
         <h2>Your order has been created</h2>
         <p>Purchase request <strong>${params.requestNumber}</strong> has been converted into order <strong>${params.orderNumber}</strong>.</p>
-        <p>The tax/commercial invoice is attached, and also available in your dealer portal. You'll receive shipment tracking as your order progresses.</p>
+        <p>The tax/commercial invoice is attached, and also available in your wholesale portal. You'll receive shipment tracking as your order progresses.</p>
         <p style="margin-top:24px">
           <a href="${siteBaseUrl()}/dealer/purchase-requests" style="background:#b86452;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">
-            View in Dealer Portal
+            View in Wholesale Portal
           </a>
         </p>
       </div>

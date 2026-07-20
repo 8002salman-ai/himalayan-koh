@@ -74,7 +74,7 @@ export default function AdminDealerApplications() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Review and manage dealer program applications</p>
       </div>
 
@@ -128,7 +128,7 @@ export default function AdminDealerApplications() {
           <EmptyState
             icon={<Building2 size={40} />}
             title="No dealer applications found"
-            description={search ? 'No applications match your search' : 'Dealer applications will appear here once submitted'}
+            description={search ? 'No applications match your search' : 'Wholesale applications will appear here once submitted'}
             size="compact"
             className="border-0 shadow-none rounded-none py-16"
           />

@@ -109,7 +109,7 @@ export default function AdminWholesaleOrders() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Order</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Purchase Request</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Dealer</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Wholesaler</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Total</th>
                   <th className="px-4 py-3" />

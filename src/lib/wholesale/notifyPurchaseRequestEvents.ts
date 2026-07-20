@@ -35,7 +35,7 @@ async function loadRequestWithDealer(requestId: string) {
   return {
     row,
     email: (profile as { email?: string } | null)?.email || null,
-    businessName: (application as { business_name?: string } | null)?.business_name || 'Dealer',
+    businessName: (application as { business_name?: string } | null)?.business_name || 'Wholesaler',
   };
 }
 

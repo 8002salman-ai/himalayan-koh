@@ -18,7 +18,7 @@ function parseBody(body: unknown): { ok: true; data: CreatePurchaseRequestData }
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Sign in as an approved dealer to submit a purchase request.' }, { status: 401 });
+    return NextResponse.json({ error: 'Sign in as an approved wholesaler to submit a purchase request.' }, { status: 401 });
   }
   const token = authHeader.slice(7).trim();
 

@@ -24,7 +24,7 @@ export const ADMIN_NAV_ITEMS = [
   { label: 'Shipping Labels', path: '/admin/labels', icon: Truck },
   { label: 'Customers', path: '/admin/customers', icon: Users },
   { label: 'CRM', path: '/admin/crm', icon: Contact },
-  { label: 'Dealers', path: '/admin/dealers', icon: Building2 },
+  { label: 'Wholesalers', path: '/admin/dealers', icon: Building2 },
 
   { label: 'Blog Posts', path: '/admin/blog', icon: FileText },
   { label: 'Category Hubs', path: '/admin/category-hubs', icon: LayoutGrid },

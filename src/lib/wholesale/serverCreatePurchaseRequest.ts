@@ -48,7 +48,7 @@ export async function serverCreatePurchaseRequest(
 
   const isDealer = await isApprovedDealer(supabase, options.userId);
   if (!isDealer) {
-    throw new Error('Only approved dealer accounts can submit a purchase request.');
+    throw new Error('Only approved wholesale accounts can submit a purchase request.');
   }
 
   const { data: dealerApplication, error: dealerAppError } = await supabase
@@ -59,7 +59,7 @@ export async function serverCreatePurchaseRequest(
     .maybeSingle();
   if (dealerAppError) throw dealerAppError;
   if (!dealerApplication) {
-    throw new Error('Approved dealer application not found.');
+    throw new Error('Approved wholesale application not found.');
   }
 
   const cart = await loadCartForCheckout(options.userId, null);

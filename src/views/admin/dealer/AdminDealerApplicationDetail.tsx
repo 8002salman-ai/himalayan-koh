@@ -88,7 +88,7 @@ export default function AdminDealerApplicationDetail() {
         status: statusValue,
         reason: statusReason || undefined,
       });
-      toast.success('Dealer status updated and notification sent.');
+      toast.success('Wholesale status updated and notification sent.');
       setStatusReason('');
       await load();
     } catch (err) {
@@ -107,7 +107,7 @@ export default function AdminDealerApplicationDetail() {
         creditTerms,
         salesRepId: salesRepId || null,
       });
-      toast.success('Dealer settings updated.');
+      toast.success('Wholesale settings updated.');
       await load();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to update dealer settings.'));
@@ -315,7 +315,7 @@ export default function AdminDealerApplicationDetail() {
 
           {/* Dealer Settings */}
           <section className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="font-semibold text-charcoal mb-4">Dealer Settings</h2>
+            <h2 className="font-semibold text-charcoal mb-4">Wholesale Settings</h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1.5">Dealer Level</label>

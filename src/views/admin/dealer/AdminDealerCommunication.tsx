@@ -35,7 +35,7 @@ export default function AdminDealerCommunication() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Email history sent to dealers across the program</p>
       </div>
 

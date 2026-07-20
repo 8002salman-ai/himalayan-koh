@@ -41,7 +41,7 @@ export default function AdminDealerReports() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">Program-wide performance reporting</p>
       </div>
 
@@ -72,7 +72,7 @@ export default function AdminDealerReports() {
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
               <BarChart3 size={18} className="text-himalayan" />
-              Top Dealers by Spend
+              Top Wholesalers by Spend
             </h2>
             {topDealers.length === 0 ? (
               <p className="text-sm text-charcoal-light">No dealer orders recorded yet.</p>

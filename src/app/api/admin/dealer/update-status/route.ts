@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'applicationId is required.' }, { status: 400 });
   }
   if (!dealerStatuses.includes(status as DealerStatus)) {
-    return NextResponse.json({ error: 'Invalid dealer application status.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid wholesale application status.' }, { status: 400 });
   }
 
   try {
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, application: updated });
   } catch (error) {
     console.error('Admin dealer status update failed:', error);
-    const message = error instanceof Error ? error.message : 'Unable to update dealer application.';
+    const message = error instanceof Error ? error.message : 'Unable to update wholesale application.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

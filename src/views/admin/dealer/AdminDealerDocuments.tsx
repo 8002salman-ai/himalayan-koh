@@ -60,7 +60,7 @@ export default function AdminDealerDocuments() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-charcoal">Dealer Management</h1>
+        <h1 className="text-2xl font-bold text-charcoal">Wholesale Management</h1>
         <p className="text-charcoal-light">All dealer documents across every application</p>
       </div>
 
