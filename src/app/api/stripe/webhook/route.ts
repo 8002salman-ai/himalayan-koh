@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStripeClient, resolveStripeWebhookSecret } from '@/lib/stripe/server/stripe';
-import { markOrderPaid, markOrderPaymentFailed } from '@/lib/stripe/server/updateOrderPayment';
+import { markOrderPaid, markOrderPaymentFailed, resolveStripePaymentMethodLabel } from '@/lib/stripe/server/updateOrderPayment';
 
 export const runtime = 'nodejs';
 
@@ -31,7 +31,13 @@ export async function POST(request: Request) {
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
       const orderId = paymentIntent.metadata?.order_id;
-      if (orderId) await markOrderPaid(orderId, paymentIntent.id);
+      if (orderId) {
+        await markOrderPaid(
+          orderId,
+          paymentIntent.id,
+          resolveStripePaymentMethodLabel(paymentIntent.payment_method_types)
+        );
+      }
     }
 
     if (event.type === 'payment_intent.payment_failed') {

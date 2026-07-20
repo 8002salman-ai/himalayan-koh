@@ -1,7 +1,26 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { dispatchPaymentReceivedNotifications } from '@/lib/orders/notifyOrderEvents';
 
-export async function markOrderPaid(orderId: string, paymentIntentId: string) {
+/**
+ * Map a Stripe PaymentIntent's payment_method_types[] to the label we persist on
+ * the order. Cards stay 'stripe_card' (unchanged); BNPL and other methods get a
+ * descriptive label so admins/emails don't mislabel a Klarna order as a card.
+ */
+export function resolveStripePaymentMethodLabel(paymentMethodTypes?: string[] | null): string {
+  const types = paymentMethodTypes || [];
+  if (types.includes('klarna')) return 'stripe_klarna';
+  if (types.includes('afterpay_clearpay')) return 'stripe_afterpay_clearpay';
+  if (types.includes('affirm')) return 'stripe_affirm';
+  const primary = types.find((t) => t && t !== 'card');
+  if (primary) return `stripe_${primary}`;
+  return 'stripe_card';
+}
+
+export async function markOrderPaid(
+  orderId: string,
+  paymentIntentId: string,
+  paymentMethodLabel: string = 'stripe_card'
+) {
   const supabase = getSupabaseAdmin();
 
   const { data: order, error: fetchError } = await supabase
@@ -29,7 +48,7 @@ export async function markOrderPaid(orderId: string, paymentIntentId: string) {
     .from('orders')
     .update({
       payment_status: 'paid',
-      payment_method: 'stripe_card',
+      payment_method: paymentMethodLabel,
       status: 'processing',
       notes,
       updated_at: new Date().toISOString(),
@@ -57,7 +76,6 @@ export async function markOrderPaymentFailed(orderId: string) {
     .from('orders')
     .update({
       payment_status: 'failed',
-      payment_method: 'stripe_card',
       updated_at: new Date().toISOString(),
     } as never)
     .eq('id', orderId);

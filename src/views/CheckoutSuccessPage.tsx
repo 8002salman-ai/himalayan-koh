@@ -57,18 +57,25 @@ export default function CheckoutSuccessPage() {
       }
 
       try {
-        await verifyStripeOrderPayment({ orderId, paymentIntentId: intentId });
+        const verifyResult = await verifyStripeOrderPayment({ orderId, paymentIntentId: intentId });
         clearPendingStripeCheckout();
         await clearCart();
 
         if (cancelled) return;
 
+        // Async BNPL (Klarna/Afterpay/Affirm) returns paymentStatus 'pending' — the
+        // order is placed and the webhook will flip it to paid once the provider
+        // settles. Reflect that instead of falsely showing it as paid.
+        const isPending = verifyResult.paymentStatus === 'pending';
         const order = await ordersApi.getOrderById(orderId, user?.id);
         navigate(orderConfirmationUrl(orderId), {
           replace: true,
           state: {
             order: order
-              ? { ...order, payment_status: 'paid' as const, payment_method: 'stripe_card' }
+              ? {
+                  ...order,
+                  payment_status: isPending ? ('pending' as const) : ('paid' as const),
+                }
               : undefined,
           },
         });
