@@ -19,7 +19,7 @@ export default function DealerPortalLayout({ children }: DealerPortalLayoutProps
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/dealer/login');
+    navigate('/dealer/signed-out');
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, Clock, ShieldAlert, ClipboardEdit, XCircle } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { dealerApi } from '../../lib/supabase/api';
@@ -44,6 +44,12 @@ const statusGate: Record<
 export default function DealerRoute({ children }: DealerRouteProps) {
   const { isAuthenticated, loading, user, signOut } = useAuthContext();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleGateSignOut = async () => {
+    await signOut();
+    navigate('/dealer/signed-out');
+  };
   const [checking, setChecking] = useState(true);
   const [application, setApplication] = useState<DealerApplicationWithDocuments | null>(null);
 
@@ -109,7 +115,7 @@ export default function DealerRoute({ children }: DealerRouteProps) {
             </Link>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={handleGateSignOut}
               className="inline-flex items-center justify-center px-6 py-3 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/10 transition-colors"
             >
               Sign Out
