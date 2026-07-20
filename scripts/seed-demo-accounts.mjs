@@ -67,7 +67,7 @@ const demoDealerConfigs = [
   {
     email: 'demo@dealer.himalayankoh.com',
     password: 'Demo@12345',
-    fullName: 'Demo Wholesale Dealer',
+    fullName: 'Demo Wholesale Buyer',
     phone: '(832) 555-0101',
     businessName: 'Demo Ranch Supply LLC',
   },
