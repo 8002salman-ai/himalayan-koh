@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LogOut,
@@ -39,13 +39,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const location = useLocation();
-  const navigate = useNavigate();
   const { profile, signOut, user } = useAuthContext();
   const unreadCount = alerts.filter((alert) => !alert.read).length;
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
+  const handleSignOut = () => {
+    // Do NOT await Supabase signOut — it can hang on navigator.locks, which
+    // left the navigate() below unreachable so "Sign Out" appeared dead. Fire
+    // the revoke best-effort, drop the persisted session token synchronously,
+    // then hard-navigate to the login page (unconditional, unraceable).
+    try {
+      void signOut();
+    } catch {
+      /* ignore — navigation below handles the UX regardless */
+    }
+    try {
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* localStorage unavailable — ignore */
+    }
+    window.location.assign('/login');
   };
 
   useEffect(() => {

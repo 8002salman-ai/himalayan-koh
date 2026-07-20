@@ -46,9 +46,24 @@ export default function Layout({ children }: LayoutProps) {
     return () => observer.disconnect();
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    // Never await Supabase signOut (it can hang on navigator.locks). Fire it
+    // best-effort, drop the persisted session token synchronously, close the
+    // menu, and hard-navigate home so the signed-out state is guaranteed.
+    try {
+      void signOut();
+    } catch {
+      /* ignore */
+    }
+    try {
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
     setUserMenuOpen(false);
+    window.location.assign('/');
   };
 
   return (
