@@ -180,7 +180,19 @@ export default function AdminProducts() {
       ]);
       setProductStats(statsResult);
 
-      setProducts((productsResult.products || []).filter(Boolean));
+      const loadedProducts = (productsResult.products || []).filter(Boolean);
+      const resolvedTotalPages = Math.max(1, productsResult.totalPages || 1);
+
+      // Guard against a stale/out-of-range page: if this page came back empty but
+      // products exist (e.g. items were deleted, or ?page=N is left in the URL from
+      // a larger catalog), snap back to the last valid page instead of showing an
+      // empty list with a hidden pager.
+      if (loadedProducts.length === 0 && productsResult.count > 0 && page > resolvedTotalPages) {
+        setPage(resolvedTotalPages);
+        return;
+      }
+
+      setProducts(loadedProducts);
       setTotalCount(productsResult.count);
       setTotalPages(productsResult.totalPages);
       setCategories(categoriesResult);
