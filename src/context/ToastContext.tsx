@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import ToastContainer from '../components/ui/Toast';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -55,15 +55,24 @@ export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used inside ToastProvider');
 
-  return {
-    success: (message: string, duration = 4000) =>
-      ctx.add({ type: 'success', message, duration }),
-    error: (message: string, duration = 6000) =>
-      ctx.add({ type: 'error', message, duration }),
-    warning: (message: string, duration = 4000) =>
-      ctx.add({ type: 'warning', message, duration }),
-    info: (message: string, duration = 4000) =>
-      ctx.add({ type: 'info', message, duration }),
-    dismiss: ctx.dismiss,
-  };
+  const { add, dismiss } = ctx;
+
+  // Memoize so the returned helper object is stable across renders. Consumers
+  // put `toast` in useEffect/useCallback dependency arrays; a fresh object each
+  // render would retrigger those effects and cause refetch loops (the admin
+  // products page flickered and hammered the API for exactly this reason).
+  return useMemo(
+    () => ({
+      success: (message: string, duration = 4000) =>
+        add({ type: 'success', message, duration }),
+      error: (message: string, duration = 6000) =>
+        add({ type: 'error', message, duration }),
+      warning: (message: string, duration = 4000) =>
+        add({ type: 'warning', message, duration }),
+      info: (message: string, duration = 4000) =>
+        add({ type: 'info', message, duration }),
+      dismiss,
+    }),
+    [add, dismiss],
+  );
 }
