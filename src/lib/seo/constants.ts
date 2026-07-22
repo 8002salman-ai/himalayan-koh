@@ -1,9 +1,9 @@
-export const SITE_URL = 'https://himalayankoh.com';
-export const SITE_NAME = 'Himalayan Koh';
+export const SITE_URL = 'https://embanillc.example.com';
+export const SITE_NAME = 'Embani LLC Accounting System';
 export const DEFAULT_TITLE =
-  'Himalayan Koh - Premium Himalayan Pink Salt for Livestock & Cooking';
+  'Embani LLC Accounting System - Invoicing, Expenses & Financial Dashboards';
 export const DEFAULT_DESCRIPTION =
-  'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
+  'A modern accounting workspace for Embani LLC with invoicing, expense tracking, cash-flow visibility, and month-end reporting.';
 export const DEFAULT_OG_IMAGE = '/logo.svg';
 
 export const ORGANIZATION_JSON_LD = {

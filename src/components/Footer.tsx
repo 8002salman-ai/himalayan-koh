@@ -52,7 +52,7 @@ export default function Footer() {
                 Stay Updated
               </h3>
               <p className="text-white/90 text-base md:text-lg leading-relaxed">
-                Subscribe for exclusive offers, livestock health tips, and product updates.
+                Subscribe for accounting workflow updates, reporting tips, and finance operations notes.
               </p>
             </div>
             <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
@@ -98,11 +98,11 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <img
               src="/logo.svg"
-              alt="Himalayan Koh"
+              alt="Embani LLC Accounting System"
               className="h-12 mb-5 brightness-0 invert"
             />
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">
-              Premium Himalayan Pink Salt products for livestock, horses, cattle, deer, and gourmet cooking. Trusted by ranchers across America.
+              Embani LLC Accounting System centralizes invoices, expenses, receivables, and monthly reporting for a cleaner finance operation.
             </p>
             <div className="flex items-center gap-3">
               {[
@@ -142,7 +142,7 @@ export default function Footer() {
 
           {/* Products */}
           <div>
-            <h4 className="font-serif font-bold text-lg mb-6 text-white">Products</h4>
+            <h4 className="font-serif font-bold text-lg mb-6 text-white">Accounting</h4>
             <ul className="space-y-3">
               {productLinks.map((link) => (
                 <li key={link.label}>
@@ -178,10 +178,10 @@ export default function Footer() {
             {/* Trust badges */}
             <div className="mt-6 flex items-center gap-3">
               <div className="px-3 py-1.5 bg-white/10 rounded-lg text-xs text-white/60">
-                🔒 Secure Checkout
+                🔒 Controlled Access
               </div>
               <div className="px-3 py-1.5 bg-white/10 rounded-lg text-xs text-white/60">
-                🚚 Free Shipping $50+
+                📊 Audit Ready
               </div>
             </div>
           </div>
@@ -191,7 +191,7 @@ export default function Footer() {
       {/* Bottom Bar */}
       <div className="border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/40">
-          <p>Copyright © 2026 Himalayan Koh. All rights reserved.</p>
+          <p>Copyright © 2026 Embani LLC. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
