@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } from 'lucide-react';
@@ -14,8 +14,8 @@ import ScrollToTop from './ScrollToTop';
 
 const navLinks = [
   { label: 'Home', path: '/' },
-  { label: 'Products', path: '/products' },
-  { label: 'About Us', path: '/about' },
+  { label: 'Invoices', path: '/admin/orders' },
+  { label: 'Reports', path: '/admin/analytics' },
   { label: 'Contact', path: '/contact' },
 ];
 
@@ -70,8 +70,8 @@ export default function Layout({ children }: LayoutProps) {
       <div className="bg-warm-white border-b border-himalayan-line text-sm text-charcoal">
         <motion.div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <p className="text-center sm:text-left text-xs sm:text-sm tracking-wide flex-1">
-            <strong className="font-semibold text-himalayan">All Natural</strong>{' '}
-            Himalayan salt for horses, cattle and deer
+            <strong className="font-semibold text-himalayan">Embani LLC</strong>{' '}
+            accounting system for invoices, expenses and cash-flow reporting
           </p>
           <div className="flex items-center gap-6 sm:gap-8 text-xs sm:text-sm font-medium flex-shrink-0">
             <a href="tel:8322246466" className="flex items-center gap-1.5 text-charcoal hover:text-himalayan transition-colors whitespace-nowrap">
@@ -93,7 +93,7 @@ export default function Layout({ children }: LayoutProps) {
             <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
                 src="/logo.svg"
-                alt="Himalayan Koh — Salt that Heals"
+                alt="Embani LLC Accounting System"
                 className="h-11 md:h-[3.75rem] w-auto"
               />
             </Link>
@@ -127,7 +127,7 @@ export default function Layout({ children }: LayoutProps) {
                 to="/dealer"
                 className="hidden md:inline-flex btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
               >
-                Wholesale
+                Portal
               </Link>
 
               <motion.button
@@ -290,7 +290,7 @@ export default function Layout({ children }: LayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className="block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide text-himalayan hover:bg-warm-white transition-colors"
                 >
-                  Wholesale
+                  Portal
                 </Link>
               </motion.div>
               <motion.div
