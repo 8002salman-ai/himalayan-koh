@@ -6,6 +6,7 @@ import { useAuthContext } from '../context/AuthContext';
 import { authApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { useToast } from '../context/ToastContext';
+import { isDev } from '../lib/env';
 
 interface Props {
   isOpen: boolean;
@@ -14,6 +15,9 @@ interface Props {
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
+// Demo credentials are a local-dev convenience only — never rendered,
+// auto-filled, or otherwise reachable outside `next dev` (see isDev below),
+// so they can't be scraped off the live production site.
 const demoAccounts = {
   customer: {
     email: 'customer@himalayankoh.com',
@@ -29,8 +33,8 @@ export default function AuthModal({ isOpen, onClose }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: demoAccounts.customer.email,
-    password: demoAccounts.customer.password,
+    email: isDev ? demoAccounts.customer.email : '',
+    password: isDev ? demoAccounts.customer.password : '',
     fullName: '',
   });
   const [localLoading, setLocalLoading] = useState(false);
@@ -139,7 +143,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                 </div>
               )}
 
-              {mode === 'login' && (
+              {mode === 'login' && isDev && (
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"

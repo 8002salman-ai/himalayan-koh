@@ -4,7 +4,11 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { isDev } from '../../lib/env';
 
+// Demo credentials are a local-dev convenience only — never rendered,
+// auto-filled, or otherwise reachable outside `next dev` (see isDev below),
+// so they can't be scraped off the live production login page.
 const demoAccounts = {
   customer: {
     label: 'Use Demo Customer',
@@ -21,8 +25,8 @@ const demoAccounts = {
 };
 
 export default function LoginPage() {
-  const [email, setEmail] = useState(demoAccounts.customer.email);
-  const [password, setPassword] = useState(demoAccounts.customer.password);
+  const [email, setEmail] = useState(isDev ? demoAccounts.customer.email : '');
+  const [password, setPassword] = useState(isDev ? demoAccounts.customer.password : '');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export default function LoginPage() {
   const from = (location.state as { from?: string })?.from || '/';
 
   useEffect(() => {
-    if (from.startsWith('/admin')) {
+    if (isDev && from.startsWith('/admin')) {
       fillDemoAccount('admin');
     }
   }, [from]);
@@ -110,27 +114,31 @@ export default function LoginPage() {
             <p className="text-charcoal-light text-sm mt-1">Sign in to your account or use a demo login</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => fillDemoAccount('customer')}
-              className="p-3 rounded-xl bg-himalayan-lighter text-himalayan text-sm font-semibold hover:bg-himalayan/15 transition-colors"
-            >
-              {demoAccounts.customer.label}
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemoAccount('admin')}
-              className="p-3 rounded-xl bg-charcoal text-white text-sm font-semibold hover:bg-charcoal-light transition-colors"
-            >
-              {demoAccounts.admin.label}
-            </button>
-          </div>
+          {isDev && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => fillDemoAccount('customer')}
+                  className="p-3 rounded-xl bg-himalayan-lighter text-himalayan text-sm font-semibold hover:bg-himalayan/15 transition-colors"
+                >
+                  {demoAccounts.customer.label}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoAccount('admin')}
+                  className="p-3 rounded-xl bg-charcoal text-white text-sm font-semibold hover:bg-charcoal-light transition-colors"
+                >
+                  {demoAccounts.admin.label}
+                </button>
+              </div>
 
-          <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
-            <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer@123</p>
-            <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin@123</p>
-          </div>
+              <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
+                <p><span className="font-semibold text-charcoal">Customer:</span> {demoAccounts.customer.email} / {demoAccounts.customer.password}</p>
+                <p><span className="font-semibold text-charcoal">Admin:</span> {demoAccounts.admin.email} / {demoAccounts.admin.password}</p>
+              </div>
+            </>
+          )}
 
           {!supabaseReady && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
