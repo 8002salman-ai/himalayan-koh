@@ -3,6 +3,7 @@
 
 import { getSetting } from '@/lib/settings/serverSettings';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { publicEnv } from '@/lib/env';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -216,10 +217,30 @@ function jsonResponse(body: unknown, status: number, headers: Record<string, str
   });
 }
 
+// Real allowlist, not a blind reflection of whatever Origin a caller sends
+// (that pattern lets any third-party site ride this API and its rate limit/
+// cost budget). Allows the configured production site, the known Vercel
+// domains, and localhost for local development only.
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (hostname === 'himalayankoh.com' || hostname === 'www.himalayankoh.com') return true;
+    if (hostname.endsWith('.vercel.app')) return true;
+    if (process.env.NODE_ENV === 'development' && (hostname === 'localhost' || hostname === '127.0.0.1')) {
+      return true;
+    }
+    return protocol === 'https:' && hostname === new URL(publicEnv.siteUrl || 'https://himalayankoh.com').hostname;
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(request: Request) {
-  const origin = request.headers.get('origin') || 'https://himalayankoh.com';
+  const requestOrigin = request.headers.get('origin') || '';
+  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : '';
   return {
-    'Access-Control-Allow-Origin': origin,
+    ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
     Vary: 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',

@@ -10,8 +10,11 @@ import path from 'path';
 const root = process.cwd();
 dotenv.config({ path: path.join(root, '.env.local') });
 
+// Canonical production domain — matches what robots.txt/sitemap.ts and the
+// email/Stripe URL fallbacks already use elsewhere in this repo. Override by
+// exporting SITE_URL_OVERRIDE before running this script if that ever changes.
 const productionOverrides = {
-  NEXT_PUBLIC_SITE_URL: 'https://himalayan-koh.vercel.app',
+  NEXT_PUBLIC_SITE_URL: process.env.SITE_URL_OVERRIDE || 'https://himalayankoh.com',
 };
 
 const keys = [
