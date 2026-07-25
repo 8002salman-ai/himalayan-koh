@@ -11,14 +11,14 @@ import { checkRateLimit } from '@/lib/rateLimit';
 // page already knows the ID of. Routing the read through this endpoint lets
 // that RLS policy be dropped (see the matching migration) while preserving
 // the exact same guest "know the order ID, see the order" capability.
-async function resolveUserId(request: Request, bodyUserId?: string): Promise<string | null> {
+async function resolveUserId(request: Request): Promise<string | null> {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return bodyUserId || null;
+    return null;
   }
 
   const token = authHeader.slice(7).trim();
-  if (!token) return bodyUserId || null;
+  if (!token) return null;
 
   const supabase = getSupabaseAdmin();
   const { data: userData, error } = await supabase.auth.getUser(token);
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'orderId is required.' }, { status: 400 });
   }
 
-  const userId = await resolveUserId(request, typeof record.userId === 'string' ? record.userId : undefined);
+  const userId = await resolveUserId(request);
 
   try {
     const supabase = getSupabaseAdmin();
@@ -60,10 +60,14 @@ export async function POST(request: Request) {
 
     // A logged-in caller only ever gets back their own order — a signed-in
     // request can't be used to read someone else's order by guessing its ID.
-    // Guests (no verified session) fall through to the bare id match, same
-    // as the guest-checkout-confirmation capability this replaces.
+    // Unverified/guest callers are restricted to orders with no owner at all
+    // (the same guest-checkout-confirmation capability this replaces) —
+    // never a bare id match, or any order could be read by anyone who
+    // guesses/knows its id, authenticated-owned or not.
     if (userId) {
       query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
     }
 
     const { data, error } = await query.maybeSingle();
