@@ -10,11 +10,14 @@ import path from 'path';
 const root = process.cwd();
 dotenv.config({ path: path.join(root, '.env.local') });
 
-// Canonical production domain — matches what robots.txt/sitemap.ts and the
-// email/Stripe URL fallbacks already use elsewhere in this repo. Override by
-// exporting SITE_URL_OVERRIDE before running this script if that ever changes.
+// Canonical production domain, confirmed live — see docs/ENV-LOCK.md.
+// Several fallbacks elsewhere in this repo (SEO constants, email/Stripe URL
+// helpers) assume himalayankoh.com instead; those are only used if
+// NEXT_PUBLIC_SITE_URL is ever unset in an environment, which it isn't in
+// production. Override by exporting SITE_URL_OVERRIDE if the live domain
+// changes.
 const productionOverrides = {
-  NEXT_PUBLIC_SITE_URL: process.env.SITE_URL_OVERRIDE || 'https://himalayankoh.com',
+  NEXT_PUBLIC_SITE_URL: process.env.SITE_URL_OVERRIDE || 'https://himalayan-koh.vercel.app',
 };
 
 const keys = [
