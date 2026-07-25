@@ -26,6 +26,9 @@ export const MIGRATIONS = [
   '019_wholesale_purchase_requests.sql',
   '020_order_status_packed.sql',
   '021_wholesale_phase4.sql',
+  '022_crm_leads.sql',
+  '023_crm_auto_leads.sql',
+  '024_restrict_guest_order_select.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */
