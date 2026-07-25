@@ -5,24 +5,36 @@ import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 
-const demoAccounts = {
-  customer: {
-    label: 'Use Demo Customer',
-    email: 'customer@himalayankoh.com',
-    password: 'Customer@123',
-    redirectTo: '/account',
-  },
-  admin: {
-    label: 'Use Demo Admin',
-    email: 'admin@himalayankoh.com',
-    password: 'Admin@123',
-    redirectTo: '/admin',
-  },
-};
+type DemoAccount = { label: string; email: string; password: string; redirectTo: string };
+
+// Demo credentials only exist at all in a development build. Checking
+// process.env.NODE_ENV directly (not through the isDev re-export) lets the
+// production minifier prove this function always returns null and strip the
+// credential literals below as dead code — not just skip rendering them, so
+// they can't be scraped out of the shipped production JS either.
+function getDemoAccounts(): { customer: DemoAccount; admin: DemoAccount } | null {
+  if (process.env.NODE_ENV !== 'development') return null;
+  return {
+    customer: {
+      label: 'Use Demo Customer',
+      email: 'customer@himalayankoh.com',
+      password: 'Customer@123',
+      redirectTo: '/account',
+    },
+    admin: {
+      label: 'Use Demo Admin',
+      email: 'admin@himalayankoh.com',
+      password: 'Admin@123',
+      redirectTo: '/admin',
+    },
+  };
+}
+
+const demoAccounts = getDemoAccounts();
 
 export default function LoginPage() {
-  const [email, setEmail] = useState(demoAccounts.customer.email);
-  const [password, setPassword] = useState(demoAccounts.customer.password);
+  const [email, setEmail] = useState(demoAccounts?.customer.email ?? '');
+  const [password, setPassword] = useState(demoAccounts?.customer.password ?? '');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
@@ -37,7 +49,7 @@ export default function LoginPage() {
   const from = (location.state as { from?: string })?.from || '/';
 
   useEffect(() => {
-    if (from.startsWith('/admin')) {
+    if (demoAccounts && from.startsWith('/admin')) {
       fillDemoAccount('admin');
     }
   }, [from]);
@@ -50,7 +62,7 @@ export default function LoginPage() {
 
   const getRedirectForEmail = (loginEmail: string) => {
     if (demoRedirect) return demoRedirect;
-    if (loginEmail.trim().toLowerCase() === demoAccounts.admin.email) return '/admin';
+    if (demoAccounts && loginEmail.trim().toLowerCase() === demoAccounts.admin.email) return '/admin';
     return from;
   };
 
@@ -73,7 +85,8 @@ export default function LoginPage() {
 
   const isSigningIn = isSubmitting;
 
-  const fillDemoAccount = (type: keyof typeof demoAccounts) => {
+  const fillDemoAccount = (type: 'customer' | 'admin') => {
+    if (!demoAccounts) return;
     const account = demoAccounts[type];
     setEmail(account.email);
     setPassword(account.password);
@@ -107,34 +120,42 @@ export default function LoginPage() {
               className="h-14 mx-auto mb-4"
             />
             <h1 className="font-serif text-2xl font-bold text-charcoal">Welcome Back</h1>
-            <p className="text-charcoal-light text-sm mt-1">Sign in to your account or use a demo login</p>
+            <p className="text-charcoal-light text-sm mt-1">
+              {demoAccounts ? 'Sign in to your account or use a demo login' : 'Sign in to your account'}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => fillDemoAccount('customer')}
-              className="p-3 rounded-xl bg-himalayan-lighter text-himalayan text-sm font-semibold hover:bg-himalayan/15 transition-colors"
-            >
-              {demoAccounts.customer.label}
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemoAccount('admin')}
-              className="p-3 rounded-xl bg-charcoal text-white text-sm font-semibold hover:bg-charcoal-light transition-colors"
-            >
-              {demoAccounts.admin.label}
-            </button>
-          </div>
+          {demoAccounts && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => fillDemoAccount('customer')}
+                  className="p-3 rounded-xl bg-himalayan-lighter text-himalayan text-sm font-semibold hover:bg-himalayan/15 transition-colors"
+                >
+                  {demoAccounts.customer.label}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoAccount('admin')}
+                  className="p-3 rounded-xl bg-charcoal text-white text-sm font-semibold hover:bg-charcoal-light transition-colors"
+                >
+                  {demoAccounts.admin.label}
+                </button>
+              </div>
 
-          <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
-            <p><span className="font-semibold text-charcoal">Customer:</span> customer@himalayankoh.com / Customer@123</p>
-            <p><span className="font-semibold text-charcoal">Admin:</span> admin@himalayankoh.com / Admin@123</p>
-          </div>
+              <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-charcoal-light space-y-1">
+                <p><span className="font-semibold text-charcoal">Customer:</span> {demoAccounts.customer.email} / {demoAccounts.customer.password}</p>
+                <p><span className="font-semibold text-charcoal">Admin:</span> {demoAccounts.admin.email} / {demoAccounts.admin.password}</p>
+              </div>
+            </>
+          )}
 
           {!supabaseReady && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              Supabase environment variables are missing. Demo login will work after `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel and the demo accounts are seeded.
+              {demoAccounts
+                ? 'Supabase environment variables are missing. Demo login will work after `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel and the demo accounts are seeded.'
+                : 'Supabase environment variables are missing. Sign-in is unavailable until they are configured.'}
             </div>
           )}
 
@@ -241,7 +262,7 @@ export default function LoginPage() {
 
           {/* Sign up link */}
           <p className="text-center text-sm text-charcoal-light mt-6">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link to="/signup" className="text-himalayan font-semibold hover:underline">
               Sign up
             </Link>

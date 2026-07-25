@@ -127,6 +127,28 @@ async function createOrderViaApi(data: CreateOrderData, userId?: string): Promis
   return body;
 }
 
+async function getOrderByIdViaApi(orderId: string, userId?: string): Promise<OrderWithItems | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  const response = await fetch('/api/orders/get', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ orderId, userId }),
+  });
+
+  if (response.status === 404) return null;
+
+  const body = (await response.json().catch(() => ({}))) as OrderWithItems & { error?: string };
+  if (!response.ok) {
+    throw new Error(body.error || `Unable to load order (${response.status}).`);
+  }
+  return body;
+}
+
 export const ordersApi = {
   // Create a new order from cart (server API — bypasses guest RLS on insert return)
   async createOrder(data: CreateOrderData, userId?: string): Promise<OrderWithItems> {
@@ -262,8 +284,13 @@ export const ordersApi = {
     return { orders: data as OrderWithItems[], count: count || 0 };
   },
 
-  // Get single order by ID
+  // Get single order by ID (server API — guest orders aren't directly
+  // SELECT-able by the anon client; see migration 0XX + api/orders/get).
   async getOrderById(orderId: string, userId?: string): Promise<OrderWithItems | null> {
+    if (typeof window !== 'undefined') {
+      return getOrderByIdViaApi(orderId, userId);
+    }
+
     let query = supabase
       .from('orders')
       .select(`

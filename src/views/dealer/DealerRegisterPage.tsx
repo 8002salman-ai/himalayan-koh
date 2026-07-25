@@ -125,7 +125,7 @@ export default function DealerRegisterPage() {
           <h1 className="font-serif text-3xl font-bold text-white mb-3">Application Submitted</h1>
           <p className="text-white/70 mb-8 leading-relaxed">
             Thank you for applying to become a Himalayan Koh wholesale partner. Our team will review your
-            application, and you'll receive an email once a decision is made.
+            application, and you&apos;ll receive an email once a decision is made.
           </p>
           <button onClick={() => navigate('/dealer/login')} className="btn-hk-primary">
             Go to Wholesale Login

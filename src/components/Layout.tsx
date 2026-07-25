@@ -5,6 +5,7 @@ import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } fro
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import { clearSupabaseSession } from '../lib/supabase/client';
+import { publicEnv } from '../lib/env';
 import CartDrawer from './CartDrawer';
 import SearchModal from './SearchModal';
 import AuthModal from './AuthModal';
@@ -123,12 +124,15 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                to="/dealer"
-                className="hidden md:inline-flex btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
-              >
-                Wholesale
-              </Link>
+              {/* Wholesale/B2B is temporarily disabled — see src/lib/env.ts. */}
+              {publicEnv.wholesaleEnabled && (
+                <Link
+                  to="/dealer"
+                  className="hidden md:inline-flex btn-hk-ghost !min-h-[46px] !px-4 !py-2 !text-xs"
+                >
+                  Wholesale
+                </Link>
+              )}
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -280,19 +284,22 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 </motion.div>
               ))}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: navLinks.length * 0.05 }}
-              >
-                <Link
-                  to="/dealer"
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide text-himalayan hover:bg-warm-white transition-colors"
+              {/* Wholesale/B2B is temporarily disabled — see src/lib/env.ts. */}
+              {publicEnv.wholesaleEnabled && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navLinks.length * 0.05 }}
                 >
-                  Wholesale
-                </Link>
-              </motion.div>
+                  <Link
+                    to="/dealer"
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide text-himalayan hover:bg-warm-white transition-colors"
+                  >
+                    Wholesale
+                  </Link>
+                </motion.div>
+              )}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}

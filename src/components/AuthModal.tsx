@@ -14,23 +14,33 @@ interface Props {
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
-const demoAccounts = {
-  customer: {
-    email: 'customer@himalayankoh.com',
-    password: 'Customer@123',
-  },
-  admin: {
-    email: 'admin@himalayankoh.com',
-    password: 'Admin@123',
-  },
-};
+// Demo credentials only exist at all in a development build. Checking
+// process.env.NODE_ENV directly lets the production minifier prove this
+// function always returns null and strip the credential literals below as
+// dead code — not just skip rendering them, so they can't be scraped out of
+// the shipped production JS either.
+function getDemoAccounts(): { customer: { email: string; password: string }; admin: { email: string; password: string } } | null {
+  if (process.env.NODE_ENV !== 'development') return null;
+  return {
+    customer: {
+      email: 'customer@himalayankoh.com',
+      password: 'Customer@123',
+    },
+    admin: {
+      email: 'admin@himalayankoh.com',
+      password: 'Admin@123',
+    },
+  };
+}
+
+const demoAccounts = getDemoAccounts();
 
 export default function AuthModal({ isOpen, onClose }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: demoAccounts.customer.email,
-    password: demoAccounts.customer.password,
+    email: demoAccounts?.customer.email ?? '',
+    password: demoAccounts?.customer.password ?? '',
     fullName: '',
   });
   const [localLoading, setLocalLoading] = useState(false);
@@ -77,7 +87,8 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     navigate(`/${page}`);
   };
 
-  const fillDemoAccount = (type: keyof typeof demoAccounts) => {
+  const fillDemoAccount = (type: 'customer' | 'admin') => {
+    if (!demoAccounts) return;
     setMode('login');
     setFormData({
       ...formData,
@@ -135,11 +146,13 @@ export default function AuthModal({ isOpen, onClose }: Props) {
             <form onSubmit={handleSubmit} className="p-6 pt-0 space-y-4">
               {!supabaseReady && mode === 'login' && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
-                  Supabase is not configured. Add Vercel env vars before demo login will work.
+                  {demoAccounts
+                    ? 'Supabase is not configured. Add Vercel env vars before demo login will work.'
+                    : 'Supabase is not configured. Sign-in is unavailable until it is.'}
                 </div>
               )}
 
-              {mode === 'login' && (
+              {mode === 'login' && demoAccounts && (
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -250,7 +263,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
               <div className="text-center text-sm text-charcoal-light">
                 {mode === 'login' && (
                   <>
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <button
                       type="button"
                       onClick={() => { setMode('signup'); resetForm(); }}

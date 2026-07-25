@@ -61,7 +61,7 @@ export default function HomePage() {
             >
               <div className="flex justify-center mb-6">
                 <span className="inline-block px-5 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full text-center">
-                  World's Best for Livestock
+                  World&apos;s Best for Livestock
                 </span>
               </div>
               <h2 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
@@ -69,7 +69,7 @@ export default function HomePage() {
               </h2>
               <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
-                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It's a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
+                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
                 </p>
                 <p>
                   Himalayan pink rock salt not only tastes its salty best, but gives cattle, horses, deer, and other animals the quality NaCl they need to stay healthy and be more productive.
@@ -160,7 +160,7 @@ export default function HomePage() {
                 <div className="flex gap-5">
                   <Quote size={32} className="text-himalayan flex-shrink-0" />
                   <div>
-                    <p className="text-charcoal-light leading-relaxed mb-5 text-base md:text-lg">"{testimonial.quote}"</p>
+                    <p className="text-charcoal-light leading-relaxed mb-5 text-base md:text-lg">&quot;{testimonial.quote}&quot;</p>
                     <p className="font-semibold text-charcoal">{testimonial.author}</p>
                     <p className="text-sm text-charcoal-light">{testimonial.location}</p>
                   </div>

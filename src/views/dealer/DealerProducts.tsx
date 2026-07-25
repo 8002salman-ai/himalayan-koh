@@ -111,7 +111,7 @@ export default function DealerProducts() {
       ) : loadError ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <AlertTriangle size={32} className="mx-auto text-red-500 mb-3" />
-          <p className="font-semibold text-red-700 mb-1">The wholesale catalog couldn't be loaded</p>
+          <p className="font-semibold text-red-700 mb-1">The wholesale catalog couldn&apos;t be loaded</p>
           <p className="text-sm text-red-600 mb-4">{loadError}</p>
           <Button variant="destructive" size="sm" onClick={load}>
             Retry
@@ -210,7 +210,7 @@ export default function DealerProducts() {
       {!loading && filtered.length > 0 && (
         <p className="flex items-center gap-1.5 text-xs text-charcoal-light">
           <Zap size={12} className="text-himalayan" />
-          Quick order: adjust quantity per product above, then check out from your cart once you've added everything you need.
+          Quick order: adjust quantity per product above, then check out from your cart once you&apos;ve added everything you need.
         </p>
       )}
     </div>

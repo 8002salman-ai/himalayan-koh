@@ -3,6 +3,7 @@
 
 import { getSetting } from '@/lib/settings/serverSettings';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { publicEnv } from '@/lib/env';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -216,10 +217,35 @@ function jsonResponse(body: unknown, status: number, headers: Record<string, str
   });
 }
 
+// Real allowlist, not a blind reflection of whatever Origin a caller sends
+// (that pattern lets any third-party site ride this API and its rate limit/
+// cost budget). `hostname.endsWith('.vercel.app')` would accept any Vercel
+// deployment on the shared domain, not just this project's — so the Vercel
+// checks are scoped to this project's own deployment domains only
+// (VERCEL_URL is the current deployment's generated URL; a preview build's
+// own domain), plus the configured production site and localhost in dev.
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (process.env.NODE_ENV === 'development' && (hostname === 'localhost' || hostname === '127.0.0.1')) {
+      return true;
+    }
+    if (process.env.VERCEL_URL && hostname === process.env.VERCEL_URL) return true;
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL && hostname === process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      return true;
+    }
+    return protocol === 'https:' && hostname === new URL(publicEnv.siteUrl || 'https://himalayan-koh.vercel.app').hostname;
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(request: Request) {
-  const origin = request.headers.get('origin') || 'https://himalayankoh.com';
+  const requestOrigin = request.headers.get('origin') || '';
+  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : '';
   return {
-    'Access-Control-Allow-Origin': origin,
+    ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
     Vary: 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',

@@ -167,7 +167,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-charcoal">Dashboard</h1>
-            <p className="text-charcoal-light">Welcome back! Here's what's happening.</p>
+            <p className="text-charcoal-light">Welcome back! Here&apos;s what&apos;s happening.</p>
           </div>
           {realtimeNotice && (
             <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium">

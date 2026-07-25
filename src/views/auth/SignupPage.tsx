@@ -86,7 +86,7 @@ export default function SignupPage() {
           </div>
           <h1 className="font-serif text-2xl font-bold text-charcoal mb-2">Check Your Email</h1>
           <p className="text-charcoal-light mb-6">
-            We've sent a verification link to <strong>{formData.email}</strong>. 
+            We&apos;ve sent a verification link to <strong>{formData.email}</strong>.
             Please check your inbox and click the link to verify your account.
           </p>
           <Link

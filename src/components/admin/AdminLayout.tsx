@@ -13,7 +13,7 @@ import {
   Package,
   Users,
 } from 'lucide-react';
-import { ADMIN_NAV_ITEMS, ADMIN_MOBILE_NAV_ITEMS } from '../../lib/adminNav';
+import { ADMIN_MOBILE_NAV_ITEMS, getVisibleAdminNavItems } from '../../lib/adminNav';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase, clearSupabaseSession } from '../../lib/supabase/client';
 import AIChatWidget from '../AIChatWidget';
@@ -41,6 +41,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const { profile, user } = useAuthContext();
   const unreadCount = alerts.filter((alert) => !alert.read).length;
+  const navItems = getVisibleAdminNavItems();
 
   const handleSignOut = () => {
     // Sign out entirely client-side: wipe the persisted session synchronously
@@ -156,7 +157,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
-          {ADMIN_NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/admin' && location.pathname.startsWith(item.path));
             
@@ -223,7 +224,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
               <nav className="flex-1 py-3 px-3 overflow-y-auto scrollbar-thin">
                 <div className="grid grid-cols-3 gap-2">
-                  {ADMIN_NAV_ITEMS.map((item) => {
+                  {navItems.map((item) => {
                     const isActive = location.pathname === item.path ||
                       (item.path !== '/admin' && location.pathname.startsWith(item.path));
                     return (

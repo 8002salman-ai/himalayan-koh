@@ -60,7 +60,7 @@ export default function AboutPage() {
             transition={{ delay: 0.1 }}
             className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
-            World's Best for Livestock
+            World&apos;s Best for Livestock
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -122,7 +122,7 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-4 text-charcoal-light leading-relaxed text-base md:text-lg">
                 <p>
-                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It's a favorite with top chefs and countless gourmet cooks. But this is an area where livestock can definitely recognize and benefit from a better quality product.
+                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But this is an area where livestock can definitely recognize and benefit from a better quality product.
                 </p>
                 <p>
                   Himalayan pink rock salt has up to 84 nutritious minerals and trace elements. It not only tastes its salty best, but gives cattle, horses, deer, and other animals the higher quality NaCl (Sodium Chloride) they need to stay healthy and be more productive.
@@ -169,7 +169,7 @@ export default function AboutPage() {
               Benefits of Himalayan Salt
             </h2>
             <p className="text-charcoal-light text-lg max-w-2xl mx-auto">
-              Nature's perfect mineral supplement for your livestock
+              Nature&apos;s perfect mineral supplement for your livestock
             </p>
           </motion.div>
 
