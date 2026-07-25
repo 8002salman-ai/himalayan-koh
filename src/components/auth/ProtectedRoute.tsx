@@ -38,7 +38,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
             Access Denied
           </h1>
           <p className="text-charcoal-light mb-6">
-            You don't have permission to access this page. This area is restricted to {requiredRole}s only.
+            You don&apos;t have permission to access this page. This area is restricted to {requiredRole}s only.
           </p>
           <Link
             to="/"

@@ -250,7 +250,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
               <div className="text-center text-sm text-charcoal-light">
                 {mode === 'login' && (
                   <>
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <button
                       type="button"
                       onClick={() => { setMode('signup'); resetForm(); }}

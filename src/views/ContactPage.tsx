@@ -64,7 +64,7 @@ export default function ContactPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
           >
-            We're here to help with all your Himalayan salt needs
+            We&apos;re here to help with all your Himalayan salt needs
           </motion.p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function ContactPage() {
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
               <h3 className="font-serif text-2xl font-bold text-charcoal mb-2">Send us a Message</h3>
               <p className="text-charcoal-light mb-8">
-                Fill out the form below and we'll get back to you within 24 hours.
+                Fill out the form below and we&apos;ll get back to you within 24 hours.
               </p>
 
               {submitted ? (
@@ -173,7 +173,7 @@ export default function ContactPage() {
                 >
                   <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
                   <h4 className="font-serif text-2xl font-bold text-charcoal mb-2">Message Sent!</h4>
-                  <p className="text-charcoal-light">We'll get back to you shortly.</p>
+                  <p className="text-charcoal-light">We&apos;ll get back to you shortly.</p>
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">

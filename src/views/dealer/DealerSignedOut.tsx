@@ -21,9 +21,9 @@ export default function DealerSignedOut() {
             </div>
           </div>
 
-          <h1 className="font-serif text-2xl font-bold text-charcoal">You've been signed out</h1>
+          <h1 className="font-serif text-2xl font-bold text-charcoal">You&apos;ve been signed out</h1>
           <p className="text-charcoal-light text-sm mt-2 mb-8">
-            Your wholesale session has ended and you've been securely signed out of your account.
+            Your wholesale session has ended and you&apos;ve been securely signed out of your account.
           </p>
 
           <div className="space-y-3">

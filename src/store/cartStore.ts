@@ -15,7 +15,7 @@ export interface CartItem {
 }
 
 let cartItems: CartItem[] = [];
-let listeners: Set<() => void> = new Set();
+const listeners: Set<() => void> = new Set();
 let loadedForUserId: string | null | undefined;
 let isLoadingCart = false;
 const localCartKey = 'cart_items';
