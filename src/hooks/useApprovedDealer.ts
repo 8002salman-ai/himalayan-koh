@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { dealerApi } from '@/lib/supabase/api/dealer';
+import { publicEnv } from '@/lib/env';
 
 /**
  * Lightweight client-side check for "is this signed-in user an approved
@@ -9,6 +10,10 @@ import { dealerApi } from '@/lib/supabase/api/dealer';
  * re-verifies this independently (isApprovedDealer() in
  * serverCreatePurchaseRequest.ts) before accepting a purchase request, so
  * this hook is a UX convenience only, never a security boundary.
+ *
+ * While wholesale is disabled (see src/lib/env.ts), this always resolves to
+ * false so CartDrawer.tsx's dealer-checkout fork never activates and every
+ * cart routes to retail checkout, regardless of an account's approval status.
  */
 export function useApprovedDealer(): { isApprovedDealer: boolean; loading: boolean } {
   const { user, isAuthenticated } = useAuthContext();
@@ -18,7 +23,7 @@ export function useApprovedDealer(): { isApprovedDealer: boolean; loading: boole
   useEffect(() => {
     let cancelled = false;
 
-    if (!isAuthenticated || !user?.id) {
+    if (!publicEnv.wholesaleEnabled || !isAuthenticated || !user?.id) {
       setIsApprovedDealer(false);
       setLoading(false);
       return;

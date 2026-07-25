@@ -14,6 +14,7 @@ import {
   Building2,
   Contact,
 } from 'lucide-react';
+import { publicEnv } from './env';
 
 
 export const ADMIN_NAV_ITEMS = [
@@ -39,3 +40,16 @@ export const ADMIN_MOBILE_NAV_ITEMS = [
   { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
   { label: 'More', path: 'menu', icon: Menu },
 ] as const;
+
+/**
+ * Wholesale/B2B is temporarily disabled — see src/lib/env.ts. The
+ * "Wholesalers" admin nav entry is hidden while disabled (not deleted; the
+ * route and all underlying data/functionality stay intact for direct/
+ * internal access). Single filter point so both AdminLayout.tsx nav
+ * renders (desktop sidebar + mobile drawer) stay consistent.
+ */
+export function getVisibleAdminNavItems() {
+  return publicEnv.wholesaleEnabled
+    ? ADMIN_NAV_ITEMS
+    : ADMIN_NAV_ITEMS.filter((item) => item.path !== '/admin/dealers');
+}
