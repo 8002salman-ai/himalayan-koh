@@ -8,7 +8,7 @@ import { publicEnv } from '../lib/env';
 // Wholesale/B2B is temporarily disabled — see src/lib/env.ts. Filtered out
 // by path prefix at render time rather than removed from the list, so
 // re-enabling the flag restores these links with no further changes.
-const WHOLESALE_LINK_PATHS = ['/dealer', '/dealer/login'];
+const isWholesalePath = (path: string) => path === '/dealer' || path.startsWith('/dealer/');
 
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
@@ -136,7 +136,7 @@ export default function Footer() {
             <h4 className="font-serif font-bold text-lg mb-6 text-white">Quick Links</h4>
             <ul className="space-y-3">
               {aboutLinks
-                .filter((link) => publicEnv.wholesaleEnabled || !WHOLESALE_LINK_PATHS.includes(link.to))
+                .filter((link) => publicEnv.wholesaleEnabled || !isWholesalePath(link.to))
                 .map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} state={'state' in link ? link.state : undefined} className="text-white/60 text-sm hover:text-himalayan transition-colors flex items-center gap-1 group">
