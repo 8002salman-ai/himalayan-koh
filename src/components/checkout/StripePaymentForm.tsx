@@ -27,6 +27,8 @@ function PaymentFormInner({
   const stripe = useStripe();
   const elements = useElements();
   const [paying, setPaying] = useState(false);
+  const [elementReady, setElementReady] = useState(false);
+  const [elementError, setElementError] = useState<string | null>(null);
 
   const handlePayment = async () => {
     if (!stripe || !elements || disabled) return;
@@ -61,7 +63,25 @@ function PaymentFormInner({
 
   return (
     <div className="space-y-4">
+      {!elementReady && !elementError && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-charcoal-light">
+          Loading secure card, Klarna and Afterpay payment fields…
+        </div>
+      )}
+      {elementError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Payment fields could not load. {elementError} Please refresh this page and try again.
+        </div>
+      )}
       <PaymentElement
+        onReady={() => {
+          setElementReady(true);
+          setElementError(null);
+        }}
+        onLoadError={(event) => {
+          setElementReady(false);
+          setElementError(event.error?.message || 'Stripe was unable to load the available payment methods.');
+        }}
         options={{
           layout: 'tabs',
           paymentMethodOrder: ['card', 'klarna', 'afterpay_clearpay'],
@@ -75,7 +95,7 @@ function PaymentFormInner({
       <button
         type="button"
         onClick={handlePayment}
-        disabled={!stripe || !elements || paying || disabled}
+        disabled={!stripe || !elements || !elementReady || paying || disabled}
         className="w-full flex items-center justify-center gap-2 py-4 bg-charcoal hover:bg-charcoal-light disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
       >
         {paying && <Loader2 size={18} className="animate-spin" />}
