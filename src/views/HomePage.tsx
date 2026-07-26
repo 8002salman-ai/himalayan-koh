@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Quote, Star, Award } from 'lucide-react';
+import { ArrowRight, Star, Award } from 'lucide-react';
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -137,33 +137,6 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-serif text-2xl font-bold mb-3 text-white">{card.title}</h3>
                   <p className="text-white/85 leading-relaxed">{card.text}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 md:py-24">
-        <div className="max-w-[88rem] mx-auto px-4 sm:px-6">
-          <div className="grid gap-6">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={`${testimonial.author}-${index}`}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.08 }}
-                className="bg-white rounded-2xl shadow-md p-6 md:p-8 border border-gray-100"
-              >
-                <div className="flex gap-5">
-                  <Quote size={32} className="text-himalayan flex-shrink-0" />
-                  <div>
-                    <p className="text-charcoal-light leading-relaxed mb-5 text-base md:text-lg">&quot;{testimonial.quote}&quot;</p>
-                    <p className="font-semibold text-charcoal">{testimonial.author}</p>
-                    <p className="text-sm text-charcoal-light">{testimonial.location}</p>
-                  </div>
                 </div>
               </motion.div>
             ))}
