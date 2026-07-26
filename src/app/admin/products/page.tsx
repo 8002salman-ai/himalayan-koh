@@ -1,2 +1,2 @@
 'use client';
-export { default } from '@/views/admin/AdminProducts';
+export { default } from '@/views/admin/ShippingReadyProductsPage';
