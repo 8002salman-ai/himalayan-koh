@@ -1,6 +1,7 @@
 -- Product-specific shipping and packing configuration.
--- Existing products are archived instead of hard-deleted so historical
--- orders, invoices, analytics, and order_items remain intact.
+-- Existing products are intentionally NOT archived automatically here. The
+-- migration is safe to apply independently; catalog cleanup remains an explicit
+-- admin decision after the new shipping-ready product workflow is verified.
 
 create table if not exists public.product_packing_profiles (
   product_id uuid primary key references public.products(id) on delete cascade,
@@ -58,10 +59,3 @@ drop trigger if exists product_packing_profiles_updated_at on public.product_pac
 create trigger product_packing_profiles_updated_at
 before update on public.product_packing_profiles
 for each row execute function public.touch_product_packing_profile_updated_at();
-
--- Start the rebuilt catalog cleanly while retaining all historical references.
-update public.products
-set is_active = false,
-    is_featured = false,
-    updated_at = now()
-where is_active = true or is_featured = true;
