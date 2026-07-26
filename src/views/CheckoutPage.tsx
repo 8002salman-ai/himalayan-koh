@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Loader2, MapPin, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
@@ -102,7 +102,9 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
   const [stripeConfig, setStripeConfig] = useState<StripePublicConfig | null>(null);
   const [stripeConfigLoaded, setStripeConfigLoaded] = useState(false);
   const [shippoRuntimeEnabled, setShippoRuntimeEnabled] = useState<boolean | null>(null);
+  const [shippingSelected, setShippingSelected] = useState(false);
   const stripePaymentRef = useRef<HTMLDivElement>(null);
+  const preparingPaymentRef = useRef(false);
 
   const shippoEnabled = shippoRuntimeEnabled ?? publicEnv.shippoEnabled;
   const showShippoPanel = shippoEnabled && (
@@ -132,12 +134,45 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
     [couponCode, items, shippingMethod, useLiveShippoRates, selectedShippoRate?.amount]
   );
 
+  const paymentDetailsReady = Boolean(
+    form.email.trim() &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) &&
+    form.fullName.trim() &&
+    form.addressLine1.trim() &&
+    form.city.trim() &&
+    form.state.trim() &&
+    form.postalCode.trim() &&
+    form.country.trim() &&
+    (billingSameAsShipping || (
+      form.billingFullName.trim() &&
+      form.billingAddressLine1.trim() &&
+      form.billingCity.trim() &&
+      form.billingState.trim() &&
+      form.billingPostalCode.trim() &&
+      form.billingCountry.trim()
+    ))
+  );
+  const shippingReadyForPayment = !shippoEnabled || useLiveShippoRates || shippoRatesAttempted;
+  const canAutoPreparePayment =
+    retailOnly &&
+    paymentMethod === 'stripe' &&
+    stripeEnabled &&
+    isSupabaseConfigured() &&
+    items.length > 0 &&
+    shippingSelected &&
+    shippingReadyForPayment &&
+    paymentDetailsReady;
+
   useEffect(() => {
     getStripeClientConfig()
       .then((config) => setStripeConfig(config))
       .catch((error) => console.error('Unable to load Stripe config:', error))
       .finally(() => setStripeConfigLoaded(true));
   }, []);
+
+  useEffect(() => {
+    if (retailOnly && stripeEnabled) setPaymentMethod('stripe');
+  }, [retailOnly, stripeEnabled]);
 
   useEffect(() => {
     getShippoClientConfig()
@@ -305,6 +340,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
       field === 'country'
     ) {
       setAddressValidation(null);
+      setShippingSelected(false);
     }
   };
 
@@ -368,6 +404,81 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
     return Object.keys(nextErrors).length === 0;
   };
 
+  const prepareStripePayment = useCallback(async () => {
+    if (stripeSession || preparingPaymentRef.current) return;
+
+    preparingPaymentRef.current = true;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const shippingAddress = buildShippingAddress(form);
+      const billingAddress = billingSameAsShipping
+        ? shippingAddress
+        : buildBillingAddress(form);
+      const order = await ordersApi.createOrder({
+        email: form.email,
+        phone: form.phone || undefined,
+        shippingAddress,
+        billingAddress,
+        couponCode,
+        shippingMethod,
+        shippingCostOverride: useLiveShippoRates ? selectedShippoRate?.amount : undefined,
+        shippoRateId: useLiveShippoRates ? selectedShippoRate?.objectId : undefined,
+        shippingCarrier: useLiveShippoRates ? selectedShippoRate?.provider : undefined,
+        shippingService: useLiveShippoRates ? selectedShippoRate?.serviceName : undefined,
+        notes: form.notes || undefined,
+        paymentProvider: 'stripe',
+        paymentMethod: 'stripe_card',
+        paymentStatus: 'pending',
+        clearCart: false,
+      }, user?.id);
+      const paymentIntent = await createStripePaymentIntent({
+        email: form.email,
+        orderId: order.id,
+        couponCode,
+        shippingMethod,
+        items,
+      });
+
+      setStripeSession({
+        order,
+        clientSecret: paymentIntent.clientSecret,
+        paymentIntentId: paymentIntent.paymentIntentId,
+      });
+      savePendingStripeCheckout({
+        orderId: order.id,
+        paymentIntentId: paymentIntent.paymentIntentId,
+      });
+      requestAnimationFrame(() => {
+        stripePaymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unable to prepare payment.'));
+    } finally {
+      preparingPaymentRef.current = false;
+      setSubmitting(false);
+    }
+  }, [
+    billingSameAsShipping,
+    couponCode,
+    form,
+    items,
+    selectedShippoRate?.amount,
+    selectedShippoRate?.objectId,
+    selectedShippoRate?.provider,
+    selectedShippoRate?.serviceName,
+    shippingMethod,
+    stripeSession,
+    useLiveShippoRates,
+    user?.id,
+  ]);
+
+  useEffect(() => {
+    if (!canAutoPreparePayment || stripeSession || submitting) return;
+    void prepareStripePayment();
+  }, [canAutoPreparePayment, prepareStripePayment, stripeSession, submitting]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -386,6 +497,8 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
       setError('Please fix the highlighted checkout fields.');
       return;
     }
+
+    if (retailOnly) return;
 
     setSubmitting(true);
     try {
@@ -424,35 +537,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
         setError('Complete card payment below, or switch to invoice checkout.');
         return;
       }
-
-      const order = await ordersApi.createOrder({
-        ...orderPayload,
-        paymentProvider: 'stripe',
-        paymentMethod: 'stripe_card',
-        paymentStatus: 'pending',
-        clearCart: false,
-      }, user?.id);
-      const paymentIntent = await createStripePaymentIntent({
-        email: form.email,
-        orderId: order.id,
-        couponCode,
-        shippingMethod,
-        items,
-      });
-
-      setStripeSession({
-        order,
-        clientSecret: paymentIntent.clientSecret,
-        paymentIntentId: paymentIntent.paymentIntentId,
-      });
-      savePendingStripeCheckout({
-        orderId: order.id,
-        paymentIntentId: paymentIntent.paymentIntentId,
-      });
-      setError(null);
-      requestAnimationFrame(() => {
-        stripePaymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      await prepareStripePayment();
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to place order.'));
     } finally {
@@ -667,7 +752,10 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                         <button
                           key={rate.objectId}
                           type="button"
-                          onClick={() => setSelectedShippoRateId(rate.objectId)}
+                          onClick={() => {
+                            setSelectedShippoRateId(rate.objectId);
+                            setShippingSelected(true);
+                          }}
                           className={`w-full text-left rounded-xl border p-3 transition-colors ${
                             selectedShippoRateId === rate.objectId
                               ? 'border-himalayan bg-white'
@@ -702,14 +790,20 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                   title={totals.subtotal >= 50 ? 'Standard Shipping (Free)' : 'Standard Shipping'}
                   detail={totals.subtotal >= 50 ? 'Free over $50' : '3-7 business days'}
                   price={totals.subtotal >= 50 ? '$0.00' : '$9.95'}
-                  onClick={() => setShippingMethod('standard')}
+                  onClick={() => {
+                    setShippingMethod('standard');
+                    setShippingSelected(true);
+                  }}
                 />
                 <ShippingOption
                   active={shippingMethod === 'expedited'}
                   title="Expedited Shipping"
                   detail="2-4 business days"
                   price="$18.95"
-                  onClick={() => setShippingMethod('expedited')}
+                  onClick={() => {
+                    setShippingMethod('expedited');
+                    setShippingSelected(true);
+                  }}
                 />
               </div>
               )}
@@ -775,19 +869,10 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                     />
                   </div>
                 ) : (
-                  <div className="mt-5 rounded-2xl border border-himalayan/30 bg-himalayan/5 p-5">
-                    <p className="font-semibold text-charcoal">Credit / Debit Card, Klarna, or Afterpay / Clearpay</p>
-                    <p className="mt-1 text-sm text-charcoal-light">
-                      Continue to open the secure payment fields here.
-                    </p>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-himalayan hover:bg-himalayan-dark disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
-                    >
-                      {submitting && <Loader2 size={18} className="animate-spin" />}
-                      {submitting ? 'Preparing payment...' : 'Enter secure payment details'}
-                    </button>
+                  <div className="mt-5 rounded-2xl border border-himalayan/30 bg-himalayan/5 p-5 text-sm text-charcoal-light">
+                    {submitting
+                      ? <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Preparing secure payment…</span>
+                      : 'Complete your shipping address and select a shipping method to load payment options.'}
                   </div>
                 )
               ) : (
