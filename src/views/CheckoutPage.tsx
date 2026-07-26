@@ -69,7 +69,7 @@ interface StripeCheckoutSession {
   paymentIntentId: string;
 }
 
-export default function CheckoutPage() {
+export default function CheckoutPage({ retailOnly = false }: { retailOnly?: boolean }) {
   const navigate = useNavigate();
   const { user, profile } = useAuthContext();
   const { items, clearCart } = useCart();
@@ -646,7 +646,6 @@ export default function CheckoutPage() {
 
               {shippoEnabled && (
                 <div className="mb-4 rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm">
-                  <p className="font-semibold text-charcoal">Live carrier rates (Shippo)</p>
                   {shippoRatesLoading && (
                     <p className="text-charcoal-light mt-1 flex items-center gap-2">
                       <Loader2 size={14} className="animate-spin" />
@@ -682,11 +681,9 @@ export default function CheckoutPage() {
                       ))}
                     </div>
                   )}
-                  {!shippoRatesLoading && shippoRates.length === 0 && !shippoRatesError && (
+                  {!shippoRatesLoading && shippoRates.length === 0 && !shippoRatesError && shippoRatesAttempted && (
                     <p className="text-charcoal-light mt-1">
-                      {shippoRatesAttempted
-                        ? 'Live carrier rates are unavailable for this address — flat rates apply below.'
-                        : 'Complete your shipping address to see live carrier rates.'}
+                      Live carrier rates are unavailable for this address — flat rates apply below.
                     </p>
                   )}
                 </div>
@@ -751,8 +748,10 @@ export default function CheckoutPage() {
             </section>
 
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-2">Payment</h2>
-              <p className="text-sm text-charcoal-light mb-5">
+              <h2 className={`font-serif text-xl font-bold text-charcoal ${retailOnly ? '' : 'mb-2'}`}>Payment</h2>
+              {!retailOnly && (
+                <>
+                <p className="text-sm text-charcoal-light mb-5">
                 {stripeEnabled
                   ? 'Pay securely with your card at checkout. Invoice is available for wholesale or manual billing.'
                   : 'Card payments are not configured on this site. Place your order and pay by invoice.'}
@@ -814,6 +813,8 @@ export default function CheckoutPage() {
                     <li>Click <strong>Pay ${totals.total.toFixed(2)}</strong> — your order is confirmed when payment succeeds.</li>
                   </ol>
                 </div>
+              )}
+                </>
               )}
             </section>
 
@@ -880,7 +881,9 @@ export default function CheckoutPage() {
               <div className="mt-5 flex items-start gap-2 text-xs text-charcoal-light">
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
                 <p>
-                  {paymentMethod === 'stripe' && stripeEnabled
+                  {retailOnly
+                    ? 'Secure payment details open below after your order total is confirmed.'
+                    : paymentMethod === 'stripe' && stripeEnabled
                     ? stripeSession
                       ? 'Complete card payment below to confirm your order.'
                       : 'Step 1: Continue to payment, then enter your card details on this page.'
@@ -901,7 +904,7 @@ export default function CheckoutPage() {
                   : paymentMethod === 'stripe'
                     ? stripeSession
                       ? 'Enter card details above'
-                      : 'Continue to payment'
+                      : retailOnly ? 'Proceed to secure payment' : 'Continue to payment'
                     : 'Place order (invoice)'}
               </button>
             </div>
@@ -913,13 +916,14 @@ export default function CheckoutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
           <div
             ref={stripePaymentRef}
-            className="max-w-3xl rounded-2xl border-2 border-himalayan/40 bg-white p-6 shadow-md"
+            className="max-w-3xl rounded-2xl border-2 border-himalayan/50 bg-white p-6 shadow-xl shadow-himalayan/10"
           >
-            <p className="text-sm font-semibold text-charcoal mb-1">
-              Step 2 — Enter card details · Order {stripeSession.order.order_number}
-            </p>
-            <p className="text-xs text-charcoal-light mb-4">
-              Total due now: <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
+            <h2 className="font-serif text-2xl font-bold text-charcoal mb-1">
+              Secure payment
+            </h2>
+            <p className="text-sm text-charcoal-light mb-5">
+              Order {stripeSession.order.order_number} · Total due now:{' '}
+              <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
             </p>
             <StripePaymentForm
               clientSecret={stripeSession.clientSecret}
