@@ -3,6 +3,11 @@
 import { useEffect } from 'react';
 import CheckoutPage from './CheckoutPage';
 
+const PAYMENT_INTRO =
+  'Pay securely with Credit / Debit Card, Klarna, or Afterpay / Clearpay. Available methods are shown by Stripe based on eligibility.';
+const PAYMENT_DESCRIPTION =
+  'Choose an available Stripe payment method and complete payment securely.';
+
 /**
  * Retail checkout policy layer.
  *
@@ -31,26 +36,26 @@ export default function RetailCheckoutPage() {
         invoiceButton?.remove();
 
         const paymentIntro = paymentHeading?.nextElementSibling;
-        if (paymentIntro instanceof HTMLElement) {
-          paymentIntro.textContent =
-            'Pay securely with Credit / Debit Card, Klarna, or Afterpay / Clearpay. Available methods are shown by Stripe based on eligibility.';
+        if (
+          paymentIntro instanceof HTMLElement &&
+          paymentIntro.textContent !== PAYMENT_INTRO
+        ) {
+          paymentIntro.textContent = PAYMENT_INTRO;
         }
 
         const stripeButton = buttons.find((button) =>
           button.textContent?.includes('Pay with Card'),
         );
         if (stripeButton) {
-          const title = Array.from(stripeButton.querySelectorAll('p')).find(
+          const paragraphs = Array.from(stripeButton.querySelectorAll('p'));
+          const title = paragraphs.find(
             (paragraph) => paragraph.textContent?.trim() === 'Pay with Card',
           );
           if (title) title.textContent = 'Card, Klarna or Afterpay';
 
-          const description = Array.from(stripeButton.querySelectorAll('p')).find(
-            (paragraph) => paragraph !== title,
-          );
-          if (description) {
-            description.textContent =
-              'Choose an available Stripe payment method and complete payment securely.';
+          const description = paragraphs.find((paragraph) => paragraph !== title);
+          if (description && description.textContent !== PAYMENT_DESCRIPTION) {
+            description.textContent = PAYMENT_DESCRIPTION;
           }
         }
 
@@ -68,11 +73,13 @@ export default function RetailCheckoutPage() {
         const label = button.textContent?.trim();
         if (label === 'Continue to payment') {
           button.childNodes.forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) node.textContent = 'Proceed to secure payment';
+            if (node.nodeType === Node.TEXT_NODE) {
+              node.textContent = 'Proceed to secure payment';
+            }
           });
         }
-        if (label === 'Place order (invoice)') {
-          button.setAttribute('hidden', 'true');
+        if (label === 'Place order (invoice)' && !button.hidden) {
+          button.hidden = true;
         }
       });
 
