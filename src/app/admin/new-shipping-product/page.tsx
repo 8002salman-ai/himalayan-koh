@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/supabase/api/admin';
 import { supabase } from '@/lib/supabase/client';
 import type { Category } from '@/lib/supabase/database.types';
+import { encodePackingProfileTag } from '@/lib/shippo/packing/packingProfileTag';
 
 interface FormState {
   name: string;
@@ -118,6 +119,22 @@ export default function NewShippingProductPage() {
         throw new Error(`Configured box weighs ${estimatedPackedWeight} lb, above the ${maxPackedWeight} lb limit.`);
       }
 
+      const profile = {
+        productLengthIn: productLength,
+        productWidthIn: productWidth,
+        productHeightIn: productHeight,
+        boxLengthIn: boxLength,
+        boxWidthIn: boxWidth,
+        boxHeightIn: boxHeight,
+        packagingWeightLbs: packagingWeight,
+        unitsPerBox: form.shipsSeparately ? 1 : unitsPerBox,
+        maxPackedWeightLbs: maxPackedWeight,
+        shipsSeparately: form.shipsSeparately,
+        canMix: form.canMix,
+        fragile: form.fragile,
+        stackable: form.stackable,
+      };
+
       const image = form.imageUrl.trim();
       const saved = await adminApi.createProduct({
         name: form.name.trim(),
@@ -134,7 +151,7 @@ export default function NewShippingProductPage() {
         is_active: true,
         is_featured: false,
         grain_sizes: [],
-        tags: [],
+        tags: [encodePackingProfileTag(profile)],
         quantity: Math.max(0, Math.floor(Number(form.quantity) || 0)),
         low_stock_threshold: 5,
         track_inventory: true,
@@ -151,7 +168,7 @@ export default function NewShippingProductPage() {
         box_width_in: boxWidth,
         box_height_in: boxHeight,
         packaging_weight_lbs: packagingWeight,
-        units_per_box: form.shipsSeparately ? 1 : unitsPerBox,
+        units_per_box: profile.unitsPerBox,
         max_packed_weight_lbs: maxPackedWeight,
         ships_separately: form.shipsSeparately,
         can_mix: form.canMix,
@@ -159,7 +176,9 @@ export default function NewShippingProductPage() {
         stackable: form.stackable,
       } as never);
 
-      if (profileError) throw profileError;
+      // The encoded product tag is a safe live fallback until migration 025 is
+      // applied to the production Supabase project. Other database errors remain fatal.
+      if (profileError && profileError.code !== '42P01') throw profileError;
 
       setSuccess('Product and shipping profile saved. Shippo will now calculate boxes from these measurements.');
       setForm(initialState);
