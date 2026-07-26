@@ -3,6 +3,12 @@ import type { Database } from '@/lib/supabase/database.types';
 import { toWeightLbs } from '@/lib/products/shippingWeight';
 import type { RatesLineItem } from '../types';
 import type { PackingLineItem } from './buildParcels';
+import {
+  mapProductPackingProfile,
+  type ProductPackingProfile,
+  type ProductPackingProfileRow,
+} from './productPackingProfile';
+import { decodePackingProfileTag } from './packingProfileTag';
 
 export async function enrichRatesLineItems(
   supabase: SupabaseClient<Database>,
@@ -12,26 +18,66 @@ export async function enrichRatesLineItems(
     ...new Set(lineItems.map((item) => item.productId).filter((id): id is string => Boolean(id))),
   ];
 
-  const productById = new Map<string, { slug: string; name: string; weightLbs: number | null }>();
+  const productById = new Map<
+    string,
+    { slug: string; name: string; weightLbs: number | null; tags: unknown }
+  >();
+  const packingByProductId = new Map<string, ProductPackingProfile>();
 
   if (productIds.length > 0) {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, slug, name, weight, weight_unit')
-      .in('id', productIds);
+    const [{ data: products, error: productsError }, packingResult] = await Promise.all([
+      supabase
+        .from('products')
+        .select('id, slug, name, weight, weight_unit, tags')
+        .in('id', productIds),
+      // The migration can be applied after code deployment. Until then, packing
+      // profiles encoded in product tags keep live checkout and labels working.
+      (supabase as unknown as {
+        from: (table: string) => {
+          select: (columns: string) => {
+            in: (column: string, values: string[]) => Promise<{
+              data: ProductPackingProfileRow[] | null;
+              error: { code?: string; message?: string } | null;
+            }>;
+          };
+        };
+      })
+        .from('product_packing_profiles')
+        .select('*')
+        .in('product_id', productIds),
+    ]);
 
-    if (error) throw error;
+    if (productsError) throw productsError;
 
-    for (const row of data || []) {
+    for (const row of products || []) {
       const product = row as {
         id: string;
         slug: string;
         name: string;
         weight: number | null;
         weight_unit: string | null;
+        tags: unknown;
       };
       const weightLbs = toWeightLbs(product.weight, product.weight_unit);
-      productById.set(product.id, { slug: product.slug, name: product.name, weightLbs });
+      productById.set(product.id, {
+        slug: product.slug,
+        name: product.name,
+        weightLbs,
+        tags: product.tags,
+      });
+
+      const tagProfile = decodePackingProfileTag(product.id, product.tags);
+      if (tagProfile) packingByProductId.set(product.id, tagProfile);
+    }
+
+    if (packingResult.error && packingResult.error.code !== '42P01') {
+      throw new Error(packingResult.error.message || 'Unable to load product packing profiles.');
+    }
+
+    for (const row of packingResult.data || []) {
+      const profile = mapProductPackingProfile(row);
+      // The normalized database row is authoritative once the migration exists.
+      packingByProductId.set(profile.productId, profile);
     }
   }
 
@@ -45,6 +91,7 @@ export async function enrichRatesLineItems(
         slug: fromDb?.slug ?? '',
         name: fromDb?.name ?? '',
         weightLbs: fromDb?.weightLbs ?? item.weightLbs ?? null,
+        packingProfile: item.productId ? packingByProductId.get(item.productId) : undefined,
       };
     });
 }
