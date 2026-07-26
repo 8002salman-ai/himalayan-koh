@@ -66,6 +66,12 @@ function PaymentFormInner({
       <PaymentElement
         options={{
           layout: 'tabs',
+          paymentMethodOrder: ['card', 'klarna', 'afterpay_clearpay'],
+          fields: {
+            billingDetails: {
+              name: 'auto',
+            },
+          },
         }}
       />
       <button
@@ -108,6 +114,32 @@ export default function StripePaymentForm({
       variables: {
         colorPrimary: '#c45c26',
         borderRadius: '12px',
+        fontSizeBase: '16px',
+        spacingUnit: '5px',
+      },
+      rules: {
+        '.Input': {
+          border: '1px solid #d1d5db',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+          padding: '14px',
+        },
+        '.Input:focus': {
+          border: '2px solid #c45c26',
+          boxShadow: '0 0 0 3px rgba(196, 92, 38, 0.12)',
+        },
+        '.Label': {
+          fontWeight: '600',
+          color: '#2f2a26',
+          marginBottom: '8px',
+        },
+        '.Tab': {
+          border: '1px solid #d1d5db',
+          padding: '12px',
+        },
+        '.Tab--selected': {
+          border: '2px solid #c45c26',
+          boxShadow: '0 0 0 3px rgba(196, 92, 38, 0.10)',
+        },
       },
     },
   };
