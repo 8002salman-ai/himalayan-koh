@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Elements,
   PaymentElement,
@@ -23,14 +23,12 @@ function PaymentFormInner({
   disabled,
   onSuccess,
   onError,
-  publishableKey,
-}: Omit<StripePaymentFormProps, 'clientSecret'>) {
+}: Omit<StripePaymentFormProps, 'clientSecret' | 'publishableKey'>) {
   const stripe = useStripe();
   const elements = useElements();
   const [paying, setPaying] = useState(false);
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const handlePayment = async () => {
     if (!stripe || !elements || disabled) return;
 
     setPaying(true);
@@ -62,7 +60,7 @@ function PaymentFormInner({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <PaymentElement
         options={{
           layout: 'tabs',
@@ -75,14 +73,15 @@ function PaymentFormInner({
         }}
       />
       <button
-        type="submit"
+        type="button"
+        onClick={handlePayment}
         disabled={!stripe || !elements || paying || disabled}
         className="w-full flex items-center justify-center gap-2 py-4 bg-charcoal hover:bg-charcoal-light disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
       >
         {paying && <Loader2 size={18} className="animate-spin" />}
         {paying ? 'Processing...' : `Pay ${amountLabel}`}
       </button>
-    </form>
+    </div>
   );
 }
 
@@ -148,7 +147,6 @@ export default function StripePaymentForm({
     <Elements stripe={stripePromise} options={options}>
       <PaymentFormInner
         amountLabel={amountLabel}
-        publishableKey={publishableKey}
         disabled={disabled}
         onSuccess={onSuccess}
         onError={onError}
