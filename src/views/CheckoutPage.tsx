@@ -105,6 +105,12 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
   const stripePaymentRef = useRef<HTMLDivElement>(null);
 
   const shippoEnabled = shippoRuntimeEnabled ?? publicEnv.shippoEnabled;
+  const showShippoPanel = shippoEnabled && (
+    shippoRatesLoading ||
+    Boolean(shippoRatesError) ||
+    shippoRates.length > 0 ||
+    shippoRatesAttempted
+  );
   const selectedShippoRate = shippoRates.find((rate) => rate.objectId === selectedShippoRateId) || null;
   const useLiveShippoRates = shippoEnabled && shippoRates.length > 0 && Boolean(selectedShippoRate);
   const stripeEnabled = stripeConfig?.configured ?? Boolean(publicEnv.stripePublishableKey);
@@ -644,7 +650,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Shipping Method</h2>
 
-              {shippoEnabled && (
+              {showShippoPanel && (
                 <div className="mb-4 rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm">
                   {shippoRatesLoading && (
                     <p className="text-charcoal-light mt-1 flex items-center gap-2">
@@ -749,7 +755,42 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
 
             <section className="bg-white rounded-2xl shadow-md p-6">
               <h2 className={`font-serif text-xl font-bold text-charcoal ${retailOnly ? '' : 'mb-2'}`}>Payment</h2>
-              {!retailOnly && (
+              {retailOnly ? (
+                stripeSession ? (
+                  <div
+                    ref={stripePaymentRef}
+                    className="mt-5 rounded-2xl border-2 border-himalayan/50 bg-white p-5 shadow-lg shadow-himalayan/10"
+                  >
+                    <p className="text-sm text-charcoal-light mb-4">
+                      Secure payment for order {stripeSession.order.order_number} ·{' '}
+                      <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
+                    </p>
+                    <StripePaymentForm
+                      clientSecret={stripeSession.clientSecret}
+                      publishableKey={stripePublishableKey}
+                      amountLabel={`$${totals.total.toFixed(2)}`}
+                      disabled={submitting || paymentCompleting}
+                      onSuccess={handleStripePaymentSuccess}
+                      onError={(message) => toast.error(message)}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-2xl border border-himalayan/30 bg-himalayan/5 p-5">
+                    <p className="font-semibold text-charcoal">Credit / Debit Card, Klarna, or Afterpay / Clearpay</p>
+                    <p className="mt-1 text-sm text-charcoal-light">
+                      Continue to open the secure payment fields here.
+                    </p>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-himalayan hover:bg-himalayan-dark disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
+                    >
+                      {submitting && <Loader2 size={18} className="animate-spin" />}
+                      {submitting ? 'Preparing payment...' : 'Enter secure payment details'}
+                    </button>
+                  </div>
+                )
+              ) : (
                 <>
                 <p className="text-sm text-charcoal-light mb-5">
                 {stripeEnabled
@@ -882,7 +923,9 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
                 <p>
                   {retailOnly
-                    ? 'Secure payment details open below after your order total is confirmed.'
+                    ? stripeSession
+                      ? 'Enter your payment details in the Payment section to confirm your order.'
+                      : 'Choose Enter secure payment details in the Payment section to continue.'
                     : paymentMethod === 'stripe' && stripeEnabled
                     ? stripeSession
                       ? 'Complete card payment below to confirm your order.'
@@ -893,6 +936,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
 
               {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
+              {!retailOnly && (
               <button
                 type="submit"
                 disabled={submitting || (paymentMethod === 'stripe' && Boolean(stripeSession))}
@@ -907,20 +951,16 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                       : retailOnly ? 'Proceed to secure payment' : 'Continue to payment'
                     : 'Place order (invoice)'}
               </button>
+              )}
             </div>
           </aside>
         </div>
       </form>
 
-      {paymentMethod === 'stripe' && stripeSession && (
+      {!retailOnly && paymentMethod === 'stripe' && stripeSession && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
-          <div
-            ref={stripePaymentRef}
-            className="max-w-3xl rounded-2xl border-2 border-himalayan/50 bg-white p-6 shadow-xl shadow-himalayan/10"
-          >
-            <h2 className="font-serif text-2xl font-bold text-charcoal mb-1">
-              Secure payment
-            </h2>
+          <div ref={stripePaymentRef} className="max-w-3xl rounded-2xl border-2 border-himalayan/50 bg-white p-6 shadow-xl shadow-himalayan/10">
+            <h2 className="font-serif text-2xl font-bold text-charcoal mb-1">Secure payment</h2>
             <p className="text-sm text-charcoal-light mb-5">
               Order {stripeSession.order.order_number} · Total due now:{' '}
               <strong className="text-charcoal">${totals.total.toFixed(2)}</strong>
