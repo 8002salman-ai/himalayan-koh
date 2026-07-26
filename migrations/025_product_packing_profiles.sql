@@ -2,6 +2,10 @@
 -- Existing products are intentionally NOT archived automatically here. The
 -- migration is safe to apply independently; catalog cleanup remains an explicit
 -- admin decision after the new shipping-ready product workflow is verified.
+--
+-- The application also stores the same profile in an internal product tag so
+-- checkout and label creation remain functional before this optional normalized
+-- table migration is applied to production.
 
 create table if not exists public.product_packing_profiles (
   product_id uuid primary key references public.products(id) on delete cascade,
