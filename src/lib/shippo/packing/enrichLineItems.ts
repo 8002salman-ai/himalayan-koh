@@ -8,6 +8,7 @@ import {
   type ProductPackingProfile,
   type ProductPackingProfileRow,
 } from './productPackingProfile';
+import { decodePackingProfileTag } from './packingProfileTag';
 
 export async function enrichRatesLineItems(
   supabase: SupabaseClient<Database>,
@@ -17,17 +18,20 @@ export async function enrichRatesLineItems(
     ...new Set(lineItems.map((item) => item.productId).filter((id): id is string => Boolean(id))),
   ];
 
-  const productById = new Map<string, { slug: string; name: string; weightLbs: number | null }>();
+  const productById = new Map<
+    string,
+    { slug: string; name: string; weightLbs: number | null; tags: unknown }
+  >();
   const packingByProductId = new Map<string, ProductPackingProfile>();
 
   if (productIds.length > 0) {
     const [{ data: products, error: productsError }, packingResult] = await Promise.all([
       supabase
         .from('products')
-        .select('id, slug, name, weight, weight_unit')
+        .select('id, slug, name, weight, weight_unit, tags')
         .in('id', productIds),
-      // The generated database type can lag one migration behind. The cast is
-      // isolated here while the runtime table remains fully server-controlled.
+      // The migration can be applied after code deployment. Until then, packing
+      // profiles encoded in product tags keep live checkout and labels working.
       (supabase as unknown as {
         from: (table: string) => {
           select: (columns: string) => {
@@ -52,9 +56,18 @@ export async function enrichRatesLineItems(
         name: string;
         weight: number | null;
         weight_unit: string | null;
+        tags: unknown;
       };
       const weightLbs = toWeightLbs(product.weight, product.weight_unit);
-      productById.set(product.id, { slug: product.slug, name: product.name, weightLbs });
+      productById.set(product.id, {
+        slug: product.slug,
+        name: product.name,
+        weightLbs,
+        tags: product.tags,
+      });
+
+      const tagProfile = decodePackingProfileTag(product.id, product.tags);
+      if (tagProfile) packingByProductId.set(product.id, tagProfile);
     }
 
     if (packingResult.error && packingResult.error.code !== '42P01') {
@@ -63,6 +76,7 @@ export async function enrichRatesLineItems(
 
     for (const row of packingResult.data || []) {
       const profile = mapProductPackingProfile(row);
+      // The normalized database row is authoritative once the migration exists.
       packingByProductId.set(profile.productId, profile);
     }
   }
