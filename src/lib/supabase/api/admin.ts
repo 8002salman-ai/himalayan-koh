@@ -394,7 +394,25 @@ export const adminApi = {
   },
 
   // Delete product
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string): Promise<{ archived: boolean }> {
+    // Product IDs are deliberately retained on order items so past orders stay
+    // auditable. Archive a product that has ever been ordered instead of
+    // attempting a destructive delete that PostgreSQL must reject.
+    const { count, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('product_id', id);
+    if (orderItemsError) throw orderItemsError;
+
+    if ((count || 0) > 0) {
+      const { error: archiveError } = await supabase
+        .from('products')
+        .update({ is_active: false, is_featured: false, updated_at: new Date().toISOString() } as never)
+        .eq('id', id);
+      if (archiveError) throw archiveError;
+      return { archived: true };
+    }
+
     // Delete inventory first (cascade should handle this, but being explicit)
     await supabase.from('inventory').delete().eq('product_id', id);
     const { error: imageError } = await supabase.from('product_images').delete().eq('product_id', id);
@@ -402,6 +420,7 @@ export const adminApi = {
     
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw error;
+    return { archived: false };
   },
 
   // Bulk update products
@@ -416,10 +435,29 @@ export const adminApi = {
 
   // Bulk delete products
   async bulkDeleteProducts(ids: string[]): Promise<void> {
-    await supabase.from('inventory').delete().in('product_id', ids);
-    const { error: imageError } = await supabase.from('product_images').delete().in('product_id', ids);
+    const { data: orderedItems, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('product_id')
+      .in('product_id', ids);
+    if (orderItemsError) throw orderItemsError;
+
+    const orderedIds = new Set((orderedItems || []).map((item) => item.product_id));
+    const deletableIds = ids.filter((id) => !orderedIds.has(id));
+
+    if (orderedIds.size > 0) {
+      const { error: archiveError } = await supabase
+        .from('products')
+        .update({ is_active: false, is_featured: false, updated_at: new Date().toISOString() } as never)
+        .in('id', [...orderedIds]);
+      if (archiveError) throw archiveError;
+    }
+
+    if (deletableIds.length === 0) return;
+
+    await supabase.from('inventory').delete().in('product_id', deletableIds);
+    const { error: imageError } = await supabase.from('product_images').delete().in('product_id', deletableIds);
     if (imageError && imageError.code !== '42P01') throw imageError;
-    const { error } = await supabase.from('products').delete().in('id', ids);
+    const { error } = await supabase.from('products').delete().in('id', deletableIds);
     if (error) throw error;
   },
 

@@ -260,9 +260,16 @@ export default function AdminProducts() {
 
     setActionLoading(true);
     try {
-      await adminApi.deleteProduct(id);
-      setProducts(prev => prev.filter(p => p.id !== id));
+      const { archived } = await adminApi.deleteProduct(id);
+      setProducts(prev => archived
+        ? prev.map((product) => product.id === id
+          ? { ...product, is_active: false, is_featured: false }
+          : product)
+        : prev.filter((product) => product.id !== id));
       setDeleteConfirm(null);
+      if (archived) {
+        toast.info('This product has order history, so it was archived instead of deleted.');
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete product. Please try again.'));
     } finally {

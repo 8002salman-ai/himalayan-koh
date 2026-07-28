@@ -154,10 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setLoading(true);
-      void loadProfileForSession(nextSession.user).finally(() => {
-        if (mounted) setLoading(false);
-      });
+      // Route access depends on a valid Supabase session, not the optional
+      // profile row. Keeping global auth loading true until a profile request
+      // returns can trap a signed-in customer on the account spinner whenever
+      // the profiles query is slow or blocked by a transient network/RLS error.
+      setLoading(false);
+      void loadProfileForSession(nextSession.user);
     };
 
     void (async () => {
@@ -226,9 +228,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await authApi.signIn(data);
       setSession(result.session);
       setUser(result.user);
+      // A successful credential check is enough to navigate to the protected
+      // account area. Fetch the editable profile in the background so a slow
+      // profile request never makes sign-in appear to hang.
+      setLoading(false);
 
       if (result.user) {
-        await fetchProfile(result.user.id, result.user);
+        void fetchProfile(result.user.id, result.user);
       } else {
         setProfile(null);
       }
