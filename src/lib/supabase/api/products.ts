@@ -5,7 +5,7 @@ import type { Product, Category, ProductWithCategory } from '../database.types';
 // Products created through the production shipping-ready workflow include an
 // encoded packing profile tag. Legacy/demo products do not, so they remain
 // available to admins for reference but never appear in the real storefront.
-const PACKING_PROFILE_TAG_PREFIX = 'shipping_profile:';
+const PACKING_PROFILE_TAG_PREFIX = 'packing_profile:';
 
 function isRealCatalogProduct(product: { tags?: string[] | null }): boolean {
   return Array.isArray(product.tags) && product.tags.some((tag) => tag.startsWith(PACKING_PROFILE_TAG_PREFIX));
