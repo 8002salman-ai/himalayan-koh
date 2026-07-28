@@ -395,16 +395,29 @@ export const adminApi = {
 
   // Delete product
   async deleteProduct(id: string): Promise<{ archived: boolean }> {
-    // Product IDs are deliberately retained on order items so past orders stay
-    // auditable. Archive a product that has ever been ordered instead of
-    // attempting a destructive delete that PostgreSQL must reject.
-    const { count, error: orderItemsError } = await supabase
-      .from('order_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('product_id', id);
-    if (orderItemsError) throw orderItemsError;
+    // Product IDs are deliberately retained on both retail order items and
+    // wholesale request items so historical pricing/fulfilment records remain
+    // auditable. Archive referenced products instead of attempting a delete
+    // that PostgreSQL must reject.
+    const [orderItemsResult, wholesaleItemsResult] = await Promise.all([
+      supabase
+        .from('order_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('product_id', id),
+      supabase
+        .from('wholesale_purchase_request_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('product_id', id),
+    ]);
 
-    if ((count || 0) > 0) {
+    if (orderItemsResult.error) throw orderItemsResult.error;
+    // The wholesale module is optional for older deployments. In that case
+    // there cannot be wholesale history to protect yet.
+    if (wholesaleItemsResult.error && wholesaleItemsResult.error.code !== '42P01') {
+      throw wholesaleItemsResult.error;
+    }
+
+    if ((orderItemsResult.count || 0) > 0 || (wholesaleItemsResult.count || 0) > 0) {
       const { error: archiveError } = await supabase
         .from('products')
         .update({ is_active: false, is_featured: false, updated_at: new Date().toISOString() } as never)
@@ -434,33 +447,45 @@ export const adminApi = {
   },
 
   // Bulk delete products
-  async bulkDeleteProducts(ids: string[]): Promise<void> {
-    const { data: orderedItems, error: orderItemsError } = await supabase
-      .from('order_items')
-      .select('product_id')
-      .in('product_id', ids);
-    if (orderItemsError) throw orderItemsError;
+  async bulkDeleteProducts(ids: string[]): Promise<{ archivedIds: string[] }> {
+    const [orderItemsResult, wholesaleItemsResult] = await Promise.all([
+      supabase
+        .from('order_items')
+        .select('product_id')
+        .in('product_id', ids),
+      supabase
+        .from('wholesale_purchase_request_items')
+        .select('product_id')
+        .in('product_id', ids),
+    ]);
+    if (orderItemsResult.error) throw orderItemsResult.error;
+    if (wholesaleItemsResult.error && wholesaleItemsResult.error.code !== '42P01') {
+      throw wholesaleItemsResult.error;
+    }
 
-    const orderedIds = new Set<string>(
-      ((orderedItems || []) as Array<{ product_id: string }>).map((item) => item.product_id)
-    );
-    const deletableIds = ids.filter((id) => !orderedIds.has(id));
+    const referencedIds = new Set<string>([
+      ...((orderItemsResult.data || []) as Array<{ product_id: string }>).map((item) => item.product_id),
+      ...((wholesaleItemsResult.data || []) as Array<{ product_id: string }>).map((item) => item.product_id),
+    ]);
+    const archivedIds = [...referencedIds];
+    const deletableIds = ids.filter((id) => !referencedIds.has(id));
 
-    if (orderedIds.size > 0) {
+    if (archivedIds.length > 0) {
       const { error: archiveError } = await supabase
         .from('products')
         .update({ is_active: false, is_featured: false, updated_at: new Date().toISOString() } as never)
-        .in('id', [...orderedIds]);
+        .in('id', archivedIds);
       if (archiveError) throw archiveError;
     }
 
-    if (deletableIds.length === 0) return;
+    if (deletableIds.length === 0) return { archivedIds };
 
     await supabase.from('inventory').delete().in('product_id', deletableIds);
     const { error: imageError } = await supabase.from('product_images').delete().in('product_id', deletableIds);
     if (imageError && imageError.code !== '42P01') throw imageError;
     const { error } = await supabase.from('products').delete().in('id', deletableIds);
     if (error) throw error;
+    return { archivedIds };
   },
 
   // ==================== CATEGORIES ====================

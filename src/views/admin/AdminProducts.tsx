@@ -268,7 +268,7 @@ export default function AdminProducts() {
         : prev.filter((product) => product.id !== id));
       setDeleteConfirm(null);
       if (archived) {
-        toast.info('This product has order history, so it was archived instead of deleted.');
+        toast.info('This product has retail or wholesale history, so it was archived instead of deleted.');
       }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete product. Please try again.'));
@@ -326,9 +326,19 @@ export default function AdminProducts() {
 
     setActionLoading(true);
     try {
-      await adminApi.bulkDeleteProducts(selectedIds);
-      setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      const { archivedIds } = await adminApi.bulkDeleteProducts(selectedIds);
+      const archivedIdSet = new Set(archivedIds);
+      setProducts(prev => prev.flatMap((product) => {
+        if (!selectedIds.includes(product.id)) return [product];
+        if (archivedIdSet.has(product.id)) {
+          return [{ ...product, is_active: false, is_featured: false }];
+        }
+        return [];
+      }));
       setSelectedIds([]);
+      if (archivedIds.length > 0) {
+        toast.info(`${archivedIds.length} selected product${archivedIds.length === 1 ? '' : 's'} had retail or wholesale history and were archived instead of deleted.`);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete selected products.'));
     } finally {
