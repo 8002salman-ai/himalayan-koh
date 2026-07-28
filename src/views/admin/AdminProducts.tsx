@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -68,6 +68,7 @@ function inventoryBadge(product: ProductWithRelations) {
 
 export default function AdminProducts() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductWithRelations[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -371,7 +372,7 @@ export default function AdminProducts() {
           <p className="text-charcoal-light">Manage your product catalog</p>
         </div>
         <button
-          onClick={() => { setEditingProduct(null); setEditorOpen(true); }}
+          onClick={() => navigate('/admin/new-shipping-product')}
           className="flex items-center gap-2 px-4 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
         >
           <Plus size={18} />
@@ -383,7 +384,7 @@ export default function AdminProducts() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-semibold">Add shipping weight to {missingWeightCount} listing{missingWeightCount > 1 ? 's' : ''}</p>
           <p className="mt-1 text-amber-900/90">
-            Products without weight still stay active and use catalog box rules, but each listing should have weight (lbs) for accurate Shippo rates. Edit the product and fill in <strong>Shipping weight</strong> on the Pricing tab.
+            Products without weight still stay active and use catalog box rules, but each listing should have weight (lbs) for accurate Shippo rates. Edit the product and complete the <strong>Shippo Required</strong> details.
           </p>
         </div>
       )}
@@ -514,7 +515,7 @@ export default function AdminProducts() {
             }
             action={
               !search && !categoryFilter && !statusFilter
-                ? { label: 'Add Product', onClick: () => { setEditingProduct(null); setEditorOpen(true); } }
+                ? { label: 'Add Product', onClick: () => navigate('/admin/new-shipping-product') }
                 : undefined
             }
             size="compact"

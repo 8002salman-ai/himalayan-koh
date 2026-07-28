@@ -33,6 +33,7 @@ import {
 import type { Product, Category, Inventory } from '../../lib/supabase/database.types';
 import RichTextEditor from './RichTextEditor';
 import ImageDropzone from './ImageDropzone';
+import ProductImageEditor from './ProductImageEditor';
 import {
   adminImagesToUrls,
   createAdminProductImage,
@@ -99,6 +100,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
   const [imageValidation, setImageValidation] = useState('');
+  const [editingImage, setEditingImage] = useState<AdminProductImage | null>(null);
   const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
   const [shippingProfile, setShippingProfile] = useState<ShippingProfileForm>(emptyShippingProfile);
@@ -1265,6 +1267,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                   onRetry={retryImageUpload}
                   onSetThumbnail={setAsThumbnail}
                   onReorder={reorderImages}
+                  onEdit={setEditingImage}
                 />
               )}
 
@@ -1340,6 +1343,14 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               </button>
             </div>
           </motion.div>
+          <ProductImageEditor
+            image={editingImage}
+            onClose={() => setEditingImage(null)}
+            onApply={async (file) => {
+              if (!editingImage) return;
+              await replaceImage(editingImage.id, file);
+            }}
+          />
         </motion.div>
       )}
     </AnimatePresence>

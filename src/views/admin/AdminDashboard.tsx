@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
   const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
   const mobileActions = [
-    { label: 'Add Product', path: '/admin/products?action=new', icon: Plus, color: 'bg-himalayan text-white' },
+    { label: 'Add Product', path: '/admin/new-shipping-product', icon: Plus, color: 'bg-himalayan text-white' },
     { label: 'Products', path: '/admin/products', icon: Package, color: 'bg-white text-charcoal' },
     { label: 'Orders', path: '/admin/orders', icon: ShoppingCart, color: 'bg-white text-charcoal' },
     { label: 'Blog', path: '/admin/blog', icon: FileText, color: 'bg-white text-charcoal' },

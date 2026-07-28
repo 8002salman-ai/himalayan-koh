@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, GripVertical, Image as ImageIcon, Loader2, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { AlertCircle, GripVertical, Image as ImageIcon, Loader2, Pencil, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { MAX_PRODUCT_IMAGES } from '../../lib/images/productImageConstants';
 import type { AdminProductImage } from './productImageTypes';
 
@@ -15,6 +15,7 @@ interface ImageDropzoneProps {
   onRetry: (id: string) => void;
   onSetThumbnail: (url: string) => void;
   onReorder: (images: AdminProductImage[]) => void;
+  onEdit: (image: AdminProductImage) => void;
 }
 
 export default function ImageDropzone({
@@ -29,6 +30,7 @@ export default function ImageDropzone({
   onRetry,
   onSetThumbnail,
   onReorder,
+  onEdit,
 }: ImageDropzoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -192,6 +194,18 @@ export default function ImageDropzone({
                 )}
 
                 <div className="absolute inset-0 bg-black/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 sm:gap-2 p-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(image);
+                    }}
+                    disabled={isBusy}
+                    className="p-2 bg-white text-charcoal rounded-lg hover:bg-gray-100 disabled:opacity-40"
+                    title="Edit image"
+                  >
+                    <Pencil size={16} />
+                  </button>
                   <button
                     type="button"
                     onClick={(e) => {
