@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, FlipHorizontal, Loader2, Minus, Plus, RotateCcw, RotateCw, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Check, FlipHorizontal, Loader2, RotateCcw, RotateCw, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { AdminProductImage } from './productImageTypes';
 
 interface Props {
@@ -30,47 +30,17 @@ const defaults: Adjustments = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-/** Removes edge-connected pixels resembling any corner colour. It is intentionally
- * conservative and works best for simple studio or outdoor backgrounds. */
-function cleanSimpleBackground(context: CanvasRenderingContext2D, width: number, height: number) {
-  const image = context.getImageData(0, 0, width, height);
-  const { data } = image;
-  const read = (index: number) => [data[index], data[index + 1], data[index + 2]] as const;
-  const corners = [
-    read(0), read((width - 1) * 4), read((height - 1) * width * 4), read(((height * width) - 1) * 4),
-  ];
-  const seen = new Uint8Array(width * height);
-  const queue: number[] = [];
-
-  for (let x = 0; x < width; x += 1) queue.push(x, (height - 1) * width + x);
-  for (let y = 1; y < height - 1; y += 1) queue.push(y * width, y * width + width - 1);
-
-  const similarToCorner = (pixel: number) => {
-    const offset = pixel * 4;
-    return corners.some(([red, green, blue]) =>
-      Math.abs(data[offset] - red) + Math.abs(data[offset + 1] - green) + Math.abs(data[offset + 2] - blue) < 100
-    );
-  };
-
-  while (queue.length) {
-    const pixel = queue.pop() as number;
-    if (seen[pixel] || !similarToCorner(pixel)) continue;
-    seen[pixel] = 1;
-    data[pixel * 4 + 3] = 0;
-    const x = pixel % width;
-    const y = Math.floor(pixel / width);
-    if (x > 0) queue.push(pixel - 1);
-    if (x < width - 1) queue.push(pixel + 1);
-    if (y > 0) queue.push(pixel - width);
-    if (y < height - 1) queue.push(pixel + width);
-  }
-
-  context.putImageData(image, 0, 0);
-}
+const loadImage = (source: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+  const image = new Image();
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error('The edited image could not be loaded.'));
+  image.src = source;
+});
 
 export default function ProductImageEditor({ image, onClose, onApply }: Props) {
   const [adjustments, setAdjustments] = useState(defaults);
   const [applying, setApplying] = useState(false);
+  const [aiProgress, setAiProgress] = useState('');
   const [error, setError] = useState('');
   const sourceRef = useRef<HTMLImageElement | null>(null);
 
@@ -78,6 +48,7 @@ export default function ProductImageEditor({ image, onClose, onApply }: Props) {
     if (image) {
       setAdjustments(defaults);
       setError('');
+      setAiProgress('');
     }
   }, [image]);
 
@@ -96,9 +67,33 @@ export default function ProductImageEditor({ image, onClose, onApply }: Props) {
     setApplying(true);
     setError('');
     try {
+      let renderSource = source;
+      let temporarySourceUrl = '';
+      if (adjustments.cleanBackground) {
+        setAiProgress('Loading the free AI model…');
+        const sourceBlob = image.file
+          ? image.file
+          : await fetch(image.previewUrl).then((response) => {
+              if (!response.ok) throw new Error('Could not download this image for AI background removal. Upload it again and retry.');
+              return response.blob();
+            });
+        const { removeBackground } = await import('@imgly/background-removal');
+        const foreground = await removeBackground(sourceBlob, {
+          device: 'cpu',
+          model: 'isnet_quint8',
+          output: { format: 'image/png', quality: 1 },
+          progress: (key: string, current: number, total: number) => setAiProgress(
+            total ? `Downloading AI ${key}: ${Math.round((current / total) * 100)}%` : `Preparing AI ${key}…`
+          ),
+        });
+        temporarySourceUrl = URL.createObjectURL(foreground);
+        renderSource = await loadImage(temporarySourceUrl);
+        setAiProgress('AI background removed — exporting on white…');
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = source.naturalWidth;
-      canvas.height = source.naturalHeight;
+      canvas.width = renderSource.naturalWidth;
+      canvas.height = renderSource.naturalHeight;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Your browser could not prepare the image editor.');
 
@@ -109,16 +104,15 @@ export default function ProductImageEditor({ image, onClose, onApply }: Props) {
       context.rotate((adjustments.rotation * Math.PI) / 180);
       context.scale(adjustments.flipX ? -adjustments.zoom : adjustments.zoom, adjustments.zoom);
       context.filter = `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturation}%)`;
-      context.drawImage(source, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+      context.drawImage(renderSource, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
       context.restore();
-
-      if (adjustments.cleanBackground) cleanSimpleBackground(context, canvas.width, canvas.height);
 
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.92));
       if (!blob) throw new Error('Could not export the edited image.');
       const baseName = image.file?.name || image.previewUrl.split('/').pop()?.split('?')[0] || 'product-image';
       const file = new File([blob], `${baseName.replace(/\.[^.]+$/, '')}-edited.webp`, { type: 'image/webp' });
       await onApply(file);
+      if (temporarySourceUrl) URL.revokeObjectURL(temporarySourceUrl);
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not apply image edits.');
@@ -184,11 +178,12 @@ export default function ProductImageEditor({ image, onClose, onApply }: Props) {
 
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-himalayan/20 bg-himalayan/5 p-3 text-sm text-charcoal">
                 <input type="checkbox" checked={adjustments.cleanBackground} onChange={(event) => update('cleanBackground', event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-himalayan focus:ring-himalayan" />
-                <span><span className="flex items-center gap-1 font-semibold text-himalayan"><Wand2 size={15} /> Free background cleanup</span><span className="mt-1 block text-xs text-charcoal-light">Removes a simple edge background and exports on white. Best for clear product photos; review the preview before applying.</span></span>
+                <span><span className="flex items-center gap-1 font-semibold text-himalayan"><Sparkles size={15} /> Remove background with free AI</span><span className="mt-1 block text-xs text-charcoal-light">Runs in the browser with no API key, then exports the product on a clean white background. The first use downloads the model once (about 40 MB).</span><a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noreferrer" className="mt-1 block text-[11px] text-himalayan underline">Powered by IMG.LY background-removal (AGPL)</a></span>
               </label>
 
               <button type="button" onClick={() => setAdjustments(defaults)} className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-charcoal hover:bg-gray-50">Reset adjustments</button>
               {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+              {aiProgress && <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{aiProgress}</p>}
               <button type="button" onClick={apply} disabled={applying} className="flex w-full items-center justify-center gap-2 rounded-xl bg-himalayan px-4 py-3 font-semibold text-white hover:bg-himalayan-dark disabled:opacity-60">
                 {applying ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} {applying ? 'Applying edits…' : 'Apply & replace image'}
               </button>

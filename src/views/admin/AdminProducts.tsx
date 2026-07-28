@@ -535,22 +535,22 @@ export default function AdminProducts() {
                         className="rounded border-gray-300 text-himalayan focus:ring-himalayan"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Product
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Price
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Stock
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-charcoal-light uppercase tracking-wider">
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-charcoal-light uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -568,7 +568,7 @@ export default function AdminProducts() {
                       onClick={() => handleEdit(product)}
                       className="cursor-pointer hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(product.id)}
@@ -583,25 +583,25 @@ export default function AdminProducts() {
                           className="rounded border-gray-300 text-himalayan focus:ring-himalayan"
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2.5">
                           <img
                             src={product.thumbnail || images[0] || ''}
                             alt={productName}
-                            className="w-12 h-12 rounded-lg object-cover bg-gray-100"
+                            className="h-11 w-11 rounded-md object-cover bg-gray-100"
                           />
                           <div className="min-w-0">
-                            <p className="font-medium text-charcoal truncate max-w-[200px]">
+                            <p className="max-w-[260px] truncate text-sm font-semibold text-charcoal">
                               {productName}
                             </p>
-                            <p className="text-xs text-charcoal-light">
+                            <p className="mt-0.5 text-[11px] text-charcoal-light">
                               SKU: {product.sku || 'N/A'}
                               {!productMissingShippingWeight(product.weight) && (
                                 <> · Ship: {formatShippingWeightLabel(product.weight, product.weight_unit)}</>
                               )}
                             </p>
                             {productMissingShippingWeight(product.weight) && (
-                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                                 <AlertTriangle size={10} />
                                 Add shipping weight
                               </span>
@@ -612,14 +612,14 @@ export default function AdminProducts() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-charcoal">
+                      <td className="px-3 py-2">
+                        <span className="text-xs text-charcoal">
                           {product.category?.name || '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <div>
-                          <p className="font-medium text-charcoal">
+                          <p className="text-sm font-semibold text-charcoal">
                             ${price.toFixed(2)}
                           </p>
                           {compareAtPrice && (
@@ -629,25 +629,23 @@ export default function AdminProducts() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         {product.inventory ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${
-                                product.inventory.quantity <= product.inventory.low_stock_threshold
-                                  ? 'text-red-600'
-                                  : 'text-charcoal'
-                              }`}>
-                                {product.inventory.quantity}
-                              </span>
-                              {product.inventory.quantity <= product.inventory.low_stock_threshold && (
-                                <AlertTriangle size={14} className="text-red-500" />
-                              )}
-                            </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`text-sm font-semibold ${
+                              product.inventory.quantity <= product.inventory.low_stock_threshold
+                                ? 'text-red-600'
+                                : 'text-charcoal'
+                            }`}>
+                              {product.inventory.quantity}
+                            </span>
+                            {product.inventory.quantity <= product.inventory.low_stock_threshold && (
+                              <AlertTriangle size={12} className="text-red-500" />
+                            )}
                             {(() => {
                               const badge = inventoryBadge(product);
                               return (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge.className}`}>
+                                <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}>
                                   <Layers size={10} />
                                   {badge.label}
                                 </span>
@@ -658,8 +656,8 @@ export default function AdminProducts() {
                           <span className="text-charcoal-light">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${
                           product.is_active
                             ? 'bg-green-100 text-green-700'
                             : 'bg-gray-100 text-gray-600'
@@ -677,11 +675,11 @@ export default function AdminProducts() {
                           )}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-3 py-2 text-right">
                         <div className="relative flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                           <button
                             onClick={() => handleEdit(product)}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-himalayan hover:bg-himalayan/10 transition-colors"
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-himalayan hover:bg-himalayan/10 transition-colors"
                             aria-label={`Edit ${productName}`}
                           >
                             <Edit size={14} />
@@ -689,7 +687,7 @@ export default function AdminProducts() {
                           </button>
                           <button
                             onClick={() => setContextMenu(contextMenu === product.id ? null : product.id)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="rounded-md p-1.5 hover:bg-gray-100 transition-colors"
                           >
                             <MoreVertical size={16} className="text-charcoal-light" />
                           </button>
