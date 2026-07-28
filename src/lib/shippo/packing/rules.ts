@@ -52,6 +52,9 @@ function hasJar(text: string): boolean {
 /** Explicit catalog slug → packing rule id (for products without size in the title). */
 export const SLUG_PACKING_RULE_IDS: Record<string, string> = {
   'himalayan-salt-licks-horses': 'lick-2lb',
+  'himalayan-6lb-trace-mineral-salt-block': 'block-6lb',
+  'himalayan-2lb-round-rope-salt-lick': 'round-rope-lick-2lb',
+  'himalayan-6lb-round-rope-salt-lick': 'round-rope-lick-6lb',
   'himalayan-pink-salt-16oz-jar': 'jar-1lb-edible',
   'himalayan-rock-salt-6lbs-pouch': 'pouch-6lb-fine',
   'himalayan-edible-pink-salt-fine': 'pouch-6lb-fine',
@@ -60,6 +63,33 @@ export const SLUG_PACKING_RULE_IDS: Record<string, string> = {
 };
 
 export const ACTIVE_PACKING_RULES: PackingRule[] = [
+  {
+    id: 'round-rope-lick-2lb',
+    label: '2 lb round rope licks',
+    unitWeightLbs: 2,
+    unitsPerBox: 4,
+    box: BOX_10_10_6,
+    slugs: ['himalayan-2lb-round-rope-salt-lick'],
+    matches: ({ slug }) => slug === 'himalayan-2lb-round-rope-salt-lick',
+  },
+  {
+    id: 'round-rope-lick-6lb',
+    label: '6 lb round rope licks',
+    unitWeightLbs: 6,
+    unitsPerBox: 1,
+    box: BOX_10_10_6,
+    slugs: ['himalayan-6lb-round-rope-salt-lick'],
+    matches: ({ slug }) => slug === 'himalayan-6lb-round-rope-salt-lick',
+  },
+  {
+    id: 'block-6lb',
+    label: '6 lb salt blocks',
+    unitWeightLbs: 6,
+    unitsPerBox: 1,
+    box: BOX_10_10_6,
+    slugs: ['himalayan-6lb-trace-mineral-salt-block'],
+    matches: ({ slug }) => slug === 'himalayan-6lb-trace-mineral-salt-block',
+  },
   {
     id: 'jar-1lb-edible',
     label: '1 lb jar fine grain edible',
