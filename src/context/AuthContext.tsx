@@ -24,6 +24,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const PROFILE_FETCH_TIMEOUT_MS = 12_000;
+// Auth is client-side and should never leave a protected route on an
+// indefinite spinner. A stale browser lock, blocked storage read, or an
+// interrupted network request must recover to the login flow instead.
+const AUTH_INITIALIZATION_MAX_WAIT_MS = 5_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -135,6 +139,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let mounted = true;
+    let authInitializationFinished = false;
+    const authInitializationTimer = globalThis.setTimeout(() => {
+      if (!mounted || authInitializationFinished) return;
+      console.warn('Auth initialization exceeded the recovery window. Releasing route loading state.');
+      setLoading(false);
+    }, AUTH_INITIALIZATION_MAX_WAIT_MS);
+
+    const finishAuthInitialization = () => {
+      authInitializationFinished = true;
+      globalThis.clearTimeout(authInitializationTimer);
+    };
 
     const applySession = (nextSession: Session | null, loadProfile: boolean) => {
       if (!mounted) return;
@@ -145,11 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!nextSession?.user) {
         profileRequestId.current += 1;
         setProfile(null);
+        finishAuthInitialization();
         setLoading(false);
         return;
       }
 
       if (!loadProfile) {
+        finishAuthInitialization();
         setLoading(false);
         return;
       }
@@ -158,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // profile row. Keeping global auth loading true until a profile request
       // returns can trap a signed-in customer on the account spinner whenever
       // the profiles query is slow or blocked by a transient network/RLS error.
+      finishAuthInitialization();
       setLoading(false);
       void loadProfileForSession(nextSession.user);
     };
@@ -173,7 +191,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applySession(data.session, true);
       } catch (err) {
         console.error('Auth initialization failed:', err);
-        if (mounted) setLoading(false);
+        if (mounted) {
+          finishAuthInitialization();
+          setLoading(false);
+        }
       }
     })();
 
@@ -203,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      globalThis.clearTimeout(authInitializationTimer);
       subscription.unsubscribe();
     };
   }, [loadProfileForSession]);
