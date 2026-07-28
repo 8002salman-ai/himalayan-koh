@@ -26,6 +26,19 @@ const nextConfig: NextConfig = {
       ...LEGACY_REDIRECTS,
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/images/products/white-background/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
