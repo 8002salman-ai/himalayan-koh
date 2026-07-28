@@ -816,6 +816,51 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     />
                   </div>
 
+                  <section className="rounded-2xl border border-himalayan/20 bg-himalayan/5 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="font-semibold text-himalayan">Shipping measurements</h3>
+                        <p className="mt-1 text-sm text-charcoal-light">
+                          Enter the actual size of one retail unit. Box, packaging, and multi-parcel settings are in Shippo Packing.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('shipping')}
+                        className="shrink-0 rounded-lg border border-himalayan/30 bg-white px-3 py-2 text-sm font-semibold text-himalayan hover:bg-himalayan/10 transition-colors"
+                      >
+                        Open Shippo Packing
+                      </button>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                      <label className="block text-sm font-medium text-charcoal">
+                        <span>Unit weight</span>
+                        <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-himalayan/30">
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={formData.weight || ''}
+                            onChange={(event) => setFormData((current) => ({ ...current, weight: Number(event.target.value) || undefined }))}
+                            className="min-w-0 flex-1 px-3 py-2.5 outline-none"
+                            placeholder="e.g. 2"
+                          />
+                          <span className="flex items-center border-l border-gray-100 px-3 text-xs text-charcoal-light">{formData.weight_unit || 'lbs'}</span>
+                        </div>
+                      </label>
+                      {shippingNumberField('Length', 'productLengthIn', 'in')}
+                      {shippingNumberField('Width', 'productWidthIn', 'in')}
+                      {shippingNumberField('Height', 'productHeightIn', 'in')}
+                    </div>
+
+                    <p className="mt-3 text-xs text-charcoal-light">
+                      {hasCompleteShippingProfile(shippingProfile)
+                        ? 'Shipping profile complete — Shippo can use the saved box rules.'
+                        : 'Finish box dimensions, packaging weight, and units per box in Shippo Packing before this listing is shipping-ready.'}
+                    </p>
+                  </section>
+
                   <div className="grid md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-medium text-charcoal mb-1.5">

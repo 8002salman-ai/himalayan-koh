@@ -562,7 +562,11 @@ export default function AdminProducts() {
                     const productName = product.name || 'Untitled product';
 
                     return (
-                    <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={product.id}
+                      onClick={() => handleEdit(product)}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -574,6 +578,7 @@ export default function AdminProducts() {
                               setSelectedIds(selectedIds.filter(id => id !== product.id));
                             }
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           className="rounded border-gray-300 text-himalayan focus:ring-himalayan"
                         />
                       </td>
@@ -672,7 +677,15 @@ export default function AdminProducts() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="relative">
+                        <div className="relative flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-himalayan hover:bg-himalayan/10 transition-colors"
+                            aria-label={`Edit ${productName}`}
+                          >
+                            <Edit size={14} />
+                            <span className="hidden lg:inline">Edit</span>
+                          </button>
                           <button
                             onClick={() => setContextMenu(contextMenu === product.id ? null : product.id)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
