@@ -518,7 +518,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
   const shippingNumberField = (label: string, key: ShippingNumberField, suffix: string, min = 0, step = '0.01') => (
     <label className="block text-sm font-medium text-charcoal">
-      <span>{label}</span>
+      <span>{label} <span className="text-red-600" aria-label="required">*</span></span>
       <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-himalayan/30">
         <input
           type="number"
@@ -579,9 +579,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
-    if (!product && (!formData.weight || formData.weight <= 0)) {
-      setError('Shipping weight is required for new products. Enter weight in pounds (e.g. 2 for a 2 lb lick).');
-      setActiveTab('pricing');
+    if (!formData.weight || formData.weight <= 0) {
+      setError('Unit shipping weight is required. Add the actual weight of one retail unit before saving.');
+      setActiveTab('basic');
       return;
     }
 
@@ -591,32 +591,22 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
-    const profileHasMeasurements = [
-      shippingProfile.productLengthIn,
-      shippingProfile.productWidthIn,
-      shippingProfile.productHeightIn,
-      shippingProfile.boxLengthIn,
-      shippingProfile.boxWidthIn,
-      shippingProfile.boxHeightIn,
-    ].some((value) => value > 0);
     const normalizedProfile: ShippingProfileForm = {
       ...shippingProfile,
       unitsPerBox: shippingProfile.shipsSeparately ? 1 : Math.max(1, Math.floor(shippingProfile.unitsPerBox)),
     };
 
-    if (profileHasMeasurements && !hasCompleteShippingProfile(normalizedProfile)) {
-      setError('Complete every required product and box measurement before saving the shipping profile.');
+    if (!hasCompleteShippingProfile(normalizedProfile)) {
+      setError('Shippo measurements are required. Complete all product dimensions, box dimensions, packaging weight, units per box, and maximum packed weight.');
       setActiveTab('shipping');
       return;
     }
 
-    if (hasCompleteShippingProfile(normalizedProfile)) {
-      const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
-      if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
-        setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
-        setActiveTab('shipping');
-        return;
-      }
+    const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
+    if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
+      setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
+      setActiveTab('shipping');
+      return;
     }
 
     if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
@@ -633,9 +623,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
     const persistedImages = adminImagesToUrls(adminImages);
     const shippingTags = formData.tags.filter((tag) => !tag.startsWith('packing_profile:'));
-    if (hasCompleteShippingProfile(normalizedProfile)) {
-      shippingTags.push(encodePackingProfileTag(normalizedProfile));
-    }
+    shippingTags.push(encodePackingProfileTag(normalizedProfile));
 
     const savePayload: ProductFormData = {
       ...formData,
@@ -668,7 +656,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         savedProduct = await adminApi.createProduct(savePayload);
       }
 
-      if (isSupabaseConfigured() && hasCompleteShippingProfile(normalizedProfile)) {
+      if (isSupabaseConfigured()) {
         const { error: profileError } = await supabase.from('product_packing_profiles').upsert({
           product_id: savedProduct.id,
           product_length_in: normalizedProfile.productLengthIn,
@@ -700,7 +688,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'basic', label: 'Basic Info', icon: <Package size={16} /> },
     { id: 'pricing', label: 'Pricing', icon: <DollarSign size={16} /> },
-    { id: 'shipping', label: 'Shippo Packing', icon: <Truck size={16} /> },
+    { id: 'shipping', label: 'Shippo Required', icon: <Truck size={16} /> },
     { id: 'inventory', label: 'Inventory', icon: <Tag size={16} /> },
     { id: 'images', label: 'Images', icon: <ImageIcon size={16} /> },
     { id: 'seo', label: 'SEO', icon: <SearchIcon size={16} /> },
@@ -725,9 +713,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
           >
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-charcoal">
-                {product ? 'Edit Product' : 'Add New Product'}
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold text-charcoal">
+                  {product ? 'Edit Product' : 'Add New Product'}
+                </h2>
+                <p className="mt-1 text-xs text-charcoal-light">Shippo-ready details marked <span className="font-semibold text-red-600">*</span> are required before saving.</p>
+              </div>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -819,9 +810,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                   <section className="rounded-2xl border border-himalayan/20 bg-himalayan/5 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="font-semibold text-himalayan">Shipping measurements</h3>
+                        <h3 className="font-semibold text-himalayan">Required shipping measurements <span className="text-red-600">*</span></h3>
                         <p className="mt-1 text-sm text-charcoal-light">
-                          Enter the actual size of one retail unit. Box, packaging, and multi-parcel settings are in Shippo Packing.
+                          Enter the actual size and weight of one retail unit. Box, packaging, and multi-parcel settings are also required in Shippo Required.
                         </p>
                       </div>
                       <button
@@ -855,9 +846,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     </div>
 
                     <p className="mt-3 text-xs text-charcoal-light">
-                      {hasCompleteShippingProfile(shippingProfile)
+                      {formData.weight && hasCompleteShippingProfile(shippingProfile)
                         ? 'Shipping profile complete — Shippo can use the saved box rules.'
-                        : 'Finish box dimensions, packaging weight, and units per box in Shippo Packing before this listing is shipping-ready.'}
+                        : 'Required: complete box dimensions, packaging weight, units per box, and maximum packed weight in Shippo Required.'}
                     </p>
                   </section>
 
@@ -1135,7 +1126,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {activeTab === 'shipping' && (
                 <div className="space-y-6">
                   <div className="rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
-                    <p className="font-semibold text-himalayan">Shippo packing profile</p>
+                    <p className="font-semibold text-himalayan">Required Shippo packing profile</p>
                     <p className="mt-1 text-charcoal-light">
                       Save the real product and shipping-box measurements. Shippo uses these values to split multi-item orders into accurate parcels and calculate carrier rates.
                     </p>
@@ -1143,12 +1134,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
                   {!hasCompleteShippingProfile(shippingProfile) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                      Measurements are not complete yet. Fill all product and box fields before saving to make this listing shipping-ready.
+                      This product cannot be saved until every required measurement below is completed.
                     </div>
                   )}
 
                   <section>
-                    <h3 className="font-semibold text-charcoal">Product measurements</h3>
+                    <h3 className="font-semibold text-charcoal">Product measurements <span className="text-red-600">*</span></h3>
                     <p className="mt-1 text-sm text-charcoal-light">Measure one unpacked retail unit.</p>
                     <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-4">
                       {shippingNumberField('Length', 'productLengthIn', 'in')}
@@ -1163,7 +1154,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                   </section>
 
                   <section>
-                    <h3 className="font-semibold text-charcoal">Approved shipping box</h3>
+                    <h3 className="font-semibold text-charcoal">Approved shipping box <span className="text-red-600">*</span></h3>
                     <p className="mt-1 text-sm text-charcoal-light">Use the actual outside dimensions of the box handed to the carrier.</p>
                     <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                       {shippingNumberField('Box length', 'boxLengthIn', 'in')}
