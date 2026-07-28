@@ -7,13 +7,10 @@ import type { NextRequest } from 'next/server';
  * src/lib/env.ts for the full explanation and how to restore it.
  *
  * While disabled, this middleware is the single enforcement point that
- * blocks direct/URL access to the customer-facing wholesale surface, so a
- * hidden nav link isn't the only thing standing between a visitor and the
- * feature. Nothing here deletes routes, code, or data — it only redirects
- * at the edge. Admin (/admin/dealers/**, /api/admin/wholesale/**,
- * /api/admin/dealer/**) is deliberately NOT gated here — admins still need
- * internal access to review/manage existing wholesale data while the
- * feature is hidden from the public.
+ * blocks every customer and admin wholesale surface, so a hidden nav link
+ * isn't the only thing standing between a visitor and the feature. Nothing
+ * here deletes routes, code, or data — it only disables access at the edge,
+ * keeping historical records available for future reactivation if needed.
  */
 export function middleware(request: NextRequest) {
   if (process.env.NEXT_PUBLIC_WHOLESALE_ENABLED === 'true') {
@@ -22,9 +19,13 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/api/wholesale')) {
+  if (
+    pathname.startsWith('/api/wholesale') ||
+    pathname.startsWith('/api/admin/wholesale') ||
+    pathname.startsWith('/api/admin/dealer')
+  ) {
     return NextResponse.json(
-      { error: 'Wholesale is temporarily unavailable.' },
+      { error: 'Wholesale is disabled.' },
       { status: 404 }
     );
   }
@@ -33,9 +34,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
+  if (pathname === '/admin/dealers' || pathname.startsWith('/admin/dealers/')) {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dealer', '/dealer/:path*', '/api/wholesale/:path*'],
+  matcher: [
+    '/dealer',
+    '/dealer/:path*',
+    '/admin/dealers',
+    '/admin/dealers/:path*',
+    '/api/wholesale/:path*',
+    '/api/admin/wholesale/:path*',
+    '/api/admin/dealer/:path*',
+  ],
 };
