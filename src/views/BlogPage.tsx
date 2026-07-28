@@ -120,9 +120,12 @@ export default function BlogPage({ initialPosts = [] }: BlogPageProps) {
         >
           <Link to={`/blog/${featuredPost.slug}`} className="grid md:grid-cols-2 gap-0">
             <div className="aspect-[16/10] md:aspect-auto overflow-hidden">
+              {/* Featured post sits above the fold and is the LCP candidate. */}
               <img
                 src={featuredPost.featured_image || ''}
                 alt={featuredPost.title}
+                fetchPriority="high"
+                decoding="async"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
             </div>

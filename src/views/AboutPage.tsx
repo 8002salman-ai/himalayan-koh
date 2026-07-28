@@ -88,6 +88,8 @@ export default function AboutPage() {
                   <img
                     src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
                     alt="Horse licking Himalayan salt"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                     onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
                   />

@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { LEGACY_REDIRECTS } from './src/lib/seo/legacyRedirects';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -21,6 +22,8 @@ const nextConfig: NextConfig = {
         destination: '/admin',
         permanent: false,
       },
+      // Legacy WordPress URLs last, so the admin rules above always win.
+      ...LEGACY_REDIRECTS,
     ];
   },
   images: {

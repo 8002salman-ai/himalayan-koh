@@ -105,6 +105,8 @@ export default function Footer() {
             <img
               src="/logo.svg"
               alt="Himalayan Koh"
+              loading="lazy"
+              decoding="async"
               className="h-12 mb-5 brightness-0 invert"
             />
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">

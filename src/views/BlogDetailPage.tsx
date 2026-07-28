@@ -126,10 +126,13 @@ export default function BlogDetailPage({ initialPost = null }: BlogDetailPagePro
       </div>
 
       <article className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+        {/* Featured image is the LCP element for an article — eager, high priority. */}
         {post.featured_image && (
           <img
             src={post.featured_image}
             alt={post.title}
+            fetchPriority="high"
+            decoding="async"
             className="w-full rounded-3xl shadow-lg object-cover aspect-[16/9] mb-10"
           />
         )}
@@ -159,6 +162,8 @@ export default function BlogDetailPage({ initialPost = null }: BlogDetailPagePro
                   <img
                     src={related.featured_image || ''}
                     alt={related.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full aspect-[16/10] object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="p-5">

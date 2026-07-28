@@ -108,6 +108,8 @@ export default function SearchModal({ isOpen, onClose }: Props) {
                   <img
                     src={product.image}
                     alt={product.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-14 h-14 object-cover rounded-xl flex-shrink-0"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/images/placeholder-product.svg';

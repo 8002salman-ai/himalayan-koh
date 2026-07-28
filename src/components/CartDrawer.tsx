@@ -103,6 +103,8 @@ export default function CartDrawer({ isOpen, onClose }: Props) {
                       <img
                         src={item.image}
                         alt={item.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl flex-shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                       />
