@@ -441,7 +441,9 @@ export const adminApi = {
       .in('product_id', ids);
     if (orderItemsError) throw orderItemsError;
 
-    const orderedIds = new Set((orderedItems || []).map((item) => item.product_id));
+    const orderedIds = new Set<string>(
+      ((orderedItems || []) as Array<{ product_id: string }>).map((item) => item.product_id)
+    );
     const deletableIds = ids.filter((id) => !orderedIds.has(id));
 
     if (orderedIds.size > 0) {
