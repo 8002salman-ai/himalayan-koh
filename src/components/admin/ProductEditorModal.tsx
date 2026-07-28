@@ -7,11 +7,18 @@ import {
   Image as ImageIcon,
   DollarSign,
   Package,
+  Truck,
   Tag,
   Search as SearchIcon,
 } from 'lucide-react';
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { decodePackingProfileTag, encodePackingProfileTag } from '../../lib/shippo/packing/packingProfileTag';
+import {
+  mapProductPackingProfile,
+  type ProductPackingProfile,
+  type ProductPackingProfileRow,
+} from '../../lib/shippo/packing/productPackingProfile';
 import {
   ALLOWED_PRODUCT_IMAGE_TYPES,
   MAX_PRODUCT_IMAGE_BYTES,
@@ -42,7 +49,42 @@ interface Props {
   onSave: (product: Product) => void;
 }
 
-type TabType = 'basic' | 'pricing' | 'inventory' | 'images' | 'seo';
+type TabType = 'basic' | 'pricing' | 'shipping' | 'inventory' | 'images' | 'seo';
+
+type ShippingProfileForm = Omit<ProductPackingProfile, 'productId'>;
+type ShippingNumberField = Exclude<keyof ShippingProfileForm, 'shipsSeparately' | 'canMix' | 'fragile' | 'stackable'>;
+
+const emptyShippingProfile: ShippingProfileForm = {
+  productLengthIn: 0,
+  productWidthIn: 0,
+  productHeightIn: 0,
+  boxLengthIn: 0,
+  boxWidthIn: 0,
+  boxHeightIn: 0,
+  packagingWeightLbs: 0.5,
+  unitsPerBox: 1,
+  maxPackedWeightLbs: 70,
+  shipsSeparately: false,
+  canMix: false,
+  fragile: false,
+  stackable: true,
+};
+
+function profileToForm(profile: ProductPackingProfile | null): ShippingProfileForm {
+  if (!profile) return emptyShippingProfile;
+  const { productId: _productId, ...form } = profile;
+  return form;
+}
+
+function hasCompleteShippingProfile(profile: ShippingProfileForm): boolean {
+  return [
+    profile.productLengthIn, profile.productWidthIn, profile.productHeightIn,
+    profile.boxLengthIn, profile.boxWidthIn, profile.boxHeightIn,
+    profile.unitsPerBox, profile.maxPackedWeightLbs,
+  ].every((value) => Number.isFinite(value) && value > 0)
+    && profile.packagingWeightLbs >= 0
+    && profile.maxPackedWeightLbs <= 70;
+}
 
 const generateSlug = (name: string) => {
   return name
@@ -59,6 +101,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [imageValidation, setImageValidation] = useState('');
   const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
+  const [shippingProfile, setShippingProfile] = useState<ShippingProfileForm>(emptyShippingProfile);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -130,7 +173,22 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
           })
         );
 
+        let loadedProfile = decodePackingProfileTag(product.id, tags);
+        if (isSupabaseConfigured()) {
+          const { data, error: profileError } = await supabase
+            .from('product_packing_profiles')
+            .select('*')
+            .eq('product_id', product.id)
+            .maybeSingle();
+          if (!profileError && data) {
+            loadedProfile = mapProductPackingProfile(data as ProductPackingProfileRow);
+          } else if (profileError && profileError.code !== '42P01') {
+            console.warn('Could not load the saved shipping profile:', profileError);
+          }
+        }
+
         setAdminImages(imageSlots);
+        setShippingProfile(profileToForm(loadedProfile));
         setFormData({
           name: product.name || '',
           slug: product.slug || '',
@@ -161,6 +219,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       }
 
       setAdminImages([]);
+      setShippingProfile(emptyShippingProfile);
       setFormData({
         name: '',
         slug: '',
@@ -449,6 +508,31 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     setFormData((prev) => ({ ...prev, thumbnail: url }));
   };
 
+  const updateShippingNumber = (key: ShippingNumberField, value: string) => {
+    const parsed = Number(value);
+    setShippingProfile((current) => ({
+      ...current,
+      [key]: Number.isFinite(parsed) ? parsed : 0,
+    }));
+  };
+
+  const shippingNumberField = (label: string, key: ShippingNumberField, suffix: string, min = 0, step = '0.01') => (
+    <label className="block text-sm font-medium text-charcoal">
+      <span>{label}</span>
+      <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-himalayan/30">
+        <input
+          type="number"
+          min={min}
+          step={step}
+          value={shippingProfile[key] || ''}
+          onChange={(event) => updateShippingNumber(key, event.target.value)}
+          className="min-w-0 flex-1 px-3 py-2.5 outline-none"
+        />
+        <span className="flex items-center border-l border-gray-100 px-3 text-xs text-charcoal-light">{suffix}</span>
+      </div>
+    </label>
+  );
+
   const reorderImages = (images: AdminProductImage[]) => {
     setAdminImages(images);
     syncImagesToForm(images);
@@ -507,6 +591,34 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
+    const profileHasMeasurements = [
+      shippingProfile.productLengthIn,
+      shippingProfile.productWidthIn,
+      shippingProfile.productHeightIn,
+      shippingProfile.boxLengthIn,
+      shippingProfile.boxWidthIn,
+      shippingProfile.boxHeightIn,
+    ].some((value) => value > 0);
+    const normalizedProfile: ShippingProfileForm = {
+      ...shippingProfile,
+      unitsPerBox: shippingProfile.shipsSeparately ? 1 : Math.max(1, Math.floor(shippingProfile.unitsPerBox)),
+    };
+
+    if (profileHasMeasurements && !hasCompleteShippingProfile(normalizedProfile)) {
+      setError('Complete every required product and box measurement before saving the shipping profile.');
+      setActiveTab('shipping');
+      return;
+    }
+
+    if (hasCompleteShippingProfile(normalizedProfile)) {
+      const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
+      if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
+        setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
+        setActiveTab('shipping');
+        return;
+      }
+    }
+
     if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
       setError('Please wait for image uploads to finish before saving.');
       setActiveTab('images');
@@ -520,8 +632,14 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }
 
     const persistedImages = adminImagesToUrls(adminImages);
+    const shippingTags = formData.tags.filter((tag) => !tag.startsWith('packing_profile:'));
+    if (hasCompleteShippingProfile(normalizedProfile)) {
+      shippingTags.push(encodePackingProfileTag(normalizedProfile));
+    }
+
     const savePayload: ProductFormData = {
       ...formData,
+      tags: shippingTags,
       images: persistedImages,
       thumbnail: formData.thumbnail || persistedImages[0] || '',
     };
@@ -550,6 +668,26 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         savedProduct = await adminApi.createProduct(savePayload);
       }
 
+      if (isSupabaseConfigured() && hasCompleteShippingProfile(normalizedProfile)) {
+        const { error: profileError } = await supabase.from('product_packing_profiles').upsert({
+          product_id: savedProduct.id,
+          product_length_in: normalizedProfile.productLengthIn,
+          product_width_in: normalizedProfile.productWidthIn,
+          product_height_in: normalizedProfile.productHeightIn,
+          box_length_in: normalizedProfile.boxLengthIn,
+          box_width_in: normalizedProfile.boxWidthIn,
+          box_height_in: normalizedProfile.boxHeightIn,
+          packaging_weight_lbs: normalizedProfile.packagingWeightLbs,
+          units_per_box: normalizedProfile.unitsPerBox,
+          max_packed_weight_lbs: normalizedProfile.maxPackedWeightLbs,
+          ships_separately: normalizedProfile.shipsSeparately,
+          can_mix: normalizedProfile.canMix,
+          fragile: normalizedProfile.fragile,
+          stackable: normalizedProfile.stackable,
+        } as never);
+        if (profileError && profileError.code !== '42P01') throw profileError;
+      }
+
       onSave(savedProduct);
       onClose();
     } catch (err) {
@@ -562,6 +700,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'basic', label: 'Basic Info', icon: <Package size={16} /> },
     { id: 'pricing', label: 'Pricing', icon: <DollarSign size={16} /> },
+    { id: 'shipping', label: 'Shippo Packing', icon: <Truck size={16} /> },
     { id: 'inventory', label: 'Inventory', icon: <Tag size={16} /> },
     { id: 'images', label: 'Images', icon: <ImageIcon size={16} /> },
     { id: 'seo', label: 'SEO', icon: <SearchIcon size={16} /> },
@@ -943,6 +1082,75 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                         placeholder="123456789012"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Shippo Packing Tab */}
+              {activeTab === 'shipping' && (
+                <div className="space-y-6">
+                  <div className="rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
+                    <p className="font-semibold text-himalayan">Shippo packing profile</p>
+                    <p className="mt-1 text-charcoal-light">
+                      Save the real product and shipping-box measurements. Shippo uses these values to split multi-item orders into accurate parcels and calculate carrier rates.
+                    </p>
+                  </div>
+
+                  {!hasCompleteShippingProfile(shippingProfile) && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                      Measurements are not complete yet. Fill all product and box fields before saving to make this listing shipping-ready.
+                    </div>
+                  )}
+
+                  <section>
+                    <h3 className="font-semibold text-charcoal">Product measurements</h3>
+                    <p className="mt-1 text-sm text-charcoal-light">Measure one unpacked retail unit.</p>
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                      {shippingNumberField('Length', 'productLengthIn', 'in')}
+                      {shippingNumberField('Width', 'productWidthIn', 'in')}
+                      {shippingNumberField('Height', 'productHeightIn', 'in')}
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-charcoal">
+                        <p className="font-medium">Unit weight</p>
+                        <p className="mt-1 text-charcoal-light">{formData.weight ? formatShippingWeightLabel(formData.weight, formData.weight_unit) : 'Set in Pricing tab'}</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-charcoal-light">Unit weight is set in the Pricing tab.</p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-semibold text-charcoal">Approved shipping box</h3>
+                    <p className="mt-1 text-sm text-charcoal-light">Use the actual outside dimensions of the box handed to the carrier.</p>
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      {shippingNumberField('Box length', 'boxLengthIn', 'in')}
+                      {shippingNumberField('Box width', 'boxWidthIn', 'in')}
+                      {shippingNumberField('Box height', 'boxHeightIn', 'in')}
+                      {shippingNumberField('Empty packaging weight', 'packagingWeightLbs', 'lb')}
+                      {shippingNumberField('Units per box', 'unitsPerBox', 'units', 1, '1')}
+                      {shippingNumberField('Maximum packed weight', 'maxPackedWeightLbs', 'lb')}
+                    </div>
+                    <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-sm text-charcoal">
+                      Estimated full-box actual weight: <strong>{(((Number(formData.weight) || 0) * (shippingProfile.shipsSeparately ? 1 : shippingProfile.unitsPerBox)) + shippingProfile.packagingWeightLbs).toFixed(2)} lb</strong>.
+                      Shippo compares this with dimensional weight for its billable rate.
+                    </div>
+                  </section>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {([
+                      ['shipsSeparately', 'Ships separately'],
+                      ['canMix', 'May mix with compatible products'],
+                      ['fragile', 'Fragile'],
+                      ['stackable', 'Stackable'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm font-medium text-charcoal">
+                        <input
+                          type="checkbox"
+                          checked={shippingProfile[key]}
+                          onChange={(event) => setShippingProfile((current) => ({ ...current, [key]: event.target.checked }))}
+                          className="h-4 w-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                        />
+                        {label}
+                      </label>
+                    ))}
                   </div>
                 </div>
               )}
