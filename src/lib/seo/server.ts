@@ -1,5 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/supabase/database.types';
+import type {
+  BlogPost,
+  Database,
+  ProductWithCategory,
+  Profile,
+} from '@/lib/supabase/database.types';
+import type { Product } from '@/data/products';
+import { getFallbackProductBySlug, mapSupabaseProduct } from '@/lib/products/mapProduct';
 import { publicEnv } from '@/lib/env';
 
 /**
@@ -51,13 +58,7 @@ export interface SeoProduct {
 
 /** Server-side product-by-slug fetch for metadata + JSON-LD. Returns null if not found. */
 export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> {
-  const normalized = (() => {
-    try {
-      return decodeURIComponent(slug).trim().toLowerCase();
-    } catch {
-      return slug.trim().toLowerCase();
-    }
-  })();
+  const normalized = normalizeSlugParam(slug);
   if (!normalized) return null;
 
   const { data } = await getSeoSupabase()
@@ -71,6 +72,39 @@ export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> 
     .maybeSingle();
 
   return (data as SeoProduct | null) ?? null;
+}
+
+/** Route params arrive URL-encoded and case-inconsistent; slugs are stored lowercase. */
+function normalizeSlugParam(slug: string): string {
+  try {
+    return decodeURIComponent(slug).trim().toLowerCase();
+  } catch {
+    return slug.trim().toLowerCase();
+  }
+}
+
+/**
+ * Full product row mapped to the same `Product` shape the client views use, so
+ * server metadata and structured data are built by exactly the same helpers the
+ * page renders with (no title/description drift between server HTML and the
+ * hydrated page). Falls back to the bundled catalog when Supabase has no match,
+ * which mirrors the client resolver.
+ */
+export async function fetchSeoProductModel(slug: string): Promise<Product | null> {
+  const normalized = normalizeSlugParam(slug);
+  if (!normalized) return null;
+
+  const { data } = await getSeoSupabase()
+    .from('products')
+    .select('*, category:categories(*), inventory(*)')
+    .eq('slug', normalized)
+    .eq('is_active', true)
+    .eq('dealer_only', false)
+    .maybeSingle();
+
+  if (data) return mapSupabaseProduct(data as unknown as ProductWithCategory);
+
+  return getFallbackProductBySlug(normalized) ?? null;
 }
 
 export interface SeoBlogPost {
@@ -99,4 +133,43 @@ export async function fetchSeoBlogPost(slug: string): Promise<SeoBlogPost | null
     .maybeSingle();
 
   return (data as SeoBlogPost | null) ?? null;
+}
+
+/** Same shape the client blog API returns, so the view can be seeded with it directly. */
+export type SeoBlogPostFull = BlogPost & {
+  author: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null;
+};
+
+/**
+ * Full published post including body content and author, for server rendering
+ * the article into the initial HTML. Returns null when unpublished or missing.
+ */
+export async function fetchSeoBlogPostFull(slug: string): Promise<SeoBlogPostFull | null> {
+  const normalized = slug?.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const { data } = await getSeoSupabase()
+    .from('blog_posts')
+    .select('*, author:profiles(id, full_name, avatar_url)')
+    .eq('slug', normalized)
+    .eq('is_published', true)
+    .maybeSingle();
+
+  return (data as unknown as SeoBlogPostFull | null) ?? null;
+}
+
+/**
+ * Published posts, newest first, for server rendering the blog index. Without
+ * this the listing ships as an empty grid and crawlers find no internal links
+ * to the individual articles.
+ */
+export async function fetchSeoBlogPosts(limit = 24): Promise<SeoBlogPostFull[]> {
+  const { data } = await getSeoSupabase()
+    .from('blog_posts')
+    .select('*, author:profiles(id, full_name, avatar_url)')
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  return (data as unknown as SeoBlogPostFull[] | null) ?? [];
 }

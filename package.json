@@ -6,10 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "node scripts/clean-next.mjs && next dev",
-    "build": "npm run generate:sitemap && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "generate:routes": "node scripts/generate-next-routes.mjs",
     "doctor": "node scripts/doctor.mjs",
     "setup": "node scripts/setup-supabase-backend.mjs",

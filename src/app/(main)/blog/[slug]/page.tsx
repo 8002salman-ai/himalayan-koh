@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonLd';
-import { fetchSeoBlogPost } from '@/lib/seo/server';
+import { fetchSeoBlogPostFull } from '@/lib/seo/server';
+import { SITE_NAME } from '@/lib/seo/constants';
 import JsonLd from '@/components/seo/JsonLd';
 import BlogDetailClient from './BlogDetailClient';
 
@@ -13,7 +14,7 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await fetchSeoBlogPost(slug).catch(() => null);
+  const post = await fetchSeoBlogPostFull(slug).catch(() => null);
 
   if (!post) {
     return buildMetadata({
@@ -24,7 +25,9 @@ export async function generateMetadata({
   }
 
   return buildMetadata({
-    title: post.meta_title || `${post.title} - Himalayan Koh`,
+    // Matches the title the hydrated view sets, so the tab title does not
+    // change on hydration and crawlers see one consistent title.
+    title: post.meta_title || `${post.title} | ${SITE_NAME}`,
     description: post.meta_description || post.excerpt || undefined,
     path: `/blog/${post.slug}`,
     ogImage: post.featured_image,
@@ -34,7 +37,7 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const post = await fetchSeoBlogPost(slug).catch(() => null);
+  const post = await fetchSeoBlogPostFull(slug).catch(() => null);
 
   return (
     <>
@@ -48,6 +51,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               image: post.featured_image,
               publishedAt: post.published_at,
               updatedAt: post.updated_at,
+              authorName: post.author?.full_name,
             })}
           />
           <JsonLd
@@ -59,7 +63,10 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           />
         </>
       )}
-      <BlogDetailClient />
+      {/* Seeding the client view with the server-fetched post puts the article
+          body in the initial HTML instead of a loading spinner. The key remounts
+          the view on post-to-post navigation so the new seed is picked up. */}
+      <BlogDetailClient key={post?.slug ?? slug} initialPost={post} />
     </>
   );
 }

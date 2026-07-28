@@ -1,5 +1,9 @@
 ﻿import { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+// usePathname instead of useLocation: useLocation reads search params, which
+// opts every route rendering this layout out of static prerendering, leaving
+// crawlers with the loading fallback. The nav only needs the pathname.
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } from 'lucide-react';
 import { useCart } from '../store/cartStore';
@@ -31,7 +35,7 @@ export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
-  const location = useLocation();
+  const pathname = usePathname() ?? '/';
   const { totalItems } = useCart();
   const { isAuthenticated, profile, user } = useAuthContext();
 
@@ -106,13 +110,13 @@ export default function Layout({ children }: LayoutProps) {
                   key={link.path}
                   to={link.path}
                   className={`relative px-3 py-2 text-[0.82rem] font-extrabold uppercase tracking-[0.035em] transition-colors rounded-lg ${
-                    location.pathname === link.path
+                    pathname === link.path
                       ? 'text-himalayan-dark'
                       : 'text-charcoal hover:text-himalayan-dark'
                   }`}
                 >
                   {link.label}
-                  {location.pathname === link.path && (
+                  {pathname === link.path && (
                     <motion.div
                       layoutId="navIndicator"
                       className="absolute bottom-0 left-3 right-3 h-0.5 bg-himalayan rounded-full"
@@ -275,7 +279,7 @@ export default function Layout({ children }: LayoutProps) {
                     to={link.path}
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-extrabold uppercase tracking-wide transition-colors ${
-                      location.pathname === link.path
+                      pathname === link.path
                         ? 'bg-warm-white text-himalayan-dark'
                         : 'text-charcoal hover:bg-warm-white'
                     }`}

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { productJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonLd';
-import { fetchSeoProduct } from '@/lib/seo/server';
+import { breadcrumbJsonLd } from '@/lib/seo/jsonLd';
+import { fetchSeoProductModel } from '@/lib/seo/server';
+import { buildProductStructuredData } from '@/lib/products/productSchema';
+import { buildProductPageSeo, getProductDisplayName } from '@/lib/products/productSeo';
 import JsonLd from '@/components/seo/JsonLd';
 import ProductDetailClient from './ProductDetailClient';
 
@@ -13,7 +15,7 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await fetchSeoProduct(slug).catch(() => null);
+  const product = await fetchSeoProductModel(slug).catch(() => null);
 
   if (!product) {
     return buildMetadata({
@@ -23,47 +25,42 @@ export async function generateMetadata({
     });
   }
 
-  const description =
-    product.meta_description || product.short_description || product.description || undefined;
-  const image = product.thumbnail || product.images?.[0] || null;
+  // Same helper the client view uses, so the server HTML title/description
+  // match the hydrated page instead of competing with it.
+  const { title, description } = buildProductPageSeo(product);
 
   return buildMetadata({
-    title: product.meta_title || `${product.name} - Himalayan Koh`,
-    description: description || undefined,
+    title,
+    description,
     path: `/products/${product.slug}`,
-    ogImage: image,
+    ogImage: product.image,
     ogType: 'product',
   });
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const product = await fetchSeoProduct(slug).catch(() => null);
+  const product = await fetchSeoProductModel(slug).catch(() => null);
 
   return (
     <>
       {product && (
         <>
-          <JsonLd
-            data={productJsonLd({
-              name: product.name,
-              description: product.meta_description || product.short_description || product.description,
-              slug: product.slug,
-              price: product.price,
-              image: product.thumbnail || product.images?.[0] || null,
-              sku: product.sku,
-            })}
-          />
+          {/* Full Product + Offer + FAQPage + WebPage graph, server-rendered so
+              crawlers get it without executing the client bundle. */}
+          <JsonLd data={buildProductStructuredData(product)} />
           <JsonLd
             data={breadcrumbJsonLd([
               { name: 'Home', path: '/' },
               { name: 'Products', path: '/products' },
-              { name: product.name, path: `/products/${product.slug}` },
+              { name: getProductDisplayName(product), path: `/products/${product.slug}` },
             ])}
           />
         </>
       )}
-      <ProductDetailClient />
+      {/* key remounts the view when navigating product-to-product, so the
+          seeded server data is picked up instead of the previous product's. */}
+      <ProductDetailClient key={product?.slug ?? slug} initialProduct={product} />
     </>
   );
 }

@@ -52,7 +52,9 @@ export function articleJsonLd(input: ArticleLdInput): Record<string, unknown> {
     image: absoluteImage(input.image),
     datePublished: input.publishedAt || undefined,
     dateModified: input.updatedAt || input.publishedAt || undefined,
-    author: { '@type': 'Organization', name: input.authorName || SITE_NAME },
+    author: input.authorName
+      ? { '@type': 'Person', name: input.authorName }
+      : { '@type': 'Organization', name: SITE_NAME },
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
@@ -78,7 +80,23 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]): Recor
 export function organizationJsonLd(): Record<string, unknown> {
   return {
     ...ORGANIZATION_JSON_LD,
+    '@id': `${absoluteUrl('/')}#organization`,
     url: absoluteUrl('/'),
     logo: absoluteUrl('/logo.svg'),
+  };
+}
+
+/**
+ * Site-level entity. Lets Google associate the domain with the brand name for
+ * sitelinks and knowledge-panel matching, independent of any single page.
+ */
+export function websiteJsonLd(): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${absoluteUrl('/')}#website`,
+    name: SITE_NAME,
+    url: absoluteUrl('/'),
+    publisher: { '@id': `${absoluteUrl('/')}#organization` },
   };
 }

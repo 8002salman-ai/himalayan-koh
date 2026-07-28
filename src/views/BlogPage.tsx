@@ -5,10 +5,19 @@ import { ArrowUpRight, Clock, Loader2, Search, Tag, User } from 'lucide-react';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 
-export default function BlogPage() {
-  const [posts, setPosts] = useState<BlogPostWithAuthor[]>([]);
+interface BlogPageProps {
+  /**
+   * Posts fetched during server render, so the listing (and its links into each
+   * article) is present in the initial HTML rather than appearing only after
+   * the client fetch resolves.
+   */
+  initialPosts?: BlogPostWithAuthor[];
+}
+
+export default function BlogPage({ initialPosts = [] }: BlogPageProps) {
+  const [posts, setPosts] = useState<BlogPostWithAuthor[]>(initialPosts);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialPosts.length === 0);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -18,8 +27,11 @@ export default function BlogPage() {
       }
 
       try {
-        const { posts } = await blogApi.getPosts();
-        setPosts(posts);
+        const { posts: fetched } = await blogApi.getPosts();
+        // Keep the server-rendered list if the refetch returns nothing.
+        if (fetched.length || !initialPosts.length) {
+          setPosts(fetched);
+        }
       } catch (err) {
         console.error('Failed to fetch blog posts:', err);
       } finally {
@@ -28,6 +40,8 @@ export default function BlogPage() {
     };
 
     fetchPosts();
+    // Runs once on mount; initialPosts is fixed for a given server render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredPosts = useMemo(() => {

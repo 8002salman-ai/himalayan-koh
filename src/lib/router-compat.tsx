@@ -24,13 +24,34 @@ type StoredNavigation = { path: string; state: unknown };
 /** Shared across all useLocation() callers so Layout/SEO do not steal navigation state. */
 let sharedNavigationState: StoredNavigation | null = null;
 
+/**
+ * sessionStorage does not exist during server rendering. Every access below is
+ * guarded — an unguarded read throws and takes the whole page tree down with
+ * it, leaving crawlers nothing but the root error fallback.
+ */
+function hasSessionStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined';
+}
+
 function pathOnly(url: string): string {
   return url.split('?')[0] || '/';
 }
 
 function setNavigationState(path: string, state: unknown) {
   sharedNavigationState = { path: pathOnly(path), state };
+  if (!hasSessionStorage()) return;
   sessionStorage.setItem(ROUTER_STATE_KEY, JSON.stringify(sharedNavigationState));
+}
+
+/**
+ * In-memory lookup only — safe to call while rendering (including on the
+ * server, where it always yields undefined, matching the first client render).
+ */
+function readNavigationStateSync(pathname: string): unknown | undefined {
+  if (sharedNavigationState?.path === pathOnly(pathname)) {
+    return sharedNavigationState.state;
+  }
+  return undefined;
 }
 
 function readNavigationState(pathname: string): unknown | undefined {
@@ -39,6 +60,8 @@ function readNavigationState(pathname: string): unknown | undefined {
   if (sharedNavigationState?.path === path) {
     return sharedNavigationState.state;
   }
+
+  if (!hasSessionStorage()) return undefined;
 
   const raw = sessionStorage.getItem(ROUTER_STATE_KEY);
   if (!raw) return undefined;
@@ -66,6 +89,7 @@ function clearNavigationState(pathname: string) {
   if (sharedNavigationState?.path === pathOnly(pathname)) {
     sharedNavigationState = null;
   }
+  if (!hasSessionStorage()) return;
   sessionStorage.removeItem(ROUTER_STATE_KEY);
 }
 
@@ -118,7 +142,9 @@ export function useLocation() {
   const pathname = usePathname() ?? '/';
   const nextParams = useNextSearchParams();
   const search = nextParams?.toString() ? `?${nextParams.toString()}` : '';
-  const [state, setState] = useState<unknown>(() => readNavigationState(pathname));
+  // Initialised from memory only, so server and first client render agree; the
+  // effect below pulls any persisted state in immediately after mount.
+  const [state, setState] = useState<unknown>(() => readNavigationStateSync(pathname));
 
   useEffect(() => {
     setState(readNavigationState(pathname));

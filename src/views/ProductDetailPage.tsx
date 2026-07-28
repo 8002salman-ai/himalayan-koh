@@ -3,11 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
-import JsonLd from '../components/JsonLd';
 import { usePageSeo } from '../hooks/usePageSeo';
 import type { Product } from '../data/products';
 import { DEFAULT_DESCRIPTION } from '../lib/seo/constants';
-import { buildProductStructuredData } from '../lib/products/productSchema';
 import { buildProductPageSeo } from '../lib/products/productSeo';
 import { normalizeProductSlug } from '../lib/products/slug';
 import { resolveProductBySlug } from '../lib/products/resolveProduct';
@@ -20,11 +18,20 @@ import ProductPdpEnrichedSections, {
 import { getPdpContent } from '../lib/products/pdpContent';
 import { getProductDisplayName } from '../lib/products/productSeo';
 
-export default function ProductDetailPage() {
+interface ProductDetailPageProps {
+  /**
+   * Product resolved during server render. Seeding state with it puts the real
+   * product name, description and price in the initial HTML instead of the
+   * loading spinner a client-only fetch would leave for crawlers.
+   */
+  initialProduct?: Product | null;
+}
+
+export default function ProductDetailPage({ initialProduct = null }: ProductDetailPageProps) {
   const { slug: routeSlug } = useParams<{ slug: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<Product | null>(initialProduct);
   const [related, setRelated] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProduct);
 
   useEffect(() => {
     if (!routeSlug) {
@@ -37,11 +44,14 @@ export default function ProductDetailPage() {
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
       const result = await resolveProductBySlug(routeSlug);
       if (cancelled) return;
 
-      setProduct(result.product);
+      // Keep the server-rendered product if the client resolve comes back
+      // empty, so a transient Supabase failure cannot blank a live page.
+      if (result.product || !initialProduct) {
+        setProduct(result.product);
+      }
       setRelated(result.related);
       setLoading(false);
     };
@@ -51,6 +61,8 @@ export default function ProductDetailPage() {
     return () => {
       cancelled = true;
     };
+    // initialProduct is fixed per server render; the fetch keys on the slug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeSlug]);
 
   const seo = useMemo(() => {
@@ -124,8 +136,8 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-warm-white py-8 md:py-12">
-      <JsonLd id="product" data={buildProductStructuredData(product)} />
-
+      {/* Product/FAQ/WebPage JSON-LD is server-rendered by app/(main)/products/[slug]/page.tsx
+          — injecting a second copy here would duplicate the graph for crawlers. */}
       <div
         className={
           showGalleryColumn ? 'max-w-7xl mx-auto px-4 sm:px-6' : 'max-w-5xl mx-auto px-4 sm:px-6'

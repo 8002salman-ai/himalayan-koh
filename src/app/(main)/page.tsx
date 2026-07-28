@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { organizationJsonLd } from '@/lib/seo/jsonLd';
 import { DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '@/lib/seo/constants';
-import JsonLd from '@/components/seo/JsonLd';
 import HomeClient from './HomeClient';
 
 export function generateMetadata(): Metadata {
@@ -13,11 +11,8 @@ export function generateMetadata(): Metadata {
   });
 }
 
+// Organization + WebSite JSON-LD is emitted once in the root layout for every
+// route, so the homepage does not repeat it here.
 export default function Page() {
-  return (
-    <>
-      <JsonLd data={organizationJsonLd()} />
-      <HomeClient />
-    </>
-  );
+  return <HomeClient />;
 }

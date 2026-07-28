@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd } from '@/lib/seo/jsonLd';
+import { fetchSeoBlogPosts } from '@/lib/seo/server';
 import JsonLd from '@/components/seo/JsonLd';
 import BlogClient from './BlogClient';
+
+export const revalidate = 3600;
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
@@ -13,7 +16,9 @@ export function generateMetadata(): Metadata {
   });
 }
 
-export default function Page() {
+export default async function Page() {
+  const posts = await fetchSeoBlogPosts().catch(() => []);
+
   return (
     <>
       <JsonLd
@@ -22,7 +27,9 @@ export default function Page() {
           { name: 'Blog', path: '/blog' },
         ])}
       />
-      <BlogClient />
+      {/* Server-fetched posts seed the listing so the article links are in the
+          initial HTML for crawlers. */}
+      <BlogClient initialPosts={posts} />
     </>
   );
 }

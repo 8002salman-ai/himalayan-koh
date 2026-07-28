@@ -64,9 +64,12 @@ export default function HomePage() {
                   World&apos;s Best for Livestock
                 </span>
               </div>
-              <h2 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
+              {/* h1, not h2: this is the homepage's main heading — the page had
+                  no h1 at all, so search engines had no primary topic signal.
+                  Styling lives in the className, so the visual size is unchanged. */}
+              <h1 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
                 Rich All Natural Himalayan Pink Salt
-              </h2>
+              </h1>
               <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
                   Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.

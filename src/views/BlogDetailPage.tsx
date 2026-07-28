@@ -2,17 +2,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Clock, Loader2, Tag, User } from 'lucide-react';
-import JsonLd from '../components/JsonLd';
 import { usePageSeo } from '../hooks/usePageSeo';
-import { SITE_URL } from '../lib/seo/constants';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 
-export default function BlogDetailPage() {
+interface BlogDetailPageProps {
+  /**
+   * Post fetched during server render. Seeding state with it puts the article
+   * body in the initial HTML, so crawlers index the content instead of the
+   * loading spinner they would otherwise get from a client-only fetch.
+   */
+  initialPost?: BlogPostWithAuthor | null;
+}
+
+export default function BlogDetailPage({ initialPost = null }: BlogDetailPageProps) {
   const { slug } = useParams();
-  const [post, setPost] = useState<BlogPostWithAuthor | null>(null);
+  const [post, setPost] = useState<BlogPostWithAuthor | null>(initialPost);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostWithAuthor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialPost);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -22,11 +29,17 @@ export default function BlogDetailPage() {
       }
 
       try {
-        const post = await blogApi.getPostBySlug(slug);
-        setPost(post);
+        const fetched = await blogApi.getPostBySlug(slug);
 
-        if (post) {
-          setRelatedPosts(await blogApi.getRelatedPosts(post.id, post.category, 3));
+        // Keep the server-rendered post if the client refetch comes back empty,
+        // so a transient failure never blanks out content already on screen.
+        if (fetched || !initialPost) {
+          setPost(fetched);
+        }
+
+        const current = fetched ?? initialPost;
+        if (current) {
+          setRelatedPosts(await blogApi.getRelatedPosts(current.id, current.category, 3));
         }
       } catch (err) {
         console.error('Failed to fetch blog post:', err);
@@ -36,6 +49,8 @@ export default function BlogDetailPage() {
     };
 
     fetchPost();
+    // initialPost is a server-render constant for this route; refetch keys on slug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const seo = useMemo(() => {
@@ -50,28 +65,6 @@ export default function BlogDetailPage() {
   }, [post]);
 
   usePageSeo(seo);
-
-  const blogJsonLd = useMemo(() => {
-    if (!post) return null;
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'BlogPosting',
-      headline: post.title,
-      description: post.meta_description || post.excerpt || '',
-      image: post.featured_image || undefined,
-      datePublished: post.published_at || undefined,
-      author: {
-        '@type': 'Person',
-        name: post.author?.full_name || 'Himalayan Koh',
-      },
-      publisher: {
-        '@type': 'Organization',
-        name: 'Himalayan Koh',
-        url: SITE_URL,
-      },
-      mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
-    };
-  }, [post]);
 
   if (loading) {
     return (
@@ -99,7 +92,7 @@ export default function BlogDetailPage() {
 
   return (
     <div className="min-h-screen bg-warm-white">
-      {blogJsonLd && <JsonLd id="blog-post" data={blogJsonLd} />}
+      {/* Article + Breadcrumb JSON-LD is server-rendered by app/(main)/blog/[slug]/page.tsx. */}
       <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-12 md:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <Link to="/blog" className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-6 text-sm">

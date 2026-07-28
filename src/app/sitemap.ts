@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
+import { CATEGORY_CONTENT_REGISTRY, buildProductsCategoryPath } from '@/lib/categoryContent';
+import type { CategoryContentKey } from '@/lib/categoryContent';
 
 type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
@@ -27,6 +29,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }));
+
+  // Category hubs are real landing pages (own hero, copy, guides, SEO title) served
+  // from /products?category=<key>. Without these the hub content is unreachable to
+  // crawlers, which only ever see the unfiltered /products page.
+  for (const key of Object.keys(CATEGORY_CONTENT_REGISTRY) as CategoryContentKey[]) {
+    entries.push({
+      url: `${origin}${buildProductsCategoryPath(key)}`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    });
+  }
 
   const supabase = getSeoSupabase();
 
