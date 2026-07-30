@@ -193,6 +193,12 @@ export default function ImageDropzone({
                   </div>
                 )}
 
+                {!hasError && !isBusy && image.optimization && (
+                  <div className="absolute inset-x-0 bottom-0 bg-black/65 text-white text-[11px] px-2 py-1 truncate sm:group-hover:opacity-0 transition-opacity">
+                    {image.optimization}
+                  </div>
+                )}
+
                 <div className="absolute inset-0 bg-black/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 sm:gap-2 p-2">
                   <button
                     type="button"

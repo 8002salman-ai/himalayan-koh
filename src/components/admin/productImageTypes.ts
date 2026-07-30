@@ -9,6 +9,8 @@ export interface AdminProductImage {
   status: ProductImageUploadStatus;
   error?: string;
   file?: File;
+  /** Short note on what the optimizer did, e.g. "WebP · 4.1 MB → 210 kB". */
+  optimization?: string;
 }
 
 export const createAdminProductImage = (

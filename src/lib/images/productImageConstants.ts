@@ -15,3 +15,13 @@ export const ALLOWED_PRODUCT_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', '
 export const PRODUCT_IMAGE_MAX_DIMENSION = 1600;
 
 export const PRODUCT_IMAGE_JPEG_QUALITY = 0.82;
+
+/**
+ * Uploads are re-encoded to WebP, which is typically 25–35% smaller than JPEG
+ * at the same visible quality and — unlike JPEG — keeps transparency. Browsers
+ * that cannot encode WebP fall back to JPEG automatically.
+ */
+export const PRODUCT_IMAGE_WEBP_QUALITY = 0.82;
+
+/** Second attempt when the first encode is still over MAX_PRODUCT_IMAGE_BYTES. */
+export const PRODUCT_IMAGE_FALLBACK_QUALITY = 0.72;

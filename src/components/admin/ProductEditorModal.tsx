@@ -25,7 +25,7 @@ import {
   MAX_PRODUCT_IMAGE_BYTES,
   MAX_PRODUCT_IMAGES,
 } from '../../lib/images/productImageConstants';
-import { optimizeProductImage } from '../../lib/images/optimizeImage';
+import { describeOptimization, optimizeProductImage } from '../../lib/images/optimizeImage';
 import { isSupabaseProductImageUrl } from '../../lib/images/productImageStorage';
 import {
   formatShippingWeightLabel,
@@ -371,6 +371,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
     try {
       const optimized = await optimizeProductImage(file);
+      const optimization = describeOptimization(optimized);
 
       if (!isSupabaseConfigured()) {
         const demoUrl = URL.createObjectURL(optimized.file);
@@ -387,6 +388,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               status: 'uploaded' as const,
               file: undefined,
               error: undefined,
+              optimization,
             };
           });
           syncImagesToForm(next);
@@ -410,6 +412,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
             status: 'uploaded' as const,
             file: undefined,
             error: undefined,
+            optimization,
           };
         });
         syncImagesToForm(next);
