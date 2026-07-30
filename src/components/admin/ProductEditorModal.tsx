@@ -14,6 +14,7 @@ import {
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { decodePackingProfileTag, encodePackingProfileTag } from '../../lib/shippo/packing/packingProfileTag';
+import { unitsAllowedByWeight } from '../../lib/shippo/packing/buildParcels';
 import {
   mapProductPackingProfile,
   type ProductPackingProfile,
@@ -616,10 +617,24 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
+    // Only a SINGLE unit that cannot fit its own box is unshippable. Anything
+    // heavier than one box-full is split across boxes at checkout, one parcel
+    // and one label each — buildParcels' unitsAllowedByWeight() derives how many
+    // units actually fit from the weight and clamps unitsPerBox down to it.
+    //
+    // This gate used to multiply unitsPerBox by the unit weight and refuse the
+    // save if the product exceeded the limit, which reads unitsPerBox as an
+    // exact count when the packing engine treats it as a maximum. A 30 lb unit
+    // with unitsPerBox 3 was rejected for a 90.5 lb box that would never be
+    // built: checkout packs two per box and adds a third parcel.
     if (profileComplete) {
-      const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
-      if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
-        setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
+      const singleUnitWeight = (Number(formData.weight) || 0) + normalizedProfile.packagingWeightLbs;
+      if (singleUnitWeight > normalizedProfile.maxPackedWeightLbs) {
+        setError(
+          `One unit plus packaging weighs ${singleUnitWeight.toFixed(2)} lb, above the `
+          + `${normalizedProfile.maxPackedWeightLbs} lb limit for a single box. Raise the maximum `
+          + 'packed weight or use a lighter unit — this product cannot ship in any quantity as set.',
+        );
         setActiveTab('shipping');
         return;
       }
@@ -1197,8 +1212,32 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {shippingNumberField('Maximum packed weight', 'maxPackedWeightLbs', 'lb')}
                     </div>
                     <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-sm text-charcoal">
-                      Estimated full-box actual weight: <strong>{(((Number(formData.weight) || 0) * (shippingProfile.shipsSeparately ? 1 : shippingProfile.unitsPerBox)) + shippingProfile.packagingWeightLbs).toFixed(2)} lb</strong>.
-                      Shippo compares this with dimensional weight for its billable rate.
+                      {(() => {
+                        // The same function checkout packs with, so this preview
+                        // cannot drift from what actually ships. It previously
+                        // multiplied by units per box unconditionally and showed
+                        // a box weight that would never be built.
+                        const unitWeight = Number(formData.weight) || 0;
+                        const effectiveUnits = unitWeight > 0
+                          ? unitsAllowedByWeight(
+                            { ...shippingProfile, productId: '' },
+                            unitWeight,
+                          )
+                          : (shippingProfile.shipsSeparately ? 1 : shippingProfile.unitsPerBox);
+                        const boxWeight = unitWeight * effectiveUnits + shippingProfile.packagingWeightLbs;
+
+                        return (
+                          <>
+                            Checkout packs <strong>{effectiveUnits}</strong> unit{effectiveUnits === 1 ? '' : 's'} per box
+                            {!shippingProfile.shipsSeparately && effectiveUnits < shippingProfile.unitsPerBox && (
+                              <> (the {shippingProfile.unitsPerBox} you set will not fit within the weight limit)</>
+                            )}
+                            , giving a full box of <strong>{boxWeight.toFixed(2)} lb</strong>.
+                            {' '}Larger orders are split across more boxes — one parcel and one label each.
+                            {' '}Shippo compares this with dimensional weight for its billable rate.
+                          </>
+                        );
+                      })()}
                     </div>
                   </section>
 

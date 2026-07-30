@@ -17,7 +17,15 @@ function roundWeightLbs(value: number): number {
   return Math.max(0.1, Math.round(value * 100) / 100);
 }
 
-function unitsAllowedByWeight(profile: ProductPackingProfile, unitWeightLbs: number): number {
+/**
+ * How many units actually go in one box.
+ *
+ * `unitsPerBox` is a MAXIMUM, not a fixed count: the weight limit reduces it
+ * whenever a full box would be too heavy. Exported so the product editor can
+ * show the admin the same number checkout will use — computing it separately
+ * there is how the editor came to reject configurations the packer handles.
+ */
+export function unitsAllowedByWeight(profile: ProductPackingProfile, unitWeightLbs: number): number {
   if (profile.shipsSeparately) return 1;
   const availableProductWeight = Math.max(
     0.1,
