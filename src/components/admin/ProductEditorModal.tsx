@@ -696,7 +696,20 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
           fragile: normalizedProfile.fragile,
           stackable: normalizedProfile.stackable,
         } as never);
-        if (profileError && profileError.code !== '42P01') throw profileError;
+        // 42P01 is "table does not exist". Swallowing it silently discarded the
+        // measurements while the save reported success — the product was then
+        // tagged shipping-ready with no profile behind it, and Shippo could not
+        // rate it at checkout. Migration 025 sat unregistered until recently, so
+        // this was the normal state of a live database, not an edge case.
+        if (profileError?.code === '42P01') {
+          throw new Error(
+            `"${savedProduct.name}" was saved, but its shipping measurements were not: the `
+            + 'product_packing_profiles table does not exist in this database. Run the pending '
+            + 'migrations (025_product_packing_profiles.sql), then reopen this product and save '
+            + 'the Shippo Required tab again. Do not re-create the product — it already exists.',
+          );
+        }
+        if (profileError) throw profileError;
       }
 
       onSave(savedProduct);
@@ -770,12 +783,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-5">
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
-
               {/* Basic Info Tab */}
               {activeTab === 'basic' && (
                 <div className="space-y-5">
@@ -1348,22 +1355,40 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               )}
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100 bg-gray-50">
-              <button
-                onClick={onClose}
-                className="px-6 py-2.5 text-charcoal hover:bg-gray-200 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70"
-              >
-                {loading && <Loader2 size={18} className="animate-spin" />}
-                {product ? 'Save Changes' : 'Create Product'}
-              </button>
+            {/* Footer.
+                The error lives HERE, beside the button that produces it, and no
+                longer only at the top of the scrolling panel above. A long form
+                is filled from the top down, so Save is pressed with the panel
+                scrolled to the bottom — where a banner pinned to the top of that
+                panel is off-screen. Every refusal then looked identical to a
+                dead button: nothing moved, nothing was said, and the product
+                appeared to simply not save. */}
+            <div className="border-t border-gray-100 bg-gray-50">
+              {error && (
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
+                >
+                  {error}
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-3 p-5">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2.5 text-charcoal hover:bg-gray-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70"
+                >
+                  {loading && <Loader2 size={18} className="animate-spin" />}
+                  {product ? 'Save Changes' : 'Create Product'}
+                </button>
+              </div>
             </div>
           </motion.div>
           <ProductImageEditor
