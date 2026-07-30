@@ -105,10 +105,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
   const [shippingProfile, setShippingProfile] = useState<ShippingProfileForm>(emptyShippingProfile);
-  // Whether this product already carries a packing profile. Only shipping-ready
-  // products (and every new listing) must pass the measurement gate — legacy
-  // products predate it and would otherwise be impossible to edit at all.
-  const [isShippingReady, setIsShippingReady] = useState(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -196,7 +192,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
         setAdminImages(imageSlots);
         setShippingProfile(profileToForm(loadedProfile));
-        setIsShippingReady(loadedProfile !== null);
         setFormData({
           name: product.name || '',
           slug: product.slug || '',
@@ -228,8 +223,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
       setAdminImages([]);
       setShippingProfile(emptyShippingProfile);
-      // Every new listing goes out shipping-ready — the gate always applies here.
-      setIsShippingReady(true);
       setFormData({
         name: '',
         slug: '',
@@ -589,12 +582,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
-    if (isShippingReady && (!formData.weight || formData.weight <= 0)) {
-      setError('Unit shipping weight is required. Add the actual weight of one retail unit before saving.');
-      setActiveTab('basic');
-      return;
-    }
-
     if (formData.price <= 0) {
       setError('Price must be greater than 0');
       setActiveTab('pricing');
@@ -606,39 +593,31 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       unitsPerBox: shippingProfile.shipsSeparately ? 1 : Math.max(1, Math.floor(shippingProfile.unitsPerBox)),
     };
 
-    const profileComplete = hasCompleteShippingProfile(normalizedProfile);
-
-    // Legacy products carry no packing profile. Blocking their save on
-    // measurements they never had makes them uneditable, so the gate only binds
-    // new listings and products already marked shipping-ready.
-    if (isShippingReady && !profileComplete) {
-      setError('Shippo measurements are required. Complete all product dimensions, box dimensions, packaging weight, units per box, and maximum packed weight.');
-      setActiveTab('shipping');
-      return;
-    }
-
-    // Only a SINGLE unit that cannot fit its own box is unshippable. Anything
-    // heavier than one box-full is split across boxes at checkout, one parcel
-    // and one label each — buildParcels' unitsAllowedByWeight() derives how many
-    // units actually fit from the weight and clamps unitsPerBox down to it.
+    // Shipping measurements do NOT gate the save.
     //
-    // This gate used to multiply unitsPerBox by the unit weight and refuse the
-    // save if the product exceeded the limit, which reads unitsPerBox as an
-    // exact count when the packing engine treats it as a maximum. A 30 lb unit
-    // with unitsPerBox 3 was rejected for a 90.5 lb box that would never be
-    // built: checkout packs two per box and adds a third parcel.
-    if (profileComplete) {
-      const singleUnitWeight = (Number(formData.weight) || 0) + normalizedProfile.packagingWeightLbs;
-      if (singleUnitWeight > normalizedProfile.maxPackedWeightLbs) {
-        setError(
-          `One unit plus packaging weighs ${singleUnitWeight.toFixed(2)} lb, above the `
-          + `${normalizedProfile.maxPackedWeightLbs} lb limit for a single box. Raise the maximum `
-          + 'packed weight or use a lighter unit — this product cannot ship in any quantity as set.',
-        );
-        setActiveTab('shipping');
-        return;
-      }
-    }
+    // Listing a product and shipping one are separate jobs, and measurements
+    // belong to the second. Refusing the save meant a listing could not be
+    // written at all — name, price, images, stock, SEO, all lost — because a
+    // box had not been measured yet, which is work that often happens later
+    // and by someone else.
+    //
+    // Nothing unshippable can be sold as a result: the storefront lists only
+    // products carrying a packing_profile: tag (see isRealCatalogProduct in
+    // lib/supabase/api/products.ts), and that tag is written below ONLY when
+    // the product can genuinely ship. An unmeasured product saves, stays out
+    // of the storefront, and cannot be ordered — so the error belongs at
+    // checkout, where buildParcels already raises it, not here.
+    const profileComplete = hasCompleteShippingProfile(normalizedProfile);
+    const unitWeight = Number(formData.weight) || 0;
+
+    // A single unit that will not fit its own box is the one arrangement no
+    // quantity can rescue — larger orders are split across boxes, but one unit
+    // cannot be split. Such a profile must not be tagged shippable, or checkout
+    // would accept the order and then fail to produce a label.
+    const singleUnitFits = unitWeight > 0
+      && unitWeight + normalizedProfile.packagingWeightLbs <= normalizedProfile.maxPackedWeightLbs;
+
+    const shippable = profileComplete && singleUnitFits;
 
     if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
       setError('Please wait for image uploads to finish before saving.');
@@ -653,11 +632,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }
 
     const persistedImages = adminImagesToUrls(adminImages);
-    // An incomplete profile must never be written as a tag: the storefront reads
-    // that tag as "shipping-ready", and zeroed dimensions would break Shippo
-    // rating at checkout.
+    // The tag is what puts a product in the storefront, so it is written only
+    // when the product can actually be shipped. Zeroed dimensions, a missing
+    // weight, or a unit too heavy for its own box would each let an order be
+    // placed that no label could be produced for.
     const shippingTags = formData.tags.filter((tag) => !tag.startsWith('packing_profile:'));
-    if (profileComplete) {
+    if (shippable) {
       shippingTags.push(encodePackingProfileTag(normalizedProfile));
     }
 
@@ -1179,9 +1159,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
                   {!hasCompleteShippingProfile(shippingProfile) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                      {isShippingReady
-                        ? 'This product cannot be saved until every required measurement below is completed.'
-                        : 'This product has no shipping measurements yet, so it stays out of Shippo rating and the shipping-ready catalog. You can still save your other edits — complete every measurement below to make it shippable.'}
+                      Your edits save normally — measurements are not required to list a product.
+                      Until every measurement below is filled in, this product stays out of the
+                      storefront, so no customer can order something that cannot be shipped.
+                      Complete them whenever the box has been measured.
                     </div>
                   )}
 

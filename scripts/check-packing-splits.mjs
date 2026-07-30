@@ -105,6 +105,33 @@ try {
     assert.equal(parcelsFor(4, separate).length, 4);
   });
 
+  check('every catalogue weight packs a 100-unit order without an overweight box', () => {
+    // The whole range actually listed, at the quantity a real restock uses.
+    // Editing any of these must stay possible, and none may produce a parcel
+    // a carrier would refuse.
+    const catalogue = [
+      ['1 lb jar', 1, 9], ['2 lb lick', 2, 6], ['3 lb pouch', 3, 6],
+      ['4 lb lick', 4, 4], ['6 lb pouch', 6, 3], ['6 lb block', 6, 4],
+      ['18 lb cattle bag', 18, 2], ['30 lb block', 30, 1], ['45 lb bag', 45, 1],
+    ];
+
+    for (const [name, unitWeight, perBox] of catalogue) {
+      const profile = { ...heavyProfile, unitsPerBox: perBox };
+      const parcels = parcelsFor(100, profile, unitWeight);
+      const shipped = parcels.reduce(
+        (sum, parcel) => sum + (parcel.actualWeightLbs - profile.packagingWeightLbs), 0);
+
+      assert.ok(parcels.length > 0, `${name}: produced no parcels`);
+      assert.ok(Math.abs(shipped - 100 * unitWeight) < 0.05,
+        `${name}: parcels carry ${shipped.toFixed(2)} lb, expected ${100 * unitWeight}`);
+      for (const parcel of parcels) {
+        assert.ok(parcel.actualWeightLbs <= profile.maxPackedWeightLbs,
+          `${name}: a parcel weighs ${parcel.actualWeightLbs} lb, above `
+          + `${profile.maxPackedWeightLbs} lb`);
+      }
+    }
+  });
+
   check('a unit heavier than its own box limit is refused, not silently split', () => {
     // This is the one genuinely unshippable case, and the only one the product
     // editor should block on.
