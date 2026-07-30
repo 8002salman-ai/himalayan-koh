@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
         destination: '/admin',
         permanent: false,
       },
+      // The separate shipping-ready form is gone — Add Product on the products
+      // page opens the full editor, which does everything that page did and
+      // more. Kept as a redirect so an existing bookmark lands somewhere useful
+      // instead of on a 404.
+      {
+        source: '/admin/new-shipping-product',
+        destination: '/admin/products',
+        permanent: false,
+      },
       // Legacy WordPress URLs last, so the admin rules above always win.
       ...LEGACY_REDIRECTS,
     ];

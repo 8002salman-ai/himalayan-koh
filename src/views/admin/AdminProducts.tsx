@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -68,7 +68,6 @@ function inventoryBadge(product: ProductWithRelations) {
 
 export default function AdminProducts() {
   const toast = useToast();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductWithRelations[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -252,6 +251,20 @@ export default function AdminProducts() {
     setContextMenu(null);
   };
 
+  /**
+   * Creating and editing now use the same editor.
+   *
+   * Add Product used to leave for a separate shipping-ready page which made
+   * every measurement mandatory and, being a plain form, offered no image
+   * upload, no SEO fields, no variants and no inventory controls. So the
+   * restrictive route was the only way to create a product and the capable one
+   * was reachable only by editing something that already existed.
+   */
+  const handleCreate = () => {
+    setEditingProduct(null);
+    setEditorOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (!isSupabaseConfigured()) {
       setProducts(prev => prev.filter(p => p.id !== id));
@@ -372,7 +385,7 @@ export default function AdminProducts() {
           <p className="text-charcoal-light">Manage your product catalog</p>
         </div>
         <button
-          onClick={() => navigate('/admin/new-shipping-product')}
+          onClick={handleCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
         >
           <Plus size={18} />
@@ -515,7 +528,7 @@ export default function AdminProducts() {
             }
             action={
               !search && !categoryFilter && !statusFilter
-                ? { label: 'Add Product', onClick: () => navigate('/admin/new-shipping-product') }
+                ? { label: 'Add Product', onClick: handleCreate }
                 : undefined
             }
             size="compact"
