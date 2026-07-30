@@ -44,7 +44,18 @@ export default function NavigationProgress() {
       const creep = setInterval(() => {
         setWidth((current) => (current >= 90 ? current : current + (90 - current) * 0.18));
       }, 180);
-      return () => clearInterval(creep);
+
+      // A navigation that never completes — a route that throws, a click the
+      // router discards, a prefetch that stalls — would otherwise leave the bar
+      // on screen for the rest of the session, which looks far more broken than
+      // the pause it was meant to explain. Clearing it after ten seconds is
+      // wrong about the navigation but right about the interface.
+      const failsafe = setTimeout(endNavigationProgress, 10_000);
+
+      return () => {
+        clearInterval(creep);
+        clearTimeout(failsafe);
+      };
     }
 
     if (!visible) return undefined;
