@@ -101,6 +101,24 @@ function hasCompleteShippingProfile(profile: ShippingProfileForm): boolean {
  * The Postgres code is included because it is the fastest route to a diagnosis:
  * 23505 is a duplicate, 42501 a permission denial, 42P01 a missing table.
  */
+/**
+ * Whether a rejection means "that table isn't there".
+ *
+ * Postgres raises 42P01, but PostgREST usually answers first and never reaches
+ * Postgres at all: an unknown relation is not in its schema cache, so it
+ * returns PGRST205 instead. Matching only 42P01 therefore missed the case it
+ * was written for — a database without migration 025 — and the save fell
+ * through to a generic throw of a PostgrestError, which is not an Error and so
+ * lost its message too. Both codes, plus the message, because a schema-cache
+ * reload can change which one comes back.
+ */
+function isMissingTableError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const { code, message } = err as { code?: string; message?: string };
+  if (code === '42P01' || code === 'PGRST205') return true;
+  return /could not find the table|relation .* does not exist/i.test(message || '');
+}
+
 function describeSaveFailure(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
 
@@ -214,7 +232,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
             .maybeSingle();
           if (!profileError && data) {
             loadedProfile = mapProductPackingProfile(data as ProductPackingProfileRow);
-          } else if (profileError && profileError.code !== '42P01') {
+          } else if (profileError && !isMissingTableError(profileError)) {
             console.warn('Could not load the saved shipping profile:', profileError);
           }
         }
@@ -720,17 +738,18 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
           fragile: normalizedProfile.fragile,
           stackable: normalizedProfile.stackable,
         } as never);
-        // 42P01 is "table does not exist". Swallowing it silently discarded the
-        // measurements while the save reported success — the product was then
-        // tagged shipping-ready with no profile behind it, and Shippo could not
-        // rate it at checkout. Migration 025 sat unregistered until recently, so
-        // this was the normal state of a live database, not an edge case.
-        if (profileError?.code === '42P01') {
+        // A database without migration 025 has no such table, which is the
+        // normal state here rather than an edge case — 025 sat unregistered
+        // until recently. Products carrying a complete profile from migration
+        // 017 are exactly the ones that reach this upsert, so those were the
+        // products that could not be edited at all.
+        if (isMissingTableError(profileError)) {
           throw new Error(
-            `"${savedProduct.name}" was saved, but its shipping measurements were not: the `
-            + 'product_packing_profiles table does not exist in this database. Run the pending '
-            + 'migrations (025_product_packing_profiles.sql), then reopen this product and save '
-            + 'the Shippo Required tab again. Do not re-create the product — it already exists.',
+            `"${savedProduct.name}" itself was saved — name, price, stock and images are all `
+            + 'stored. Only the shipping measurements were not, because the '
+            + 'product_packing_profiles table does not exist in this database yet. Run the '
+            + 'pending migrations (025_product_packing_profiles.sql), then reopen this product '
+            + 'and save the Shippo Required tab again. Do not re-create the product.',
           );
         }
         if (profileError) throw profileError;
