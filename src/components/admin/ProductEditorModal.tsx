@@ -78,14 +78,39 @@ function profileToForm(profile: ProductPackingProfile | null): ShippingProfileFo
   return form;
 }
 
-function hasCompleteShippingProfile(profile: ShippingProfileForm): boolean {
-  return [
+/**
+ * USPS refuses a parcel over 70 lb, and the product_packing_profiles CHECK
+ * enforces the same figure, so a larger box cannot be stored even if it could
+ * be shipped by another carrier. Named because it is a carrier limit, not an
+ * arbitrary one.
+ */
+const MAX_BOX_WEIGHT_LBS = 70;
+
+/**
+ * Why a profile is not usable yet, or null when it is.
+ *
+ * Separate from the boolean because "not usable" covered two unrelated
+ * situations that need opposite actions — a measurement not entered, and a box
+ * limit set above what any carrier will take — and the notice reported both as
+ * "complete the measurements below". With every field visibly filled in, that
+ * reads as the form being broken.
+ */
+type ShippingProfileGap = 'missing-measurements' | 'over-carrier-limit';
+
+function shippingProfileGap(profile: ShippingProfileForm): ShippingProfileGap | null {
+  const allPositive = [
     profile.productLengthIn, profile.productWidthIn, profile.productHeightIn,
     profile.boxLengthIn, profile.boxWidthIn, profile.boxHeightIn,
     profile.unitsPerBox, profile.maxPackedWeightLbs,
-  ].every((value) => Number.isFinite(value) && value > 0)
-    && profile.packagingWeightLbs >= 0
-    && profile.maxPackedWeightLbs <= 70;
+  ].every((value) => Number.isFinite(value) && value > 0);
+
+  if (!allPositive || profile.packagingWeightLbs < 0) return 'missing-measurements';
+  if (profile.maxPackedWeightLbs > MAX_BOX_WEIGHT_LBS) return 'over-carrier-limit';
+  return null;
+}
+
+function hasCompleteShippingProfile(profile: ShippingProfileForm): boolean {
+  return shippingProfileGap(profile) === null;
 }
 
 /**
@@ -1208,14 +1233,52 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     </p>
                   </div>
 
-                  {!hasCompleteShippingProfile(shippingProfile) && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                      Your edits save normally — measurements are not required to list a product.
-                      Until every measurement below is filled in, this product stays out of the
-                      storefront, so no customer can order something that cannot be shipped.
-                      Complete them whenever the box has been measured.
-                    </div>
-                  )}
+                  {(() => {
+                    // Every branch says the same two things first — your edits save,
+                    // and the product is not listed yet — then names the ONE thing
+                    // standing in the way, so the fix is never a guess.
+                    const gap = shippingProfileGap(shippingProfile);
+                    const unitWeight = Number(formData.weight) || 0;
+                    const unitTooHeavy = gap === null && unitWeight > 0
+                      && unitWeight + shippingProfile.packagingWeightLbs > shippingProfile.maxPackedWeightLbs;
+                    const weightMissing = gap === null && unitWeight <= 0;
+
+                    if (!gap && !unitTooHeavy && !weightMissing) return null;
+
+                    return (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                        <p className="font-medium">
+                          Your edits save normally — this only keeps the product out of the
+                          storefront until it is sorted.
+                        </p>
+                        <p className="mt-1">
+                          {gap === 'missing-measurements' && (
+                            <>Fill in every measurement below. Each one must be greater than zero.</>
+                          )}
+                          {gap === 'over-carrier-limit' && (
+                            <>
+                              Maximum packed weight is {shippingProfile.maxPackedWeightLbs} lb, above the{' '}
+                              {MAX_BOX_WEIGHT_LBS} lb a carrier will accept for one parcel. Lower it to{' '}
+                              {MAX_BOX_WEIGHT_LBS} or less — larger orders are split across more boxes
+                              anyway, so this does not limit how much a customer can buy.
+                            </>
+                          )}
+                          {weightMissing && (
+                            <>Set the unit weight on the Basic Info tab — the box measurements alone
+                              cannot tell Shippo what the parcel weighs.</>
+                          )}
+                          {unitTooHeavy && (
+                            <>
+                              One unit weighs {unitWeight} lb plus {shippingProfile.packagingWeightLbs} lb
+                              of packaging, which is more than the {shippingProfile.maxPackedWeightLbs} lb
+                              this box allows. Raise the maximum packed weight (up to {MAX_BOX_WEIGHT_LBS})
+                              or use a bigger box — a single unit cannot be split across parcels.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   <section>
                     <h3 className="font-semibold text-charcoal">Product measurements <span className="text-red-600">*</span></h3>
