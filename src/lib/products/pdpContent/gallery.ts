@@ -1,3 +1,4 @@
+import { legacyImage } from '@/lib/images/legacyAssets';
 import { galleryImages } from '../../../data/products';
 import type { Product } from '../../../data/products';
 import { isLivestockPdpProduct } from './categories';
@@ -8,21 +9,21 @@ const GALLERY_BY_SLUG: Record<string, PdpGalleryImage[]> = {
   'himalayan-salt-licks-horses': [
     {
       id: 'horse-lick-1',
-      src: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+      src: legacyImage('horseLickPaddock'),
       alt: 'Horse licking a Himalayan pink salt lick in a paddock',
       width: 600,
       height: 450,
     },
     {
       id: 'horse-lick-2',
-      src: 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg',
+      src: legacyImage('horseLicking'),
       alt: 'Horse using a natural Himalayan salt lick',
       width: 600,
       height: 450,
     },
     {
       id: 'horse-grazing',
-      src: 'https://himalayankoh.com/wp-content/uploads/2019/08/horses-1300x200.jpg',
+      src: legacyImage('horsesBanner'),
       alt: 'Horses grazing on open pasture',
       width: 1300,
       height: 200,
@@ -31,21 +32,21 @@ const GALLERY_BY_SLUG: Record<string, PdpGalleryImage[]> = {
   'himalayan-livestock-salt-45lbs': [
     {
       id: 'cattle-salt-bag',
-      src: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+      src: legacyImage('cattleSaltBag'),
       alt: '45 lb Himalayan pink salt bag for livestock',
       width: 600,
       height: 450,
     },
     {
       id: 'horse-lick-pasture',
-      src: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+      src: legacyImage('horseLickPaddock'),
       alt: 'Horse at a mineral salt lick in the field',
       width: 600,
       height: 450,
     },
     {
       id: 'livestock-grazing',
-      src: 'https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg',
+      src: legacyImage('cattleGrazing'),
       alt: 'Cattle grazing with mineral supplementation',
       width: 600,
       height: 450,
@@ -54,14 +55,14 @@ const GALLERY_BY_SLUG: Record<string, PdpGalleryImage[]> = {
   'himalayan-salt-cattle-18lbs': [
     {
       id: 'cattle-rock-18',
-      src: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+      src: legacyImage('cattleSaltBag'),
       alt: '18 lb Himalayan salt rock bag for cattle',
       width: 600,
       height: 450,
     },
     {
       id: 'cattle-pasture',
-      src: 'https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg',
+      src: legacyImage('cattleGrazing'),
       alt: 'Cattle herd on pasture',
       width: 600,
       height: 450,

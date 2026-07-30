@@ -1,3 +1,4 @@
+import { legacyImage } from '@/lib/images/legacyAssets';
 import { blogApi, type BlogPostWithAuthor } from '../supabase/api/blog';
 import { isSupabaseConfigured } from '../supabase/client';
 import { blogPosts as demoBlogPosts } from '../../data/products';
@@ -6,8 +7,7 @@ import { enrichArticleList, stripHtmlToText } from './enrichArticle';
 import type { CategoryContentKey } from './keys';
 import type { CategoryArticleCard } from './types';
 
-const DEFAULT_ARTICLE_IMAGE =
-  'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg';
+const DEFAULT_ARTICLE_IMAGE = legacyImage('bowlOfSalt');
 
 /** Demo slugs aligned with Supabase seed for offline / local dev. */
 const DEMO_BLOG_SLUGS: Record<number, string> = {

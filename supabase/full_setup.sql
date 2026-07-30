@@ -873,10 +873,10 @@ $$;
 
 -- Insert Categories (idempotent)
 INSERT INTO categories (id, name, slug, description, image_url, sort_order) VALUES
-  ('c1a00001-0000-4000-8000-000000000001', 'Salt Lick for Horses', 'salt-lick-horses', 'Natural Himalayan salt licks specially designed for horses. Rich in 84 trace minerals.', 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg', 1),
-  ('c1a00001-0000-4000-8000-000000000002', 'Salt Lumps for Cattle', 'salt-lumps-cattle', 'Essential minerals in natural salt lumps for cattle health.', 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg', 2),
-  ('c1a00001-0000-4000-8000-000000000003', 'Salt Blocks for Deer', 'salt-blocks-deer', 'Premium salt blocks attract and nourish deer naturally.', 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg', 3),
-  ('c1a00001-0000-4000-8000-000000000004', 'Edible Cooking Salt', 'edible-cooking-salt', 'Premium pink salt for gourmet cooking and everyday use.', 'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg', 4)
+  ('c1a00001-0000-4000-8000-000000000001', 'Salt Lick for Horses', 'salt-lick-horses', 'Natural Himalayan salt licks specially designed for horses. Rich in 84 trace minerals.', '/images/legacy/horse-salt-lick-paddock.jpg', 1),
+  ('c1a00001-0000-4000-8000-000000000002', 'Salt Lumps for Cattle', 'salt-lumps-cattle', 'Essential minerals in natural salt lumps for cattle health.', '/images/legacy/salt-rock-bag.jpg', 2),
+  ('c1a00001-0000-4000-8000-000000000003', 'Salt Blocks for Deer', 'salt-blocks-deer', 'Premium salt blocks attract and nourish deer naturally.', '/images/legacy/horse-licking-salt.jpg', 3),
+  ('c1a00001-0000-4000-8000-000000000004', 'Edible Cooking Salt', 'edible-cooking-salt', 'Premium pink salt for gourmet cooking and everyday use.', '/images/legacy/bowl-of-salt.jpg', 4)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   slug = EXCLUDED.slug,
@@ -896,8 +896,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     9.95,
     12.95,
     'c1a00001-0000-4000-8000-000000000004',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp'],
-    'https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp',
+    ARRAY['/images/legacy/salt-pouch-6lb.webp'],
+    '/images/legacy/salt-pouch-6lb.webp',
     true,
     ARRAY['Fine (0.5mm-1mm)', 'Medium (1mm-2mm)', 'Coarse (2mm-5mm)'],
     ARRAY['edible', 'cooking', 'fine grain', 'natural', 'kosher']
@@ -911,8 +911,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     9.95,
     NULL,
     'c1a00001-0000-4000-8000-000000000004',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-02-at-11.31.07-PM-500x500.jpeg'],
-    'https://himalayankoh.com/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-02-at-11.31.07-PM-500x500.jpeg',
+    ARRAY['/images/legacy/pink-salt-16oz-jar.jpg'],
+    '/images/legacy/pink-salt-16oz-jar.jpg',
     false,
     ARRAY['Fine', 'Coarse'],
     ARRAY['edible', 'jar', 'table salt']
@@ -926,8 +926,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     17.95,
     NULL,
     'c1a00001-0000-4000-8000-000000000004',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg'],
-    'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg',
+    ARRAY['/images/legacy/salt-rock-bag.jpg'],
+    '/images/legacy/salt-rock-bag.jpg',
     false,
     ARRAY['Fine', 'Coarse'],
     ARRAY['bulk', 'pouch', 'family size']
@@ -941,8 +941,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     99.95,
     119.95,
     'c1a00001-0000-4000-8000-000000000002',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg'],
-    'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+    ARRAY['/images/legacy/cattle-salt-bag.jpg'],
+    '/images/legacy/cattle-salt-bag.jpg',
     true,
     ARRAY[]::text[],
     ARRAY['bulk', 'livestock', 'cattle', 'horses', '45lbs']
@@ -956,8 +956,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     9.95,
     14.95,
     'c1a00001-0000-4000-8000-000000000001',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg'],
-    'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+    ARRAY['/images/legacy/horse-salt-lick-paddock.jpg'],
+    '/images/legacy/horse-salt-lick-paddock.jpg',
     true,
     ARRAY[]::text[],
     ARRAY['horses', 'salt lick', 'equine', 'minerals']
@@ -971,8 +971,8 @@ INSERT INTO products (id, name, slug, description, short_description, price, com
     49.95,
     NULL,
     'c1a00001-0000-4000-8000-000000000002',
-    ARRAY['https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg'],
-    'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
+    ARRAY['/images/legacy/cattle-salt-bag.jpg'],
+    '/images/legacy/cattle-salt-bag.jpg',
     false,
     ARRAY[]::text[],
     ARRAY['cattle', 'salt rock', '18lbs', 'farm']
@@ -1013,7 +1013,7 @@ INSERT INTO blog_posts (id, title, slug, excerpt, content, featured_image, categ
     'why-dairy-cows-need-trace-minerals',
     'Discover the essential role trace minerals play in dairy cow health, milk production, and overall farm productivity.',
     '<p>Trace minerals are essential nutrients that dairy cows need in small amounts but play crucial roles in their health and productivity...</p><h2>The Importance of Trace Minerals</h2><p>Dairy cows require a balanced diet that includes essential trace minerals like zinc, copper, selenium, and manganese...</p>',
-    'https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg',
+    '/images/legacy/cattle-grazing.jpg',
     'Livestock Health',
     ARRAY['dairy', 'cattle', 'minerals', 'health'],
     true,
@@ -1026,7 +1026,7 @@ INSERT INTO blog_posts (id, title, slug, excerpt, content, featured_image, categ
     'himalayan-pink-vs-white-salt-farmers',
     'Learn why more ranchers and farmers are choosing Himalayan pink salt over traditional white salt for their livestock.',
     '<p>For decades, farmers and ranchers have relied on traditional white salt blocks for their livestock. However, a growing number are making the switch to Himalayan pink salt...</p><h2>The Mineral Difference</h2><p>While white salt contains primarily sodium chloride, Himalayan pink salt contains up to 84 trace minerals...</p>',
-    'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg',
+    '/images/legacy/bowl-of-salt.jpg',
     'Industry Insights',
     ARRAY['comparison', 'farmers', 'pink salt', 'white salt'],
     true,
@@ -1039,7 +1039,7 @@ INSERT INTO blog_posts (id, title, slug, excerpt, content, featured_image, categ
     'choosing-right-salt-lick-horses',
     'A comprehensive guide to selecting the perfect salt lick for your equine companions.',
     '<p>Horses need salt supplementation to maintain proper health, especially during hot weather or heavy exercise...</p>',
-    'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
+    '/images/legacy/horse-salt-lick-paddock.jpg',
     'Horse Care',
     ARRAY['horses', 'salt lick', 'guide', 'equine'],
     true,

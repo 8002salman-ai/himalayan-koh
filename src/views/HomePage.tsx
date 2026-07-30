@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Award } from 'lucide-react';
+import { legacyImage } from '@/lib/images/legacyAssets';
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -107,14 +108,14 @@ export default function HomePage() {
               className="grid grid-cols-2 gap-5"
             >
               <img
-                src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
+                src={legacyImage('horseLicking')}
                 alt="Horse licking Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
               />
               <img
-                src="https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg"
+                src={legacyImage('bowlOfSalt')}
                 alt="Bowls of Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"

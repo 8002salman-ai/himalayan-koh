@@ -46,12 +46,26 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Rehosted WordPress images (see src/lib/images/legacyAssets.ts). These
+      // are frozen assets — a replacement gets a new filename, never a new body
+      // under the same name — so they are safe to cache indefinitely.
+      {
+        source: '/images/legacy/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
     ];
   },
   images: {
+    // himalayankoh.com is deliberately absent: every image it used to serve is
+    // now committed under public/images/legacy/, so nothing may load from the
+    // old WordPress host. Do not add it back.
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: 'himalayankoh.com' },
       { protocol: 'https', hostname: '**.vercel.app' },
     ],
   },

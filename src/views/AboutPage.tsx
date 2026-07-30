@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Check, Gem, Heart, Droplets, Leaf, Timer, Milk } from 'lucide-react';
+import { legacyImage } from '@/lib/images/legacyAssets';
 
 const bulletPoints = [
   'Up to 84 nutritious minerals and trace elements',
@@ -86,7 +87,7 @@ export default function AboutPage() {
               <div className="relative">
                 <div className="rounded-3xl overflow-hidden shadow-2xl shadow-himalayan/10 aspect-[4/3]">
                   <img
-                    src="https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg"
+                    src={legacyImage('horseLicking')}
                     alt="Horse licking Himalayan salt"
                     loading="lazy"
                     decoding="async"

@@ -1,15 +1,16 @@
+import { legacyImage } from '@/lib/images/legacyAssets';
 import type { CategoryContentBundle } from './types';
 
 const IMG = {
-  horseLick: 'https://himalayankoh.com/wp-content/uploads/2021/03/horse-lick-himalayan-salt5-600x450.jpg',
-  horseLick2: 'https://himalayankoh.com/wp-content/uploads/2017/10/slat-licking-horse.jpg',
-  horsesBanner: 'https://himalayankoh.com/wp-content/uploads/2019/08/horses-1300x200.jpg',
-  cattleGrazing: 'https://himalayankoh.com/wp-content/uploads/2017/10/blog9.jpg',
-  cattleBag: 'https://himalayankoh.com/wp-content/uploads/2020/10/1-600x450.jpeg',
-  saltBowl: 'https://himalayankoh.com/wp-content/uploads/2017/10/bowl-of-salt.jpg',
-  pouch: 'https://himalayankoh.com/wp-content/uploads/2025/07/6-lbs-pouche.webp',
-  jar: 'https://himalayankoh.com/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-02-at-11.31.07-PM-500x500.jpeg',
-  rockBag: 'https://himalayankoh.com/wp-content/uploads/2023/08/S6-600x450.jpg',
+  horseLick: legacyImage('horseLickPaddock'),
+  horseLick2: legacyImage('horseLicking'),
+  horsesBanner: legacyImage('horsesBanner'),
+  cattleGrazing: legacyImage('cattleGrazing'),
+  cattleBag: legacyImage('cattleSaltBag'),
+  saltBowl: legacyImage('bowlOfSalt'),
+  pouch: legacyImage('saltPouch6lb'),
+  jar: legacyImage('pinkSaltJar16oz'),
+  rockBag: legacyImage('saltRockBag'),
 };
 
 export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = {
