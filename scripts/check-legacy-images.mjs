@@ -18,6 +18,17 @@ const ASSET_MODULE = join(ROOT, 'src', 'lib', 'images', 'legacyAssets.ts');
 
 async function main() {
   const source = await readFile(ASSET_MODULE, 'utf8');
+
+  // While the cutover switch is off the site still loads these from WordPress,
+  // so missing local copies are expected and must not fail the build.
+  if (/const SERVE_REHOSTED_COPIES = false/.test(source)) {
+    process.stdout.write(
+      'Rehosted images not in use yet (SERVE_REHOSTED_COPIES is false) — skipping check.\n' +
+        'Run `npm run images:fetch` and flip the switch to finish the WordPress cutover.\n',
+    );
+    return;
+  }
+
   const referenced = [...source.matchAll(/\$\{LEGACY_DIR\}\/([\w.-]+)/g)].map((match) => match[1]);
 
   if (referenced.length === 0) {

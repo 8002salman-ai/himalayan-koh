@@ -28,18 +28,31 @@ site. Nothing in the application fetches anything from WordPress any more.
 Every page imports `legacyImage('...')` from it, so moving the files somewhere
 else later is a one-file change.
 
+## Current state
+
+The switch is **off**. `SERVE_REHOSTED_COPIES` in
+`src/lib/images/legacyAssets.ts` is `false`, so the site still loads these nine
+images from WordPress, exactly as it did before. Everything needed to stop doing
+that is in place except the image files themselves, which have to be downloaded
+from the old site.
+
 ## Cutover steps
 
 Do these in order. Steps 1 and 2 must both be done **before** WordPress goes
 offline, because step 1 downloads from it.
 
-### 1. Download the images and commit them
+### 1. Download the images, flip the switch, commit both together
 
 ```bash
 npm run images:fetch
-git add public/images/legacy
-git commit -m "chore(images): add rehosted WordPress images"
+# then set SERVE_REHOSTED_COPIES = true in src/lib/images/legacyAssets.ts
+# and drop the himalayankoh.com entry from images.remotePatterns in next.config.ts
+git add public/images/legacy src/lib/images/legacyAssets.ts next.config.ts
+git commit -m "chore(images): serve rehosted WordPress images"
 ```
+
+Keep these in one commit: the switch is what points the site at the local files,
+and the files are what make that safe.
 
 The script is idempotent and skips files that already exist; pass `--force` to
 re-download. If WordPress is already gone, export the nine originals from the
@@ -65,6 +78,9 @@ or paste it into the Supabase SQL editor. It covers `categories.image_url`,
 `blog_posts.featured_image`, and `order_items.product_image`. It is idempotent,
 and it prints a warning naming the row count if anything still references
 WordPress afterwards. That warning must be clean before step 3.
+
+Run this once step 1 is deployed, not before — the database rows and the code
+have to point at the local files at roughly the same time.
 
 ### 3. Verify, then turn WordPress off
 

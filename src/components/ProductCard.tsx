@@ -57,7 +57,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.08 }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
       className={`group bg-white rounded-2xl overflow-hidden transition-all duration-500 ${
         shopHighlight
           ? 'shadow-md shadow-himalayan/10 border border-himalayan/15 hover:shadow-xl hover:shadow-himalayan/20 hover:border-himalayan/35'
@@ -108,8 +108,8 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
       </div>
 
       {/* Content */}
-      <div className="p-4 md:p-5">
-        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-2 min-h-10">
+      <div className="p-3.5 md:p-4">
+        <h3 className="font-semibold text-charcoal text-sm leading-snug line-clamp-2 mb-1.5 min-h-10">
           <Link
             to={`/products/${product.slug}`}
             className="group-hover:text-himalayan transition-colors"
@@ -118,7 +118,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           </Link>
         </h3>
 
-        <p className="text-himalayan font-bold text-lg mb-3">
+        <p className="text-himalayan font-bold text-base mb-2.5">
           {product.price}
         </p>
 
@@ -127,7 +127,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           <select
             value={selectedGrain}
             onChange={(e) => setSelectedGrain(e.target.value)}
-            className="w-full mb-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
+            className="w-full mb-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan transition-all"
           >
             {product.grainSizes.map((g) => (
               <option key={g} value={g}>{g}</option>

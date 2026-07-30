@@ -61,11 +61,12 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    // himalayankoh.com is deliberately absent: every image it used to serve is
-    // now committed under public/images/legacy/, so nothing may load from the
-    // old WordPress host. Do not add it back.
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
+      // Still needed only while SERVE_REHOSTED_COPIES in
+      // src/lib/images/legacyAssets.ts is false. Remove this line in the same
+      // commit that flips it — see docs/WORDPRESS-CUTOVER.md.
+      { protocol: 'https', hostname: 'himalayankoh.com' },
       { protocol: 'https', hostname: '**.vercel.app' },
     ],
   },
