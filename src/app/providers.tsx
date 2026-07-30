@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import HashUrlRedirect from '@/components/HashUrlRedirect';
+import NavigationProgress from '@/components/NavigationProgress';
 import RouteScrollRestoration from '@/components/RouteScrollRestoration';
 import SEO from '@/components/SEO';
 
@@ -12,6 +13,7 @@ function ClientEffects() {
   return (
     <Suspense fallback={null}>
       <HashUrlRedirect />
+      <NavigationProgress />
       <RouteScrollRestoration />
       <SEO />
     </Suspense>

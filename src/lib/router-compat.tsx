@@ -17,7 +17,14 @@ import {
   type ReactNode,
 } from 'react';
 
+import { startNavigationProgress } from './navigationProgress';
+
 const ROUTER_STATE_KEY = '__next_router_state';
+
+/** Current path, or '' on the server where there is nothing to compare against. */
+function currentPath(): string {
+  return typeof window === 'undefined' ? '' : window.location.pathname;
+}
 
 type StoredNavigation = { path: string; state: unknown };
 
@@ -110,6 +117,19 @@ export function Link({ to, href, replace, state, children, onClick, ...rest }: L
     if (state) {
       setNavigationState(destination, state);
     }
+
+    // Announced here because every in-app link in the app is this component,
+    // so one place covers the whole site. Skipped when the browser is going to
+    // handle the click itself — a new tab, a download, a modified click — as
+    // no in-app navigation follows and the bar would never be cleared.
+    const handledByBrowser = event.defaultPrevented
+      || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+      || (rest.target && rest.target !== '_self');
+
+    if (!handledByBrowser && pathOnly(destination) !== pathOnly(currentPath())) {
+      startNavigationProgress();
+    }
+
     onClick?.(event);
   };
 
@@ -130,6 +150,9 @@ export function useNavigate() {
       }
       if (options?.state) {
         setNavigationState(to, options.state);
+      }
+      if (pathOnly(to) !== pathOnly(currentPath())) {
+        startNavigationProgress();
       }
       if (options?.replace) router.replace(to);
       else router.push(to);

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // opts every route rendering this layout out of static prerendering, leaving
 // crawlers with the loading fallback. The nav only needs the pathname.
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Search, ShoppingCart, User, Menu, X, Phone, MessageCircle, LogOut } from 'lucide-react';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
@@ -36,6 +36,9 @@ export default function Layout({ children }: LayoutProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname() ?? '/';
+  // Respected rather than assumed: a page that slides in is motion sickness for
+  // some readers, and the transition is decoration, not information.
+  const reduceMotion = useReducedMotion();
   const { totalItems } = useCart();
   const { isAuthenticated, profile, user } = useAuthContext();
 
@@ -340,9 +343,21 @@ export default function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Main Content */}
+      {/* Main Content.
+          Keyed on pathname so each page settles in with a short rise and fade
+          rather than replacing the last one in a single frame — that hard swap
+          is what read as a flick. Keyed on the path only, not the query, so
+          filtering the catalogue re-renders in place instead of remounting and
+          refetching. */}
       <main id="main-content" className="flex-1" tabIndex={-1}>
-        {children}
+        <motion.div
+          key={pathname}
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {children}
+        </motion.div>
       </main>
 
       {/* Footer */}
