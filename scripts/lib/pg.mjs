@@ -20,15 +20,22 @@ export const MIGRATIONS = [
   '013_site_settings.sql',
   '014_contact_submissions.sql',
   '015_dealer_program.sql',
+  '015_add_6lb_trace_mineral_salt_lick.sql',
   '016_dealer_demo_fields.sql',
+  '016_add_round_rope_salt_licks.sql',
+  // Tags the salt licks inserted by 015/016 with their packing profiles, so it
+  // has to follow both of them.
+  '017_mark_new_salt_licks_shipping_ready.sql',
   '017_dealer_only_product_rls.sql',
   '018_cart_dealer_isolation.sql',
+  '018_use_white_background_salt_lick_images.sql',
   '019_wholesale_purchase_requests.sql',
   '020_order_status_packed.sql',
   '021_wholesale_phase4.sql',
   '022_crm_leads.sql',
   '023_crm_auto_leads.sql',
   '024_restrict_guest_order_select.sql',
+  '025_product_packing_profiles.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */

@@ -104,6 +104,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
   const [shippingProfile, setShippingProfile] = useState<ShippingProfileForm>(emptyShippingProfile);
+  // Whether this product already carries a packing profile. Only shipping-ready
+  // products (and every new listing) must pass the measurement gate — legacy
+  // products predate it and would otherwise be impossible to edit at all.
+  const [isShippingReady, setIsShippingReady] = useState(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -191,6 +195,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
         setAdminImages(imageSlots);
         setShippingProfile(profileToForm(loadedProfile));
+        setIsShippingReady(loadedProfile !== null);
         setFormData({
           name: product.name || '',
           slug: product.slug || '',
@@ -222,6 +227,8 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
       setAdminImages([]);
       setShippingProfile(emptyShippingProfile);
+      // Every new listing goes out shipping-ready — the gate always applies here.
+      setIsShippingReady(true);
       setFormData({
         name: '',
         slug: '',
@@ -581,7 +588,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       return;
     }
 
-    if (!formData.weight || formData.weight <= 0) {
+    if (isShippingReady && (!formData.weight || formData.weight <= 0)) {
       setError('Unit shipping weight is required. Add the actual weight of one retail unit before saving.');
       setActiveTab('basic');
       return;
@@ -598,17 +605,24 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       unitsPerBox: shippingProfile.shipsSeparately ? 1 : Math.max(1, Math.floor(shippingProfile.unitsPerBox)),
     };
 
-    if (!hasCompleteShippingProfile(normalizedProfile)) {
+    const profileComplete = hasCompleteShippingProfile(normalizedProfile);
+
+    // Legacy products carry no packing profile. Blocking their save on
+    // measurements they never had makes them uneditable, so the gate only binds
+    // new listings and products already marked shipping-ready.
+    if (isShippingReady && !profileComplete) {
       setError('Shippo measurements are required. Complete all product dimensions, box dimensions, packaging weight, units per box, and maximum packed weight.');
       setActiveTab('shipping');
       return;
     }
 
-    const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
-    if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
-      setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
-      setActiveTab('shipping');
-      return;
+    if (profileComplete) {
+      const packedWeight = (Number(formData.weight) || 0) * normalizedProfile.unitsPerBox + normalizedProfile.packagingWeightLbs;
+      if (packedWeight > normalizedProfile.maxPackedWeightLbs) {
+        setError(`A full box weighs ${packedWeight.toFixed(2)} lb, above its ${normalizedProfile.maxPackedWeightLbs} lb limit.`);
+        setActiveTab('shipping');
+        return;
+      }
     }
 
     if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
@@ -624,8 +638,13 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }
 
     const persistedImages = adminImagesToUrls(adminImages);
+    // An incomplete profile must never be written as a tag: the storefront reads
+    // that tag as "shipping-ready", and zeroed dimensions would break Shippo
+    // rating at checkout.
     const shippingTags = formData.tags.filter((tag) => !tag.startsWith('packing_profile:'));
-    shippingTags.push(encodePackingProfileTag(normalizedProfile));
+    if (profileComplete) {
+      shippingTags.push(encodePackingProfileTag(normalizedProfile));
+    }
 
     const savePayload: ProductFormData = {
       ...formData,
@@ -658,7 +677,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
         savedProduct = await adminApi.createProduct(savePayload);
       }
 
-      if (isSupabaseConfigured()) {
+      // The table's CHECK constraints require every dimension to be > 0, so an
+      // incomplete profile is skipped rather than rejected by Postgres.
+      if (isSupabaseConfigured() && profileComplete) {
         const { error: profileError } = await supabase.from('product_packing_profiles').upsert({
           product_id: savedProduct.id,
           product_length_in: normalizedProfile.productLengthIn,
@@ -1136,7 +1157,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
                   {!hasCompleteShippingProfile(shippingProfile) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                      This product cannot be saved until every required measurement below is completed.
+                      {isShippingReady
+                        ? 'This product cannot be saved until every required measurement below is completed.'
+                        : 'This product has no shipping measurements yet, so it stays out of Shippo rating and the shipping-ready catalog. You can still save your other edits — complete every measurement below to make it shippable.'}
                     </div>
                   )}
 
