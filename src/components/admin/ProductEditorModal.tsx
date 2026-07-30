@@ -88,6 +88,35 @@ function hasCompleteShippingProfile(profile: ShippingProfileForm): boolean {
     && profile.maxPackedWeightLbs <= 70;
 }
 
+/**
+ * What actually went wrong, in words the person looking at the screen can act on.
+ *
+ * `err instanceof Error ? err.message : 'Failed to save product'` threw away the
+ * only useful half of every database failure: Supabase rejects with a
+ * PostgrestError, a plain object carrying message/code/details/hint, and a plain
+ * object is not an Error. So the one case most likely to fail — a constraint, a
+ * denied row, a missing table — was the one case reported as the bare phrase
+ * "Failed to save product", which names no cause and suggests no fix.
+ *
+ * The Postgres code is included because it is the fastest route to a diagnosis:
+ * 23505 is a duplicate, 42501 a permission denial, 42P01 a missing table.
+ */
+function describeSaveFailure(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+
+  if (err && typeof err === 'object') {
+    const { message, details, hint, code } = err as {
+      message?: string; details?: string; hint?: string; code?: string;
+    };
+    const parts = [message, details, hint].filter(Boolean);
+    if (parts.length) {
+      return `${parts.join(' — ')}${code ? ` (Postgres ${code})` : ''}`;
+    }
+  }
+
+  return 'Failed to save product — the database gave no reason. Check the browser console.';
+}
+
 const generateSlug = (name: string) => {
   return name
     .toLowerCase()
@@ -710,7 +739,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       onSave(savedProduct);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save product');
+      // The banner has to stay short; the console keeps the whole object so a
+      // constraint name or a failing column is still recoverable afterwards.
+      console.error('Product save failed:', err);
+      setError(describeSaveFailure(err));
     } finally {
       setLoading(false);
     }
