@@ -18,6 +18,7 @@ export interface Product {
   priceMin: number;
   priceMax?: number;
   image: string;
+  images?: string[];
   category: string;
   description?: string;
   grainSizes?: string[];
@@ -59,6 +60,7 @@ export const products: Product[] = [
     priceMin: 9.95,
     priceMax: 17.95,
     image: legacyImage('saltPouch6lb'),
+    images: [legacyImage('saltPouch6lb'),legacyImage('bowlOfSalt'),legacyImage('pinkSaltJar16oz')],
     category: "Edible Cooking Salt",
     description: "Experience the pure essence of the Himalayas with our Authentic Pure Natural Halal Unprocessed Himalayan Edible Pink Cooking Salt, available in fine grain (0.5mm to 1mm). Our premium salt is 100% natural and completely unrefined – no additives, anti-caking agents, flow agents, or chemicals of any kind. Each crystal is rich in over 80 essential trace minerals including potassium, magnesium, calcium, and iron that support optimal health. Perfect for everyday cooking, gourmet recipes, bath soaks, salt lamps, and wellness applications. Kosher certified and vegan friendly. Our fine grain salt dissolves quickly and blends seamlessly into any dish. Backed by our quality guarantee, this authentic Himalayan salt brings both flavor and nutrition to your table.",
     grainSizes: ["Fine (0.5mm-1mm)", "Medium (1mm-2mm)", "Coarse (2mm-5mm)"],
@@ -118,6 +120,7 @@ export const products: Product[] = [
     price: "$99.95",
     priceMin: 99.95,
     image: legacyImage('cattleSaltBag'),
+    images: [legacyImage('cattleSaltBag'),legacyImage('saltRockBag'),legacyImage('cattleGrazing')],
     category: "Salt for Cattle",
     description: "Support your cattle's health with our Bag of Himalayan Pink Salt for Livestock – the premium 45 lb bag designed specifically for herds. Cattle require consistent access to quality salt and essential minerals for optimal growth, reproduction, and milk production. Our Himalayan pink salt provides over 80 natural trace minerals that commercial white salt cannot match. The 45 lb size is ideal for medium to large operations, offering cost-effective bulk pricing. Encourage natural consumption by offering free-choice access in a weather-protected location. Unlike processed alternatives, our salt contains no additives or fillers – just pure Himalayan minerals your livestock crave.",
     inStock: true,
@@ -154,6 +157,7 @@ export const products: Product[] = [
     priceMin: 9.95,
     priceMax: 14.95,
     image: legacyImage('horseLickPaddock'),
+    images: [legacyImage('horseLickPaddock'),legacyImage('horseLicking'),legacyImage('saltPouch6lb')],
     category: "Salt Lick for Horses",
     description: "Enhance your horse's health and wellbeing with our Himalayan Pink Salt Licks for Horses – specially formulated to support equine nutrition. Horses instinctively seek salt for its essential electrolytes and minerals. Our natural salt lick provides over 84 trace minerals that support muscular function, hydration, and coat quality. Perfect for paddock and stable use, these licks encourage natural licking behavior while meeting nutritional needs. Each lick is weather-resistant and long-lasting. Ideal for riding horses, working horses, and pleasure animals. Available in various sizes to match your facility's needs.",
     inStock: true,
@@ -263,6 +267,7 @@ export const categories = [
   {
     name: "Salt Blocks for Deer",
     image: legacyImage('horseLickPaddock'),
+    images: [legacyImage('horseLickPaddock'),legacyImage('horseLicking'),legacyImage('cattleGrazing')],
     description: "Optimize nutritional support for your entire herd with our Himalayan Round Rope Salt Lick – Essential Trace Minerals, 6 lb premium version. Double the mineral content of our 2 lb option, this 6 lb round lick with rope attachment serves multiple animals or provides extended supplementation. Perfectly sized for barns, pastures, and run-in sheds. The integrated rope enables secure hanging at ideal consumption height. All livestock benefit from the 80+ natural minerals: horses maintain coat and muscle quality, cattle improve milk production, and other animals enjoy enhanced overall health. Weather-resistant exterior ensures durability through all seasons. Complement with our other salt products for comprehensive mineral management.",
   },
   {
