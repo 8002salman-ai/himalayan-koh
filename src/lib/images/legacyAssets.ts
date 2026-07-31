@@ -95,25 +95,12 @@ export const LEGACY_IMAGES: Record<LegacyImageKey, LegacyImage> = {
 };
 
 /**
- * Whether to serve the rehosted copies. This is the whole cutover switch.
+ * Shorthand for the common case of only needing the path.
  *
- * It is `false` because the nine files are not in the repo yet — they have to
- * be downloaded from the old site with `npm run images:fetch`, which needs
- * network access to himalayankoh.com. Until then the site keeps loading them
- * from WordPress exactly as it always has, rather than pointing at files that
- * are not there.
- *
- * To finish the cutover, in a single commit:
- *   1. npm run images:fetch   (writes public/images/legacy/)
- *   2. set this to true
- *   3. git add public/images/legacy && commit
- * and run supabase/migrations/026_rehost_wordpress_images.sql against
- * production at the same time, so code and database switch together.
- *
- * See docs/WORDPRESS-CUTOVER.md.
+ * These paths resolve even before the image files are committed: migration 026
+ * has already pointed the database at them, and next.config.ts carries fallback
+ * rewrites that serve each one from WordPress until a real file exists at the
+ * path. Run `npm run images:fetch` and commit the results to finish the cutover
+ * — the local files then take over automatically.
  */
-const SERVE_REHOSTED_COPIES = false;
-
-/** Shorthand for the common case of only needing the path. */
-export const legacyImage = (key: LegacyImageKey): string =>
-  SERVE_REHOSTED_COPIES ? LEGACY_IMAGES[key].src : LEGACY_IMAGES[key].wordpress;
+export const legacyImage = (key: LegacyImageKey): string => LEGACY_IMAGES[key].src;

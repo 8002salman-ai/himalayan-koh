@@ -6,9 +6,9 @@ and the database pointed at that host, so turning WordPress off would have left
 broken images on the home page, the About page, every category hub, the blog
 list, and several product galleries.
 
-Those nine files are now served from our own domain out of
-`public/images/legacy/`, which Vercel puts on its CDN alongside the rest of the
-site. Nothing in the application fetches anything from WordPress any more.
+Every one of those references now points at `/images/legacy/...` on our own
+domain. Once the files are committed there, Vercel serves them from its CDN and
+nothing in the application reaches WordPress at all.
 
 ## The nine files
 
@@ -30,44 +30,46 @@ else later is a one-file change.
 
 ## Current state
 
-The switch is **off**. `SERVE_REHOSTED_COPIES` in
-`src/lib/images/legacyAssets.ts` is `false`, so the site still loads these nine
-images from WordPress, exactly as it did before. Everything needed to stop doing
-that is in place except the image files themselves, which have to be downloaded
-from the old site.
+The code and the database both use `/images/legacy/...` already — migration 026
+has run. The nine image files are **not** in the repo yet, so those paths are
+currently served from WordPress by the `LEGACY_IMAGE_FALLBACKS` rewrites in
+`next.config.ts`.
 
-## Cutover steps
+Those are `fallback` rewrites: Next.js only reaches them when nothing else
+matched, which includes the filesystem. As soon as a real file exists at
+`public/images/legacy/<name>`, that file is served and the rewrite is never
+reached. Nothing needs switching over — adding the files is the switch.
 
-Do these in order. Steps 1 and 2 must both be done **before** WordPress goes
-offline, because step 1 downloads from it.
+Every build prints which images are still coming from WordPress.
 
-### 1. Download the images, flip the switch, commit both together
+## Remaining step
+
+One thing is left, and it has to happen **before** WordPress goes offline,
+because it downloads from it.
+
+### Download the images and commit them
 
 ```bash
 npm run images:fetch
-# then set SERVE_REHOSTED_COPIES = true in src/lib/images/legacyAssets.ts
-# and drop the himalayankoh.com entry from images.remotePatterns in next.config.ts
-git add public/images/legacy src/lib/images/legacyAssets.ts next.config.ts
-git commit -m "chore(images): serve rehosted WordPress images"
+git add public/images/legacy
+git commit -m "chore(images): add rehosted WordPress images"
 ```
-
-Keep these in one commit: the switch is what points the site at the local files,
-and the files are what make that safe.
 
 The script is idempotent and skips files that already exist; pass `--force` to
 re-download. If WordPress is already gone, export the nine originals from the
 WordPress media library instead and save them under the filenames in the table
 above — the names are what matter, not how they get there.
 
-`npm run build` runs `scripts/check-legacy-images.mjs` first and fails if any of
-the nine is missing, so a deploy cannot silently ship broken images. A failed
-build leaves the previous deployment serving, which is the safe outcome.
+`npm run build` runs `scripts/check-legacy-images.mjs` first. It names every
+image still coming from WordPress, so an incomplete cutover cannot go unnoticed.
+It does not fail the build — the fallback rewrites mean those paths still
+resolve — but the warning stands until the files are in.
 
-### 2. Rehost the image URLs stored in the database
+### Already done: image URLs in the database
 
-Product, category, blog, and order rows in Supabase still hold the old
-`himalayankoh.com` URLs. Editing `seed.sql` does not touch live data — run the
-migration:
+Product, category, blog, and order rows in Supabase held the old
+`himalayankoh.com` URLs; editing `seed.sql` does not touch live data, so this
+took a migration:
 
 ```bash
 psql "$SUPABASE_DB_URL" -f supabase/migrations/026_rehost_wordpress_images.sql
@@ -77,12 +79,12 @@ or paste it into the Supabase SQL editor. It covers `categories.image_url`,
 `products.thumbnail`, `products.images`, `product_images.image_url`,
 `blog_posts.featured_image`, and `order_items.product_image`. It is idempotent,
 and it prints a warning naming the row count if anything still references
-WordPress afterwards. That warning must be clean before step 3.
+WordPress afterwards.
 
-Run this once step 1 is deployed, not before — the database rows and the code
-have to point at the local files at roughly the same time.
+This has already been run against production, which is why the fallback rewrites
+exist: the database pointed at `/images/legacy/...` before the files did.
 
-### 3. Verify, then turn WordPress off
+### Verify, then turn WordPress off
 
 ```bash
 npm run build   # includes the missing-image check
@@ -94,9 +96,10 @@ product page, and confirm no request in the browser network tab goes to
 
 ## What stays behind
 
-`himalayankoh.com` is deliberately **not** in `images.remotePatterns` in
-`next.config.ts`. Adding it back would re-open the dependency this migration
-removed.
+Once the files are committed, delete `LEGACY_IMAGE_FALLBACKS` and the
+`rewrites()` block from `next.config.ts`, and drop the `himalayankoh.com` entry
+from `images.remotePatterns`. Those three are the last references to the old
+host; leaving them in place would keep the dependency alive silently.
 
 The old WordPress *page* URLs are a separate matter and still handled:
 `src/lib/seo/legacyRedirects.ts` 301-redirects them to their new locations so

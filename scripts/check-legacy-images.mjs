@@ -18,17 +18,6 @@ const ASSET_MODULE = join(ROOT, 'src', 'lib', 'images', 'legacyAssets.ts');
 
 async function main() {
   const source = await readFile(ASSET_MODULE, 'utf8');
-
-  // While the cutover switch is off the site still loads these from WordPress,
-  // so missing local copies are expected and must not fail the build.
-  if (/const SERVE_REHOSTED_COPIES = false/.test(source)) {
-    process.stdout.write(
-      'Rehosted images not in use yet (SERVE_REHOSTED_COPIES is false) — skipping check.\n' +
-        'Run `npm run images:fetch` and flip the switch to finish the WordPress cutover.\n',
-    );
-    return;
-  }
-
   const referenced = [...source.matchAll(/\$\{LEGACY_DIR\}\/([\w.-]+)/g)].map((match) => match[1]);
 
   if (referenced.length === 0) {
@@ -47,16 +36,25 @@ async function main() {
     }
   }
 
+  // A missing file is not fatal: next.config.ts still serves that path from
+  // WordPress via a fallback rewrite. It does mean the site is not yet free of
+  // WordPress, which is worth saying loudly on every build until it is fixed.
   if (missing.length > 0) {
-    process.stderr.write(
-      `Missing ${missing.length} of ${referenced.length} rehosted image(s) in public/images/legacy/:\n` +
+    process.stdout.write(
+      `WordPress cutover incomplete — ${missing.length} of ${referenced.length} image(s) ` +
+        `are still served from himalayankoh.com:\n` +
         missing.map((filename) => `  - ${filename}\n`).join('') +
-        `\nRun: node scripts/fetch-legacy-images.mjs\n`,
+        `\nRun \`npm run images:fetch\`, commit public/images/legacy/, and delete\n` +
+        `LEGACY_IMAGE_FALLBACKS from next.config.ts. The old site cannot be shut\n` +
+        `down until then.\n`,
     );
-    process.exit(1);
+    return;
   }
 
-  process.stdout.write(`All ${referenced.length} rehosted images present.\n`);
+  process.stdout.write(
+    `All ${referenced.length} rehosted images present. ` +
+      `LEGACY_IMAGE_FALLBACKS in next.config.ts can be deleted.\n`,
+  );
 }
 
 main().catch((error) => {
