@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { breadcrumbJsonLd } from '@/lib/seo/jsonLd';
+import { breadcrumbJsonLd, aggregateOfferJsonLd } from '@/lib/seo/jsonLd';
+import { getSeoSupabase } from '@/lib/seo/server';
 import {
   buildProductsCategoryPath,
   filterLabelFromKey,
@@ -64,9 +65,40 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     });
   }
 
+  // Fetch price range for AggregateOffer schema on main listing
+  let aggregateOffer = null;
+  if (!category) {
+    try {
+      const supabase = getSeoSupabase();
+      const { data: products } = await supabase
+        .from('products')
+        .select('price')
+        .eq('is_active', true)
+        .eq('dealer_only', false);
+
+      if (products && products.length > 0) {
+        const prices = (products as { price: number }[]).map((p) => Number(p.price)).filter(Boolean);
+        if (prices.length > 0) {
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+          aggregateOffer = aggregateOfferJsonLd({
+            minPrice,
+            maxPrice,
+            priceCurrency: 'USD',
+            offerCount: prices.length,
+            availability: 'InStock',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Could not fetch product prices for schema:', err);
+    }
+  }
+
   return (
     <>
       <JsonLd data={breadcrumbJsonLd(breadcrumb)} />
+      {aggregateOffer && <JsonLd data={aggregateOffer} />}
       <ProductsClient />
     </>
   );

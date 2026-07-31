@@ -100,3 +100,80 @@ export function websiteJsonLd(): Record<string, unknown> {
     publisher: { '@id': `${absoluteUrl('/')}#organization` },
   };
 }
+
+/**
+ * Aggregate offer for product listing pages. Shows price range and availability
+ * across all products, enabling Google rich snippets like "Starting at $X.XX".
+ */
+interface AggregateOfferInput {
+  minPrice: number;
+  maxPrice: number;
+  priceCurrency: string;
+  offerCount: number;
+  availability: 'InStock' | 'OutOfStock';
+}
+
+export function aggregateOfferJsonLd({
+  minPrice,
+  maxPrice,
+  priceCurrency,
+  offerCount,
+  availability,
+}: AggregateOfferInput): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'AggregateOffer',
+    priceCurrency,
+    lowPrice: minPrice.toFixed(2),
+    highPrice: maxPrice.toFixed(2),
+    offerCount,
+    availability: `https://schema.org/${availability}`,
+  };
+}
+
+/**
+ * LocalBusiness schema for service area businesses. Helps with local search
+ * visibility and enables Google rich results with contact information.
+ */
+export function localBusinessJsonLd(): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${absoluteUrl('/')}#localbusiness`,
+    name: SITE_NAME,
+    url: absoluteUrl('/'),
+    telephone: '+1-832-224-6466',
+    contactType: 'Customer Service',
+    areaServed: {
+      '@type': 'Country',
+      name: 'US',
+    },
+    priceRange: '$$',
+    image: absoluteImage(),
+    description: 'Premium Himalayan pink salt products for livestock and edible use',
+  };
+}
+
+/**
+ * FAQ schema for product pages. Displays common questions and answers in
+ * Google search results, improving CTR and user experience.
+ */
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export function faqJsonLd(items: FAQItem[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  };
+}
