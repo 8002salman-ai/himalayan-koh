@@ -1,23 +1,5 @@
 import type { NextConfig } from 'next';
-import { LEGACY_IMAGES } from './src/lib/images/legacyAssets';
 import { LEGACY_REDIRECTS } from './src/lib/seo/legacyRedirects';
-
-/**
- * Serve the nine rehosted images from WordPress until their local copies are
- * committed to public/images/legacy/.
- *
- * These are `fallback` rewrites, so they only apply when nothing else matched —
- * in particular, after the filesystem has been checked. The moment a real file
- * exists at the path, Vercel serves that file and the rewrite stops being
- * reached. Nothing has to be switched off for the local copies to take over.
- *
- * Delete this once `npm run images:fetch` has been run and the files are
- * committed. See docs/WORDPRESS-CUTOVER.md.
- */
-const LEGACY_IMAGE_FALLBACKS = Object.values(LEGACY_IMAGES).map((image) => ({
-  source: image.src,
-  destination: image.wordpress,
-}));
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -53,13 +35,6 @@ const nextConfig: NextConfig = {
       ...LEGACY_REDIRECTS,
     ];
   },
-  async rewrites() {
-    return {
-      beforeFiles: [],
-      afterFiles: [],
-      fallback: LEGACY_IMAGE_FALLBACKS,
-    };
-  },
   async headers() {
     return [
       {
@@ -88,10 +63,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
-      // Still needed only while SERVE_REHOSTED_COPIES in
-      // src/lib/images/legacyAssets.ts is false. Remove this line in the same
-      // commit that flips it — see docs/WORDPRESS-CUTOVER.md.
-      { protocol: 'https', hostname: 'himalayankoh.com' },
       { protocol: 'https', hostname: '**.vercel.app' },
     ],
   },
