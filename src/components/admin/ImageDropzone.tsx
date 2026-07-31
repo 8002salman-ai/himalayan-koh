@@ -218,7 +218,7 @@ export default function ImageDropzone({
                       e.stopPropagation();
                       onSetThumbnail(persistedUrl);
                     }}
-                    disabled={image.status !== 'uploaded' || !persistedUrl.startsWith('http')}
+                    disabled={isBusy}
                     className={`p-2 rounded-lg disabled:opacity-40 ${
                       isThumbnail ? 'bg-himalayan text-white' : 'bg-white text-charcoal hover:bg-gray-100'
                     }`}
