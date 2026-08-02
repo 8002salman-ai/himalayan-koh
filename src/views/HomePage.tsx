@@ -7,7 +7,7 @@ const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
   'Livestock need sodium and chloride to maintain appetite, weight, milk production, and healthy growth.',
   'Pure Himalayan pink salt provides natural magnesium and mineral support that helps animals stay stronger and healthier.',
-  'Our Himalayan salt licks and lumps are a natural improvement over livestock salts with artificial mineral additives.',
+  'Our Himalayan salt licks and rock salt are a natural improvement over livestock salts with added mineral supplements.',
 ];
 
 const healthCards = [

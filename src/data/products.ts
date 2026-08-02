@@ -389,7 +389,7 @@ The 80+ minerals in Himalayan salt support metabolic processes, improving feed e
 White salt contains primarily sodium chloride with minimal trace minerals. Himalayan salt provides 80+ minerals in their natural form. For livestock, this difference directly impacts health outcomes and productivity.
 
 **Himalayan vs. Mineral Blocks**
-Commercial mineral blocks often contain fillers, additives, and artificial ingredients. While convenient, they lack the purity and mineral density of natural Himalayan salt. Many farms use both—salt for basic needs and mineral blocks for specific deficiencies.
+Commercial mineral blocks often contain fillers and non-natural ingredients. While convenient, they lack the purity and mineral density of natural Himalayan salt. Many farms use both—salt for basic needs and mineral blocks for specific deficiencies.
 
 **Himalayan vs. Supplements**
 Liquid supplements and pellets are convenient but expensive and may contain questionable ingredients. Himalayan salt offers comparable benefits at a fraction of the cost when offered free-choice.
@@ -606,13 +606,13 @@ Modern table salt undergoes extensive industrial processing that removes benefic
 **What's Removed:**
 - Magnesium, potassium, calcium, and 80+ trace minerals
 - Natural mineral ratios that support human physiology
-- Iodine (though often re-added artificially)
+- Iodine (though often re-added later in processing)
 
 **What's Added:**
 - Anti-caking agents (ferrocyanide, silicate)
 - Flow agents
 - Dextrose (added sugar)
-- Artificial iodine
+- Added iodine
 - Bleaching agents
 
 The result: a chemically altered product that bears little resemblance to natural salt your ancestors consumed for millennia.
@@ -1010,7 +1010,7 @@ Not all salt products are created equal.
 *Avoid Products Containing:*
 - Ferrocyanide (anti-caking agent)
 - Silicon dioxide (flow agent)
-- Artificial additives or dyes
+- Added additives or dyes
 - Magnesium stearate
 - Any chemical beyond natural salt
 

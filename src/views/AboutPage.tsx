@@ -27,7 +27,7 @@ const benefits = [
   },
   {
     title: 'Natural & Unprocessed',
-    description: '100% pure, no additives, anti-caking agents, or artificial chemicals.',
+    description: '100% pure, no additives, anti-caking agents, or added chemicals.',
     icon: Leaf,
   },
   {

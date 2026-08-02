@@ -23,7 +23,7 @@ const CATTLE_BENEFITS: PdpAccordionArticle = {
   bullets: [
     'Free-choice minerals for cattle on pasture or in dry lot',
     'Supports hydration and normal electrolyte function in heat and transport',
-    'Unrefined crystal salt — no anti-caking agents or artificial binders',
+    'Unrefined crystal salt — no anti-caking agents or added binders',
     'Suitable for mixed herds when offered in covered feeders',
   ],
   paragraphs: [

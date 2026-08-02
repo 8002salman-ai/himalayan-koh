@@ -370,7 +370,7 @@ export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = 
     trustPoints: [
       { label: 'Outdoor durability', detail: 'Crystal salt suited to covered field stations.' },
       { label: 'Habitat-minded', detail: 'Placement guidance for low-pressure mineral sites.' },
-      { label: 'Natural minerals', detail: 'Unrefined salt without artificial binders.' },
+      { label: 'Natural minerals', detail: 'Unrefined salt without added binders.' },
     ],
     gallery: [
       { id: 'deer-1', src: IMG.cattleGrazing, alt: 'Open meadow habitat suitable for wildlife mineral sites', width: 600, height: 450 },
@@ -427,7 +427,7 @@ export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = 
         bullets: [
           'Sodium drives initial attraction and repeat visits',
           'Trace elements vary by harvest — consistent natural source',
-          'No pressed molasses binders or artificial dyes',
+          'No pressed molasses binders or added dyes',
         ],
       },
       {
