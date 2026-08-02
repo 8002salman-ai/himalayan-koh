@@ -8,6 +8,7 @@ import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import { wishlistApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import ProductImageGallery from './ProductImageGallery';
 import {
   buildProductsCategoryPath,
   categoryKeyFromFilterLabel,
@@ -111,16 +112,14 @@ export default function ProductDetailView({
       )}
 
       <div className="grid md:grid-cols-2 gap-0">
-        <div className="relative aspect-square md:aspect-auto bg-gray-50 min-h-72 md:min-h-96">
+        <div className="relative md:aspect-auto bg-gray-50 min-h-72 md:min-h-96">
           {/* The product shot is the LCP element on a PDP — fetch it eagerly and
               at high priority rather than letting it queue behind other assets. */}
-          <img
-            src={product.image}
+          <ProductImageGallery
+            images={product.images && product.images.length > 0 ? product.images : [product.image]}
             alt={displayName}
-            fetchPriority="high"
-            decoding="async"
-            className={`w-full h-full object-cover ${variant === 'modal' ? 'md:rounded-l-3xl' : ''}`}
-            onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
+            variant={variant}
+            rounded={variant === 'modal' ? 'md:rounded-l-3xl' : ''}
           />
           {variant === 'modal' && onClose && (
             <button

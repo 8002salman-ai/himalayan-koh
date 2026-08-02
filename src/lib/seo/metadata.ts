@@ -52,6 +52,9 @@ export function buildMetadata({
       description: resolvedDescription,
       url: canonical,
       siteName: SITE_NAME,
+      // Note: Next.js OpenGraph type only supports 'website' | 'article'.
+      // 'product' is not a standard OpenGraph type; social crawlers understand
+      // structured data instead. Product schema is in JSON-LD.
       type: ogType === 'product' ? 'website' : ogType,
       images: [{ url: image }],
     },

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 
 interface LegalPageProps {
-  type: 'terms' | 'privacy';
+  type: 'terms' | 'privacy' | 'return';
 }
 
 const content = {
@@ -40,6 +40,59 @@ const content = {
       {
         title: 'Contact',
         body: 'Contact Himalayan Koh if you need help with account data, order information, or privacy-related questions.',
+      },
+    ],
+  },
+  return: {
+    eyebrow: 'Returns & Replacements',
+    title: 'Return & Replacement Policy',
+    description:
+      'At Himalayan Koh, we take pride in the quality of our products. If you receive a product that is damaged, defective, or incorrect, please contact us within 30 days of your order date. We will work with you to resolve the issue as quickly as possible.',
+    sections: [
+      {
+        title: 'Return Eligibility',
+        bullets: [
+          'Return requests must be made within 30 days of the original order date.',
+          'Products must be unused, unopened, and returned in their original packaging.',
+          'Returns require prior approval from Himalayan Koh before being shipped.',
+        ],
+      },
+      {
+        title: 'Replacement Policy',
+        bullets: [
+          'Once we receive and inspect your returned product, we will process a replacement if the return meets our policy requirements.',
+          'Replacement items will be shipped after the returned product has been received and approved.',
+        ],
+      },
+      {
+        title: 'No Refund Policy',
+        bullets: [
+          'We do not offer refunds.',
+          'Eligible returned products will be replaced with the same product. Refunds, exchanges for different products, or store credits are not available.',
+        ],
+      },
+      {
+        title: 'Return Shipping',
+        bullets: [
+          'Customers are responsible for purchasing their own return shipping label.',
+          'Customers are responsible for properly packaging the product to prevent damage during transit.',
+          'Customers are responsible for all return shipping costs.',
+          'We recommend using a trackable shipping service, as Himalayan Koh is not responsible for returns that are lost or damaged during shipping.',
+        ],
+      },
+      {
+        title: 'Damaged or Incorrect Orders',
+        bullets: [
+          'If your order arrives damaged or you received the wrong product, please contact us within 30 days of delivery. Include your order number and photos of the product and packaging so we can review your request promptly.',
+        ],
+      },
+      {
+        title: 'Contact Us',
+        bullets: [
+          'If you have any questions regarding returns or replacements, please contact us:',
+          'Email: sales@himalayankoh.com',
+          'Phone: (832) 224-6466',
+        ],
       },
     ],
   },
@@ -85,9 +138,17 @@ export default function LegalPage({ type }: LegalPageProps) {
               <h2 className="font-serif text-xl font-bold text-charcoal mb-3">
                 {section.title}
               </h2>
-              <p className="text-charcoal-light leading-relaxed">
-                {section.body}
-              </p>
+              {'bullets' in section ? (
+                <ul className="list-disc list-outside pl-5 space-y-1.5 text-charcoal-light leading-relaxed">
+                  {section.bullets.map((bullet, i) => (
+                    <li key={i}>{bullet}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-charcoal-light leading-relaxed">
+                  {section.body}
+                </p>
+              )}
             </section>
           ))}
         </div>
