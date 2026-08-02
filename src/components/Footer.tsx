@@ -17,9 +17,8 @@ const aboutLinks = [
   { label: 'Admin Login', to: '/login', state: { from: '/admin' } },
   { label: 'Wholesale Program', to: '/dealer' },
   { label: 'Wholesale Login', to: '/dealer/login' },
-  { label: 'Blog Posts', to: '/blog' },
   { label: 'Contact Us', to: '/contact' },
-  { label: 'FAQ', to: '/contact' },
+  { label: 'FAQ', to: '/faq' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Terms & Conditions', to: '/terms' },
   { label: 'Privacy Policy', to: '/privacy' },
@@ -30,8 +29,6 @@ const productLinks = [
   { label: 'Salt Blocks for Deer', to: productsPathForCategoryTitle('Salt Blocks for Deer') },
   { label: 'Salt for Cattle', to: productsPathForCategoryTitle('Salt for Cattle') },
   { label: 'Edible Cooking Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
-  { label: 'Bulk Orders', to: '/contact' },
-  { label: 'Gift Sets', to: '/products' },
 ];
 
 export default function Footer() {
