@@ -4,7 +4,22 @@ interface LegalPageProps {
   type: 'terms' | 'privacy' | 'return';
 }
 
-const content = {
+interface Subsection {
+  heading: string;
+  body?: string;
+  bullets?: string[];
+}
+
+interface Section {
+  title: string;
+  intro?: string;
+  body?: string;
+  bullets?: string[];
+  subsections?: Subsection[];
+  outro?: string;
+}
+
+const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; description: string; sections: Section[] }> = {
   terms: {
     eyebrow: 'Terms',
     title: 'Terms of Service',
@@ -25,21 +40,94 @@ const content = {
     ],
   },
   privacy: {
-    eyebrow: 'Privacy',
+    eyebrow: 'Effective Date: August 2, 2026',
     title: 'Privacy Policy',
-    description: 'Learn how Himalayan Koh handles customer information used for accounts, orders, and support.',
+    description:
+      'At Himalayan Koh, we value your privacy and are committed to protecting your personal information. This Privacy Policy explains what information we collect, how we use it, and the choices you have when using our website.',
     sections: [
       {
-        title: 'Information We Use',
-        body: 'We use customer information to manage accounts, process orders, provide support, and communicate about products or services.',
+        title: 'Information We Collect',
+        bullets: [
+          'Name',
+          'Billing and shipping address',
+          'Email address',
+          'Phone number',
+          'Payment information (processed securely through our payment providers)',
+          'Order history',
+          'IP address, browser type, and device information',
+          'Website usage information through cookies and analytics',
+        ],
       },
       {
-        title: 'Data Protection',
-        body: 'Customer data should be accessed only for legitimate business needs and handled through configured application services.',
+        title: 'Checkout Options',
+        subsections: [
+          {
+            heading: 'Guest Checkout',
+            body: 'You do not need to create an account to make a purchase. Customers may complete their orders using Guest Checkout. We collect only the information necessary to process, ship, and support the order.',
+          },
+          {
+            heading: 'Create an Account',
+            bullets: [
+              'Customers who prefer to create an account may register during checkout.',
+              'View order history.',
+              'Save billing and shipping information for faster future purchases.',
+              'Track current and past orders.',
+              'Manage account information.',
+            ],
+          },
+        ],
+        outro:
+          'Whether you choose Guest Checkout or create an account, your personal information is collected, stored, and protected in accordance with this Privacy Policy.',
       },
       {
-        title: 'Contact',
-        body: 'Contact Himalayan Koh if you need help with account data, order information, or privacy-related questions.',
+        title: 'How We Use Your Information',
+        bullets: [
+          'Process and fulfill your orders.',
+          'Communicate regarding your order or customer service requests.',
+          'Improve our website and customer experience.',
+          'Prevent fraud and unauthorized transactions.',
+          'Comply with legal obligations.',
+          'Send promotional emails if you have opted in (you may unsubscribe at any time).',
+        ],
+      },
+      {
+        title: 'Payment Security',
+        body: 'Payments are processed securely through trusted third-party payment processors. Himalayan Koh does not store your complete credit or debit card information on our servers.',
+      },
+      {
+        title: 'Cookies',
+        body: 'Our website uses cookies to remember your preferences, improve website performance, analyze website traffic, and enhance your shopping experience. You may disable cookies through your browser settings, although some website features may not function properly.',
+      },
+      {
+        title: 'Sharing Your Information',
+        bullets: [
+          'We do not sell or rent your personal information.',
+          'We may share your information only with trusted service providers, including payment processors, shipping carriers, website hosting providers, and analytics services. These providers receive only the information necessary to perform their services.',
+        ],
+      },
+      {
+        title: 'Data Security',
+        body: 'We use reasonable administrative, technical, and physical safeguards to protect your personal information. While no method of transmission over the Internet is completely secure, we strive to protect your information using industry-standard security practices.',
+      },
+      {
+        title: 'Your Rights',
+        body: 'Depending on your location, you may request access to, correction of, or deletion of your personal information where permitted by law, and you may opt out of marketing communications.',
+      },
+      {
+        title: 'Third-Party Links',
+        body: 'Our website may contain links to third-party websites. We are not responsible for the privacy practices or content of those websites.',
+      },
+      {
+        title: 'Changes to This Privacy Policy',
+        body: 'We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated effective date.',
+      },
+      {
+        title: 'Contact Us',
+        intro: 'If you have any questions about this Privacy Policy or how we handle your information, please contact us:',
+        bullets: [
+          'Email: sales@himalayankoh.com',
+          'Phone: (832) 224-6466',
+        ],
       },
     ],
   },
@@ -138,17 +226,40 @@ export default function LegalPage({ type }: LegalPageProps) {
               <h2 className="font-serif text-xl font-bold text-charcoal mb-3">
                 {section.title}
               </h2>
-              {'bullets' in section ? (
+              {section.intro && (
+                <p className="text-charcoal-light leading-relaxed mb-3">{section.intro}</p>
+              )}
+              {section.subsections ? (
+                <div className="space-y-4">
+                  {section.subsections.map((sub) => (
+                    <div key={sub.heading}>
+                      <h3 className="font-semibold text-charcoal mb-1.5">{sub.heading}</h3>
+                      {sub.bullets ? (
+                        <ul className="list-disc list-outside pl-5 space-y-1.5 text-charcoal-light leading-relaxed">
+                          {sub.bullets.map((bullet, i) => (
+                            <li key={i}>{bullet}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-charcoal-light leading-relaxed">{sub.body}</p>
+                      )}
+                    </div>
+                  ))}
+                  {section.outro && (
+                    <p className="text-charcoal-light leading-relaxed">{section.outro}</p>
+                  )}
+                </div>
+              ) : section.bullets ? (
                 <ul className="list-disc list-outside pl-5 space-y-1.5 text-charcoal-light leading-relaxed">
                   {section.bullets.map((bullet, i) => (
                     <li key={i}>{bullet}</li>
                   ))}
                 </ul>
-              ) : (
+              ) : section.body ? (
                 <p className="text-charcoal-light leading-relaxed">
                   {section.body}
                 </p>
-              )}
+              ) : null}
             </section>
           ))}
         </div>

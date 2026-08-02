@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Mail, Phone, Clock, Send, MessageSquare, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, Phone, Clock, Send, MessageSquare, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -83,19 +83,6 @@ export default function ContactPage() {
               <h3 className="font-serif text-xl font-bold text-charcoal mb-6">Contact Information</h3>
               
               <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-himalayan-lighter rounded-xl flex items-center justify-center flex-shrink-0">
-                    <MapPin size={20} className="text-himalayan" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-charcoal mb-1">Address</h4>
-                    <p className="text-charcoal-light text-sm leading-relaxed">
-                      12620 FM 1960 W Ste A-4<br />
-                      Houston, TX 77065
-                    </p>
-                  </div>
-                </div>
-
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-himalayan-lighter rounded-xl flex items-center justify-center flex-shrink-0">
                     <Mail size={20} className="text-himalayan" />

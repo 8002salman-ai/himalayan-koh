@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Mail, Phone, ArrowRight, Send } from 'lucide-react';
+import { Mail, Phone, ArrowRight, Send } from 'lucide-react';
 import { productsPathForCategoryTitle } from '../lib/categoryContent';
 import { publicEnv } from '../lib/env';
 
@@ -18,16 +18,12 @@ const aboutLinks = [
   { label: 'Wholesale Program', to: '/dealer' },
   { label: 'Wholesale Login', to: '/dealer/login' },
   { label: 'Contact Us', to: '/contact' },
-  { label: 'FAQ', to: '/faq' },
   { label: 'Return Policy', to: '/return' },
-  { label: 'Terms & Conditions', to: '/terms' },
   { label: 'Privacy Policy', to: '/privacy' },
 ];
 
 const productLinks = [
   { label: 'Salt Lick for Horses', to: productsPathForCategoryTitle('Salt Lick for Horses') },
-  { label: 'Salt Blocks for Deer', to: productsPathForCategoryTitle('Salt Blocks for Deer') },
-  { label: 'Salt for Cattle', to: productsPathForCategoryTitle('Salt for Cattle') },
   { label: 'Edible Cooking Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
 ];
 
@@ -166,12 +162,6 @@ export default function Footer() {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">Contact Us</h4>
             <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin size={18} className="text-himalayan flex-shrink-0 mt-0.5" />
-                <p className="text-white/60 text-sm leading-relaxed">
-                  12620 FM 1960 W Ste A-4<br />Houston, TX 77065
-                </p>
-              </div>
               <a href="mailto:sales@himalayankoh.com" className="flex items-center gap-3 text-white/60 text-sm hover:text-himalayan transition-colors">
                 <Mail size={18} className="text-himalayan flex-shrink-0" />
                 sales@himalayankoh.com
@@ -186,9 +176,6 @@ export default function Footer() {
             <div className="mt-6 flex items-center gap-3">
               <div className="px-3 py-1.5 bg-white/10 rounded-lg text-xs text-white/60">
                 🔒 Secure Checkout
-              </div>
-              <div className="px-3 py-1.5 bg-white/10 rounded-lg text-xs text-white/60">
-                🚚 Free Shipping $50+
               </div>
             </div>
           </div>
