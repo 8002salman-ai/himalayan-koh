@@ -6,6 +6,7 @@ import type { Product } from '../data/products';
 import { getProductDisplayName } from '../lib/products/productSeo';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { wishlistApi } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import ProductImageGallery from './ProductImageGallery';
@@ -32,6 +33,7 @@ export default function ProductDetailView({
   const [wishlisted, setWishlisted] = useState(false);
   const { addItem } = useCart();
   const { user } = useAuthContext();
+  const toast = useToast();
   const displayName = getProductDisplayName(product);
   const categoryKey = categoryKeyFromFilterLabel(product.category);
   const categoryShopPath = categoryKey ? buildProductsCategoryPath(categoryKey) : '/products';
@@ -44,18 +46,22 @@ export default function ProductDetailView({
   }, [product.id, product.grainSizes]);
 
   const handleAddToCart = async () => {
-    await addItem(
-      {
-        id: String(product.id),
-        name: product.name,
-        price: product.priceMin,
-        image: product.image,
-        grainSize: selectedGrain || undefined,
-      },
-      qty
-    );
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    try {
+      await addItem(
+        {
+          id: String(product.id),
+          name: product.name,
+          price: product.priceMin,
+          image: product.image,
+          grainSize: selectedGrain || undefined,
+        },
+        qty
+      );
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch {
+      toast.error('Failed to add item to cart. Please try again.');
+    }
   };
 
   const handleWishlist = async () => {
