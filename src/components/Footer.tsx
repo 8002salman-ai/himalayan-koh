@@ -20,7 +20,7 @@ const aboutLinks = [
   { label: 'Blog Posts', to: '/blog' },
   { label: 'Contact Us', to: '/contact' },
   { label: 'FAQ', to: '/contact' },
-  { label: 'Return Policy', to: '/contact' },
+  { label: 'Return Policy', to: '/return' },
   { label: 'Terms & Conditions', to: '/terms' },
   { label: 'Privacy Policy', to: '/privacy' },
 ];
@@ -205,6 +205,7 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
+            <Link to="/return" className="hover:text-white/60 transition-colors">Return Policy</Link>
             <a href="/sitemap.xml" className="hover:text-white/60 transition-colors">Sitemap</a>
           </div>
         </div>
