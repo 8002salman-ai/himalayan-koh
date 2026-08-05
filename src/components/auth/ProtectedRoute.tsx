@@ -8,11 +8,14 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, loading, profile } = useAuthContext();
+  const { isAuthenticated, loading, profile, profileLoading } = useAuthContext();
   const location = useLocation();
 
-  // Show loading state while checking auth
-  if (loading) {
+  // Show loading state while checking auth. A role check reads `profile`,
+  // which can still be in flight even after `loading` clears (see
+  // AuthContext/AdminRoute) — wait for it too, or a real match could briefly
+  // render as Access Denied before self-correcting.
+  if (loading || (isAuthenticated && requiredRole && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-warm-white">
         <div className="text-center">

@@ -668,20 +668,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       unitsPerBox: shippingProfile.shipsSeparately ? 1 : Math.max(1, Math.floor(shippingProfile.unitsPerBox)),
     };
 
-    // Shipping measurements do NOT gate the save.
-    //
-    // Listing a product and shipping one are separate jobs, and measurements
-    // belong to the second. Refusing the save meant a listing could not be
-    // written at all — name, price, images, stock, SEO, all lost — because a
-    // box had not been measured yet, which is work that often happens later
-    // and by someone else.
-    //
-    // Nothing unshippable can be sold as a result: the storefront lists only
-    // products carrying a packing_profile: tag (see isRealCatalogProduct in
-    // lib/supabase/api/products.ts), and that tag is written below ONLY when
-    // the product can genuinely ship. An unmeasured product saves, stays out
-    // of the storefront, and cannot be ordered — so the error belongs at
-    // checkout, where buildParcels already raises it, not here.
+    // Whether this profile is complete enough to tag the product shippable
+    // (see the Active-listing validation below, and isRealCatalogProduct in
+    // lib/supabase/api/products.ts, which is what actually gates the
+    // storefront on this tag).
     const profileComplete = hasCompleteShippingProfile(normalizedProfile);
     const unitWeight = Number(formData.weight) || 0;
 
@@ -693,6 +683,26 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       && unitWeight + normalizedProfile.packagingWeightLbs <= normalizedProfile.maxPackedWeightLbs;
 
     const shippable = profileComplete && singleUnitFits;
+
+    // A listing can still be saved as a draft (Active off) with shipping
+    // measurements incomplete — that work is legitimately unfinished and
+    // shouldn't be lost. But turning Active on is a claim that it's ready to
+    // sell, and the storefront silently drops anything without a complete
+    // profile (see isRealCatalogProduct — this editor has no dealer-only
+    // toggle, so every product it saves is retail-facing). Saving that
+    // combination used to succeed with no feedback at all, which is exactly
+    // how "Active" listings ended up invisible on /products.
+    if (formData.is_active && !shippable) {
+      setError(
+        !profileComplete
+          ? 'This product is marked Active but its shipping measurements are incomplete, so it would not appear on the storefront. Complete box dimensions, packaging weight, units per box, and maximum packed weight in Shippo Required, or turn Active off to save it as a draft.'
+          : unitWeight <= 0
+            ? 'This product is marked Active but has no unit weight, so it would not appear on the storefront. Enter the unit weight in Shippo Required, or turn Active off to save it as a draft.'
+            : 'This product is marked Active but a single unit does not fit its own box (unit weight + packaging weight exceeds the maximum packed weight), so it would not appear on the storefront. Fix the weights in Shippo Required, or turn Active off to save it as a draft.'
+      );
+      setActiveTab('shipping');
+      return;
+    }
 
     if (uploadingImage || adminImages.some((image) => image.status === 'uploading' || image.status === 'local')) {
       setError('Please wait for image uploads to finish before saving.');

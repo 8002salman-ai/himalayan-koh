@@ -12,18 +12,20 @@ function isStaleChunkError(message: unknown): boolean {
 }
 
 /**
- * A browser tab left open across a deploy holds JS/RSC chunk URLs that no
- * longer exist once the new build replaces them. Next's client router has no
- * built-in recovery for that: the fetch for the next route's chunk just
- * fails, the in-flight navigation goes nowhere, and the top progress bar sits
- * there (or silently times out) until the visitor manually reloads — which is
- * exactly the "navigation gets stuck, only a refresh fixes it" symptom.
+ * Fallback only — not the fix for stuck navigation in general. The actual
+ * cause of navigation hanging site-wide was server-rendered routes awaiting
+ * Supabase queries with no timeout (see lib/seo/server.ts) and Admin/My
+ * Account's role check racing ahead of the profile it depends on (see
+ * AuthContext/AdminRoute); both are fixed at the source, not by reloading.
  *
- * This listens for that failure signature anywhere on the page — a clicked
- * Link, a prefetch, a lazy-loaded admin panel — and reloads once, which
- * always picks up the current build. Guarded by sessionStorage so a page that
- * is genuinely broken doesn't reload in a loop; the guard clears itself once
- * the app has been running long enough to prove the current chunks are good.
+ * What this component alone handles: a browser tab left open across a
+ * deploy, holding JS/RSC chunk URLs that no longer exist once the new build
+ * replaces them. There's no way to recover from a 404'd chunk without a
+ * fresh page load, so this is a legitimate case for a one-time reload rather
+ * than something fixable in application code. Guarded by sessionStorage so a
+ * page that is genuinely broken doesn't reload in a loop; the guard clears
+ * itself once the app has been running long enough to prove the current
+ * chunks are good.
  */
 export default function StaleChunkRecovery() {
   useEffect(() => {
