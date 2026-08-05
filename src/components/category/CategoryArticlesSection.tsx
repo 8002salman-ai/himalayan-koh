@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type { CategoryArticleCard } from '../../lib/categoryContent';
 import type { CategoryArticleSource } from '../../hooks/useCategoryBlogArticles';
 import PdpEmptyState from '../product/PdpEmptyState';
+import { publicEnv } from '../../lib/env';
 
 const PREVIEW_LENGTH = 140;
 
@@ -82,6 +83,12 @@ export default function CategoryArticlesSection({
   source,
   categoryLabel,
 }: Props) {
+  // Blog is temporarily off the storefront (kept live for direct/search access
+  // and in the sitemap for SEO) — this is the one place that promotes it into
+  // category/product pages, so hiding it here is enough. Nothing about the
+  // blog data, routes, or sitemap changed; delete this guard to bring it back.
+  if (!publicEnv.blogEnabled) return null;
+
   if (loading) {
     return (
       <section aria-busy="true" aria-label="Loading articles">

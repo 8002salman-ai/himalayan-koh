@@ -22,6 +22,10 @@ export const publicEnv = {
   // middleware redirects, the cart's dealer-checkout fork, admin nav)
   // reverts automatically — no further code changes needed.
   wholesaleEnabled: process.env.NEXT_PUBLIC_WHOLESALE_ENABLED === 'true',
+  // Blog is temporarily off the storefront (kept live for direct/search
+  // access and in the sitemap for SEO) — set NEXT_PUBLIC_BLOG_ENABLED=true to
+  // bring back the "Articles" promo section on category/product pages.
+  blogEnabled: process.env.NEXT_PUBLIC_BLOG_ENABLED === 'true',
   sentryDsn:
     process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.VITE_SENTRY_DSN || '',
 };
