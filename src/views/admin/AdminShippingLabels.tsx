@@ -22,6 +22,9 @@ export default function AdminShippingLabels() {
   const [creatingId, setCreatingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notices, setNotices] = useState<Record<string, string>>({});
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [bulkSummary, setBulkSummary] = useState<{ succeeded: number; failed: number; totalCost: number } | null>(null);
 
   const fetchLabels = useCallback(async () => {
     setLoading(true);
@@ -67,14 +70,12 @@ export default function AdminShippingLabels() {
   const filteredReady = useMemo(() => ready.filter(filterOrder), [ready, search]);
   const filteredPending = useMemo(() => pending.filter(filterOrder), [pending, search]);
 
-  const handleCreateLabel = async (order: AdminOrder) => {
-    const token = session?.access_token;
-    if (!token) {
-      setErrors((current) => ({ ...current, [order.id]: 'Sign in again to create labels.' }));
-      return;
-    }
-
-    setCreatingId(order.id);
+  /** Core single-order label purchase, shared by the per-row button and bulk run. Returns the rate paid (or null on failure) so bulk can total cost. */
+  const createLabelForOrder = async (
+    order: AdminOrder,
+    token: string,
+    options: { openLabel: boolean }
+  ): Promise<{ ok: true; rateAmount: number | null } | { ok: false }> => {
     setErrors((current) => {
       const next = { ...current };
       delete next[order.id];
@@ -88,7 +89,6 @@ export default function AdminShippingLabels() {
 
     try {
       const result = await createShippoLabel(order.id, token);
-      await fetchLabels();
       if (result.usedFallbackCarrier && result.carrier) {
         setNotices((current) => ({
           ...current,
@@ -100,17 +100,76 @@ export default function AdminShippingLabels() {
           [order.id]: `Label ready. Tracking ${result.trackingNumber}.`,
         }));
       }
-      if (result.labelUrl) {
+      if (options.openLabel && result.labelUrl) {
         window.open(result.labelUrl, '_blank', 'noopener,noreferrer');
       }
+      return { ok: true, rateAmount: result.rateAmount ?? null };
     } catch (err) {
       setErrors((current) => ({
         ...current,
         [order.id]: err instanceof Error ? err.message : 'Unable to create label.',
       }));
+      return { ok: false };
+    }
+  };
+
+  const handleCreateLabel = async (order: AdminOrder) => {
+    const token = session?.access_token;
+    if (!token) {
+      setErrors((current) => ({ ...current, [order.id]: 'Sign in again to create labels.' }));
+      return;
+    }
+
+    setCreatingId(order.id);
+    try {
+      await createLabelForOrder(order, token, { openLabel: true });
+      await fetchLabels();
     } finally {
       setCreatingId(null);
     }
+  };
+
+  /**
+   * Creates one real, separately-charged Shippo label per order, one order at
+   * a time — matches the per-box behavior in create-label/route.ts (no
+   * batching at the carrier level, each purchase is its own charge). Runs
+   * sequentially rather than in parallel so a rate-limit or carrier error on
+   * one order can't spam retries across the whole batch at once, and so the
+   * per-row progress state stays meaningful.
+   */
+  const handleCreateAllLabels = async (orders: AdminOrder[]) => {
+    const token = session?.access_token;
+    if (!token || orders.length === 0) return;
+
+    const confirmed = window.confirm(
+      `This will purchase ${orders.length} live shipping label${orders.length === 1 ? '' : 's'} — one real Shippo charge per order. Continue?`
+    );
+    if (!confirmed) return;
+
+    setBulkRunning(true);
+    setBulkSummary(null);
+    let succeeded = 0;
+    let failed = 0;
+    let totalCost = 0;
+
+    for (let i = 0; i < orders.length; i += 1) {
+      const order = orders[i];
+      setBulkProgress({ done: i, total: orders.length });
+      setCreatingId(order.id);
+      const result = await createLabelForOrder(order, token, { openLabel: false });
+      if (result.ok) {
+        succeeded += 1;
+        totalCost += result.rateAmount ?? 0;
+      } else {
+        failed += 1;
+      }
+    }
+
+    setCreatingId(null);
+    setBulkProgress({ done: orders.length, total: orders.length });
+    setBulkSummary({ succeeded, failed, totalCost });
+    setBulkRunning(false);
+    await fetchLabels();
   };
 
   return (
@@ -230,15 +289,51 @@ export default function AdminShippingLabels() {
           </section>
 
           <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between gap-3">
+            <div className="border-b border-gray-100 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-charcoal">Create labels</h3>
                 <p className="text-xs text-charcoal-light mt-0.5">Paid orders waiting for a shipping label</p>
               </div>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                {filteredPending.length}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                  {filteredPending.length}
+                </span>
+                {filteredPending.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleCreateAllLabels(filteredPending)}
+                    disabled={bulkRunning || !shippoEnabled}
+                    className="inline-flex items-center gap-2 rounded-xl bg-charcoal px-4 py-2.5 text-sm font-semibold text-white hover:bg-charcoal-light disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {bulkRunning && <Loader2 size={16} className="animate-spin" />}
+                    {bulkRunning
+                      ? `Creating ${bulkProgress?.done ?? 0}/${bulkProgress?.total ?? filteredPending.length}...`
+                      : `Create All (${filteredPending.length})`}
+                  </button>
+                )}
+              </div>
             </div>
+
+            {bulkSummary && (
+              <div
+                className={`mx-5 mt-4 rounded-xl border px-4 py-3 text-sm ${
+                  bulkSummary.failed > 0
+                    ? 'border-amber-200 bg-amber-50 text-amber-900'
+                    : 'border-green-200 bg-green-50 text-green-800'
+                }`}
+              >
+                <p className="font-semibold">
+                  {bulkSummary.succeeded} label{bulkSummary.succeeded === 1 ? '' : 's'} created
+                  {bulkSummary.failed > 0 && `, ${bulkSummary.failed} failed`} — total cost $
+                  {bulkSummary.totalCost.toFixed(2)}
+                </p>
+                {bulkSummary.failed > 0 && (
+                  <p className="mt-1 text-amber-800">
+                    Check the error under each failed order below and retry it individually.
+                  </p>
+                )}
+              </div>
+            )}
 
             {filteredPending.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm text-charcoal-light">
@@ -268,7 +363,7 @@ export default function AdminShippingLabels() {
                       labelCreating={creatingId === order.id}
                       labelError={errors[order.id] || null}
                       labelNotice={notices[order.id] || null}
-                      onCreateLabel={() => handleCreateLabel(order)}
+                      onCreateLabel={bulkRunning ? undefined : () => handleCreateLabel(order)}
                       variant="page"
                     />
                   </div>
