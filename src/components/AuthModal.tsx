@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { authApi } from '../lib/supabase/api';
@@ -149,6 +149,22 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                   {demoAccounts
                     ? 'Supabase is not configured. Add Vercel env vars before demo login will work.'
                     : 'Supabase is not configured. Sign-in is unavailable until it is.'}
+                </div>
+              )}
+
+              {mode === 'login' && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-himalayan text-himalayan font-semibold hover:bg-himalayan-lighter transition-colors"
+                  >
+                    <UserRound size={18} />
+                    Continue as Guest
+                  </button>
+                  <p className="text-center text-xs text-charcoal-light mt-2">
+                    No account needed to shop or check out.
+                  </p>
                 </div>
               )}
 
