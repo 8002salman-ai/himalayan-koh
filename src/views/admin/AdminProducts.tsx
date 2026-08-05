@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { adminApi, AdminProductFilters } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { isRealCatalogProduct } from '../../lib/supabase/api/products';
 import { getErrorMessage } from '../../lib/errors';
 import { useToast } from '../../context/ToastContext';
 import { SkeletonTable } from '../../components/ui/Skeleton';
@@ -31,6 +32,15 @@ import {
   productMissingShippingWeight,
 } from '../../lib/products/shippingWeight';
 import ProductEditorModal from '../../components/admin/ProductEditorModal';
+
+/** Active + not dealer-only is necessary but not sufficient — the storefront
+ * also requires a complete Shippo packing profile (see isRealCatalogProduct
+ * in lib/supabase/api/products.ts). A product missing only that is otherwise
+ * indistinguishable from a live one in this list, which is what let "active"
+ * products silently never appear on the public site. */
+function isHiddenFromStorefront(product: ProductWithRelations): boolean {
+  return Boolean(product.is_active) && !product.dealer_only && !isRealCatalogProduct(product);
+}
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
 
@@ -360,10 +370,14 @@ export default function AdminProducts() {
     }
   };
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = (savedProduct?: Product) => {
     fetchProducts();
     setEditorOpen(false);
     setEditingProduct(null);
+
+    if (savedProduct?.is_active && !savedProduct.dealer_only && !isRealCatalogProduct(savedProduct)) {
+      toast.error('Saved, but this product is Active and still won\'t show on your public site until its Shippo Required box dimensions are completed.');
+    }
   };
 
   const selectAll = () => {
@@ -375,6 +389,7 @@ export default function AdminProducts() {
   };
 
   const missingWeightCount = products.filter((p) => productMissingShippingWeight(p.weight)).length;
+  const hiddenFromStorefrontCount = products.filter(isHiddenFromStorefront).length;
 
   return (
     <div className="space-y-4">
@@ -392,6 +407,17 @@ export default function AdminProducts() {
           Add Product
         </button>
       </div>
+
+      {hiddenFromStorefrontCount > 0 && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+          <p className="font-semibold">
+            {hiddenFromStorefrontCount} active listing{hiddenFromStorefrontCount > 1 ? 's are' : ' is'} not visible on your public site
+          </p>
+          <p className="mt-1 text-red-900/90">
+            These products are marked Active but will not appear on /products or in search until their package dimensions are completed. Open each one, go to the <strong>Shippo Required</strong> tab, fill in the box dimensions and weight, and save.
+          </p>
+        </div>
+      )}
 
       {missingWeightCount > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -613,7 +639,12 @@ export default function AdminProducts() {
                                 <> · Ship: {formatShippingWeightLabel(product.weight, product.weight_unit)}</>
                               )}
                             </p>
-                            {productMissingShippingWeight(product.weight) && (
+                            {isHiddenFromStorefront(product) ? (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
+                                <AlertTriangle size={10} />
+                                Not visible on storefront
+                              </span>
+                            ) : productMissingShippingWeight(product.weight) && (
                               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                                 <AlertTriangle size={10} />
                                 Add shipping weight

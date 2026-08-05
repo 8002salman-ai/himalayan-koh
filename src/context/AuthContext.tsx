@@ -11,6 +11,17 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  // True only while a role-bearing profile fetch is in flight for an
+  // authenticated user. Route guards that gate on role (AdminRoute) must wait
+  // on this in addition to `loading` — `loading` clears as soon as the
+  // session is known, before the profile row has actually arrived, so a
+  // guard that only checked `loading` would judge isAdmin from a `profile`
+  // that hadn't loaded yet and misfire "access denied" for a real admin.
+  profileLoading: boolean;
+  // Set when the profile row could not be loaded after retries. isAdmin then
+  // reflects a guessed fallback role, not a database-confirmed one — route
+  // guards can offer a retry instead of treating that as a final verdict.
+  profileError: string | null;
   error: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -23,11 +34,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const PROFILE_FETCH_TIMEOUT_MS = 12_000;
+const PROFILE_FETCH_TIMEOUT_MS = 6_000;
+// A single transient failure (cold serverless connection, a dropped
+// WebSocket, one slow round trip) must not permanently downgrade an admin to
+// the 'customer' fallback role for the rest of the session — that is what
+// previously required a manual refresh to clear. Retrying a couple of times
+// automatically absorbs exactly that class of blip.
+const PROFILE_FETCH_RETRY_DELAYS_MS = [800, 2000];
 // Auth is client-side and should never leave a protected route on an
 // indefinite spinner. A stale browser lock, blocked storage read, or an
 // interrupted network request must recover to the login flow instead.
 const AUTH_INITIALIZATION_MAX_WAIT_MS = 5_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -63,11 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const profileRequestId = useRef(0);
 
-  const fetchProfile = useCallback(async (userId: string, currentUser?: User | null) => {
-    const requestId = ++profileRequestId.current;
+  const fetchProfile = useCallback(async (userId: string, currentUser?: User | null, attempt = 0) => {
+    const requestId = attempt === 0 ? ++profileRequestId.current : profileRequestId.current;
+    if (attempt === 0) {
+      setProfileLoading(true);
+      setProfileError(null);
+    }
 
     try {
       const profileData = await withTimeout(
@@ -80,9 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileData) {
         setProfile(profileData);
+        setProfileLoading(false);
         return;
       }
 
+      // No error, no row — a genuinely new user without a profile yet, not a
+      // failure worth retrying. The guessed role is the correct outcome here.
       const fallbackRole = roleFromUser(currentUser ?? null) || 'customer';
       setProfile({
         id: userId,
@@ -94,16 +124,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      setProfileLoading(false);
     } catch (err) {
       if (requestId !== profileRequestId.current) return;
-      console.error('Failed to fetch profile:', err);
+
+      const retryDelay = PROFILE_FETCH_RETRY_DELAYS_MS[attempt];
+      if (retryDelay !== undefined) {
+        await sleep(retryDelay);
+        if (requestId !== profileRequestId.current) return;
+        return fetchProfile(userId, currentUser, attempt + 1);
+      }
+
+      console.error('Failed to fetch profile after retries:', err);
 
       const sessionUser = currentUser ?? null;
       if (!sessionUser) {
         setProfile(null);
+        setProfileLoading(false);
         return;
       }
 
+      // Every retry was exhausted. isAdmin will now reflect a guessed role,
+      // not a confirmed one — profileError lets route guards offer a retry
+      // instead of a flat "access denied" for what may just be a real admin
+      // whose profile row genuinely could not be reached this time.
+      setProfileError(err instanceof Error ? err.message : 'Could not load your profile.');
       const fallbackRole = roleFromUser(sessionUser) || 'customer';
       setProfile({
         id: userId,
@@ -115,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      setProfileLoading(false);
     }
   }, []);
 
@@ -123,6 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!sessionUser) {
         profileRequestId.current += 1;
         setProfile(null);
+        setProfileLoading(false);
+        setProfileError(null);
         return Promise.resolve();
       }
 
@@ -214,6 +262,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(null);
             setUser(null);
             setProfile(null);
+            setProfileLoading(false);
+            setProfileError(null);
             setLoading(false);
           }
           return;
@@ -278,6 +328,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileRequestId.current += 1;
     setUser(null);
     setProfile(null);
+    setProfileLoading(false);
+    setProfileError(null);
     setSession(null);
     try {
       await authApi.signOut();
@@ -305,14 +357,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  // fetchProfile manages its own profileLoading/profileError state, so a
+  // manual retry (e.g. the "Try again" button on an access-denied screen)
+  // doesn't need to also toggle the global `loading` flag — doing so used to
+  // re-trigger the full-page auth spinner on every route it's shared with.
   const refreshProfile = useCallback(async () => {
     if (user) {
-      setLoading(true);
-      try {
-        await fetchProfile(user.id, user);
-      } finally {
-        setLoading(false);
-      }
+      await fetchProfile(user.id, user);
     }
   }, [user, fetchProfile]);
 
@@ -324,6 +375,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     session,
     loading,
+    profileLoading,
+    profileError,
     error,
     isAuthenticated: !!user,
     isAdmin,
