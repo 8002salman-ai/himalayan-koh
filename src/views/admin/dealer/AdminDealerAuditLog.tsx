@@ -43,7 +43,7 @@ export default function AdminDealerAuditLog() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={6} /></div>
+          <table className="w-full"><SkeletonTable rows={6} /></table>
         ) : entries.length === 0 ? (
           <EmptyState icon={<History size={40} />} title="No activity recorded yet" size="compact" className="border-0 shadow-none rounded-none py-16" />
         ) : (

@@ -1,6 +1,7 @@
 import type { Product } from '../../data/products';
 import { products as fallbackProducts } from '../../data/products';
 import { productsApi } from '../supabase/api';
+import { isHiddenActiveProduct } from '../supabase/api/products';
 import { isSupabaseConfigured } from '../supabase/client';
 import type { ProductWithCategory } from '../supabase/database.types';
 import { getFallbackProductBySlug, mapSupabaseProduct } from './mapProduct';
@@ -108,6 +109,14 @@ export async function resolveProductBySlug(routeSlug: string): Promise<ResolvedP
   } catch (err) {
     debug.supabaseError = err instanceof Error ? err.message : String(err);
     console.error('[PDP] Supabase product lookup failed:', err);
+  }
+
+  // A real active row for this slug that's just withheld from the
+  // storefront (no packing profile yet) must not be papered over by the
+  // bundled demo catalog, which happens to reuse the same slugs.
+  if (await isHiddenActiveProduct(normalizedSlug).catch(() => false)) {
+    logResolveDebug(debug);
+    return { product: null, related: [], debug };
   }
 
   const fallback = findInCatalog(normalizedSlug) || null;

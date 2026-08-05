@@ -60,9 +60,9 @@ export default function DealerStatements() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4">
+          <table className="w-full">
             <SkeletonTable rows={4} />
-          </div>
+          </table>
         ) : statements.length === 0 ? (
           <EmptyState
             icon={<FileBarChart size={40} />}

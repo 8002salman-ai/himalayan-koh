@@ -16,7 +16,11 @@ export interface CartItem {
 
 let cartItems: CartItem[] = [];
 const listeners: Set<() => void> = new Set();
-let loadedForUserId: string | null | undefined;
+// Distinct from a real user id and from the guest case (userId === undefined)
+// so "never loaded yet" can't be mistaken for "already loaded for this
+// (possibly guest) session" — see loadCart below.
+const NOT_LOADED = Symbol('not-loaded');
+let loadedForUserId: string | null | undefined | typeof NOT_LOADED = NOT_LOADED;
 let isLoadingCart = false;
 const localCartKey = 'cart_items';
 

@@ -91,9 +91,9 @@ export default function AdminWholesaleOrders() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4">
+          <table className="w-full">
             <SkeletonTable rows={5} />
-          </div>
+          </table>
         ) : orders.length === 0 ? (
           <EmptyState
             icon={<Package size={40} />}

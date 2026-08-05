@@ -122,9 +122,9 @@ export default function AdminWholesalePurchaseRequests() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4">
+          <table className="w-full">
             <SkeletonTable rows={5} />
-          </div>
+          </table>
         ) : requests.length === 0 ? (
           <EmptyState
             icon={<ClipboardList size={40} />}

@@ -46,7 +46,7 @@ export default function AdminDealerSalesReps() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={3} /></div>
+          <table className="w-full"><SkeletonTable rows={3} /></table>
         ) : reps.length === 0 ? (
           <EmptyState icon={<UserCheck size={40} />} title="No sales representatives" description="Admin accounts can be assigned as sales reps from a dealer's record." size="compact" className="border-0 shadow-none rounded-none py-16" />
         ) : (

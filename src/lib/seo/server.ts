@@ -7,6 +7,7 @@ import type {
 } from '@/lib/supabase/database.types';
 import type { Product } from '@/data/products';
 import { getFallbackProductBySlug, mapSupabaseProduct } from '@/lib/products/mapProduct';
+import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 import { publicEnv } from '@/lib/env';
 
 /**
@@ -81,7 +82,7 @@ export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> 
   const { data } = await getSeoSupabase()
     .from('products')
     .select(
-      'name, slug, description, short_description, price, images, thumbnail, sku, meta_title, meta_description'
+      'name, slug, description, short_description, price, images, thumbnail, sku, meta_title, meta_description, tags'
     )
     .eq('slug', normalized)
     .eq('is_active', true)
@@ -89,7 +90,8 @@ export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> 
     .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
-  return (data as SeoProduct | null) ?? null;
+  if (!data || !isRealCatalogProduct(data as { tags?: string[] | null })) return null;
+  return data as SeoProduct;
 }
 
 /** Route params arrive URL-encoded and case-inconsistent; slugs are stored lowercase. */
@@ -121,7 +123,15 @@ export async function fetchSeoProductModel(slug: string): Promise<Product | null
     .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
-  if (data) return mapSupabaseProduct(data as unknown as ProductWithCategory);
+  if (data) {
+    // A real active row exists for this slug — either show it (packing
+    // profile present) or respect that it's deliberately withheld from the
+    // storefront. Either way, never let the bundled demo catalog (which
+    // reuses these same slugs) republish it from stale fallback data.
+    return isRealCatalogProduct(data as { tags?: string[] | null })
+      ? mapSupabaseProduct(data as unknown as ProductWithCategory)
+      : null;
+  }
 
   return getFallbackProductBySlug(normalized) ?? null;
 }

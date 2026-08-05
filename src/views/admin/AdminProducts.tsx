@@ -542,7 +542,7 @@ export default function AdminProducts() {
       {/* Products Table */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <SkeletonTable rows={6} />
+          <table className="w-full"><SkeletonTable rows={6} /></table>
         ) : products.length === 0 ? (
           <EmptyState
             icon={<Package size={40} />}
@@ -625,9 +625,10 @@ export default function AdminProducts() {
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2.5">
                           <img
-                            src={product.thumbnail || images[0] || ''}
+                            src={product.thumbnail || images[0] || '/images/placeholder-product.svg'}
                             alt={productName}
                             className="h-11 w-11 rounded-md object-cover bg-gray-100"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                           />
                           <div className="min-w-0">
                             <p className="max-w-[260px] truncate text-sm font-semibold text-charcoal">

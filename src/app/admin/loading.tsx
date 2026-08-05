@@ -10,7 +10,9 @@ export default function AdminLoading() {
   return (
     <div aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading…</span>
-      <SkeletonTable rows={6} />
+      <table className="w-full">
+        <SkeletonTable rows={6} />
+      </table>
     </div>
   );
 }
