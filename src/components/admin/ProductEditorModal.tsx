@@ -949,10 +949,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {shippingNumberField('Height', 'productHeightIn', 'in')}
                     </div>
 
-                    <p className="mt-3 text-xs text-charcoal-light">
+                    <p className={`mt-3 text-xs ${formData.weight && hasCompleteShippingProfile(shippingProfile) ? 'text-charcoal-light' : 'font-semibold text-red-600'}`}>
                       {formData.weight && hasCompleteShippingProfile(shippingProfile)
                         ? 'Shipping profile complete — Shippo can use the saved box rules.'
-                        : 'Required: complete box dimensions, packaging weight, units per box, and maximum packed weight in Shippo Required.'}
+                        : 'This product will NOT appear on the public site until these are complete. Fill in box dimensions, packaging weight, units per box, and maximum packed weight in Shippo Required, then save.'}
                     </p>
                   </section>
 

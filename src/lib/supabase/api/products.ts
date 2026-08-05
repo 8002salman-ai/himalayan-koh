@@ -7,7 +7,11 @@ import type { Product, Category, ProductWithCategory } from '../database.types';
 // available to admins for reference but never appear in the real storefront.
 const PACKING_PROFILE_TAG_PREFIX = 'packing_profile:';
 
-function isRealCatalogProduct(product: { tags?: string[] | null }): boolean {
+// Exported so Admin → Products can tell an admin, per listing, whether it is
+// actually visible on the storefront — the previous UI only warned about a
+// missing weight, which is not what gates visibility here and left admins
+// believing an active product was live when it was not.
+export function isRealCatalogProduct(product: { tags?: string[] | null }): boolean {
   return Array.isArray(product.tags) && product.tags.some((tag) => tag.startsWith(PACKING_PROFILE_TAG_PREFIX));
 }
 

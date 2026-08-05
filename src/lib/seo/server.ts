@@ -28,6 +28,23 @@ export function getSeoSupabase() {
 }
 
 /**
+ * Every server-rendered route (Products, product detail, blog) awaits one of
+ * the fetches below before Next can send the page, and client-side
+ * navigation waits for that same render to finish before the URL changes —
+ * with no loading.tsx in (main), the old page just sits there in the
+ * meantime. A Supabase request that stalls (cold serverless network blip,
+ * DNS hiccup) used to hang that render indefinitely, which reads as
+ * navigation being stuck until the visitor manually reloads. Bounding every
+ * such request lets a stall fail fast instead: the page still renders, just
+ * without that one piece of data, the same way a not-found row is handled.
+ */
+const SEO_FETCH_TIMEOUT_MS = 6_000;
+
+export function seoFetchDeadline(): AbortSignal {
+  return AbortSignal.timeout(SEO_FETCH_TIMEOUT_MS);
+}
+
+/**
  * Absolute site origin for canonical URLs / OG tags. Prefers the configured
  * NEXT_PUBLIC_SITE_URL; falls back to the production domain (never a
  * vercel.app preview URL, which would leak into search results).
@@ -69,6 +86,7 @@ export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> 
     .eq('slug', normalized)
     .eq('is_active', true)
     .eq('dealer_only', false)
+    .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
   return (data as SeoProduct | null) ?? null;
@@ -100,6 +118,7 @@ export async function fetchSeoProductModel(slug: string): Promise<Product | null
     .eq('slug', normalized)
     .eq('is_active', true)
     .eq('dealer_only', false)
+    .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
   if (data) return mapSupabaseProduct(data as unknown as ProductWithCategory);
@@ -130,6 +149,7 @@ export async function fetchSeoBlogPost(slug: string): Promise<SeoBlogPost | null
     )
     .eq('slug', normalized)
     .eq('is_published', true)
+    .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
   return (data as SeoBlogPost | null) ?? null;
@@ -153,6 +173,7 @@ export async function fetchSeoBlogPostFull(slug: string): Promise<SeoBlogPostFul
     .select('*, author:profiles(id, full_name, avatar_url)')
     .eq('slug', normalized)
     .eq('is_published', true)
+    .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
   return (data as unknown as SeoBlogPostFull | null) ?? null;
@@ -169,7 +190,8 @@ export async function fetchSeoBlogPosts(limit = 24): Promise<SeoBlogPostFull[]> 
     .select('*, author:profiles(id, full_name, avatar_url)')
     .eq('is_published', true)
     .order('published_at', { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .abortSignal(seoFetchDeadline());
 
   return (data as unknown as SeoBlogPostFull[] | null) ?? [];
 }

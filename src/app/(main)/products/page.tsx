@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd, aggregateOfferJsonLd } from '@/lib/seo/jsonLd';
-import { getSeoSupabase } from '@/lib/seo/server';
+import { getSeoSupabase, seoFetchDeadline } from '@/lib/seo/server';
 import {
   buildProductsCategoryPath,
   filterLabelFromKey,
@@ -74,7 +74,8 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
         .from('products')
         .select('price')
         .eq('is_active', true)
-        .eq('dealer_only', false);
+        .eq('dealer_only', false)
+        .abortSignal(seoFetchDeadline());
 
       if (products && products.length > 0) {
         const prices = (products as { price: number }[]).map((p) => Number(p.price)).filter(Boolean);
