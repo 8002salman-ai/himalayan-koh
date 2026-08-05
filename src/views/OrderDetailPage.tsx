@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
                     <div className="space-y-4">
                       {order.order_items.map((item) => (
                         <div key={item.id} className="flex gap-4">
-                          <img src={item.product_image || ''} alt={item.product_name} className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
+                          <img src={item.product_image || '/images/placeholder-product.svg'} alt={item.product_name} className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-charcoal line-clamp-2">{item.product_name}</p>
                             <p className="text-sm text-charcoal-light">

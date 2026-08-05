@@ -103,7 +103,7 @@ export default function WishlistPage() {
                 {wishlist.map((item) => (
                   <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden">
                     <img
-                      src={item.product.thumbnail || item.product.images?.[0] || ''}
+                      src={item.product.thumbnail || item.product.images?.[0] || '/images/placeholder-product.svg'}
                       alt={item.product.name}
                       className="w-full aspect-square object-cover bg-gray-100"
                     />

@@ -43,7 +43,7 @@ export default function AdminDealerCommunication() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={5} /></div>
+          <table className="w-full"><SkeletonTable rows={5} /></table>
         ) : emails.length === 0 ? (
           <EmptyState icon={<Mail size={40} />} title="No emails sent yet" description="Status-change emails to dealers will appear here." size="compact" className="border-0 shadow-none rounded-none py-16" />
         ) : (

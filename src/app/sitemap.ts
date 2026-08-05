@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
 import { CATEGORY_CONTENT_REGISTRY, buildProductsCategoryPath } from '@/lib/categoryContent';
 import type { CategoryContentKey } from '@/lib/categoryContent';
+import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 
 type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
@@ -48,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [{ data: products }, { data: posts }] = await Promise.all([
     supabase
       .from('products')
-      .select('slug, updated_at')
+      .select('slug, updated_at, tags')
       .eq('is_active', true)
       .eq('dealer_only', false),
     supabase
@@ -57,8 +58,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq('is_published', true),
   ]);
 
-  for (const product of (products as { slug: string; updated_at: string | null }[] | null) || []) {
-    if (!product.slug) continue;
+  for (const product of (products as { slug: string; updated_at: string | null; tags?: string[] | null }[] | null) || []) {
+    if (!product.slug || !isRealCatalogProduct(product)) continue;
     entries.push({
       url: `${origin}/products/${product.slug}`,
       lastModified: product.updated_at ? new Date(product.updated_at) : now,

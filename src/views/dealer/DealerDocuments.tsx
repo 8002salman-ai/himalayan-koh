@@ -65,9 +65,9 @@ export default function DealerDocuments() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4">
+          <table className="w-full">
             <SkeletonTable rows={3} />
-          </div>
+          </table>
         ) : (
           <div className="divide-y divide-gray-100">
             {(application?.dealer_documents || []).map((doc) => (

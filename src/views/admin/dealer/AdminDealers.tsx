@@ -75,7 +75,7 @@ export default function AdminDealers() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={5} /></div>
+          <table className="w-full"><SkeletonTable rows={5} /></table>
         ) : dealers.length === 0 ? (
           <EmptyState
             icon={<Building2 size={40} />}

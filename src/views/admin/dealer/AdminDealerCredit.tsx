@@ -85,7 +85,7 @@ export default function AdminDealerCredit() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={5} /></div>
+          <table className="w-full"><SkeletonTable rows={5} /></table>
         ) : dealers.length === 0 ? (
           <EmptyState icon={<CreditCard size={40} />} title="No dealers found" size="compact" className="border-0 shadow-none rounded-none py-16" />
         ) : (

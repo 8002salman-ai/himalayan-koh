@@ -121,9 +121,9 @@ export default function AdminDealerApplications() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-4">
+          <table className="w-full">
             <SkeletonTable rows={5} />
-          </div>
+          </table>
         ) : applications.length === 0 ? (
           <EmptyState
             icon={<Building2 size={40} />}

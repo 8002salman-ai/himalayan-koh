@@ -164,7 +164,7 @@ export default function OrdersPage() {
                       {order.order_items.slice(0, 3).map((item, j) => (
                         <img
                           key={j}
-                          src={item.product_image || ''}
+                          src={item.product_image || '/images/placeholder-product.svg'}
                           alt={item.product_name}
                           className="w-12 h-12 rounded-lg border-2 border-white object-cover"
                         />
@@ -270,7 +270,7 @@ export default function OrdersPage() {
                       {selectedOrder.order_items.map((item) => (
                         <div key={item.id} className="flex items-center gap-3">
                           <img
-                            src={item.product_image || ''}
+                            src={item.product_image || '/images/placeholder-product.svg'}
                             alt={item.product_name}
                             className="w-12 h-12 rounded-lg object-cover"
                           />

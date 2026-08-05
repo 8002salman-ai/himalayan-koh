@@ -15,6 +15,28 @@ export function isRealCatalogProduct(product: { tags?: string[] | null }): boole
   return Array.isArray(product.tags) && product.tags.some((tag) => tag.startsWith(PACKING_PROFILE_TAG_PREFIX));
 }
 
+// Callers that resolve a product by slug fall back to the bundled demo
+// catalog when Supabase has no visible row — that fallback exists so a
+// Supabase outage doesn't blank the page, not so an admin's in-progress
+// (active but not yet shipping-configured) product silently republishes
+// itself from stale demo data under the same slug. This tells them which
+// case they're in: true means a real active row exists but is intentionally
+// withheld from the storefront, so no fallback should be used.
+export async function isHiddenActiveProduct(slug: string): Promise<boolean> {
+  const normalizedSlug = normalizeProductSlug(slug);
+  if (!normalizedSlug) return false;
+
+  const { data } = await supabase
+    .from('products')
+    .select('tags')
+    .eq('slug', normalizedSlug)
+    .eq('is_active', true)
+    .eq('dealer_only', false)
+    .maybeSingle();
+
+  return Boolean(data) && !isRealCatalogProduct(data as unknown as { tags?: string[] | null });
+}
+
 // Explicit column list for retail-facing queries. Excludes dealer_price,
 // distributor_price, cost_price, and moq/dealer_only — dealer-program-only
 // fields that must never appear in a retail API response, even if the

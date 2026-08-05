@@ -634,7 +634,12 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-5">Contact Information</h2>
+              <h2 className="font-serif text-xl font-bold text-charcoal mb-2">Contact Information</h2>
+              {!user && (
+                <p className="mb-5 text-sm text-charcoal-light">
+                  Checking out as a guest — no account needed. You&rsquo;ll get an email confirmation and order tracking link once you pay.
+                </p>
+              )}
               <div className="grid md:grid-cols-2 gap-4">
                 <Field label="Email address" error={fieldErrors.email}>
                   <input required type="email" value={form.email} onChange={(event) => handleChange('email', event.target.value)} placeholder="you@example.com" className={inputClass} />

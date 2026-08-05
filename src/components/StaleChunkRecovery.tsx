@@ -7,8 +7,25 @@ const RELOAD_FLAG = 'hk_stale_chunk_reload';
 const CHUNK_ERROR_PATTERN =
   /Loading chunk|ChunkLoadError|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
 
+/**
+ * react-dom's commit phase throwing "Cannot read properties of null (reading
+ * 'removeChild'/'insertBefore')" mid-navigation. Root cause not fully
+ * isolated — it surfaces intermittently on client-side route transitions in
+ * a tab with a long navigation history, not on a fresh load, and not
+ * consistently enough to bisect to one component. Whatever the trigger,
+ * React's Fiber tree is left out of sync with the real DOM at that point, so
+ * no in-app state change can recover it — same situation as a stale chunk,
+ * so it gets the same one-time-reload treatment rather than leaving the
+ * visitor stuck on whatever page happened to be on screen when it threw.
+ */
+const REACT_DOM_RACE_PATTERN =
+  /Cannot read properties of null \(reading '(removeChild|insertBefore|appendChild)'\)/i;
+
 function isStaleChunkError(message: unknown): boolean {
-  return typeof message === 'string' && CHUNK_ERROR_PATTERN.test(message);
+  return (
+    typeof message === 'string' &&
+    (CHUNK_ERROR_PATTERN.test(message) || REACT_DOM_RACE_PATTERN.test(message))
+  );
 }
 
 /**
@@ -51,12 +68,26 @@ export default function StaleChunkRecovery() {
       if (isStaleChunkError(message)) recover();
     };
 
+    // React 19 logs the react-dom commit-phase race (see REACT_DOM_RACE_PATTERN
+    // above) through console.error rather than raising it as a window 'error'
+    // event, so the listener above never sees it. console.error is the one path
+    // that reliably observes it.
+    const originalConsoleError = console.error;
+    const onConsoleError = (...args: unknown[]) => {
+      if (args.some((arg) => isStaleChunkError(arg instanceof Error ? arg.message : String(arg)))) {
+        recover();
+      }
+      originalConsoleError.apply(console, args);
+    };
+    console.error = onConsoleError;
+
     window.addEventListener('error', onError);
     window.addEventListener('unhandledrejection', onRejection);
     return () => {
       window.clearTimeout(clearGuard);
       window.removeEventListener('error', onError);
       window.removeEventListener('unhandledrejection', onRejection);
+      console.error = originalConsoleError;
     };
   }, []);
 

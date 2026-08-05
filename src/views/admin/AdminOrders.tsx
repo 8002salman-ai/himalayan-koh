@@ -385,7 +385,7 @@ export default function AdminOrders() {
       <div className="grid xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
-            <SkeletonTable rows={5} />
+            <table className="w-full"><SkeletonTable rows={5} /></table>
           ) : orders.length === 0 ? (
             <EmptyState
               icon={<Package size={40} />}
@@ -696,7 +696,7 @@ function OrderDetailPanel({
         <div className="space-y-3">
           {order.order_items.map((item) => (
             <div key={item.id} className="flex gap-3">
-              <img src={item.product_image || ''} alt={item.product_name} className="w-11 h-11 rounded-lg object-cover bg-gray-100" />
+              <img src={item.product_image || '/images/placeholder-product.svg'} alt={item.product_name} className="w-11 h-11 rounded-lg object-cover bg-gray-100" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-charcoal truncate">{item.product_name}</p>
                 <p className="text-xs text-charcoal-light">Qty {item.quantity} x ${item.unit_price.toFixed(2)}</p>
