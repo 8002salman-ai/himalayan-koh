@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, UserRound } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 
@@ -44,9 +44,23 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const supabaseReady = isSupabaseConfigured();
 
-  const from = (location.state as { from?: string })?.from || '/';
+  // `from` arrives as a ?from= query param (see ProtectedRoute/AdminRoute) —
+  // falls back to router state for any caller that still passes it that way.
+  const from =
+    searchParams.get('from') || (location.state as { from?: string })?.from || '/';
+
+  // `from` is where a guard sent them here from — for an account-only page
+  // (wishlist, orders, account, admin) that guard fires again immediately on
+  // arrival and bounces them straight back to this login page. Guest-safe
+  // pages (checkout, home, product pages, ...) don't have that guard, so
+  // `from` is fine there.
+  const ACCOUNT_ONLY_PREFIXES = ['/account', '/orders', '/wishlist', '/admin'];
+  const guestDestination = ACCOUNT_ONLY_PREFIXES.some((prefix) => from.startsWith(prefix))
+    ? '/products'
+    : from;
 
   useEffect(() => {
     if (demoAccounts && from.startsWith('/admin')) {
@@ -124,6 +138,18 @@ export default function LoginPage() {
               {demoAccounts ? 'Sign in to your account or use a demo login' : 'Sign in to your account'}
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(guestDestination, { replace: true })}
+            className="w-full flex items-center justify-center gap-2 py-3.5 mb-6 rounded-xl border-2 border-himalayan text-himalayan font-semibold hover:bg-himalayan-lighter transition-colors"
+          >
+            <UserRound size={18} />
+            Continue as Guest
+          </button>
+          <p className="text-center text-xs text-charcoal-light -mt-4 mb-6">
+            No account needed to shop or check out — you can create one later to track orders faster.
+          </p>
 
           {demoAccounts && (
             <>

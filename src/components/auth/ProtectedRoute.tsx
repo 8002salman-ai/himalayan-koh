@@ -26,9 +26,12 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     );
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated. `from` travels as a query param,
+  // not router state — state is kept in sessionStorage keyed by pathname and
+  // cleared on effect cleanup, which React 18/19 dev-mode StrictMode fires an
+  // extra time on mount, wiping it out before the login page ever reads it.
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to={`/login?from=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
   // Check role if required

@@ -26,8 +26,10 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     );
   }
 
+  // `from` travels as a query param, not router state — see ProtectedRoute
+  // for why the state-based version is unreliable.
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to={`/login?from=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
   if (!isAdmin) {
