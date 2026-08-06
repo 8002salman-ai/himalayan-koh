@@ -15,8 +15,14 @@ function truncateAtWord(text: string, max: number): string {
 
 function normalizeTitle(title: string): string {
   const withoutBrand = title.replace(/\s*\|\s*Himalayan Koh\s*$/i, '').trim();
-  const withBrand = `${withoutBrand}${BRAND_SUFFIX}`;
-  return truncateAtWord(withBrand, MAX_TITLE_LENGTH);
+  const maxBaseLength = MAX_TITLE_LENGTH - BRAND_SUFFIX.length;
+  // Truncate the product's own title first so the brand suffix always
+  // survives intact — truncating the combined string let long product
+  // titles eat into " | Himalayan Koh", leaving titles that end in a bare
+  // "|…" with no brand name at all.
+  const base =
+    withoutBrand.length > maxBaseLength ? truncateAtWord(withoutBrand, maxBaseLength) : withoutBrand;
+  return `${base}${BRAND_SUFFIX}`;
 }
 
 function buildFallbackDescription(product: Product, displayName: string): string {
