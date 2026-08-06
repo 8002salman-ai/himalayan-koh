@@ -31,6 +31,19 @@ const nextConfig: NextConfig = {
         destination: '/admin/products',
         permanent: false,
       },
+      // Both pouch products were renamed to fix a typo ("Eidible" ->
+      // "Edible") and correct their weight labeling — old slugs redirect so
+      // existing links/bookmarks/search rankings aren't lost.
+      {
+        source: '/products/himalayan-pink-eidible-salt-fine-grain-pouche',
+        destination: '/products/himalayan-pink-edible-salt-fine-grain-pouch-3-lb',
+        permanent: true,
+      },
+      {
+        source: '/products/himalayan-pink-eidible-salt-fine-grain-pouche-',
+        destination: '/products/himalayan-pink-edible-salt-fine-grain-pouch-6-lb',
+        permanent: true,
+      },
       // Legacy WordPress URLs last, so the admin rules above always win.
       ...LEGACY_REDIRECTS,
     ];

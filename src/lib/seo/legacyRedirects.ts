@@ -63,7 +63,7 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   },
   {
     source: '/product/pouches',
-    destination: '/products/himalayan-rock-salt-6lbs-pouch',
+    destination: '/products/himalayan-pink-edible-salt-fine-grain-pouch-6-lb',
     permanent: true,
   },
   {

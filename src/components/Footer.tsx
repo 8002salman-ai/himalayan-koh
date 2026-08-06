@@ -23,8 +23,10 @@ const aboutLinks = [
 ];
 
 const productLinks = [
-  { label: 'Salt Lick for Horses', to: productsPathForCategoryTitle('Salt Lick for Horses') },
   { label: 'Edible Cooking Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
+  { label: 'Salt Lick for Horses', to: productsPathForCategoryTitle('Salt Lick for Horses') },
+  { label: 'Salt for Cattle', to: productsPathForCategoryTitle('Salt for Cattle') },
+  { label: 'Salt Blocks for Deer', to: productsPathForCategoryTitle('Salt Blocks for Deer') },
 ];
 
 export default function Footer() {
