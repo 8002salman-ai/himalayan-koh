@@ -7,6 +7,7 @@ import {
   filterLabelFromKey,
   getCategoryContent,
   normalizeCategoryQueryValue,
+  CATEGORY_PRODUCT_LABELS,
   CATEGORY_QUERY_PARAM,
 } from '@/lib/categoryContent';
 import JsonLd from '@/components/seo/JsonLd';
@@ -37,11 +38,45 @@ export async function generateMetadata({
 
   // Each category hub is its own landing page — give it server-rendered title,
   // description and canonical instead of inheriting the generic /products ones.
-  if (category) {
+  if (category && categoryKey) {
+    // A category hub with zero purchasable products is a real page (gallery,
+    // guides) but nothing to buy — noindex it so it doesn't rank for a
+    // product search and disappoint the shopper who clicks through. Drop the
+    // noindex the moment a matching SKU goes active. products.category is a
+    // display label resolved client-side from categories.name via
+    // category_id — the raw table has no `category` column, so the id has
+    // to be looked up first.
+    let hasProducts = true;
+    try {
+      const supabase = getSeoSupabase();
+      const { data: categoryRows } = await supabase
+        .from('categories')
+        .select('id')
+        .in('name', [...CATEGORY_PRODUCT_LABELS[categoryKey]])
+        .abortSignal(seoFetchDeadline());
+      const categoryIds = ((categoryRows ?? []) as { id: string }[]).map((row) => row.id);
+
+      if (categoryIds.length > 0) {
+        const { count } = await supabase
+          .from('products')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .eq('dealer_only', false)
+          .in('category_id', categoryIds)
+          .abortSignal(seoFetchDeadline());
+        hasProducts = Boolean(count && count > 0);
+      } else {
+        hasProducts = false;
+      }
+    } catch (err) {
+      console.error('Could not check category product count for robots meta:', err);
+    }
+
     return buildMetadata({
       title: category.seo.title,
       description: category.seo.description,
       path: buildProductsCategoryPath(categoryKey),
+      noindex: !hasProducts,
     });
   }
 
