@@ -15,7 +15,7 @@ export const SITE_URL =
     : 'http://localhost:3000');
 export const SITE_NAME = 'Himalayan Koh';
 export const DEFAULT_TITLE =
-  'Himalayan Koh - Premium Himalayan Pink Salt for Livestock & Cooking';
+  'Himalayan Koh - Premium Pink Salt for Livestock & Cooking';
 export const DEFAULT_DESCRIPTION =
   'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
 /**

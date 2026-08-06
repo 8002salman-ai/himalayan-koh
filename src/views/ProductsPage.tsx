@@ -236,7 +236,7 @@ export default function ProductsPage() {
       >
         <div className="mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <CategoryFilterNav activeFilter={activeFilter} />
+            <CategoryFilterNav activeFilter={activeFilter} products={products} />
             <div className="relative w-full md:w-72">
               <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
