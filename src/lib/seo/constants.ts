@@ -1,13 +1,18 @@
 /**
- * Dynamic site URL based on environment. In production (Vercel), uses the
- * project domain. Locally defaults to himalayankoh.com.
- * This ensures canonical tags, og:image, and schema markup use the correct domain.
+ * Dynamic site URL based on environment. `VERCEL_URL` is deliberately never
+ * used here — Vercel sets it to the unique per-deployment hostname (e.g.
+ * `himalayan-<hash>-<team>.vercel.app`), not the stable production alias, so
+ * reading it leaked a dead preview URL into Product/FAQ/WebPage JSON-LD.
+ * `VERCEL_PROJECT_PRODUCTION_URL` is the one that always points at the
+ * current production alias/custom domain.
  */
-export const SITE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.NODE_ENV === 'production'
-  ? 'https://himalayankoh.com'
-  : 'http://localhost:3000';
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.NODE_ENV === 'production'
+    ? 'https://himalayankoh.com'
+    : 'http://localhost:3000');
 export const SITE_NAME = 'Himalayan Koh';
 export const DEFAULT_TITLE =
   'Himalayan Koh - Premium Himalayan Pink Salt for Livestock & Cooking';

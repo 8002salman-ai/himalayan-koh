@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingCart, Heart, Star, Check, Minus, Plus, ChevronRight } from 'lucide-react';
+import { X, ShoppingCart, Heart, Check, Minus, Plus, ChevronRight } from 'lucide-react';
 import type { Product } from '../data/products';
 import { getProductDisplayName } from '../lib/products/productSeo';
 import { useCart } from '../store/cartStore';
@@ -154,12 +154,6 @@ export default function ProductDetailView({
           <p className="text-xs font-bold uppercase tracking-wider text-himalayan mb-2">
             {product.category}
           </p>
-
-          <div className="flex items-center gap-1 mb-3">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
-            ))}
-          </div>
 
           <h1 className="font-serif text-xl md:text-2xl font-bold text-charcoal mb-3 leading-snug pr-8">
             {displayName}
