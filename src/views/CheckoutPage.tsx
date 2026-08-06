@@ -153,6 +153,14 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
     ))
   );
   const shippingReadyForPayment = !shippoEnabled || useLiveShippoRates || shippoRatesAttempted;
+  const addressReady = Boolean(
+    form.fullName.trim() &&
+    form.addressLine1.trim() &&
+    form.city.trim() &&
+    form.state.trim() &&
+    form.postalCode.trim() &&
+    form.country.trim()
+  );
   const canAutoPreparePayment =
     retailOnly &&
     paymentMethod === 'stripe' &&
@@ -279,6 +287,13 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
           }
           return pickDefaultShippoRateId(result.rates);
         });
+        // A rate is auto-picked above (the cheapest option renders
+        // pre-highlighted), but shippingSelected otherwise only flips true
+        // from an explicit card click — leaving Payment stuck on "select a
+        // shipping method" even though one is already visibly selected,
+        // until the shopper re-clicks the option that already looks chosen.
+        // Auto-picking counts as picked.
+        if (result.rates.length > 0) setShippingSelected(true);
       } catch (err) {
         setShippoRates([]);
         setSelectedShippoRateId(null);
@@ -303,6 +318,20 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
     form.country,
     form.email,
   ]);
+
+  // Whenever a live Shippo rate isn't in play (Shippo disabled, still
+  // loading, or fell back after an error), the flat Standard/Expedited
+  // cards render with one already visually highlighted — but that's a
+  // different flag (shippingSelected) than the auto-pick above only
+  // handles for the live-rate path. Keep it in sync with the flat-rate
+  // fallback too, so Payment doesn't stay stuck on "select a shipping
+  // method" once a real address is entered, matching what the shopper
+  // already sees selected on screen.
+  useEffect(() => {
+    if (useLiveShippoRates) return;
+    setShippingSelected(addressReady);
+  }, [useLiveShippoRates, addressReady]);
+
   const applySuggestedAddress = () => {
     if (!addressValidation?.recommendedAddress) return;
     const suggested = addressValidation.recommendedAddress;
