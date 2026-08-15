@@ -767,6 +767,7 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      [_ in never]: never;
     };
     Enums: {
       order_status:
