@@ -7,8 +7,6 @@ export { blogApi } from './blog';
 export { notificationsApi } from './notifications';
 export { adminApi } from './admin';
 export { addressesApi } from './addresses';
-export { dealerApi, dealerUnitPrice } from './dealer';
-export { adminDealerApi } from './adminDealer';
 export { crmApi } from './crm';
 
 
@@ -33,5 +31,3 @@ export type {
   InventoryAlert,
 } from './admin';
 export type { AddressFormData } from './addresses';
-export type { DealerApplicationData, DealerDocumentType } from './dealer';
-export type { AdminDealerApplicationFilters, AdminDealerApplicationDetail } from './adminDealer';

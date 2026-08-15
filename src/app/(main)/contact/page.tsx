@@ -4,9 +4,9 @@ import ContactClient from './ContactClient';
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'Contact Himalayan Koh - Product & Wholesale Support',
+    title: 'Contact Himalayan Koh - Product & Support',
     description:
-      'Contact Himalayan Koh for product questions, wholesale inquiries, shipping, and customer support.',
+      'Contact Himalayan Koh for product questions, shipping, and customer support.',
     path: '/contact',
   });
 }

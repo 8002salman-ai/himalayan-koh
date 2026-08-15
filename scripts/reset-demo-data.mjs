@@ -14,8 +14,6 @@ const DEMO_EMAILS = [
   'manager@himalayankoh.com',
   'sales@himalayankoh.com',
   'customer@himalayankoh.com',
-  'dealer@himalayankoh.com',
-  'demo@dealer.himalayankoh.com',
 ];
 
 function confirm(question) {
@@ -55,12 +53,6 @@ async function deleteDemoData(adminClient, userIds) {
     return;
   }
 
-  // dealer_applications and its children (documents/notes/audit log) are
-  // ON DELETE CASCADE from application_id, so deleting the application
-  // rows is enough to clean up everything under them.
-  const { data: apps } = await adminClient.from('dealer_applications').select('id').in('user_id', userIds);
-  const appIds = (apps || []).map((a) => a.id);
-
   const { data: orders } = await adminClient.from('orders').select('id').in('user_id', userIds);
   const orderIds = (orders || []).map((o) => o.id);
 
@@ -75,11 +67,6 @@ async function deleteDemoData(adminClient, userIds) {
 
   await adminClient.from('notifications').delete().in('user_id', userIds);
   console.log('  Deleted demo notifications.');
-
-  if (appIds.length > 0) {
-    await adminClient.from('dealer_applications').delete().in('id', appIds);
-    console.log(`  Deleted ${appIds.length} demo dealer application(s) (documents/notes/audit cascade automatically).`);
-  }
 
   console.log('  Kept: schema, migrations, storage buckets, and every non-demo row untouched.');
 }

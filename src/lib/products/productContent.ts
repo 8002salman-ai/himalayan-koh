@@ -30,7 +30,7 @@ const SHARED_TRUST: TrustIndicator[] = [
 const SHARED_SHIPPING: string[] = [
   'Orders ship within 1–2 business days from our Texas warehouse.',
   'Free standard shipping on U.S. orders over $50.',
-  'Bulk and wholesale inquiries welcome — contact us for ranch pricing.',
+  'Bulk orders welcome — contact us for quantity pricing.',
 ];
 
 const CATEGORY_DEFAULTS: Record<string, Omit<ProductContent, 'displayName' | 'metaTitle' | 'metaDescription'>> = {
@@ -201,8 +201,8 @@ const GENERIC_DEFAULTS: Omit<ProductContent, 'displayName'> = {
         'Our salt is sourced from Himalayan deposits and selected for purity, mineral content, and consistent grain quality.',
     },
     {
-      question: 'Do you offer wholesale pricing?',
-      answer: 'Yes — contact our team for bulk and ranch pricing on large orders.',
+      question: 'Do you offer bulk pricing?',
+      answer: 'Yes — contact our team for quantity pricing on large orders.',
     },
   ],
 };

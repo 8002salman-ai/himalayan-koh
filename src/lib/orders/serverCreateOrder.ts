@@ -55,42 +55,19 @@ async function resolveServerShippingCost(params: {
   return { shippingCostOverride: undefined, shippoRateId: null, carrier: null, service: null };
 }
 
-export async function isApprovedDealer(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
-  userId: string | null
-): Promise<boolean> {
-  if (!userId) return false;
-  const { data, error } = await supabase
-    .from('dealer_applications')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('status', 'approved')
-    .maybeSingle();
-  if (error) throw error;
-  return Boolean(data);
-}
-
 /**
  * Re-prices every cart line from the products table immediately before order
  * creation. Cart_items.unit_price is client-writable (see cartApi.addToCart)
  * and must never be trusted for money math — this is the single source of
- * truth for what a customer actually gets charged. Also rejects the order
- * outright if it contains a dealer_only product and the buyer isn't an
- * approved dealer, so retail checkout can't be used to acquire dealer-only
- * inventory even if it somehow ended up in a cart.
+ * truth for what a customer actually gets charged.
  */
-export function priceCartItems(cartItems: CartWithItems['cart_items'], isDealer: boolean) {
+export function priceCartItems(cartItems: CartWithItems['cart_items']) {
   return cartItems.map((item) => {
     const product = item.product;
     if (!product) {
       throw new Error('One of the items in your cart is no longer available. Please remove it and try again.');
     }
-    if (product.dealer_only && !isDealer) {
-      throw new Error('One of the items in your cart is restricted to approved wholesale accounts.');
-    }
-    const unitPrice =
-      isDealer && product.dealer_price != null ? Number(product.dealer_price) : Number(product.price);
-    return { ...item, unitPrice };
+    return { ...item, unitPrice: Number(product.price) };
   });
 }
 
@@ -132,8 +109,7 @@ export async function serverCreateOrder(
   }
 
   const supabase = getSupabaseAdmin();
-  const isDealer = await isApprovedDealer(supabase, options.userId ?? null);
-  const pricedItems = priceCartItems(cart.cart_items, isDealer);
+  const pricedItems = priceCartItems(cart.cart_items);
 
   // Recompute shipping server-side; never trust data.shippingCostOverride.
   const shippingMethod = (data.shippingMethod || 'standard') as ShippingMethod;

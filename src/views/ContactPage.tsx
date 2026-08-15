@@ -127,7 +127,7 @@ export default function ContactPage() {
               <MessageSquare size={24} className="mb-4" />
               <h3 className="font-serif text-xl font-bold mb-2">Need Bulk Orders?</h3>
               <p className="text-white/80 text-sm mb-4">
-                Call us directly for wholesale pricing and bulk order inquiries.
+                Call us directly for bulk order inquiries.
               </p>
               <a
                 href="tel:8322246466"
@@ -219,7 +219,6 @@ export default function ContactPage() {
                         <option value="">Select a subject</option>
                         <option value="general">General Inquiry</option>
                         <option value="bulk">Bulk Order</option>
-                        <option value="wholesale">Wholesale Pricing</option>
                         <option value="support">Product Support</option>
                         <option value="other">Other</option>
                       </select>

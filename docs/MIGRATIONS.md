@@ -4,7 +4,7 @@ This project uses a **custom, hand-rolled migration runner**, not the Supabase C
 
 ## Source of truth: `public._hk_migrations`
 
-Every migration is a plain numbered SQL file in `supabase/migrations/` (`001_initial_schema.sql` … `018_cart_dealer_isolation.sql`, and so on). They are applied **directly over a Postgres connection** (`SUPABASE_DB_URL`) by `scripts/lib/pg.mjs`, in the exact order listed in its `MIGRATIONS` array, from:
+Every migration is a plain numbered SQL file in `supabase/migrations/` (`001_initial_schema.sql` … `028_packing_profiles_for_remaining_products.sql`). They are applied **directly over a Postgres connection** (`SUPABASE_DB_URL`) by `scripts/lib/pg.mjs`, in the exact order listed in its `MIGRATIONS` array, from:
 
 - `npm run setup` / `npm run setup:supabase` (`scripts/setup-supabase-backend.mjs`)
 - `npm run reset` (`scripts/reset-demo-data.mjs`, via the same setup path)

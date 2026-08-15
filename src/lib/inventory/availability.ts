@@ -14,8 +14,8 @@ export interface AvailabilityInfo {
   badgeClass: string;
 }
 
-/** Client-safe — used to show real-time-ish availability on the dealer
- * catalog before a purchase request is ever submitted. This is advisory
+/** Client-safe — used to show real-time-ish availability on the catalog
+ * before an order is ever placed. This is advisory
  * only; the authoritative check happens server-side on submission (see
  * checkPurchaseRequestStock.ts) and again at conversion time. */
 export function getAvailability(inventory: InventoryLike | null | undefined): AvailabilityInfo {

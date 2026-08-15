@@ -109,7 +109,7 @@ export const products: Product[] = [
     priceMin: 17.95,
     image: legacyImage('saltRockBag'),
     category: "Edible Cooking Salt",
-    description: "Unlock the full potential of premium Himalayan salt with our 6 lb Rock Salt Pouches, available in both fine and coarse grain sizes. Perfect for cooking enthusiasts, health-conscious consumers, and wholesale buyers, this bulk option offers excellent value without compromising quality. The coarse grain works beautifully for salt-roasting vegetables and meats, while the fine grain dissolves quickly for everyday cooking. Our 6 lb pouch represents an investment in your kitchen's flavor profile and your family's nutritional wellness. Rich in 80+ trace minerals, every gram supports hydration and mineral balance. Sourced directly from ancient Himalayan deposits and carefully processed to preserve purity.",
+    description: "Unlock the full potential of premium Himalayan salt with our 6 lb Rock Salt Pouches, available in both fine and coarse grain sizes. Perfect for cooking enthusiasts, health-conscious consumers, and bulk buyers, this option offers excellent value without compromising quality. The coarse grain works beautifully for salt-roasting vegetables and meats, while the fine grain dissolves quickly for everyday cooking. Our 6 lb pouch represents an investment in your kitchen's flavor profile and your family's nutritional wellness. Rich in 80+ trace minerals, every gram supports hydration and mineral balance. Sourced directly from ancient Himalayan deposits and carefully processed to preserve purity.",
     grainSizes: ["Fine", "Coarse"],
     inStock: true,
   },

@@ -395,29 +395,17 @@ export const adminApi = {
 
   // Delete product
   async deleteProduct(id: string): Promise<{ archived: boolean }> {
-    // Product IDs are deliberately retained on both retail order items and
-    // wholesale request items so historical pricing/fulfilment records remain
-    // auditable. Archive referenced products instead of attempting a delete
-    // that PostgreSQL must reject.
-    const [orderItemsResult, wholesaleItemsResult] = await Promise.all([
-      supabase
-        .from('order_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('product_id', id),
-      supabase
-        .from('wholesale_purchase_request_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('product_id', id),
-    ]);
+    // Product IDs are deliberately retained on order items so historical
+    // pricing/fulfilment records remain auditable. Archive referenced
+    // products instead of attempting a delete that PostgreSQL must reject.
+    const { data: orderItemsResult, error: orderError } = await supabase
+      .from('order_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('product_id', id);
 
-    if (orderItemsResult.error) throw orderItemsResult.error;
-    // The wholesale module is optional for older deployments. In that case
-    // there cannot be wholesale history to protect yet.
-    if (wholesaleItemsResult.error && wholesaleItemsResult.error.code !== '42P01') {
-      throw wholesaleItemsResult.error;
-    }
+    if (orderError) throw orderError;
 
-    if ((orderItemsResult.count || 0) > 0 || (wholesaleItemsResult.count || 0) > 0) {
+    if ((orderItemsResult?.length ?? 0) > 0) {
       const { error: archiveError } = await supabase
         .from('products')
         .update({ is_active: false, is_featured: false, updated_at: new Date().toISOString() } as never)
@@ -448,25 +436,15 @@ export const adminApi = {
 
   // Bulk delete products
   async bulkDeleteProducts(ids: string[]): Promise<{ archivedIds: string[] }> {
-    const [orderItemsResult, wholesaleItemsResult] = await Promise.all([
-      supabase
-        .from('order_items')
-        .select('product_id')
-        .in('product_id', ids),
-      supabase
-        .from('wholesale_purchase_request_items')
-        .select('product_id')
-        .in('product_id', ids),
-    ]);
-    if (orderItemsResult.error) throw orderItemsResult.error;
-    if (wholesaleItemsResult.error && wholesaleItemsResult.error.code !== '42P01') {
-      throw wholesaleItemsResult.error;
-    }
+    const { data: orderItemsResult, error: orderError } = await supabase
+      .from('order_items')
+      .select('product_id')
+      .in('product_id', ids);
+    if (orderError) throw orderError;
 
-    const referencedIds = new Set<string>([
-      ...((orderItemsResult.data || []) as Array<{ product_id: string }>).map((item) => item.product_id),
-      ...((wholesaleItemsResult.data || []) as Array<{ product_id: string }>).map((item) => item.product_id),
-    ]);
+    const referencedIds = new Set<string>(
+      ((orderItemsResult || []) as Array<{ product_id: string }>).map((item) => item.product_id)
+    );
     const archivedIds = [...referencedIds];
     const deletableIds = ids.filter((id) => !referencedIds.has(id));
 

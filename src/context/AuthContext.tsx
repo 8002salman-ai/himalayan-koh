@@ -324,7 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear local auth state first and unconditionally, so the UI reflects a
     // signed-out state immediately — even if the Supabase revoke call fails
     // (e.g. an already-expired/missing session). This is what fixes sign-out
-    // appearing to "not work" across the customer, admin, and dealer portals.
+    // appearing to "not work" across the customer and admin portals.
     profileRequestId.current += 1;
     setUser(null);
     setProfile(null);

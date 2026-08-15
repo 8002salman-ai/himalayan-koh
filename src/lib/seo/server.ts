@@ -86,7 +86,6 @@ export async function fetchSeoProduct(slug: string): Promise<SeoProduct | null> 
     )
     .eq('slug', normalized)
     .eq('is_active', true)
-    .eq('dealer_only', false)
     .abortSignal(seoFetchDeadline())
     .maybeSingle();
 
@@ -119,7 +118,6 @@ export async function fetchSeoProductModel(slug: string): Promise<Product | null
     .select('*, category:categories(*), inventory(*)')
     .eq('slug', normalized)
     .eq('is_active', true)
-    .eq('dealer_only', false)
     .abortSignal(seoFetchDeadline())
     .maybeSingle();
 

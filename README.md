@@ -1,6 +1,6 @@
 # Himalayan Koh
 
-Next.js 15 (App Router) e-commerce storefront with a B2B dealer portal, backed entirely by Supabase (Auth, Postgres/RLS, Storage).
+Next.js 15 (App Router) e-commerce storefront backed entirely by Supabase (Auth, Postgres/RLS, Storage).
 
 For environment variable reference and Vercel deploy settings, see [DEPLOYMENT.md](./DEPLOYMENT.md). For a walkthrough of creating a Supabase project by hand, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). For how database migrations work in this repo (and which `supabase` CLI commands NOT to run), see [docs/MIGRATIONS.md](./docs/MIGRATIONS.md). The workflow below is the fast path that replaces most of that manual work.
 
@@ -34,7 +34,7 @@ One-command environment bootstrap. A brand-new developer clones the repo, fills 
 2. Tests the Supabase connection — stops with the exact error if it fails.
 3. Applies pending migrations directly via Postgres (`SUPABASE_DB_URL`), creating storage buckets and RLS policies as part of that SQL.
 4. Seeds demo products/categories/inventory/blog content (`supabase/seed.sql`).
-5. Seeds all demo accounts, dealer data, orders, wishlists, notifications, dealer documents, and dealer pricing.
+5. Seeds all demo accounts, orders, wishlists, and notifications.
 6. Re-runs the required-tables/storage/RLS checks to verify the setup actually succeeded rather than assuming it did.
 7. Prints a summary checklist plus verified login details for every demo account.
 
@@ -44,13 +44,13 @@ Safe to run multiple times — every step is `upsert`/idempotent, so re-running 
 
 **Development only.** Prints a warning and the exact list of demo accounts it will touch, then requires typing `RESET` to continue (or `FORCE=true npm run reset` for CI/non-interactive use). It then:
 
-- Deletes only the data belonging to the known demo accounts (orders, wishlist entries, notifications, dealer applications and everything cascaded from them).
+- Deletes only the data belonging to the known demo accounts (orders, wishlist entries, notifications).
 - Leaves schema, migrations, storage buckets, and every non-demo row untouched.
 - Re-runs the same seeding used by `npm run setup` to leave you with a fresh demo environment.
 
 ### `npm run verify`
 
-Automated PASS/FAIL check of the whole demo workflow: admin/dealer/customer login, orders, wishlist, notifications, dealer pricing, dealer documents, dashboard data, anon-key API reads, and RLS isolation (public reads allowed, admin-only tables blocked). Exits non-zero on any failure — safe to wire into CI.
+Automated PASS/FAIL check of the whole demo workflow: admin/customer login, orders, wishlist, notifications, anon-key API reads, and RLS isolation (public reads allowed, admin-only tables blocked). Exits non-zero on any failure — safe to wire into CI.
 
 ### `npm run info`
 
@@ -66,7 +66,6 @@ Created by `npm run setup` (and refreshed by `npm run reset`):
 | Manager | `manager@himalayankoh.com` | `Manager@123` |
 | Sales | `sales@himalayankoh.com` | `Sales@123` |
 | Customer | `customer@himalayankoh.com` | `Customer@123` |
-| Dealer (Approved, Gold, Net 30) | `dealer@himalayankoh.com` | `Dealer@123` |
 
 ## Other scripts
 

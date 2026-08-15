@@ -5,7 +5,6 @@ loadEnv();
 
 const DEMO_LOGINS = [
   { label: 'Admin login', email: 'admin@himalayankoh.com', password: 'Admin@123' },
-  { label: 'Dealer login', email: 'dealer@himalayankoh.com', password: 'Dealer@123' },
   { label: 'Customer login', email: 'customer@himalayankoh.com', password: 'Customer@123' },
 ];
 
@@ -42,33 +41,6 @@ async function verifyNotifications(adminClient, userId, label) {
   return line(label, (data || []).length > 0, `${(data || []).length} notification(s)`);
 }
 
-async function verifyDealerPricing(adminClient) {
-  const { data, error } = await adminClient.from('products').select('id').not('dealer_price', 'is', null);
-  if (error) return line('Dealer pricing', false, error.message);
-  return line('Dealer pricing', (data || []).length > 0, `${(data || []).length} product(s) with dealer pricing`);
-}
-
-async function verifyDocuments(adminClient) {
-  const { data, error } = await adminClient.from('dealer_documents').select('id');
-  if (error) return line('Documents', false, error.message);
-  return line('Documents', (data || []).length > 0, `${(data || []).length} document(s)`);
-}
-
-async function verifyDashboard(adminClient, dealerUserId) {
-  // Mirrors the queries the dealer/admin dashboards actually run: an
-  // approved application (for dealer level / credit / stats) and a
-  // catalog read (for featured/recommended products).
-  if (!dealerUserId) return line('Dashboard data', false, 'no dealer user id (login failed above)');
-  const [{ data: app, error: appError }, { data: products, error: productsError }] = await Promise.all([
-    adminClient.from('dealer_applications').select('id, status, dealer_level').eq('user_id', dealerUserId).maybeSingle(),
-    adminClient.from('products').select('id').eq('is_active', true).limit(1),
-  ]);
-  if (appError) return line('Dashboard data', false, appError.message);
-  if (productsError) return line('Dashboard data', false, productsError.message);
-  const ok = Boolean(app && app.status === 'approved') && (products || []).length > 0;
-  return line('Dashboard data', ok, ok ? `dealer_level=${app.dealer_level}` : 'dealer application or catalog missing');
-}
-
 async function verifyApis(anonClient) {
   // The Supabase REST layer (PostgREST) underlies every src/lib/supabase/api/*
   // call in the app — this exercises the same read path with the anon key.
@@ -79,13 +51,13 @@ async function verifyApis(anonClient) {
 
 async function verifyRls(anonClient) {
   // Two-sided check: anon must be able to read public products, but must
-  // NOT be able to read admin-only dealer_notes.
-  const [{ data: products, error: productsError }, { data: notes, error: notesError }] = await Promise.all([
+  // NOT be able to read admin-only crm_leads.
+  const [{ data: products, error: productsError }, { data: leads, error: leadsError }] = await Promise.all([
     anonClient.from('products').select('id').eq('is_active', true).limit(1),
-    anonClient.from('dealer_notes').select('id').limit(1),
+    anonClient.from('crm_leads').select('id').limit(1),
   ]);
   const publicReadOk = !productsError && (products || []).length >= 0;
-  const adminOnlyBlocked = Boolean(notesError) || (notes || []).length === 0;
+  const adminOnlyBlocked = Boolean(leadsError) || (leads || []).length === 0;
   const pass = publicReadOk && adminOnlyBlocked;
   return line(
     'RLS',
@@ -113,12 +85,8 @@ async function run() {
   console.log('\nData:');
   const results = [];
   results.push(await verifyOrders(adminClient, loginResults['customer@himalayankoh.com'].userId, 'Orders (customer)'));
-  results.push(await verifyOrders(adminClient, loginResults['dealer@himalayankoh.com'].userId, 'Orders (dealer)'));
   results.push(await verifyWishlist(adminClient, loginResults['customer@himalayankoh.com'].userId, 'Wishlist'));
-  results.push(await verifyDealerPricing(adminClient));
-  results.push(await verifyDocuments(adminClient));
-  results.push(await verifyNotifications(adminClient, loginResults['dealer@himalayankoh.com'].userId, 'Notifications'));
-  results.push(await verifyDashboard(adminClient, loginResults['dealer@himalayankoh.com'].userId));
+  results.push(await verifyNotifications(adminClient, loginResults['customer@himalayankoh.com'].userId, 'Notifications'));
 
   console.log('\nPlatform:');
   results.push(await verifyApis(anonClient));

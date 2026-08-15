@@ -102,11 +102,6 @@ export interface Database {
           tags: string[];
           meta_title: string | null;
           meta_description: string | null;
-          dealer_price: number | null;
-          distributor_price: number | null;
-          moq: number;
-          dealer_only: boolean;
-          retail_only: boolean;
           pack_size: string | null;
           lead_time_days: number | null;
           created_at: string;
@@ -134,11 +129,6 @@ export interface Database {
           tags?: string[];
           meta_title?: string | null;
           meta_description?: string | null;
-          dealer_price?: number | null;
-          distributor_price?: number | null;
-          moq?: number;
-          dealer_only?: boolean;
-          retail_only?: boolean;
           pack_size?: string | null;
           lead_time_days?: number | null;
           created_at?: string;
@@ -166,11 +156,6 @@ export interface Database {
           tags?: string[];
           meta_title?: string | null;
           meta_description?: string | null;
-          dealer_price?: number | null;
-          distributor_price?: number | null;
-          moq?: number;
-          dealer_only?: boolean;
-          retail_only?: boolean;
           pack_size?: string | null;
           lead_time_days?: number | null;
           created_at?: string;
@@ -429,7 +414,6 @@ export interface Database {
           label_url: string | null;
           shipped_at: string | null;
           delivered_at: string | null;
-          source_purchase_request_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -460,7 +444,6 @@ export interface Database {
           label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
-          source_purchase_request_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -491,7 +474,6 @@ export interface Database {
           label_url?: string | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
-          source_purchase_request_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -666,217 +648,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      dealer_applications: {
-        Row: {
-          id: string;
-          user_id: string;
-          business_name: string;
-          owner_name: string;
-          business_email: string;
-          phone: string;
-          website: string | null;
-          business_type: string;
-          years_in_business: number | null;
-          country: string;
-          state: string;
-          city: string;
-          zip: string;
-          address: string;
-          monthly_purchase: string | null;
-          products_interested: string[];
-          sales_channels: string[];
-          notes: string | null;
-          status: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
-          status_reason: string | null;
-          dealer_level: 'bronze' | 'silver' | 'gold' | 'platinum';
-          credit_terms: number;
-          tax_exempt: boolean;
-          credit_limit: number | null;
-          sales_rep_id: string | null;
-          reviewed_by: string | null;
-          reviewed_at: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          business_name: string;
-          owner_name: string;
-          business_email: string;
-          phone: string;
-          website?: string | null;
-          business_type: string;
-          years_in_business?: number | null;
-          country: string;
-          state: string;
-          city: string;
-          zip: string;
-          address: string;
-          monthly_purchase?: string | null;
-          products_interested?: string[];
-          sales_channels?: string[];
-          notes?: string | null;
-          status?: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
-          status_reason?: string | null;
-          dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
-          credit_terms?: number;
-          tax_exempt?: boolean;
-          credit_limit?: number | null;
-          sales_rep_id?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          business_name?: string;
-          owner_name?: string;
-          business_email?: string;
-          phone?: string;
-          website?: string | null;
-          business_type?: string;
-          years_in_business?: number | null;
-          country?: string;
-          state?: string;
-          city?: string;
-          zip?: string;
-          address?: string;
-          monthly_purchase?: string | null;
-          products_interested?: string[];
-          sales_channels?: string[];
-          notes?: string | null;
-          status?: 'pending' | 'under_review' | 'need_more_info' | 'approved' | 'rejected' | 'suspended';
-          status_reason?: string | null;
-          dealer_level?: 'bronze' | 'silver' | 'gold' | 'platinum';
-          credit_terms?: number;
-          tax_exempt?: boolean;
-          credit_limit?: number | null;
-          sales_rep_id?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      dealer_documents: {
-        Row: {
-          id: string;
-          application_id: string;
-          document_type: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
-          file_path: string;
-          file_name: string;
-          mime_type: string | null;
-          file_size: number | null;
-          is_verified: boolean;
-          verified_by: string | null;
-          verified_at: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          application_id: string;
-          document_type: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
-          file_path: string;
-          file_name: string;
-          mime_type?: string | null;
-          file_size?: number | null;
-          is_verified?: boolean;
-          verified_by?: string | null;
-          verified_at?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          application_id?: string;
-          document_type?: 'reseller_permit' | 'business_license' | 'tax_certificate' | 'additional';
-          file_path?: string;
-          file_name?: string;
-          mime_type?: string | null;
-          file_size?: number | null;
-          is_verified?: boolean;
-          verified_by?: string | null;
-          verified_at?: string | null;
-          created_at?: string;
-        };
-      };
-      dealer_notes: {
-        Row: {
-          id: string;
-          application_id: string;
-          admin_id: string;
-          note: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          application_id: string;
-          admin_id: string;
-          note: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          application_id?: string;
-          admin_id?: string;
-          note?: string;
-          created_at?: string;
-        };
-      };
-      dealer_audit_log: {
-        Row: {
-          id: string;
-          application_id: string;
-          actor_id: string | null;
-          action: string;
-          details: Json | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          application_id: string;
-          actor_id?: string | null;
-          action: string;
-          details?: Json | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          application_id?: string;
-          actor_id?: string | null;
-          action?: string;
-          details?: Json | null;
-          created_at?: string;
-        };
-      };
-      dealer_emails: {
-        Row: {
-          id: string;
-          application_id: string;
-          email_type: string;
-          sent_to: string;
-          subject: string;
-          sent_at: string;
-        };
-        Insert: {
-          id?: string;
-          application_id: string;
-          email_type: string;
-          sent_to: string;
-          subject: string;
-          sent_at?: string;
-        };
-        Update: {
-          id?: string;
-          application_id?: string;
-          email_type?: string;
-          sent_to?: string;
-          subject?: string;
-          sent_at?: string;
-        };
-      };
       contact_submissions: {
         Row: {
           id: string;
@@ -913,9 +684,8 @@ export interface Database {
           email: string;
           phone: string | null;
           company: string | null;
-          source: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          source: 'contact_form' | 'manual' | 'other';
           contact_submission_id: string | null;
-          dealer_application_id: string | null;
           profile_id: string | null;
           status: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
           subject: string | null;
@@ -931,9 +701,8 @@ export interface Database {
           email: string;
           phone?: string | null;
           company?: string | null;
-          source?: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          source?: 'contact_form' | 'manual' | 'other';
           contact_submission_id?: string | null;
-          dealer_application_id?: string | null;
           profile_id?: string | null;
           status?: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
           subject?: string | null;
@@ -949,9 +718,8 @@ export interface Database {
           email?: string;
           phone?: string | null;
           company?: string | null;
-          source?: 'contact_form' | 'dealer_application' | 'manual' | 'other';
+          source?: 'contact_form' | 'manual' | 'other';
           contact_submission_id?: string | null;
-          dealer_application_id?: string | null;
           profile_id?: string | null;
           status?: 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
           subject?: string | null;
@@ -994,334 +762,11 @@ export interface Database {
           created_at?: string;
         };
       };
-      wholesale_purchase_requests: {
-
-        Row: {
-          id: string;
-          request_number: string;
-          dealer_id: string;
-          dealer_application_id: string;
-          status:
-            | 'submitted'
-            | 'ready_for_review'
-            | 'waiting_stock'
-            | 'stock_verified'
-            | 'approved'
-            | 'rejected'
-            | 'changes_requested'
-            | 'payment_pending'
-            | 'paid'
-            | 'converted'
-            | 'cancelled';
-          dealer_po_reference: string | null;
-          subtotal: number;
-          shipping_cost: number;
-          tax_amount: number;
-          total: number;
-          currency: string;
-          shipping_address: Json;
-          billing_address: Json | null;
-          dealer_notes: string | null;
-          rejection_reason: string | null;
-          change_request_note: string | null;
-          expected_dispatch_date: string | null;
-          payment_method: 'bank_transfer' | 'cash' | null;
-          payment_confirmed_at: string | null;
-          reviewed_by: string | null;
-          reviewed_at: string | null;
-          converted_order_id: string | null;
-          converted_at: string | null;
-          metadata: Json;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          request_number?: string;
-          dealer_id: string;
-          dealer_application_id: string;
-          status?:
-            | 'submitted'
-            | 'ready_for_review'
-            | 'waiting_stock'
-            | 'stock_verified'
-            | 'approved'
-            | 'rejected'
-            | 'changes_requested'
-            | 'payment_pending'
-            | 'paid'
-            | 'converted'
-            | 'cancelled';
-          dealer_po_reference?: string | null;
-          subtotal?: number;
-          shipping_cost?: number;
-          tax_amount?: number;
-          total?: number;
-          currency?: string;
-          shipping_address: Json;
-          billing_address?: Json | null;
-          dealer_notes?: string | null;
-          rejection_reason?: string | null;
-          change_request_note?: string | null;
-          expected_dispatch_date?: string | null;
-          payment_method?: 'bank_transfer' | 'cash' | null;
-          payment_confirmed_at?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: string | null;
-          converted_order_id?: string | null;
-          converted_at?: string | null;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          request_number?: string;
-          dealer_id?: string;
-          dealer_application_id?: string;
-          status?:
-            | 'submitted'
-            | 'ready_for_review'
-            | 'waiting_stock'
-            | 'stock_verified'
-            | 'approved'
-            | 'rejected'
-            | 'changes_requested'
-            | 'payment_pending'
-            | 'paid'
-            | 'converted'
-            | 'cancelled';
-          dealer_po_reference?: string | null;
-          subtotal?: number;
-          shipping_cost?: number;
-          tax_amount?: number;
-          total?: number;
-          currency?: string;
-          shipping_address?: Json;
-          billing_address?: Json | null;
-          dealer_notes?: string | null;
-          rejection_reason?: string | null;
-          change_request_note?: string | null;
-          expected_dispatch_date?: string | null;
-          payment_method?: 'bank_transfer' | 'cash' | null;
-          payment_confirmed_at?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: string | null;
-          converted_order_id?: string | null;
-          converted_at?: string | null;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      wholesale_purchase_request_items: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          product_id: string;
-          product_name: string;
-          product_image: string | null;
-          moq_snapshot: number;
-          unit_price: number;
-          quantity: number;
-          admin_adjusted_unit_price: number | null;
-          admin_adjusted_quantity: number | null;
-          stock_verified: boolean;
-          auto_stock_check: 'available' | 'insufficient' | null;
-          auto_stock_available_qty: number | null;
-          line_total: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          product_id: string;
-          product_name: string;
-          product_image?: string | null;
-          moq_snapshot?: number;
-          unit_price: number;
-          quantity: number;
-          admin_adjusted_unit_price?: number | null;
-          admin_adjusted_quantity?: number | null;
-          stock_verified?: boolean;
-          auto_stock_check?: 'available' | 'insufficient' | null;
-          auto_stock_available_qty?: number | null;
-          line_total: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          product_id?: string;
-          product_name?: string;
-          product_image?: string | null;
-          moq_snapshot?: number;
-          unit_price?: number;
-          quantity?: number;
-          admin_adjusted_unit_price?: number | null;
-          admin_adjusted_quantity?: number | null;
-          stock_verified?: boolean;
-          auto_stock_check?: 'available' | 'insufficient' | null;
-          auto_stock_available_qty?: number | null;
-          line_total?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      wholesale_purchase_request_notes: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          admin_id: string;
-          note: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          admin_id: string;
-          note: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          admin_id?: string;
-          note?: string;
-          created_at?: string;
-        };
-      };
-      wholesale_purchase_request_audit: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          actor_id: string | null;
-          action: string;
-          details: Json | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          actor_id?: string | null;
-          action: string;
-          details?: Json | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          actor_id?: string | null;
-          action?: string;
-          details?: Json | null;
-          created_at?: string;
-        };
-      };
-      wholesale_purchase_request_emails: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          email_type: string;
-          sent_to: string;
-          subject: string;
-          sent_at: string;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          email_type: string;
-          sent_to: string;
-          subject: string;
-          sent_at?: string;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          email_type?: string;
-          sent_to?: string;
-          subject?: string;
-          sent_at?: string;
-        };
-      };
-      wholesale_purchase_request_messages: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          sender_id: string;
-          sender_role: 'dealer' | 'admin';
-          message: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          sender_id: string;
-          sender_role: 'dealer' | 'admin';
-          message: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          sender_id?: string;
-          sender_role?: 'dealer' | 'admin';
-          message?: string;
-          created_at?: string;
-        };
-      };
-      wholesale_purchase_request_invoices: {
-        Row: {
-          id: string;
-          purchase_request_id: string;
-          invoice_type: 'proforma' | 'commercial';
-          version: number;
-          invoice_number: string;
-          snapshot: Json;
-          pdf_path: string;
-          issued_by: string | null;
-          issued_at: string;
-          supersede_reason: string | null;
-        };
-        Insert: {
-          id?: string;
-          purchase_request_id: string;
-          invoice_type: 'proforma' | 'commercial';
-          version: number;
-          invoice_number?: string;
-          snapshot: Json;
-          pdf_path: string;
-          issued_by?: string | null;
-          issued_at?: string;
-          supersede_reason?: string | null;
-        };
-        Update: {
-          id?: string;
-          purchase_request_id?: string;
-          invoice_type?: 'proforma' | 'commercial';
-          version?: number;
-          invoice_number?: string;
-          snapshot?: Json;
-          pdf_path?: string;
-          issued_by?: string | null;
-          issued_at?: string;
-          supersede_reason?: string | null;
-        };
-      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      convert_wholesale_purchase_request: {
-        Args: { p_request_id: string; p_admin_id: string };
-        // Not self-referencing Database['public']['Tables']['orders']['Row']
-        // here — that circular reference confuses the .rpc() generic
-        // resolution. The caller (serverConvertPurchaseRequest.ts) casts
-        // the result to Order explicitly.
-        Returns: Record<string, unknown>;
-      };
     };
     Enums: {
       order_status:
@@ -1363,22 +808,6 @@ export type OrderItem = Tables<'order_items'>;
 export type BlogPost = Tables<'blog_posts'>;
 export type Notification = Tables<'notifications'>;
 export type Review = Tables<'reviews'>;
-export type DealerApplication = Tables<'dealer_applications'>;
-export type DealerDocument = Tables<'dealer_documents'>;
-export type DealerNote = Tables<'dealer_notes'>;
-export type DealerAuditLogEntry = Tables<'dealer_audit_log'>;
-export type DealerEmailLogEntry = Tables<'dealer_emails'>;
-export type DealerApplicationWithDocuments = DealerApplication & { dealer_documents: DealerDocument[] };
-export type WholesalePurchaseRequest = Tables<'wholesale_purchase_requests'>;
-export type WholesalePurchaseRequestItem = Tables<'wholesale_purchase_request_items'>;
-export type WholesalePurchaseRequestNote = Tables<'wholesale_purchase_request_notes'>;
-export type WholesalePurchaseRequestAuditEntry = Tables<'wholesale_purchase_request_audit'>;
-export type WholesalePurchaseRequestEmailLogEntry = Tables<'wholesale_purchase_request_emails'>;
-export type WholesalePurchaseRequestMessage = Tables<'wholesale_purchase_request_messages'>;
-export type WholesalePurchaseRequestInvoice = Tables<'wholesale_purchase_request_invoices'>;
-export type WholesalePurchaseRequestWithItems = WholesalePurchaseRequest & {
-  wholesale_purchase_request_items: WholesalePurchaseRequestItem[];
-};
 
 // CRM
 export type CrmLead = Tables<'crm_leads'>;

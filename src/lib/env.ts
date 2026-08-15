@@ -13,15 +13,6 @@ export const publicEnv = {
     process.env.VITE_SITE_URL ||
     (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : ''),
   shippoEnabled: process.env.NEXT_PUBLIC_SHIPPO_ENABLED === 'true',
-  // Wholesale/B2B (dealer portal, purchase requests, proforma invoices) is
-  // temporarily disabled site-wide while retail-only mode is in effect.
-  // Nothing wholesale-related is deleted — code, routes, database
-  // tables/RLS, and existing data all remain intact. To restore wholesale,
-  // set NEXT_PUBLIC_WHOLESALE_ENABLED=true (locally and in Vercel's env
-  // vars) and redeploy; every gate keyed off this flag (nav links,
-  // middleware redirects, the cart's dealer-checkout fork, admin nav)
-  // reverts automatically — no further code changes needed.
-  wholesaleEnabled: process.env.NEXT_PUBLIC_WHOLESALE_ENABLED === 'true',
   // Blog is temporarily off the storefront (kept live for direct/search
   // access and in the sitemap for SEO) — set NEXT_PUBLIC_BLOG_ENABLED=true to
   // bring back the "Articles" promo section on category/product pages.

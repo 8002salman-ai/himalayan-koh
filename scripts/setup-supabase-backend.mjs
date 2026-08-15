@@ -112,8 +112,8 @@ async function runMigrations() {
 }
 
 // =====================================================================
-// STEPS 5-6: Demo accounts, dealer data, orders, wishlists,
-// notifications, documents, pricing — all via seedAll().
+// STEPS 5-6: Demo accounts, orders, wishlists, notifications — all via
+// seedAll().
 // =====================================================================
 async function runSeed() {
   section('Step 5/7: Seeding demo accounts and data');
@@ -162,12 +162,9 @@ async function run() {
   console.log('✔ Storage Buckets Created');
   console.log('✔ Policies Created');
   console.log(`✔ Demo Accounts Created (${seedResult.accounts.length})`);
-  console.log(`✔ Demo Orders Created (${seedResult.customer.orders + seedResult.dealers.reduce((s, d) => s + d.orders, 0)})`);
-  console.log(`✔ Dealer Data Created (${seedResult.dealers.length} dealer account${seedResult.dealers.length === 1 ? '' : 's'})`);
-  console.log(`✔ Wishlist Created (${seedResult.customer.wishlist + seedResult.dealers.reduce((s, d) => s + d.wishlist, 0)} items)`);
-  console.log(`✔ Notifications Created (${seedResult.customer.notifications + seedResult.dealers.reduce((s, d) => s + d.notifications, 0)})`);
-  console.log(`✔ Dealer Documents Created (${seedResult.dealers.reduce((s, d) => s + d.documents, 0)})`);
-  console.log(`✔ Dealer Pricing Seeded (${seedResult.dealers.reduce((s, d) => s + d.pricing, 0)} products)`);
+  console.log(`✔ Demo Orders Created (${seedResult.customer.orders})`);
+  console.log(`✔ Wishlist Created (${seedResult.customer.wishlist} items)`);
+  console.log(`✔ Notifications Created (${seedResult.customer.notifications})`);
   console.log('✔ Setup Verified');
 
   console.log('\nVerified login details:');
@@ -180,8 +177,6 @@ async function run() {
   console.log('    sales@himalayankoh.com / Sales@123');
   console.log('  Customer');
   console.log('    customer@himalayankoh.com / Customer@123');
-  console.log('  Dealer (Approved, Gold, Net 30)');
-  console.log('    dealer@himalayankoh.com / Dealer@123');
   console.log('');
   console.log('Setup complete. Run `npm run dev` and sign in with any account above.');
   console.log('Run `npm run verify` any time to re-check that every workflow still works.');

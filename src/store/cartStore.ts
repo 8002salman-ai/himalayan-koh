@@ -21,6 +21,12 @@ const listeners: Set<() => void> = new Set();
 // (possibly guest) session" — see loadCart below.
 const NOT_LOADED = Symbol('not-loaded');
 let loadedForUserId: string | null | undefined | typeof NOT_LOADED = NOT_LOADED;
+// Latest user a load has been requested for. loadCart can be called again while
+// an earlier request is still in flight (auth resolves after mount, so the
+// initial guest load races the logged-in user load); without this, the second
+// request would be silently dropped by the isLoadingCart guard and the user's
+// cart would stay empty until the page remounts.
+let pendingLoadForUserId: string | null | undefined | typeof NOT_LOADED = NOT_LOADED;
 let isLoadingCart = false;
 const localCartKey = 'cart_items';
 
@@ -74,21 +80,29 @@ function mapSupabaseCart(cart: CartWithItems | null): CartItem[] {
 }
 
 async function loadCart(userId?: string) {
-  if (isLoadingCart || loadedForUserId === userId) return;
+  if (loadedForUserId === userId) return;
+  pendingLoadForUserId = userId;
+  if (isLoadingCart) return;
 
   isLoadingCart = true;
   try {
-    if (!isSupabaseConfigured()) {
-      const storedCart = localStorage.getItem(localCartKey);
-      cartItems = storedCart ? JSON.parse(storedCart) as CartItem[] : [];
-    } else {
-      if (userId) {
-        await cartApi.mergeGuestCart(userId);
+    // A newer request may have been skipped because this load was already in
+    // flight (e.g. the guest load from mount racing the auth-resolved user
+    // load). Keep loading until the latest requested user is serviced.
+    do {
+      const target: string | null | undefined | typeof NOT_LOADED = pendingLoadForUserId;
+      if (!isSupabaseConfigured()) {
+        const storedCart = localStorage.getItem(localCartKey);
+        cartItems = storedCart ? JSON.parse(storedCart) as CartItem[] : [];
+      } else {
+        if (target) {
+          await cartApi.mergeGuestCart(target);
+        }
+        const cart = await cartApi.getCartWithItems(target);
+        cartItems = mapSupabaseCart(cart);
       }
-      const cart = await cartApi.getCartWithItems(userId);
-      cartItems = mapSupabaseCart(cart);
-    }
-    loadedForUserId = userId;
+      loadedForUserId = target;
+    } while (pendingLoadForUserId !== loadedForUserId);
     emitChange();
   } catch (err) {
     console.error('Failed to load cart:', err);

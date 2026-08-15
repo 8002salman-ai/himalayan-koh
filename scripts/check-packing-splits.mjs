@@ -35,15 +35,17 @@ const check = (name, fn) => {
   }
 };
 
+const require = createRequire(import.meta.url);
+const tscPath = require.resolve('typescript/bin/tsc');
+
 try {
-  execFileSync('npx', [
-    'tsc', 'src/lib/shippo/packing/buildParcels.ts',
+  execFileSync(process.execPath, [
+    tscPath, 'src/lib/shippo/packing/buildParcels.ts',
     '--outDir', outDir,
     '--module', 'commonjs', '--target', 'es2020',
     '--esModuleInterop', '--skipLibCheck',
   ], { stdio: 'pipe' });
 
-  const require = createRequire(import.meta.url);
   const { buildParcelsFromPackingLineItems, unitsAllowedByWeight } =
     require(join(outDir, 'packing/buildParcels.js'));
 

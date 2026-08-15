@@ -13,8 +13,7 @@ export function getOrderProgressIndex(status: string, paymentStatus: string): nu
     pending: 0,
     confirmed: 0,
     processing: 1,
-    // 'packed' is the tail end of the packing stage (added for the wholesale
-    // conversion workflow, but applies to any order) — same progress-bar
+    // 'packed' is the tail end of the packing stage — same progress-bar
     // position as 'processing' so the existing 4-step retail tracker layout
     // is unaffected; formatCustomerOrderStatus/formatAdminOrderStatus give it
     // a distinct label.

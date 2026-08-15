@@ -10,12 +10,29 @@ import {
 } from './productPackingProfile';
 import { decodePackingProfileTag } from './packingProfileTag';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Products are keyed by UUID. A line item whose id is not a UUID (stale
+ * guest cart data, a manually-entered row, etc.) would make PostgREST throw
+ * "invalid input syntax for type uuid" and kill the whole rates fetch.
+ * Filter them out here so the item still rates via its weight fallback.
+ */
+function isValidUuid(value: string | undefined | null): boolean {
+  return typeof value === 'string' && UUID_RE.test(value.trim());
+}
+
 export async function enrichRatesLineItems(
   supabase: SupabaseClient<Database>,
   lineItems: RatesLineItem[],
 ): Promise<PackingLineItem[]> {
   const productIds = [
-    ...new Set(lineItems.map((item) => item.productId).filter((id): id is string => Boolean(id))),
+    ...new Set(
+      lineItems
+        .map((item) => item.productId)
+        .filter((id): id is string => Boolean(id) && isValidUuid(id)),
+    ),
   ];
 
   const productById = new Map<

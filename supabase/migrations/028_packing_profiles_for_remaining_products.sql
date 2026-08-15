@@ -135,7 +135,6 @@ BEGIN
   SELECT COUNT(*) INTO hidden
   FROM products
   WHERE is_active = TRUE
-    AND dealer_only = FALSE
     AND NOT EXISTS (
       SELECT 1 FROM unnest(COALESCE(tags, ARRAY[]::TEXT[])) AS tag
       WHERE tag LIKE 'packing_profile:%'

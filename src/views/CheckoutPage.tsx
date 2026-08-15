@@ -913,7 +913,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                 <>
                 <p className="text-sm text-charcoal-light mb-5">
                 {stripeEnabled
-                  ? 'Pay securely with your card at checkout. Invoice is available for wholesale or manual billing.'
+                  ? 'Pay securely with your card at checkout. Invoice billing is available on request.'
                   : 'Card payments are not configured on this site. Place your order and pay by invoice.'}
               </p>
 

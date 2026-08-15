@@ -4,7 +4,7 @@
  * Load-bearing beyond its appearance: several admin pages call
  * useSearchParams(), which Next requires to sit inside a Suspense boundary, and
  * this is the boundary they inherit. Deleting it fails the build at
- * /admin/dealers/audit rather than merely changing what is drawn.
+ * /admin/orders rather than merely changing what is drawn.
  *
  * It is reached on a cold load, not when moving between pages — the (main),
  * (protected) and admin groups each have their own loading file below their

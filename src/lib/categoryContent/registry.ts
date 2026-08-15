@@ -257,7 +257,7 @@ export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = 
     },
     trustPoints: [
       { label: 'Pasture-ready', detail: 'Weather-resistant crystal salt for covered feeders.' },
-      { label: 'Bulk ranch value', detail: 'Wholesale inquiries welcome for repeat herd orders.' },
+      { label: 'Bulk ranch value', detail: 'Bulk orders welcome for repeat herd orders.' },
       { label: 'Vet-aligned guidance', detail: 'Placement and water access resources for your nutritionist.' },
     ],
     gallery: [

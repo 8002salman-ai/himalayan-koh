@@ -19,23 +19,23 @@ export const MIGRATIONS = [
   '012_product_shipping_weights.sql',
   '013_site_settings.sql',
   '014_contact_submissions.sql',
-  '015_dealer_program.sql',
   '015_add_6lb_trace_mineral_salt_lick.sql',
-  '016_dealer_demo_fields.sql',
   '016_add_round_rope_salt_licks.sql',
   // Tags the salt licks inserted by 015/016 with their packing profiles, so it
   // has to follow both of them.
   '017_mark_new_salt_licks_shipping_ready.sql',
-  '017_dealer_only_product_rls.sql',
-  '018_cart_dealer_isolation.sql',
   '018_use_white_background_salt_lick_images.sql',
-  '019_wholesale_purchase_requests.sql',
   '020_order_status_packed.sql',
-  '021_wholesale_phase4.sql',
   '022_crm_leads.sql',
   '023_crm_auto_leads.sql',
   '024_restrict_guest_order_select.sql',
   '025_product_packing_profiles.sql',
+  '026_rehost_wordpress_images.sql',
+  '027_product_images_to_webp.sql',
+  '028_packing_profiles_for_remaining_products.sql',
+  '029_remove_dealer_wholesale.sql',
+  '030_fix_packing_profiles_multi_unit.sql',
+  '031_restore_products_public_read_policy.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */
@@ -48,23 +48,11 @@ export const REQUIRED_TABLES = [
   'order_items',
   'wishlists',
   'notifications',
-  'dealer_applications',
-  'dealer_documents',
-  'dealer_notes',
-  'dealer_audit_log',
-  'dealer_emails',
   'site_settings',
   'contact_submissions',
-  'wholesale_purchase_requests',
-  'wholesale_purchase_request_items',
-  'wholesale_purchase_request_notes',
-  'wholesale_purchase_request_audit',
-  'wholesale_purchase_request_emails',
-  'wholesale_purchase_request_messages',
-  'wholesale_purchase_request_invoices',
 ];
 
-export const REQUIRED_STORAGE_BUCKETS = ['products', 'avatars', 'blog', 'categories', 'dealer-documents'];
+export const REQUIRED_STORAGE_BUCKETS = ['products', 'avatars', 'blog', 'categories'];
 
 export const REQUIRED_EXTENSIONS = ['pgcrypto', 'uuid-ossp'];
 

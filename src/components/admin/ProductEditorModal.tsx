@@ -688,8 +688,8 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     // measurements incomplete — that work is legitimately unfinished and
     // shouldn't be lost. But turning Active on is a claim that it's ready to
     // sell, and the storefront silently drops anything without a complete
-    // profile (see isRealCatalogProduct — this editor has no dealer-only
-    // toggle, so every product it saves is retail-facing). Saving that
+    // profile (see isRealCatalogProduct — every product this editor saves
+    // is storefront-facing). Saving that
     // combination used to succeed with no feedback at all, which is exactly
     // how "Active" listings ended up invisible on /products.
     if (formData.is_active && !shippable) {

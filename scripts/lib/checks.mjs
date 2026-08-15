@@ -165,7 +165,11 @@ export async function checkExtensions() {
 }
 
 export function checkTypeScript() {
-  const proc = spawnSync('npx', ['tsc', '--noEmit'], { cwd: root, encoding: 'utf8' });
+  // Spawn node directly against the local TypeScript compiler: npx/npx.cmd
+  // shims are unreliable under spawnSync on Windows (ENOENT/EINVAL), while
+  // node_modules/typescript/bin/tsc is always present after npm install.
+  const tscPath = path.join(root, 'node_modules', 'typescript', 'bin', 'tsc');
+  const proc = spawnSync(process.execPath, [tscPath, '--noEmit'], { cwd: root, encoding: 'utf8' });
   if (proc.status === 0) return result('TypeScript', 'pass', 'no type errors');
   const errorLines = (proc.stdout || proc.stderr || '').split('\n').filter(Boolean).slice(0, 5);
   return result('TypeScript', 'fail', errorLines.join(' | ') || 'tsc reported errors');

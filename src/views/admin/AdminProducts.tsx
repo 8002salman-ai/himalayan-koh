@@ -33,13 +33,13 @@ import {
 } from '../../lib/products/shippingWeight';
 import ProductEditorModal from '../../components/admin/ProductEditorModal';
 
-/** Active + not dealer-only is necessary but not sufficient — the storefront
- * also requires a complete Shippo packing profile (see isRealCatalogProduct
- * in lib/supabase/api/products.ts). A product missing only that is otherwise
+/** Active is necessary but not sufficient — the storefront also requires a
+ * complete Shippo packing profile (see isRealCatalogProduct in
+ * lib/supabase/api/products.ts). A product missing only that is otherwise
  * indistinguishable from a live one in this list, which is what let "active"
  * products silently never appear on the public site. */
 function isHiddenFromStorefront(product: ProductWithRelations): boolean {
-  return Boolean(product.is_active) && !product.dealer_only && !isRealCatalogProduct(product);
+  return Boolean(product.is_active) && !isRealCatalogProduct(product);
 }
 
 type ProductWithRelations = Product & { category: Category | null; inventory: Inventory | null };
@@ -138,11 +138,6 @@ export default function AdminProducts() {
         tags: [],
         meta_title: null,
         meta_description: null,
-        dealer_price: null,
-        distributor_price: null,
-        moq: 1,
-        dealer_only: false,
-        retail_only: false,
         pack_size: null,
         lead_time_days: null,
         created_at: new Date().toISOString(),
@@ -292,7 +287,7 @@ export default function AdminProducts() {
         : prev.filter((product) => product.id !== id));
       setDeleteConfirm(null);
       if (archived) {
-        toast.info('This product has retail or wholesale history, so it was archived instead of deleted.');
+        toast.info('This product has order history, so it was archived instead of deleted.');
       }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete product. Please try again.'));
@@ -361,7 +356,7 @@ export default function AdminProducts() {
       }));
       setSelectedIds([]);
       if (archivedIds.length > 0) {
-        toast.info(`${archivedIds.length} selected product${archivedIds.length === 1 ? '' : 's'} had retail or wholesale history and were archived instead of deleted.`);
+        toast.info(`${archivedIds.length} selected product${archivedIds.length === 1 ? '' : 's'} had order history and were archived instead of deleted.`);
       }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to delete selected products.'));
@@ -375,7 +370,7 @@ export default function AdminProducts() {
     setEditorOpen(false);
     setEditingProduct(null);
 
-    if (savedProduct?.is_active && !savedProduct.dealer_only && !isRealCatalogProduct(savedProduct)) {
+    if (savedProduct?.is_active && !isRealCatalogProduct(savedProduct)) {
       toast.error('Saved, but this product is Active and still won\'t show on your public site until its Shippo Required box dimensions are completed.');
     }
   };

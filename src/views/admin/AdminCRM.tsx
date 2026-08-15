@@ -46,7 +46,6 @@ const STATUS_ORDER: CrmLeadStatus[] = ['new', 'contacted', 'qualified', 'won', '
 
 const SOURCE_LABELS: Record<string, string> = {
   contact_form: 'Contact Form',
-  dealer_application: 'Wholesale Application',
   manual: 'Manual',
   other: 'Other',
 };

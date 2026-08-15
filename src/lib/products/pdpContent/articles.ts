@@ -100,8 +100,8 @@ function buildFaqArticle(product: Product): PdpAccordionArticle {
           'Our salt is selected from Himalayan deposits for purity, mineral content, and consistent grain or crystal quality.',
       },
       {
-        question: 'Do you offer wholesale or ranch pricing?',
-        answer: 'Yes — contact us for bulk quotes on large bags and repeat orders.',
+        question: 'Do you offer bulk pricing?',
+        answer: 'Yes — contact us for quotes on large bags and repeat orders.',
       },
     ],
   };

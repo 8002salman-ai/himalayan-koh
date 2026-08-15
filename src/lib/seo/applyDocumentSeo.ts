@@ -81,7 +81,7 @@ export function staticRouteMetadata(pathname: string): { title: string; descript
     },
     '/contact': {
       title: 'Contact Himalayan Koh',
-      description: 'Contact Himalayan Koh for product, wholesale, shipping, and customer support questions.',
+      description: 'Contact Himalayan Koh for product, shipping, and customer support questions.',
     },
     '/checkout': {
       title: 'Checkout - Himalayan Koh',

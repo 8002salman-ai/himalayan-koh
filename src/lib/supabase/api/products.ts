@@ -31,17 +31,14 @@ export async function isHiddenActiveProduct(slug: string): Promise<boolean> {
     .select('tags')
     .eq('slug', normalizedSlug)
     .eq('is_active', true)
-    .eq('dealer_only', false)
+
     .maybeSingle();
 
   return Boolean(data) && !isRealCatalogProduct(data as unknown as { tags?: string[] | null });
 }
 
-// Explicit column list for retail-facing queries. Excludes dealer_price,
-// distributor_price, cost_price, and moq/dealer_only — dealer-program-only
-// fields that must never appear in a retail API response, even if the
-// retail UI never renders them (select('*') would still ship them in the
-// raw JSON payload to every visitor's browser).
+// Explicit column list for retail-facing queries. Excludes cost_price and
+// other internal fields that must never appear in a retail API response.
 const RETAIL_PRODUCT_COLUMNS = `
   id, name, slug, description, short_description, price, compare_at_price,
   sku, barcode, weight, weight_unit, category_id, images, thumbnail,
@@ -69,7 +66,7 @@ export const productsApi = {
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS, { count: 'exact' })
       .eq('is_active', true)
-      .eq('dealer_only', false);
+  ;
 
     if (filters.categorySlug) {
       const { data: category } = await supabase
@@ -116,7 +113,7 @@ export const productsApi = {
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('slug', normalizedSlug)
       .eq('is_active', true)
-      .eq('dealer_only', false)
+  
       .maybeSingle();
 
     if (error) {
@@ -136,7 +133,7 @@ export const productsApi = {
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('id', id)
       .eq('is_active', true)
-      .eq('dealer_only', false)
+  
       .single();
 
     if (error) {
@@ -152,7 +149,7 @@ export const productsApi = {
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
       .eq('is_featured', true)
-      .eq('dealer_only', false)
+  
       .order('created_at', { ascending: false })
       .limit(limit * 4);
 
@@ -165,7 +162,7 @@ export const productsApi = {
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
-      .eq('dealer_only', false)
+  
       .neq('id', productId)
       .limit(limit * 4);
 
@@ -181,7 +178,7 @@ export const productsApi = {
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
-      .eq('dealer_only', false)
+  
       .or(`name.ilike.%${query}%,description.ilike.%${query}%,tags.cs.{${query}}`)
       .limit(limit * 4);
 

@@ -1,13 +1,13 @@
 -- =============================================
 -- CRM (Phase 1) — Leads inbox + activity log
 -- =============================================
--- Unifies inbound leads (contact form submissions, dealer applications,
--- and manually-added prospects) into a single admin-managed pipeline with
+-- Unifies inbound leads (contact form submissions and manually-added
+-- prospects) into a single admin-managed pipeline with
 -- status tracking, assignment, and a per-lead activity timeline.
 --
 -- Fully additive. Reuses the shared is_admin() service and update_updated_at()
 -- trigger function already defined by earlier migrations. Access is restricted
--- to admins only (staff CRM); no customer/dealer-facing exposure.
+-- to admins only (staff CRM); no customer-facing exposure.
 
 -- =============================================
 -- TABLES
@@ -20,11 +20,10 @@ create table if not exists public.crm_leads (
   phone text,
   company text,
   source text not null default 'manual'
-    check (source in ('contact_form', 'dealer_application', 'manual', 'other')),
+    check (source in ('contact_form', 'manual', 'other')),
   -- Optional links back to the originating record so we never duplicate data.
   contact_submission_id uuid references public.contact_submissions(id) on delete set null,
-  dealer_application_id uuid references public.dealer_applications(id) on delete set null,
-  -- Links to an existing account, if this lead is a known customer/dealer.
+  -- Links to an existing account, if this lead is a known customer.
   profile_id uuid references public.profiles(id) on delete set null,
   status text not null default 'new'
     check (status in ('new', 'contacted', 'qualified', 'won', 'lost')),

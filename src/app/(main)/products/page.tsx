@@ -61,7 +61,6 @@ export async function generateMetadata({
           .from('products')
           .select('id', { count: 'exact', head: true })
           .eq('is_active', true)
-          .eq('dealer_only', false)
           .in('category_id', categoryIds)
           .abortSignal(seoFetchDeadline());
         hasProducts = Boolean(count && count > 0);
@@ -109,7 +108,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
         .from('products')
         .select('price')
         .eq('is_active', true)
-        .eq('dealer_only', false)
         .abortSignal(seoFetchDeadline());
 
       if (products && products.length > 0) {

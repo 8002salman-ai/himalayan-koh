@@ -3,20 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Phone, ArrowRight, Send } from 'lucide-react';
 import { productsPathForCategoryTitle } from '../lib/categoryContent';
-import { publicEnv } from '../lib/env';
-
-// Wholesale/B2B is temporarily disabled — see src/lib/env.ts. Filtered out
-// by path prefix at render time rather than removed from the list, so
-// re-enabling the flag restores these links with no further changes.
-const isWholesalePath = (path: string) => path === '/dealer' || path.startsWith('/dealer/');
 
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
   { label: 'Shop Products', to: '/products' },
   { label: 'Customer Login', to: '/login' },
   { label: 'Admin Login', to: '/login', state: { from: '/admin' } },
-  { label: 'Wholesale Program', to: '/dealer' },
-  { label: 'Wholesale Login', to: '/dealer/login' },
   { label: 'Contact Us', to: '/contact' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Privacy Policy', to: '/privacy' },
@@ -132,9 +124,7 @@ export default function Footer() {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">Quick Links</h4>
             <ul className="space-y-3">
-              {aboutLinks
-                .filter((link) => publicEnv.wholesaleEnabled || !isWholesalePath(link.to))
-                .map((link) => (
+              {aboutLinks.map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} state={'state' in link ? link.state : undefined} className="text-white/60 text-sm hover:text-himalayan transition-colors flex items-center gap-1 group">
                     <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
