@@ -14,6 +14,8 @@ import {
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { decodePackingProfileTag, encodePackingProfileTag } from '../../lib/shippo/packing/packingProfileTag';
+import { fetchShippoRates } from '../../lib/shippo/client';
+import type { ShippoRate } from '../../lib/shippo/types';
 import { unitsAllowedByWeight } from '../../lib/shippo/packing/buildParcels';
 import {
   mapProductPackingProfile,
@@ -177,6 +179,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
   const [adminImages, setAdminImages] = useState<AdminProductImage[]>([]);
   const [error, setError] = useState('');
   const [shippingProfile, setShippingProfile] = useState<ShippingProfileForm>(emptyShippingProfile);
+  const [costPreview, setCostPreview] = useState<{
+    loading: boolean;
+    rate: ShippoRate | null;
+    boxes: number;
+    error: string | null;
+  }>({ loading: false, rate: null, boxes: 0, error: null });
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -650,6 +658,66 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }));
   };
 
+  /**
+   * Live USPS/UPS quote for a sample 6-unit order, so the admin sees what
+   * the units-per-box value actually costs before saving. Same endpoint and
+   * packing math checkout uses, so the preview cannot drift from reality.
+   * Only possible for existing products (the profile is read from the DB).
+   */
+  const previewUnitWeight = Number(formData.weight) || 0;
+  useEffect(() => {
+    if (activeTab !== 'shipping' || !product?.id) return;
+    const profileComplete = hasCompleteShippingProfile(shippingProfile);
+    if (!profileComplete || previewUnitWeight <= 0) {
+      setCostPreview({ loading: false, rate: null, boxes: 0, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setCostPreview((current) => ({ ...current, loading: true, error: null }));
+      try {
+        const effectiveUnits = shippingProfile.shipsSeparately
+          ? 1
+          : unitsAllowedByWeight({ ...shippingProfile, productId: '' }, previewUnitWeight);
+        const boxes = Math.max(1, Math.ceil(6 / Math.max(1, effectiveUnits)));
+        const result = await fetchShippoRates({
+          address: {
+            fullName: 'Himalayan Koh',
+            addressLine1: '12620 FM 1960 W',
+            city: 'Houston',
+            state: 'TX',
+            postalCode: '77065',
+            country: 'US',
+          },
+          items: [{ productId: product.id, quantity: 6 }],
+        });
+        if (cancelled) return;
+        const usps = result.rates.find((rate) => /usps/i.test(rate.provider));
+        setCostPreview({
+          loading: false,
+          rate: usps ?? result.rates[0] ?? null,
+          boxes,
+          error: result.rates.length === 0 ? 'No carrier rates available for this configuration.' : null,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setCostPreview({
+          loading: false,
+          rate: null,
+          boxes: 0,
+          error: err instanceof Error ? err.message : 'Could not load live shipping rates.',
+        });
+      }
+    }, 900);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, product?.id, shippingProfile, previewUnitWeight]);
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       setError('Product name is required');
@@ -683,6 +751,27 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       && unitWeight + normalizedProfile.packagingWeightLbs <= normalizedProfile.maxPackedWeightLbs;
 
     const shippable = profileComplete && singleUnitFits;
+
+    // Never silently save "1 unit per box" for a product that is not marked
+    // ships-separately. It is the most expensive packing arrangement — every
+    // unit ordered becomes its own box and its own carrier label — and it is
+    // usually left at the default by accident. Heavy items legitimately ship
+    // singly, so this is a confirmation, not a hard block.
+    const oneUnitPerBoxByDefault =
+      !shippingProfile.shipsSeparately && normalizedProfile.unitsPerBox <= 1;
+    const lightEnoughToBundle = unitWeight > 0 && unitWeight <= 10;
+    if (formData.is_active && oneUnitPerBoxByDefault && lightEnoughToBundle) {
+      const proceed = window.confirm(
+        'This product ships one unit per box — every unit ordered becomes its own '
+          + 'box and its own shipping label, which is the most expensive way to '
+          + 'ship it. If the box can hold more than one unit, set a higher '
+          + '\"Units per box\" on the Shippo Required tab. Save anyway?'
+      );
+      if (!proceed) {
+        setActiveTab('shipping');
+        return;
+      }
+    }
 
     // A listing can still be saved as a draft (Active off) with shipping
     // measurements incomplete — that work is legitimately unfinished and
@@ -1347,6 +1436,51 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                         );
                       })()}
                     </div>
+
+                    {(() => {
+                      const unitWeight = Number(formData.weight) || 0;
+                      if (
+                        !shippingProfile.shipsSeparately &&
+                        shippingProfile.unitsPerBox <= 1 &&
+                        unitWeight > 0 &&
+                        unitWeight <= 10
+                      ) {
+                        return (
+                          <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            ⚠️ <strong>1 unit per box</strong> — every unit ordered becomes its own
+                            box and its own carrier label (the most expensive shipping
+                            arrangement). If the box fits more than one unit, increase
+                            “Units per box”.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {product?.id && hasCompleteShippingProfile(shippingProfile) && previewUnitWeight > 0 && (
+                      <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-3 text-sm text-charcoal">
+                        <p className="font-semibold text-indigo-800">Live shipping cost preview</p>
+                        {costPreview.loading ? (
+                          <p className="mt-1 flex items-center gap-2 text-charcoal-light">
+                            <Loader2 size={14} className="animate-spin" />
+                            Quoting USPS/UPS for a 6-unit order…
+                          </p>
+                        ) : costPreview.error ? (
+                          <p className="mt-1 text-amber-700">
+                            {costPreview.error} (save once and reopen to quote a brand-new product)
+                          </p>
+                        ) : costPreview.rate ? (
+                          <p className="mt-1">
+                            6 units → <strong>{costPreview.boxes} box{costPreview.boxes === 1 ? '' : 'es'}</strong> ·{' '}
+                            <strong>
+                              ${costPreview.rate.amount.toFixed(2)}
+                            </strong>{' '}
+                            via {costPreview.rate.provider} {costPreview.rate.serviceName} — the
+                            cheapest live rate to the warehouse ZIP.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
                   </section>
 
                   <div className="grid gap-3 sm:grid-cols-2">
