@@ -18,3 +18,4 @@ tsconfig.tsbuildinfo
 # Supabase CLI local cache
 supabase/.temp/
 .branches
+.build-marker

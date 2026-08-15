@@ -176,13 +176,18 @@ export function checkTypeScript() {
 }
 
 /** Non-mutating build check: reports the last build's status without
- * triggering a new one (doctor must not modify anything). */
+ * triggering a new one (doctor must not modify anything).
+ *
+ * Reads the .build-marker written by the postbuild script instead of
+ * .next/BUILD_ID: the Next.js dev server rewrites `.next` on every restart
+ * (wiping BUILD_ID), which made this check report "no previous build" on dev
+ * machines even right after a successful `npm run build`. */
 export function checkBuildStatus() {
-  const buildIdPath = path.join(root, '.next', 'BUILD_ID');
-  if (!fs.existsSync(buildIdPath)) {
+  const markerPath = path.join(root, '.build-marker');
+  if (!fs.existsSync(markerPath)) {
     return result('Build status', 'warn', 'no previous build found — run `npm run build` to verify');
   }
-  const stat = fs.statSync(buildIdPath);
+  const stat = fs.statSync(markerPath);
   return result('Build status', 'pass', `last build ${stat.mtime.toISOString()}`);
 }
 
