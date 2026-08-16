@@ -904,7 +904,9 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                   <div className="mt-5 rounded-2xl border border-himalayan/30 bg-himalayan/5 p-5 text-sm text-charcoal-light">
                     {submitting
                       ? <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Preparing secure payment…</span>
-                      : 'Complete your shipping address and select a shipping method to load payment options.'}
+                      : !stripeEnabled
+                        ? 'Card payments are not configured on this site. Add your Stripe keys to enable secure checkout.'
+                        : 'Complete your shipping address and select a shipping method to load payment options.'}
                   </div>
                 )
               ) : (
