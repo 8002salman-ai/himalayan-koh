@@ -12,7 +12,6 @@ interface ProductImageGalleryProps {
 export default function ProductImageGallery({
   images,
   alt,
-  variant = 'page',
   rounded = 'rounded-3xl',
 }: ProductImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);

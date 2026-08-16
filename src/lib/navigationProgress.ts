@@ -13,8 +13,7 @@
  * remember to report its own transitions.
  *
  * Deliberately a module-level store rather than context: it is written from
- * event handlers outside React's tree, and the same pattern is already used for
- * per-page SEO overrides in lib/seo/pageSeo.ts.
+ * event handlers outside React's tree.
  */
 type Listener = () => void;
 

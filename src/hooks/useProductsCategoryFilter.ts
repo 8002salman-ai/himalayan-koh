@@ -6,7 +6,6 @@ import {
   filterLabelFromKey,
   normalizeCategoryQueryValue,
   parseCategoryFromSearchParams,
-  type CategoryContentKey,
 } from '../lib/categoryContent';
 
 const ALL_LABEL = 'All';

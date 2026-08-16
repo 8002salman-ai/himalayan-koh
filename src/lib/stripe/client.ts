@@ -1,6 +1,5 @@
 import type { CartItem } from '../../store/cartStore';
 import { readApiError, toPaymentError } from './errors';
-import { isStripeTestMode, stripePublishableKey } from './config';
 import type { StripePaymentIntentResult, StripeVerifyPaymentResult } from './types';
 
 export { stripePublishableKey, isStripeConfigured, isStripeTestMode } from './config';

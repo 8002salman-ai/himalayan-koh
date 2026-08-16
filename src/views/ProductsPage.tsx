@@ -10,23 +10,13 @@ import CategoryEducationPanel from '../components/category/CategoryEducationPane
 import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
 import CategoryShopPanel from '../components/category/CategoryShopPanel';
-import {
-  buildProductsCategoryPath,
-  productMatchesCategoryFilter,
-} from '../lib/categoryContent';
+import { productMatchesCategoryFilter } from '../lib/categoryContent';
 import { productsApi } from '../lib/supabase/api';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { mapSupabaseProduct } from '../lib/products/mapProduct';
-import { usePageSeo } from '../hooks/usePageSeo';
 import { useCategoryBlogArticles } from '../hooks/useCategoryBlogArticles';
 import { useCategoryHubContent } from '../hooks/useCategoryHubContent';
 import { useProductsCategoryFilter } from '../hooks/useProductsCategoryFilter';
-
-const DEFAULT_SEO = {
-  title: 'Premium Salt Products | Himalayan Koh',
-  description:
-    'Shop Himalayan pink cooking salt, horse salt licks, cattle mineral salt, and wildlife blocks. Pure, natural, mineral-rich salt from the Himalayas.',
-};
 
 export default function ProductsPage() {
   const { activeFilter, categoryKey } = useProductsCategoryFilter();
@@ -49,19 +39,6 @@ export default function ProductsPage() {
 
   const { articles: categoryArticles, loading: articlesLoading, source: articlesSource } =
     useCategoryBlogArticles(categoryKey, placeholderArticles);
-
-  usePageSeo(
-    useMemo(
-      () => (categoryContent
-        ? {
-            title: categoryContent.seo.title,
-            description: categoryContent.seo.description,
-            canonicalPath: buildProductsCategoryPath(categoryKey),
-          }
-        : { ...DEFAULT_SEO, canonicalPath: '/products' }),
-      [categoryContent, categoryKey]
-    )
-  );
 
   useEffect(() => {
     if (prevCategoryKey.current !== null && prevCategoryKey.current !== categoryKey) {

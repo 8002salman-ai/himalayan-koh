@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import DashboardSidebar from '../components/account/DashboardSidebar';
 import { useAuthContext } from '../context/AuthContext';
 import { addressesApi, notificationsApi, ordersApi, wishlistApi } from '../lib/supabase/api';
-import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
+import { supabase, isSupabaseConfigured, clearSupabaseSession } from '../lib/supabase/client';
 import type { Address, Notification, OrderWithItems } from '../lib/supabase/database.types';
 
 type TabType = 'dashboard' | 'profile' | 'security' | 'notifications' | 'addresses';
@@ -51,6 +51,9 @@ export default function AccountPage() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get('tab') as TabType | null;
@@ -231,6 +234,38 @@ export default function AccountPage() {
       setAddresses((current) => current.filter((address) => address.id !== addressId));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete address');
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.email) return;
+    if (!deletePassword) {
+      toast.error('Enter your current password to continue.');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email: user.email, password: deletePassword }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(body.error || 'Unable to delete account.');
+
+      toast.success('Account deleted.');
+      clearSupabaseSession();
+      window.location.assign('/');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to delete account.');
+      setDeleting(false);
     }
   };
 
@@ -535,12 +570,52 @@ export default function AccountPage() {
 
                   <div className="mt-10 pt-10 border-t border-gray-200">
                     <h3 className="font-semibold text-charcoal mb-4">Danger Zone</h3>
-                    <button className="px-6 py-3 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium">
-                      Delete Account
-                    </button>
-                    <p className="text-xs text-charcoal-light mt-2">
-                      This action cannot be undone. All your data will be permanently deleted.
-                    </p>
+                    {deleteConfirm ? (
+                      <form onSubmit={handleDeleteAccount} className="max-w-md rounded-2xl border border-red-200 bg-red-50 p-5">
+                        <p className="text-sm text-red-700 mb-3">
+                          Deleting your account is permanent. Your profile, addresses, cart, and
+                          wishlist will be removed. Past orders are kept for our records.
+                        </p>
+                        <label className="block text-sm font-medium text-charcoal mb-1.5">
+                          Current password
+                        </label>
+                        <input
+                          type="password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          autoComplete="current-password"
+                          placeholder="Enter your password"
+                          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-charcoal focus:outline-none focus:ring-2 focus:ring-red-300 transition-all"
+                        />
+                        <div className="flex gap-3 mt-4">
+                          <button
+                            type="submit"
+                            disabled={deleting}
+                            className="px-5 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
+                          >
+                            {deleting ? 'Deleting…' : 'Permanently delete'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteConfirm(false);
+                              setDeletePassword('');
+                            }}
+                            disabled={deleting}
+                            className="px-5 py-2.5 border border-gray-300 text-charcoal rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(true)}
+                        className="px-6 py-3 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium"
+                      >
+                        Delete Account
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

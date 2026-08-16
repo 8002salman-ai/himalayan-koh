@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Clock, Loader2, Tag, User } from 'lucide-react';
-import { usePageSeo } from '../hooks/usePageSeo';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 
@@ -52,19 +51,6 @@ export default function BlogDetailPage({ initialPost = null }: BlogDetailPagePro
     // initialPost is a server-render constant for this route; refetch keys on slug.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
-
-  const seo = useMemo(() => {
-    if (!post) return null;
-    return {
-      title: post.meta_title || `${post.title} | Himalayan Koh`,
-      description: post.meta_description || post.excerpt || '',
-      canonicalPath: `/blog/${post.slug}`,
-      ogImage: post.featured_image || undefined,
-      ogType: 'article',
-    };
-  }, [post]);
-
-  usePageSeo(seo);
 
   if (loading) {
     return (

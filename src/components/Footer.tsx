@@ -23,14 +23,38 @@ const productLinks = [
 
 export default function Footer() {
   const [email, setEmail] = useState('');
+  const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    setSubscribeError(null);
+    const value = email.trim();
+    if (!value) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setSubscribeError('Enter a valid email address.');
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value, source: 'footer' }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(body.error || 'Unable to subscribe.');
       setSubscribed(true);
       setEmail('');
-      setTimeout(() => setSubscribed(false), 3000);
+      setTimeout(() => setSubscribed(false), 4000);
+    } catch (err) {
+      setSubscribeError(
+        err instanceof Error ? err.message : 'Unable to subscribe. Please try again.'
+      );
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -48,38 +72,48 @@ export default function Footer() {
                 Subscribe for exclusive offers, livestock health tips, and product updates.
               </p>
             </div>
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-light" />
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-11 pr-4 py-3 bg-white text-charcoal border border-white/20 rounded-xl placeholder:text-charcoal-light focus:outline-none focus:ring-2 focus:ring-himalayan transition-all"
-                />
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                className={`px-7 min-h-11 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-himalayan/30 transition-all duration-300 ${
-                  subscribed
-                    ? 'bg-himalayan-green text-cream'
-                    : 'bg-himalayan hover:bg-himalayan-dark text-cream'
-                }`}
-              >
-                {subscribed ? (
-                  'Subscribed!'
-                ) : (
-                  <>
-                    <Send size={16} />
-                    <span>Subscribe</span>
-                  </>
-                )}
-              </motion.button>
-            </form>
+            <div>
+              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-light" />
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={subscribing}
+                    aria-label="Email address for newsletter"
+                    className="w-full pl-11 pr-4 py-3 bg-white text-charcoal border border-white/20 rounded-xl placeholder:text-charcoal-light focus:outline-none focus:ring-2 focus:ring-himalayan transition-all disabled:opacity-60"
+                  />
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={subscribing}
+                  className={`px-7 min-h-11 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-himalayan/30 transition-all duration-300 disabled:opacity-70 ${
+                    subscribed
+                      ? 'bg-himalayan-green text-cream'
+                      : 'bg-himalayan hover:bg-himalayan-dark text-cream'
+                  }`}
+                >
+                  {subscribing ? (
+                    <span>Subscribing…</span>
+                  ) : subscribed ? (
+                    'Subscribed!'
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      <span>Subscribe</span>
+                    </>
+                  )}
+                </motion.button>
+              </form>
+              {subscribeError && (
+                <p className="mt-2 text-sm text-amber-300">{subscribeError}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -99,25 +133,7 @@ export default function Footer() {
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">
               Premium Himalayan Pink Salt products for livestock, horses, cattle, deer, and gourmet cooking. Trusted by ranchers across America.
             </p>
-            <div className="flex items-center gap-3">
-              {[
-                  { label: 'Facebook', path: 'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z' },
-                  { label: 'Instagram', path: 'M16 4H8a4 4 0 00-4 4v8a4 4 0 004 4h8a4 4 0 004-4V8a4 4 0 00-4-4zm-4 11a3 3 0 110-6 3 3 0 010 6zm4.5-7.5a1 1 0 110-2 1 1 0 010 2z' },
-                  { label: 'Twitter', path: 'M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z' },
-                  { label: 'YouTube', path: 'M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.33zM9.75 15.02V8.48l5.75 3.27-5.75 3.27z' },
-                ].map((social, i) => (
-                <motion.span
-                  key={i}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  aria-label={social.label}
-                  className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-himalayan transition-colors"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={social.path} />
-                  </svg>
-                </motion.span>
-              ))}
-            </div>
+
           </div>
 
           {/* Quick Links */}

@@ -11,6 +11,11 @@ export const getCartSessionId = (): string => {
   return sessionId;
 };
 
+// Guest carts are scoped server-side (RLS, migration 033) to the session token
+// sent as this request header. Every cart/cart_items query must carry it, or a
+// guest's own cart reads back empty.
+const CART_SESSION_HEADER = 'x-cart-session';
+
 export const cartApi = {
   // Get or create cart
   async getOrCreateCart(userId?: string): Promise<Cart> {
@@ -27,7 +32,9 @@ export const cartApi = {
       query = query.eq('session_id', sessionId);
     }
 
-    const { data: existingCart, error: findError } = await query.maybeSingle();
+    const { data: existingCart, error: findError } = await query
+      .setHeader(CART_SESSION_HEADER, sessionId)
+      .maybeSingle();
 
     if (findError) throw findError;
 
@@ -43,6 +50,7 @@ export const cartApi = {
         session_id: userId ? null : sessionId,
       } as never)
       .select()
+      .setHeader(CART_SESSION_HEADER, sessionId)
       .single();
 
     if (createError) throw createError;
@@ -69,7 +77,9 @@ export const cartApi = {
       query = query.eq('session_id', sessionId);
     }
 
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await query
+      .setHeader(CART_SESSION_HEADER, sessionId)
+      .maybeSingle();
 
     if (error) throw error;
     return data as CartWithItems | null;
@@ -96,7 +106,9 @@ export const cartApi = {
       ? existingItemQuery.eq('grain_size', grainSize)
       : existingItemQuery.is('grain_size', null);
 
-    const { data: existingItem } = await existingItemQuery.maybeSingle();
+    const { data: existingItem } = await existingItemQuery
+      .setHeader(CART_SESSION_HEADER, getCartSessionId())
+      .maybeSingle();
 
     if (existingItem) {
       // Update quantity
@@ -105,6 +117,7 @@ export const cartApi = {
         .update({ quantity: (existingItem as CartItem).quantity + quantity } as never)
         .eq('id', (existingItem as CartItem).id)
         .select()
+        .setHeader(CART_SESSION_HEADER, getCartSessionId())
         .single();
 
       if (error) throw error;
@@ -122,6 +135,7 @@ export const cartApi = {
         unit_price: unitPrice,
       } as never)
       .select()
+      .setHeader(CART_SESSION_HEADER, getCartSessionId())
       .single();
 
     if (error) throw error;
@@ -140,6 +154,7 @@ export const cartApi = {
       .update({ quantity } as never)
       .eq('id', itemId)
       .select()
+      .setHeader(CART_SESSION_HEADER, getCartSessionId())
       .single();
 
     if (error) throw error;
@@ -151,7 +166,8 @@ export const cartApi = {
     const { error } = await supabase
       .from('cart_items')
       .delete()
-      .eq('id', itemId);
+      .eq('id', itemId)
+      .setHeader(CART_SESSION_HEADER, getCartSessionId());
 
     if (error) throw error;
   },
@@ -163,7 +179,8 @@ export const cartApi = {
     const { error } = await supabase
       .from('cart_items')
       .delete()
-      .eq('cart_id', cart.id);
+      .eq('cart_id', cart.id)
+      .setHeader(CART_SESSION_HEADER, getCartSessionId());
 
     if (error) throw error;
   },
@@ -177,6 +194,7 @@ export const cartApi = {
       .from('carts')
       .select('*, cart_items(*)')
       .eq('session_id', sessionId)
+      .setHeader(CART_SESSION_HEADER, sessionId)
       .maybeSingle();
 
     if (!guestCart || !(guestCart as CartWithItems).cart_items?.length) return;
@@ -199,7 +217,8 @@ export const cartApi = {
     await supabase
       .from('carts')
       .delete()
-      .eq('id', (guestCart as Cart).id);
+      .eq('id', (guestCart as Cart).id)
+      .setHeader(CART_SESSION_HEADER, sessionId);
 
     // Clear session ID
     localStorage.removeItem('cart_session_id');

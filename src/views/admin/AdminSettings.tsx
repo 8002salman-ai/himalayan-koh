@@ -66,7 +66,7 @@ export default function AdminSettings() {
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, toast]);
 
   useEffect(() => { load(); }, [load]);
 

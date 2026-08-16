@@ -677,6 +677,26 @@ export interface Database {
           created_at?: string;
         };
       };
+      newsletter_subscribers: {
+        Row: {
+          id: string;
+          email: string;
+          source: string;
+          subscribed_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          source?: string;
+          subscribed_at?: string;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          source?: string;
+          subscribed_at?: string;
+        };
+      };
       crm_leads: {
         Row: {
           id: string;

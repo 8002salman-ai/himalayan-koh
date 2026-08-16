@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Loader2, Package, Printer, Search, Truck } from 'lucide-react';
+import { Download, Loader2, Package, Printer, Search } from 'lucide-react';
 import { adminApi, AdminOrder } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
@@ -56,7 +56,7 @@ export default function AdminShippingLabels() {
       .catch(() => setShippoRuntimeEnabled(false));
   }, []);
 
-  const filterOrder = (order: AdminOrder) => {
+  const filterOrder = useCallback((order: AdminOrder) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -65,10 +65,10 @@ export default function AdminShippingLabels() {
       (order.tracking_number || '').toLowerCase().includes(q) ||
       (order.profile?.full_name || '').toLowerCase().includes(q)
     );
-  };
+  }, [search]);
 
-  const filteredReady = useMemo(() => ready.filter(filterOrder), [ready, search]);
-  const filteredPending = useMemo(() => pending.filter(filterOrder), [pending, search]);
+  const filteredReady = useMemo(() => ready.filter(filterOrder), [ready, filterOrder]);
+  const filteredPending = useMemo(() => pending.filter(filterOrder), [pending, filterOrder]);
 
   /** Core single-order label purchase, shared by the per-row button and bulk run. Returns the rate paid (or null on failure) so bulk can total cost. */
   const createLabelForOrder = async (

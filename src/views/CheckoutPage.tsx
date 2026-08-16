@@ -100,7 +100,6 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
   const [stripeSession, setStripeSession] = useState<StripeCheckoutSession | null>(null);
   const [paymentCompleting, setPaymentCompleting] = useState(false);
   const [stripeConfig, setStripeConfig] = useState<StripePublicConfig | null>(null);
-  const [stripeConfigLoaded, setStripeConfigLoaded] = useState(false);
   const [shippoRuntimeEnabled, setShippoRuntimeEnabled] = useState<boolean | null>(null);
   const [shippingSelected, setShippingSelected] = useState(false);
   const stripePaymentRef = useRef<HTMLDivElement>(null);
@@ -174,8 +173,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
   useEffect(() => {
     getStripeClientConfig()
       .then((config) => setStripeConfig(config))
-      .catch((error) => console.error('Unable to load Stripe config:', error))
-      .finally(() => setStripeConfigLoaded(true));
+      .catch((error) => console.error('Unable to load Stripe config:', error));
   }, []);
 
   useEffect(() => {

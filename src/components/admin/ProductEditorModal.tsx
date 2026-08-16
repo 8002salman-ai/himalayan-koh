@@ -77,6 +77,7 @@ const emptyShippingProfile: ShippingProfileForm = {
 function profileToForm(profile: ProductPackingProfile | null): ShippingProfileForm {
   if (!profile) return emptyShippingProfile;
   const { productId: _productId, ...form } = profile;
+  void _productId;
   return form;
 }
 
@@ -715,7 +716,6 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
       cancelled = true;
       window.clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, product?.id, shippingProfile, previewUnitWeight]);
 
   const handleSubmit = async () => {

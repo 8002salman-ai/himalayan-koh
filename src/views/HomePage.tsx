@@ -1,7 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Award } from 'lucide-react';
 import { legacyImage } from '@/lib/images/legacyAssets';
+import { products as fallbackProducts, Product } from '@/data/products';
+import ProductCard from '@/components/ProductCard';
+import { SkeletonProductCard } from '@/components/ui/Skeleton';
+import { productsApi } from '@/lib/supabase/api';
+import { mapSupabaseProduct } from '@/lib/products/mapProduct';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -25,28 +32,37 @@ const healthCards = [
   },
 ];
 
-const testimonials = [
-  {
-    quote:
-      'Not only are they very knowledgeable about all the advantages of the Himalayan salt, but their products are by far the best salt blocks we’ve purchased for our Deer Ranch.',
-    author: 'James A Brenek',
-    location: 'Conroe, TX',
-  },
-  {
-    quote:
-      'The Sam Houston Equestrian Center began to use Himalayan salt licks with the horses that were prone to chronic colic. After about 2 months the horses had less digestive issues.',
-    author: 'Helen Peters',
-    location: 'Sam Houston Equestrian Center, Houston, TX',
-  },
-  {
-    quote:
-      'I have a herd of 70 horses and I am constantly amazed how they head for those salt feeders after a long day on the trail.',
-    author: 'Darolyn Butler',
-    location: 'Cypress Trails Equestrian Center, Humble, TX',
-  },
-];
-
 export default function HomePage() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>(() =>
+    fallbackProducts.filter((product) => product.isFeatured).slice(0, 4)
+  );
+  const [featuredLoading, setFeaturedLoading] = useState(isSupabaseConfigured());
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured()) {
+      setFeaturedLoading(false);
+      return;
+    }
+
+    productsApi
+      .getFeaturedProducts(4)
+      .then((rows) => {
+        if (active && rows.length > 0) {
+          setFeaturedProducts(rows.map(mapSupabaseProduct));
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load featured products:', error);
+      })
+      .finally(() => {
+        if (active) setFeaturedLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
@@ -145,6 +161,41 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Featured Products — real catalog data (Supabase), bundled fallback in demo mode. */}
+      <section className="py-16 md:py-20 bg-warm-white border-t border-himalayan-line/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-himalayan mb-2">Best Sellers</p>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold text-charcoal">
+                Featured Salt Products
+              </h2>
+            </div>
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-himalayan hover:text-himalayan-dark transition-colors"
+            >
+              View all products
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {featuredLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SkeletonProductCard key={index} />
+              ))}
+            </div>
+          ) : featuredProducts.length === 0 ? null : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+              {featuredProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

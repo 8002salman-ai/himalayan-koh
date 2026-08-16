@@ -36,6 +36,10 @@ export const MIGRATIONS = [
   '029_remove_dealer_wholesale.sql',
   '030_fix_packing_profiles_multi_unit.sql',
   '031_restore_products_public_read_policy.sql',
+  '032_fix_signup_role_escalation.sql',
+  '033_scope_guest_cart_rls.sql',
+  '034_newsletter_subscribers.sql',
+  '035_customer_cancel_own_order.sql',
 ];
 
 /** Tables every script's health/verification checks care about. */

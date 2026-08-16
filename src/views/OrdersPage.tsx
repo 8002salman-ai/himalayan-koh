@@ -16,6 +16,7 @@ import { ordersApi } from '../lib/supabase/api';
 import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { useCart } from '../store/cartStore';
+import { useToast } from '../context/ToastContext';
 
 const statusIcons: Record<string, React.ReactNode> = {
   pending: <Clock size={16} />,
@@ -26,21 +27,14 @@ const statusIcons: Record<string, React.ReactNode> = {
   cancelled: <XCircle size={16} />,
 };
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  confirmed: 'bg-blue-100 text-blue-700',
-  processing: 'bg-purple-100 text-purple-700',
-  shipped: 'bg-indigo-100 text-indigo-700',
-  delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
-};
-
 export default function OrdersPage() {
   const { user, profile } = useAuthContext();
   const { addItem } = useCart();
+  const toast = useToast();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -71,6 +65,27 @@ export default function OrdersPage() {
         image: item.product_image || '',
         grainSize: item.grain_size || undefined,
       }, item.quantity);
+    }
+  };
+
+  const handleCancelOrder = async (order: OrderWithItems) => {
+    if (!user?.id) return;
+    if (!window.confirm(`Cancel order ${order.order_number}? This cannot be undone.`)) return;
+
+    setCancellingId(order.id);
+    try {
+      const cancelled = await ordersApi.cancelOrder(order.id, user.id);
+      setOrders((current) =>
+        current.map((o) => (o.id === order.id ? { ...o, status: cancelled.status } : o))
+      );
+      setSelectedOrder((current) =>
+        current?.id === order.id ? { ...current, status: cancelled.status } : current
+      );
+      toast.success('Order cancelled.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to cancel order.');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -310,8 +325,12 @@ export default function OrdersPage() {
                   </div>
 
                   {selectedOrder.status === 'pending' && (
-                    <button className="w-full mt-6 px-4 py-3 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium">
-                      Cancel Order
+                    <button
+                      onClick={() => handleCancelOrder(selectedOrder)}
+                      disabled={cancellingId === selectedOrder.id}
+                      className="w-full mt-6 px-4 py-3 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {cancellingId === selectedOrder.id ? 'Cancelling…' : 'Cancel Order'}
                     </button>
                   )}
                   <button

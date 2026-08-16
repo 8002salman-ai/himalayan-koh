@@ -81,7 +81,6 @@ export default function CategoryArticlesSection({
   emptyMessage,
   loading,
   source,
-  categoryLabel,
 }: Props) {
   // Blog is temporarily off the storefront (kept live for direct/search access
   // and in the sitemap for SEO) — this is the one place that promotes it into

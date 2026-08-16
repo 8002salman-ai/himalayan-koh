@@ -3,11 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
-import { usePageSeo } from '../hooks/usePageSeo';
 import type { Product } from '../data/products';
-import { DEFAULT_DESCRIPTION } from '../lib/seo/constants';
-import { buildProductPageSeo } from '../lib/products/productSeo';
-import { normalizeProductSlug } from '../lib/products/slug';
 import { resolveProductBySlug } from '../lib/products/resolveProduct';
 import ProductDetailSections from '../components/product/ProductDetailSections';
 import ProductLifestyleGallery from '../components/product/ProductLifestyleGallery';
@@ -64,33 +60,6 @@ export default function ProductDetailPage({ initialProduct = null }: ProductDeta
     // initialProduct is fixed per server render; the fetch keys on the slug.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeSlug]);
-
-  const seo = useMemo(() => {
-    const slug = product?.slug ?? (routeSlug ? normalizeProductSlug(routeSlug) : '');
-    if (!slug) return null;
-
-    const canonicalPath = `/products/${slug}`;
-
-    if (product) {
-      const { title, description } = buildProductPageSeo(product);
-      return {
-        title,
-        description,
-        canonicalPath,
-        ogImage: product.image,
-        ogType: 'product',
-      };
-    }
-
-    return {
-      title: 'Product | Himalayan Koh',
-      description: DEFAULT_DESCRIPTION,
-      canonicalPath,
-      ogType: 'product',
-    };
-  }, [product, routeSlug]);
-
-  usePageSeo(seo);
 
   const pdpContent = useMemo(
     () => (product ? getPdpContent(product) : null),

@@ -12,7 +12,6 @@ interface Props {
 /** Category-specific PDF downloads — always last in the education column. */
 export default function CategoryPdfResources({
   resources,
-  categoryLabel,
   emptyMessage,
 }: Props) {
   const visible = resources.filter((r) => r.visible !== false);

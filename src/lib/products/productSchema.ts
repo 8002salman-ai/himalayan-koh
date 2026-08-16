@@ -15,6 +15,7 @@ export function buildProductStructuredData(product: Product) {
   const productUrl = `${SITE_URL}/products/${product.slug}`;
 
   const { '@context': _ctx, ...orgBase } = ORGANIZATION_JSON_LD;
+  void _ctx;
   const organization = {
     ...orgBase,
     '@id': ORGANIZATION_ID,
