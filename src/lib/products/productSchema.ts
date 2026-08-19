@@ -9,6 +9,13 @@ export function buildOrganizationRef() {
   return { '@id': ORGANIZATION_ID };
 }
 
+/** Google's rich-results validator rejects a relative Product.image URL. */
+function absoluteImageUrl(image: string | null | undefined): string | undefined {
+  if (!image) return undefined;
+  if (/^https?:\/\//i.test(image)) return image;
+  return `${SITE_URL}${image.startsWith('/') ? image : `/${image}`}`;
+}
+
 export function buildProductStructuredData(product: Product) {
   const content = getProductContent(product);
   const { title, description } = buildProductPageSeo(product);
@@ -31,7 +38,7 @@ export function buildProductStructuredData(product: Product) {
     '@id': `${productUrl}#product`,
     name: content.displayName,
     description,
-    image: product.image,
+    image: absoluteImageUrl(product.image),
     sku: String(product.id),
     url: productUrl,
     brand: {
