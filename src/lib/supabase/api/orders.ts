@@ -41,7 +41,11 @@ export function calculateOrderTotals(items: TotalsLineItem[], options: Calculate
   );
   const normalizedCoupon = options.couponCode?.trim().toUpperCase() || '';
   const coupon = supportedCoupons[normalizedCoupon];
-  const discountAmount = coupon ? subtotal * coupon.percentage : 0;
+  // Rounded to the cent before flowing into taxableSubtotal/total — otherwise
+  // the unrounded discount (e.g. $9.95 * 10% = $0.995) makes the displayed
+  // total off by a cent from subtotal - discount + tax + shipping, since each
+  // of those is independently rounded for display but the total wasn't.
+  const discountAmount = coupon ? Math.round(subtotal * coupon.percentage * 100) / 100 : 0;
   const taxableSubtotal = Math.max(0, subtotal - discountAmount);
   const shippingMethod = options.shippingMethod || 'standard';
   const shippingCost =

@@ -1,6 +1,10 @@
 import type { MetadataRoute } from 'next';
 import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
-import { CATEGORY_CONTENT_REGISTRY, buildProductsCategoryPath } from '@/lib/categoryContent';
+import {
+  CATEGORY_CONTENT_REGISTRY,
+  CATEGORY_PRODUCT_LABELS,
+  buildProductsCategoryPath,
+} from '@/lib/categoryContent';
 import type { CategoryContentKey } from '@/lib/categoryContent';
 import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 
@@ -32,10 +36,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route.priority,
   }));
 
+  const supabase = getSeoSupabase();
+
+  const [{ data: products }, { data: categories }, { data: posts }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('slug, updated_at, tags, category_id')
+      .eq('is_active', true),
+    supabase.from('categories').select('id, name'),
+    supabase
+      .from('blog_posts')
+      .select('slug, updated_at, published_at')
+      .eq('is_published', true),
+  ]);
+
+  const categoryNameById = new Map(
+    ((categories as { id: string; name: string }[] | null) || []).map((c) => [c.id, c.name])
+  );
+
+  const realProducts = (
+    (products as { slug: string; updated_at: string | null; tags?: string[] | null; category_id: string | null }[] | null) || []
+  ).filter((product) => product.slug && isRealCatalogProduct(product));
+
+  // A category hub with no real (indexed) product isn't worth crawling — it's
+  // already noindexed on the page itself (see products/page.tsx), so listing
+  // it here would just send crawlers to a page that asks not to be indexed.
+  const categoriesWithProducts = new Set(
+    realProducts
+      .map((p) => (p.category_id ? categoryNameById.get(p.category_id) : undefined))
+      .filter((name): name is string => Boolean(name))
+  );
+
   // Category hubs are real landing pages (own hero, copy, guides, SEO title) served
   // from /products?category=<key>. Without these the hub content is unreachable to
   // crawlers, which only ever see the unfiltered /products page.
   for (const key of Object.keys(CATEGORY_CONTENT_REGISTRY) as CategoryContentKey[]) {
+    const labels = CATEGORY_PRODUCT_LABELS[key];
+    const hasProducts = labels.some((label) => categoriesWithProducts.has(label));
+    if (!hasProducts) continue;
+
     entries.push({
       url: `${origin}${buildProductsCategoryPath(key)}`,
       lastModified: now,
@@ -44,21 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  const supabase = getSeoSupabase();
-
-  const [{ data: products }, { data: posts }] = await Promise.all([
-    supabase
-      .from('products')
-      .select('slug, updated_at, tags')
-      .eq('is_active', true),
-    supabase
-      .from('blog_posts')
-      .select('slug, updated_at, published_at')
-      .eq('is_published', true),
-  ]);
-
-  for (const product of (products as { slug: string; updated_at: string | null; tags?: string[] | null }[] | null) || []) {
-    if (!product.slug || !isRealCatalogProduct(product)) continue;
+  for (const product of realProducts) {
     entries.push({
       url: `${origin}/products/${product.slug}`,
       lastModified: product.updated_at ? new Date(product.updated_at) : now,

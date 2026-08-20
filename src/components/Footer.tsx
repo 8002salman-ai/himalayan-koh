@@ -8,7 +8,6 @@ const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
   { label: 'Shop Products', to: '/products' },
   { label: 'Customer Login', to: '/login' },
-  { label: 'Admin Login', to: '/login', state: { from: '/admin' } },
   { label: 'Contact Us', to: '/contact' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Privacy Policy', to: '/privacy' },
