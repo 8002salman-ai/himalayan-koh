@@ -2,7 +2,7 @@
 //
 // HOW TO RUN:
 // 1. Install Node.js if you don't have it: https://nodejs.org (download the LTS version)
-// 2. Edit the two lines below (https://timpjroyxoafhkwpxkiu.supabase.co and eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpbXBqcm95eG9hZmhrd3B4a2l1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTEzMTEzNSwiZXhwIjoyMDk0NzA3MTM1fQ.TXb9LiTs1I5w3U3fuMdMi3KlA3O_8RlPGY0v02_cUFQ) with your values
+// 2. Edit the two lines below (https://timpjroyxoafhkwpxkiu.supabase.co and <REDACTED>) with your values
 // 3. Open a terminal in the folder where you saved this file
 // 4. Run:  node insert-himalayan-products.mjs
 // 5. Read the output — it tells you exactly what was created or skipped
@@ -10,8 +10,8 @@
 // This only touches the 6 new products. It will NOT create a duplicate if a
 // product with the same slug already exists — it skips those and tells you.
 
-const SUPABASE_URL = 'https://timpjroyxoafhkwpxkiu.supabase.co';        // e.g. https://xxxxx.supabase.co
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpbXBqcm95eG9hZmhrd3B4a2l1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTEzMTEzNSwiZXhwIjoyMDk0NzA3MTM1fQ.TXb9LiTs1I5w3U3fuMdMi3KlA3O_8RlPGY0v02_cUFQ'; // starts with eyJ...
+const SUPABASE_URL = process.env.SUPABASE_URL;        // e.g. https://xxxxx.supabase.co
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // starts with eyJ...
 
 // ---------------------------------------------------------------------------
 
