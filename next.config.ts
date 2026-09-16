@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { LEGACY_REDIRECTS } from './src/lib/seo/legacyRedirects';
+import { PREVIEW_HOSTS } from './src/lib/seo/previewHost';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -71,6 +72,18 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // The preview subdomain serves this same build, so no host information
+      // exists at build time to branch on in generateMetadata — adding it there
+      // would opt all 38 prerendered routes into dynamic rendering. A
+      // host-scoped response header keeps the storefront prerendered while
+      // making the preview host unindexable. Headers are matched before the
+      // filesystem, so this covers prerendered HTML, /robots.txt and public
+      // files alike — and only for the hosts listed in PREVIEW_HOSTS.
+      ...PREVIEW_HOSTS.map((host) => ({
+        source: '/:path*',
+        has: [{ type: 'host' as const, value: host }],
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      })),
     ];
   },
   images: {
