@@ -39,14 +39,24 @@ export function buildProductStructuredData(product: Product) {
     name: content.displayName,
     description,
     image: absoluteImageUrl(product.image),
-    sku: String(product.id),
+    // Only a SKU the source actually reported. This previously emitted the
+    // product's internal id as its SKU, which published a fabricated
+    // identifier to Google for every product (and would have published
+    // "2461" for a WooCommerce product).
+    sku: product.sku || undefined,
     url: productUrl,
     brand: {
       '@type': 'Brand',
       name: ORGANIZATION_JSON_LD.name,
     },
     manufacturer: buildOrganizationRef(),
-    offers: {
+  };
+
+  // An Offer without a price is not valid structured data, and inventing one
+  // would be a fabricated commercial claim. Omit the offer entirely until the
+  // source can report a real price.
+  if (product.priceMin !== null) {
+    productNode.offers = {
       '@type': 'Offer',
       url: productUrl,
       priceCurrency: 'USD',
@@ -55,8 +65,8 @@ export function buildProductStructuredData(product: Product) {
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       seller: buildOrganizationRef(),
-    },
-  };
+    };
+  }
 
   const graph: Record<string, unknown>[] = [organization, productNode];
 

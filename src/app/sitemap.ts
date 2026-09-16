@@ -6,7 +6,7 @@ import {
   buildProductsCategoryPath,
 } from '@/lib/categoryContent';
 import type { CategoryContentKey } from '@/lib/categoryContent';
-import { isRealCatalogProduct } from '@/lib/supabase/api/products';
+import { getCatalogProducts } from '@/lib/backend';
 
 type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
@@ -36,35 +36,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route.priority,
   }));
 
-  const supabase = getSeoSupabase();
-
-  const [{ data: products }, { data: categories }, { data: posts }] = await Promise.all([
-    supabase
-      .from('products')
-      .select('slug, updated_at, tags, category_id')
-      .eq('is_active', true),
-    supabase.from('categories').select('id, name'),
-    supabase
+  // The catalog goes through the backend layer so the sitemap, the listing page
+  // and the product page can never disagree about which products exist or what
+  // they are called. The backend's Supabase source already applies the same
+  // "real catalog product" gate this file used to apply itself. Category
+  // membership now comes from each product's resolved category name, so the
+  // separate categories query is no longer needed to join the two.
+  const [{ products: realProducts }, { data: posts }] = await Promise.all([
+    getCatalogProducts(),
+    getSeoSupabase()
       .from('blog_posts')
       .select('slug, updated_at, published_at')
       .eq('is_published', true),
   ]);
 
-  const categoryNameById = new Map(
-    ((categories as { id: string; name: string }[] | null) || []).map((c) => [c.id, c.name])
-  );
-
-  const realProducts = (
-    (products as { slug: string; updated_at: string | null; tags?: string[] | null; category_id: string | null }[] | null) || []
-  ).filter((product) => product.slug && isRealCatalogProduct(product));
-
   // A category hub with no real (indexed) product isn't worth crawling — it's
   // already noindexed on the page itself (see products/page.tsx), so listing
   // it here would just send crawlers to a page that asks not to be indexed.
   const categoriesWithProducts = new Set(
-    realProducts
-      .map((p) => (p.category_id ? categoryNameById.get(p.category_id) : undefined))
-      .filter((name): name is string => Boolean(name))
+    realProducts.map((product) => product.category).filter(Boolean)
   );
 
   // Category hubs are real landing pages (own hero, copy, guides, SEO title) served
@@ -86,7 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const product of realProducts) {
     entries.push({
       url: `${origin}/products/${product.slug}`,
-      lastModified: product.updated_at ? new Date(product.updated_at) : now,
+      lastModified: product.updatedAt ? new Date(product.updatedAt) : now,
       changeFrequency: 'weekly',
       priority: 0.8,
     });

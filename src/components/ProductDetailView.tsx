@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, Heart, Check, Minus, Plus, ChevronRight } from 'lucide-react';
 import type { Product } from '../data/products';
+import { formatPriceDisplay, isPriceKnown } from '../lib/products/price';
 import { getProductDisplayName } from '../lib/products/productSeo';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
@@ -45,13 +46,21 @@ export default function ProductDetailView({
     setAddedToCart(false);
   }, [product.id, product.grainSizes]);
 
+  // No reported price means the product cannot be sold yet — the cart line
+  // needs a real unit price and 0 would allow a free checkout.
+  const priceKnown = isPriceKnown(product);
+
   const handleAddToCart = async () => {
+    if (!priceKnown) {
+      toast.error(`${product.name} has no price available yet.`);
+      return;
+    }
     try {
       await addItem(
         {
           id: String(product.id),
           name: product.name,
-          price: product.priceMin,
+          price: product.priceMin as number,
           image: product.image,
           grainSize: selectedGrain || undefined,
         },
@@ -159,10 +168,18 @@ export default function ProductDetailView({
             {displayName}
           </h1>
 
-          <p className="text-himalayan font-bold text-2xl mb-4">{product.price}</p>
+          <p className="text-himalayan font-bold text-2xl mb-4">{formatPriceDisplay(product)}</p>
 
-          {!product.inStock && (
+          {/* Only an explicit out-of-stock report is shown. A source that
+              cannot report stock at all (stockStatus 'unknown') must not be
+              described as out of stock — that is a claim we did not receive. */}
+          {product.stockStatus === 'out_of_stock' && (
             <p className="text-sm font-semibold text-red-600 mb-4">Currently out of stock</p>
+          )}
+          {product.stockStatus === 'unknown' && !priceKnown && (
+            <p className="text-sm font-semibold text-charcoal/60 mb-4">
+              Price and availability to be confirmed
+            </p>
           )}
 
           {product.description && (
@@ -231,7 +248,7 @@ export default function ProductDetailView({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleAddToCart}
-              disabled={!product.inStock}
+              disabled={!product.inStock || !priceKnown}
               className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                 addedToCart
                   ? 'bg-green-500 text-white'

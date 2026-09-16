@@ -48,6 +48,17 @@ const RETAIL_PRODUCT_COLUMNS = `
   inventory(*)
 `;
 
+/**
+ * Per-call options for catalog reads.
+ *
+ * `signal` exists so server-side callers (SEO metadata, sitemap) can bound the
+ * request: without it a stalled PostgREST read would hang the whole render,
+ * which reads to a visitor as navigation being stuck.
+ */
+export interface ProductQueryOptions {
+  signal?: AbortSignal;
+}
+
 export interface ProductFilters {
   categorySlug?: string;
   search?: string;
@@ -61,7 +72,10 @@ export interface ProductFilters {
 }
 
 export const productsApi = {
-  async getProducts(filters: ProductFilters = {}): Promise<{ products: ProductWithCategory[]; count: number }> {
+  async getProducts(
+    filters: ProductFilters = {},
+    options: ProductQueryOptions = {}
+  ): Promise<{ products: ProductWithCategory[]; count: number }> {
     let query = supabase
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS, { count: 'exact' })
@@ -96,6 +110,7 @@ export const productsApi = {
 
     if (filters.limit) query = query.limit(filters.limit);
     if (filters.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+    if (options.signal) query = query.abortSignal(options.signal);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -104,17 +119,22 @@ export const productsApi = {
     return { products, count: products.length };
   },
 
-  async getProductBySlug(slug: string): Promise<ProductWithCategory | null> {
+  async getProductBySlug(
+    slug: string,
+    options: ProductQueryOptions = {}
+  ): Promise<ProductWithCategory | null> {
     const normalizedSlug = normalizeProductSlug(slug);
     if (!normalizedSlug) return null;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('slug', normalizedSlug)
-      .eq('is_active', true)
-  
-      .maybeSingle();
+      .eq('is_active', true);
+
+    if (options.signal) query = query.abortSignal(options.signal);
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -123,7 +143,7 @@ export const productsApi = {
 
     if (data && isRealCatalogProduct(data)) return data as ProductWithCategory;
 
-    const { products } = await this.getProducts({ limit: 100 });
+    const { products } = await this.getProducts({ limit: 100 }, options);
     return products.find((row) => slugsMatch(row.slug, normalizedSlug) || slugsMatch(productSlugFromName(row.name, row.slug), normalizedSlug)) ?? null;
   },
 
@@ -157,16 +177,21 @@ export const productsApi = {
     return ((data || []) as ProductWithCategory[]).filter(isRealCatalogProduct).slice(0, limit);
   },
 
-  async getRelatedProducts(productId: string, categoryId: string | null, limit = 4): Promise<ProductWithCategory[]> {
+  async getRelatedProducts(
+    productId: string,
+    categoryId: string | null,
+    limit = 4,
+    options: ProductQueryOptions = {}
+  ): Promise<ProductWithCategory[]> {
     let query = supabase
       .from('products')
       .select(RETAIL_PRODUCT_COLUMNS)
       .eq('is_active', true)
-  
       .neq('id', productId)
       .limit(limit * 4);
 
     if (categoryId) query = query.eq('category_id', categoryId);
+    if (options.signal) query = query.abortSignal(options.signal);
 
     const { data, error } = await query;
     if (error) throw error;

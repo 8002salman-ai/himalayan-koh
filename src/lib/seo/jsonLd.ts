@@ -2,36 +2,17 @@ import { ORGANIZATION_JSON_LD, SITE_NAME } from './constants';
 import { absoluteUrl } from './server';
 import { absoluteImage } from './metadata';
 
-interface ProductLdInput {
-  name: string;
-  description?: string | null;
-  slug: string;
-  price: number;
-  image?: string | null;
-  sku?: string | null;
-  inStock?: boolean;
-}
-
-export function productJsonLd(input: ProductLdInput): Record<string, unknown> {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: input.name,
-    description: input.description || undefined,
-    image: absoluteImage(input.image),
-    sku: input.sku || undefined,
-    brand: { '@type': 'Brand', name: SITE_NAME },
-    offers: {
-      '@type': 'Offer',
-      url: absoluteUrl(`/products/${input.slug}`),
-      priceCurrency: 'USD',
-      price: input.price.toFixed(2),
-      availability: input.inStock === false
-        ? 'https://schema.org/OutOfStock'
-        : 'https://schema.org/InStock',
-    },
-  };
-}
+/**
+ * Product structured data for a product page is built by
+ * `src/lib/products/productSchema.ts` (`buildProductStructuredData`), which
+ * emits the full Product + Offer + FAQPage + WebPage graph and omits the SKU or
+ * the Offer when the catalog source could not report them.
+ *
+ * A second builder used to live here. It had no callers and hardcoded an always-
+ * present Offer, so it was the obvious route back to publishing a price or SKU
+ * the source never supplied. It is deliberately gone: one owner for product
+ * structured data.
+ */
 
 interface ArticleLdInput {
   title: string;

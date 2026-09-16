@@ -6,7 +6,7 @@ import type {
   Profile,
 } from '@/lib/supabase/database.types';
 import type { Product } from '@/data/products';
-import { getFallbackProductBySlug, mapSupabaseProduct } from '@/lib/products/mapProduct';
+import { lookupCatalogProduct } from '@/lib/backend';
 import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 import { publicEnv } from '@/lib/env';
 
@@ -113,25 +113,14 @@ export async function fetchSeoProductModel(slug: string): Promise<Product | null
   const normalized = normalizeSlugParam(slug);
   if (!normalized) return null;
 
-  const { data } = await getSeoSupabase()
-    .from('products')
-    .select('*, category:categories(*), inventory(*)')
-    .eq('slug', normalized)
-    .eq('is_active', true)
-    .abortSignal(seoFetchDeadline())
-    .maybeSingle();
-
-  if (data) {
-    // A real active row exists for this slug — either show it (packing
-    // profile present) or respect that it's deliberately withheld from the
-    // storefront. Either way, never let the bundled demo catalog (which
-    // reuses these same slugs) republish it from stale fallback data.
-    return isRealCatalogProduct(data as { tags?: string[] | null })
-      ? mapSupabaseProduct(data as unknown as ProductWithCategory)
-      : null;
-  }
-
-  return getFallbackProductBySlug(normalized) ?? null;
+  // The backend owns catalog resolution, including the "real catalog product"
+  // gate and the rule that a deliberately withheld product must never be
+  // republished from the bundled demo catalog. Routing metadata through the
+  // same resolver the page uses is what keeps the server-rendered title, the
+  // JSON-LD and the hydrated page from drifting apart. `seoFetchDeadline()`
+  // bounds the read so a stalled backend cannot hang the render.
+  const lookup = await lookupCatalogProduct(normalized, seoFetchDeadline());
+  return lookup.product;
 }
 
 export interface SeoBlogPost {

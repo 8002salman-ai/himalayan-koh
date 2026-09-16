@@ -6,9 +6,11 @@ import { legacyImage } from '@/lib/images/legacyAssets';
 import { products as fallbackProducts, Product } from '@/data/products';
 import ProductCard from '@/components/ProductCard';
 import { SkeletonProductCard } from '@/components/ui/Skeleton';
-import { productsApi } from '@/lib/supabase/api';
-import { mapSupabaseProduct } from '@/lib/products/mapProduct';
+import { getFeaturedCatalogProducts, isSupabaseDataSource } from '@/lib/backend';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+
+/** Module scope so it stays out of the effect's dependency array. */
+const USES_SUPABASE_SOURCE = isSupabaseDataSource();
 
 const livestockBenefits = [
   'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
@@ -40,16 +42,18 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    if (!isSupabaseConfigured()) {
+    if (USES_SUPABASE_SOURCE && !isSupabaseConfigured()) {
       setFeaturedLoading(false);
       return;
     }
 
-    productsApi
-      .getFeaturedProducts(4)
+    getFeaturedCatalogProducts(4)
       .then((rows) => {
+        // Keep the bundled demo entries on screen unless the source actually
+        // returned something — including on the WooCommerce source, where the
+        // seeded demo list is the correct empty-state for now.
         if (active && rows.length > 0) {
-          setFeaturedProducts(rows.map(mapSupabaseProduct));
+          setFeaturedProducts(rows);
         }
       })
       .catch((error) => {

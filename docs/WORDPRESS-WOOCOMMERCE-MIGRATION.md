@@ -1,0 +1,391 @@
+# Supabase → WordPress + WooCommerce migration
+
+Status: **Phases 0–1 complete · Phase 3 product read paths ROUTED through the backend layer · real price/stock still BLOCKED on a staging fault**
+
+Target architecture:
+
+```
+GitHub Next.js frontend  →  Cloudflare preview / production frontend
+                         →  WordPress REST API + WooCommerce APIs
+                         →  WordPress / WooCommerce on Namecheap
+                         →  existing MySQL database on Namecheap
+```
+
+> **Production (`https://himalayankoh.com`) is read-only during this migration.**
+> Nothing in this document, the scripts it references, or the adapter layer writes to
+> production WordPress, its database, orders, customers, users, payment settings,
+> files, DNS or APIs.
+
+---
+
+## 1. Summary of the blocker
+
+Every WooCommerce **Store API product** route on staging returns a WordPress PHP
+fatal error. Until that is resolved, **no public endpoint on staging reports
+product price, sale price, SKU or stock status**, so the storefront cannot show
+real commercial data.
+
+| Endpoint | Result |
+| --- | --- |
+| `GET /staging/wp-json/wc/store/v1/products` | **HTTP 500 — PHP fatal** |
+| `GET /staging/wp-json/wc/store/v1/products/2461` | **HTTP 500 — PHP fatal** |
+| `GET /staging/wp-json/wc/store/products` (legacy alias) | **HTTP 500 — PHP fatal** |
+| `GET /staging/wp-json/wc/store/v1/products/categories` | 200 OK |
+| `GET /staging/wp-json/wc/store/v1/cart` | 200 OK |
+| `GET /staging/wp-json/wc/store/v1/products/attributes` | 200 OK |
+| `GET /staging/wp-json/wc/store/v1/products/collection-data` | 200 OK |
+| `GET /staging/wp-json/wc/store/v1/products/reviews` | 200 OK |
+| `GET /staging/wp-json/wp/v2/product` | 200 OK — **but no price/SKU/stock fields** |
+| `GET /staging/wp-json/wp/v2/product_cat` | 200 OK |
+| `GET /staging/wp-json/wp/v2/media/{id}` | 200 OK |
+| `GET /staging/wp-json/wc/v3/products` | **HTTP 401** — no consumer key configured |
+
+Exact error body from the failing route:
+
+```
+HTTP/1.1 500 Internal Server Error
+Content-Type: text/html; charset=UTF-8
+x-powered-by: PHP/7.4.33
+server: cloudflare
+x-turbo-charged-by: LiteSpeed
+
+<!DOCTYPE html>
+<html lang="en-US">
+<head><title>WordPress &rsaquo; Error</title></head>
+<body id="error-page">
+  <div class="wp-die-message"><p>There has been a critical error on this website.</p>
+```
+
+Reproduced 5/5 times with cache-busting, so it is a deterministic fault and not
+a cache artefact.
+
+**Why this is a server-side problem, not a client bug:** WooCommerce is clearly
+loaded and healthy — `cart`, `categories`, `attributes`, `collection-data`,
+`reviews` and the whole `wc/v3`, `wc-analytics` and `wc-admin` namespaces all
+register and respond. Only the product **response** pipeline fatals, which
+points at a filter/hook on WooCommerce product data — typically a plugin
+returning the wrong type, most often an image, gallery or page-builder plugin
+mutating product payloads.
+
+### Resolving it (owner action — not done by this migration)
+
+Two options, neither of which this repository can perform safely on its own:
+
+1. **Fastest, no staging code change.** WooCommerce → Settings → Advanced →
+   REST API → *Add key* with **Read** permission. Set
+   `WOOCOMMERCE_CONSUMER_KEY` / `WOOCOMMERCE_CONSUMER_SECRET` in `.env.local`.
+   `/wc/v3/products` then returns price, regular/sale price, SKU and
+   `stock_status`/`stock_quantity` immediately, and the adapter pivots to it
+   automatically — it is already implemented and is tried first.
+2. **Fix the fatal at the source.** Enable `WP_DEBUG_LOG`, read
+   `wp-content/debug.log` right after hitting the route, and bisect the plugins
+   listed in §5. This restores the public Store API, which is the correct
+   long-term source for a headless storefront.
+
+Per the migration safety rules, **no fake or placeholder data has been
+introduced to work around this.** Price and stock are reported as `unknown`.
+
+---
+
+## 2. Phase 0 — repository audit
+
+`himalayan-koh/` — Next.js 15 App Router, TypeScript, 299 `.ts`/`.tsx` files
+under `src`, 33 SQL migrations under `supabase/migrations/`.
+
+There is **no password-based ORM**; all Supabase access funnels through
+`src/lib/supabase/` and its 13 API modules, which is what makes an adapter layer
+tractable.
+
+### 2.1 Supabase dependency inventory
+
+| # | Concern | Where it lives | Notes |
+| --- | --- | --- | --- |
+| 1 | **Client** | `src/lib/supabase/client.ts` | Browser client; `isSupabaseConfigured()`, `clearSupabaseSession()` |
+| 2 | **Generated types** | `src/lib/supabase/database.types.ts` | Hand-maintained; 16 tables |
+| 3 | **Products** | `src/lib/supabase/api/products.ts` | `RETAIL_PRODUCT_COLUMNS` deliberately excludes `cost_price` |
+| 4 | **Categories** | same module | `getCategories`, `getCategoryBySlug` |
+| 5 | **Inventory** | `products` select joins `inventory(*)` | `quantity > reserved_quantity` drives `inStock` |
+| 6 | **Cart** | `src/lib/supabase/api/cart.ts`, `carts` + `cart_items` | |
+| 7 | **Checkout** | `src/app/(main)/checkout/*`, `src/lib/stripe/*`, `src/lib/payments/*` | Stripe + Shippo + tax/shipping rules |
+| 8 | **Customers** | `src/lib/supabase/api/auth.ts`, `profiles` | |
+| 9 | **Orders** | `src/lib/supabase/api/orders.ts`, `orders` + `order_items` | Has Vitest coverage (`orders.test.ts`) |
+| 10 | **Wishlist** | `src/lib/supabase/api/wishlist.ts`, `wishlists` | |
+| 11 | **Notifications** | `src/lib/supabase/api/notifications.ts`, `notifications` | |
+| 12 | **Stripe** | `src/lib/stripe/`, `src/app/api/stripe/*` | `STRIPE_SECRET_KEY`, webhook, `STRIPE_ALLOW_LIVE` guard |
+| 13 | **Shippo** | `src/lib/shippo/`, `src/app/api/shippo/*` | Rates, labels, packing splits |
+| 14 | **Blog / content** | `src/lib/supabase/api/blog.ts`, `blog_posts` | Plus a bundled fallback in `src/lib/categoryContent/blogArticles.ts` |
+| 15 | **Images / storage** | `src/lib/images/`, `public/`, Supabase Storage buckets | `images:fetch` / `images:check` scripts rehost legacy WordPress media |
+| 16 | **API routes** | 19 route files under `src/app/api/**` | Stripe, Shippo, orders, contact, newsletter, admin, OpenRouter |
+| 17 | **Server actions** | none — the app uses API routes, not `"use server"` actions | Simplifies the swap |
+| 18 | **Environment variables** | `src/lib/env.ts` + `.env.example` | Full list in §6 |
+| 19 | **Demo / seed data** | `scripts/seed-demo-accounts.mjs`, `reset-demo-data.mjs`, `setup-supabase-backend.mjs` | Demo accounts + orders + wishlists + notifications |
+| 20 | **Fallback catalog** | `src/data/products.ts` (1,326 lines) | Bundled demo catalog — **must not** be reachable in production once WooCommerce is live |
+
+**80 files under `src` reference Supabase.** At audit time the read paths that
+mattered for the first milestone were concentrated in three modules:
+`src/lib/supabase/api/products.ts`, `src/lib/products/resolveProduct.ts` and
+`src/lib/seo/server.ts`. All three have since collapsed into the backend layer
+(§3): `resolveProduct.ts` is gone, and its single caller
+(`src/views/ProductDetailPage.tsx`) now calls `lookupCatalogProduct()` directly.
+
+### 2.2 Notable behaviours the migration must not break
+
+- **`isRealCatalogProduct()`** — products are only storefront-visible when they
+  carry a `packing_profile:` tag. Demo/legacy rows stay hidden from shoppers.
+  Any WooCommerce mapping needs an equivalent "is this actually sellable" gate,
+  or the storefront will start leaking half-configured products.
+- **Product-by-slug resolution** (originally `resolveProductBySlug()`, now
+  `lookupCatalogProduct()` in the backend layer) — falls back to the bundled
+  demo catalog when Supabase has no row, *and* has an `isHiddenActiveProduct()`
+  guard so an admin's in-progress product is not silently republished from stale
+  demo data.
+  A WooCommerce adapter must preserve this distinction or the fallback becomes a
+  data-integrity bug.
+- **Slug tolerance** — `normalizeProductSlug` / `productSlugFromName` /
+  `slugsMatch` reconcile legacy URLs. WooCommerce slugs are short
+  (`salt-licks`, `pouches`, `block-of-salt`) and will collide with the longer
+  demo slugs, so this logic must be revisited, not deleted.
+- **SEO is server-rendered and Supabase-backed** — `src/lib/seo/server.ts` and
+  `src/app/sitemap.ts` read `products`, `categories` and `blog_posts` directly
+  via `getSeoSupabase()`. These are a separate migration surface from the UI.
+- **Route naming** — the brief specifies `/shop`, `/product/[slug]` and
+  `/product-category/[slug]`; the app ships `/products`, `/products/[slug]` and
+  a query-param category hub (`/products?category=…`). Rule 12 ("keep the
+  existing working UI") means the existing routes are authoritative; the brief's
+  names are satisfied by redirection if the owner wants the new URLs for SEO.
+
+### 2.3 Staging inventory (read-only, from `wp/v2/product`)
+
+11 published products:
+
+```
+2461 himalayan-koh-edible-salt-grain
+2446 himalayan-edible-pink-salt
+2372 himalayan-rock-salt-bag
+2367 himalayan-salt-pouches
+2352 salt-licks
+2321 pouches
+2295 himalayan-crystal-rock-salt-lamp-ionizer-air-purifier-with-dimmable-control
+2192 himalayan-chef-himalayan-pink-salt-coarse-grain-jar-1-lbs
+2185 chef-himalayan-pink-salt
+                                 286 block-of-salt
+                                 281 salt-licks-for-horses
+```
+
+3 product categories: `animal-feed` (58), `bulk-order` (105), `uncategorized` (75).
+
+> Note a discrepancy worth investigating: the Store API reports `count: 3` for
+> `bulk-order`, while `/wp/v2/product_cat` reports `count: 0`. Two different
+> counting paths disagree, so category counts should not be trusted in the UI
+> until that is explained.
+
+---
+
+## 3. Phase 1 — backend adapter layer (implemented)
+
+`src/lib/backend/` is the seam. Views should import from here rather than from
+`lib/supabase` or a WordPress client, so switching backends does not touch UI.
+
+| File | Responsibility |
+| --- | --- |
+| `config.ts` | `NEXT_PUBLIC_DATA_SOURCE` flag (**defaults to `supabase`**), base URLs, credentials. `resolveDataSource()` / `describeReadiness()` are the pure rules; `backendConfig` / `describeBackendReadiness()` wrap them with the running configuration. |
+| `wordpress.ts` | REST client; converts WordPress PHP-fatal HTML pages into `WordPressApiError` instead of a confusing `Unexpected token '<'` |
+| `wordpressFatal.mjs` | The **single owner** of PHP-fatal / HTML-body detection, shared by `wordpress.ts` and `scripts/check-wordpress-setup.mjs` (plain ESM because the no-build script imports it directly) |
+| `woocommerce.ts` | Store API + REST v3 clients and **pure** raw→`Product` mappers |
+| `products.ts` | Catalog adapter with a documented, explicitly *degraded* fallback chain |
+| `index.ts` | Barrel — only the names the app imports: `isSupabaseDataSource`, `getCatalogProducts`, `getFeaturedCatalogProducts`, `lookupCatalogProduct`, plus their types |
+
+### Design commitments
+
+1. **`priceMin` is `number | null`.** `null` means "the backend did not report
+   it". It is never defaulted to `0`, never parsed from a demo string.
+   (`Product.price` is the display string, and is empty when the price is
+   unknown.)
+2. **`stockStatus` has an explicit `'unknown'`.** Absent data does not become
+   `in_stock`.
+3. **Every product carries `missing: string[]`** naming the fields the backend
+   failed to supply, so the UI can render "unknown" deliberately.
+4. **Degradation is visible.** `CatalogResult.degraded` and `.warnings` record
+   the exact backend error that forced a fallback.
+
+### Read order (WooCommerce source)
+
+1. `/wc/v3/products` — complete, needs consumer key/secret. Server-only.
+2. `/wc/store/v1/products` — public and complete, but currently fatal on staging.
+3. `/wp/v2/product` — always available, **no price or stock**. Using it marks the
+   response `degraded: true`.
+
+### What is wired (Phase 3)
+
+Every catalog read in the app now goes through this module — there is no longer
+any direct `productsApi` call from a page or view:
+
+| Caller | Uses |
+| --- | --- |
+| `src/views/ProductDetailPage.tsx` | `lookupCatalogProduct()` — keeps its `[PDP] product resolve` debug log |
+| `src/views/ProductsPage.tsx` | `getCatalogProducts()` |
+| `src/views/HomePage.tsx` | `getFeaturedCatalogProducts()` |
+| `src/lib/seo/server.ts` → `fetchSeoProductModel()` | `lookupCatalogProduct()`, bounded by `seoFetchDeadline()` |
+| `src/app/sitemap.ts` | `getCatalogProducts()` |
+
+`Product` (`src/data/products.ts`) is the single view model. It carries an
+explicit unknown: `priceMin: number | null`, `sku: string | null`,
+`stockStatus: 'unknown'`, plus `missing: string[]` naming what a source could not
+supply. Display goes through `src/lib/products/price.ts`, so a source that
+cannot report a price renders **"Price unavailable"** and the add-to-cart
+control is disabled rather than offering a product for `$0.00`.
+
+`compare_at_price` has exactly one meaning and one owner: it is the top of a
+**variant price range** (rendered `"$9.95 - $17.95"`, `priceRange: true`), read
+only by `src/lib/products/mapProduct.ts`. The WooCommerce mappers never touch it
+and never translate a discount into a range.
+
+### Rolling back
+
+The Supabase path is intact and both `getCatalogProducts()` and
+`lookupCatalogProduct()` delegate to `productsApi` when the flag is unset.
+Flipping `NEXT_PUBLIC_DATA_SOURCE` back to `supabase` (or removing it) restores
+the previous behaviour — verified by diffing the rendered product list, prices
+and product-detail structured data before and after the change.
+
+---
+
+## 4. Phase 2/3 status
+
+The Phase 14 milestone requires *real product, real price, real images, correct
+stock, working category, working slug, no Supabase product query*. Verified by
+exercising both flag values against the live environment:
+
+| Success criterion | flag=supabase | flag=woocommerce |
+| --- | --- | --- |
+| Real product appears | ✅ unchanged | ✅ 11 real staging products |
+| Real images appear | ✅ unchanged | ✅ real `himalayankoh.com/staging` media URLs |
+| Product slug works | ✅ unchanged | ✅ `/products/salt-licks` resolves (id 2352) |
+| **Real price appears** | ✅ unchanged | ⛔ **BLOCKED — no endpoint reports price; renders "Price unavailable"** |
+| **Correct stock appears** | ✅ unchanged | ⛔ **BLOCKED — renders stock as unknown, add-to-cart disabled** |
+| Struct data | ✅ unchanged, except the SKU fix below | ✅ no `Offer` node, no SKU |
+
+### The one intentional delta on the Supabase path
+
+Product-detail JSON-LD previously published the product's **internal UUID as its
+SKU** (`sku: String(product.id)`), which is a fabricated identifier — and would
+have published `"2461"` for a WooCommerce product. It now emits the real SKU.
+
+Measured effect on `/products/himalayan-salt-block-30-lbs`: the Product+Offer
+graph shrank by exactly **25 bytes** (2449 → 2424), which is precisely a
+36-character UUID replaced by 11-character `HK-LB-30LBS`. Every other JSON-LD
+field, the title, the meta description, the rendered headline and the displayed
+price are unchanged. This was the only way to satisfy "surface SKU as unknown
+rather than inventing it" on the WooCommerce path, where `String(product.id)`
+would have emitted a product number as a SKU.
+
+### What is still missing before this is usable
+
+1. **Price and stock.** Blocked by §1. Everything else is ready for them.
+2. **A WooCommerce equivalent of the `isRealCatalogProduct()` sellability gate.**
+   Supabase products only reach the storefront when they carry a `packing_profile:`
+   tag; WooCommerce has no such filter yet, so all 11 published staging products
+   (including `pouches`, `block-of-salt`, `uncategorized` items) appear. Publicly
+   visible ≠ sellable — this needs an explicit rule before production.
+3. **Related products on the WooCommerce path** — currently `[]` (Supabase keeps
+   its real related-products query).
+4. **Weight**, for Shippo. `Product` has no weight field; `weight` is referenced
+   ~120 times outside the backend layer.
+5. **Cart/checkout/auth/customers/orders adapters** (Phases 7–8). Untouched.
+
+---
+
+## 5. Staging environment observed
+
+- WordPress with Yoast (`yoast/v1`), Jetpack (`jetpack/v4`), Contact Form 7,
+  LiteSpeed Cache, Akismet, WPForms, a gallery plugin (`pgc_simply_gallery`),
+  Visual Portfolio, and a `omapp` (OptinMonster) namespace.
+- WooCommerce with `wc/v3`, `wc/v2`, `wc/v1`, `wc/store/v1`, `wc-analytics`,
+  `wc-admin`, `wc-paypal/v1`, `paypal/v1`, and a Stripe namespace.
+- PHP **7.4.33** on LiteSpeed behind Cloudflare. PHP 7.4 is end-of-life; worth
+  planning an upgrade independently of this migration.
+
+---
+
+## 6. Environment variables
+
+`.env.example` could not be updated by tooling (it is flagged as a secrets
+file), so **add the following block to `.env.example` and `.env.local`
+manually**.
+
+```dotenv
+# ── WordPress / WooCommerce backend (migration target) ──────────────────────
+# Data source for catalog/commerce reads. Unset or 'supabase' keeps the current
+# backend. 'woocommerce' reads from WordPress. This is the rollback switch.
+NEXT_PUBLIC_DATA_SOURCE=supabase
+
+# STAGING ONLY until the migration is verified. Never point at production
+# during the migration.
+WORDPRESS_BASE_URL=https://himalayankoh.com/staging
+WOOCOMMERCE_BASE_URL=https://himalayankoh.com/staging
+NEXT_PUBLIC_WORDPRESS_BASE_URL=https://himalayankoh.com/staging
+
+WORDPRESS_REQUEST_TIMEOUT_MS=12000
+
+# SERVER ONLY — never prefix with NEXT_PUBLIC_. Read permission is enough.
+# Required for price/SKU/stock while the Store API product routes are fatal.
+WOOCOMMERCE_CONSUMER_KEY=
+WOOCOMMERCE_CONSUMER_SECRET=
+```
+
+Never commit: WooCommerce secrets, WordPress application passwords, payment
+keys, database credentials, cPanel credentials, Cloudflare tokens, or Supabase
+service role keys.
+
+---
+
+## 7. Diagnostics
+
+```bash
+npm run check:wordpress
+```
+
+Read-only. Issues **GET requests only** and reports PASS/WARN/FAIL/FATAL per
+endpoint, then states plainly whether price and stock are obtainable and prints
+the remediation steps. Exits non-zero when no endpoint can serve commercial
+data, so it is safe to wire into CI.
+
+---
+
+## 8. Phase tracker
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 0 | Repo audit → this document | ✅ Done |
+| 1 | `src/lib/backend/` adapter layer | ✅ Done |
+| 2 | WordPress staging connectivity | ⚠️ Content OK · **Store API products fatal** |
+| 3 | Products first, behind a flag | ✅ Read paths wired and verified on both flag values · ⛔ price/stock blocked by §1 |
+| 4 | WordPress content pages | ⏸ Not started — no code written. The speculative WordPress page/post mapper was removed as unused surface rather than left as untested groundwork. |
+| 5 | SEO from WordPress + Yoast | ⏸ Not started |
+| 6 | Images from WordPress media | ✅ Real staging images render. No `next.config.ts` change is actually needed: the storefront never uses `next/image` (40 plain `<img>` elements), so absolute staging URLs load directly. `images.remotePatterns` only matters if the app later migrates to `next/image`. |
+| 7 | Cart & checkout | ⏸ Not started — **existing Stripe/Shippo untouched** |
+| 8 | Customer accounts / CRM | ⏸ Not started — **production customers untouched** |
+| 9 | Supabase removal | ⏸ Not started — **Supabase fully intact, nothing deleted** |
+| 10 | Demo-data separation | ⏸ Not started |
+| 11 | Cloudflare hosting | ⏸ Not started |
+| 12 | Environment configuration | ⚠️ Documented in §6, needs manual file edit |
+| 13 | Safety rules | ✅ Observed throughout |
+| 14 | First milestone | ⛔ Blocked on §1 |
+
+---
+
+## 9. Next safe step
+
+Exactly one: **obtain a read-only WooCommerce REST key from the staging admin
+panel and put it in `.env.local`, then run `npm run check:wordpress` again.**
+
+No staging code change, no production change, no DNS change, and no payment
+activity is required to unblock price and stock. The adapter already tries
+`/wc/v3/products` first, so populating those two variables is the entire change
+needed to make real prices appear — the read paths and the honest-unknown
+fallbacks are wired and verified.
+
+The follow-on decision that will need owner input: whether all 11 staging
+products should be publicly sellable, or whether WooCommerce needs its own
+"is this ready to sell" marker to mirror the Supabase `packing_profile:` gate
+(see §4).
