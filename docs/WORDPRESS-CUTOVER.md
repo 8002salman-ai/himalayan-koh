@@ -1,4 +1,24 @@
-# Shutting down the old WordPress site
+# DEPRECATED — do not shut down WordPress
+
+> This document describes an older architecture that attempted to remove WordPress entirely.
+> It is **no longer the active plan** for Himalayan Koh.
+>
+> Current target architecture:
+>
+> ```text
+> Next.js frontend
+>   → WordPress REST API + WooCommerce APIs
+>   → existing WordPress / WooCommerce on Namecheap
+>   → existing MySQL database on Namecheap
+> ```
+>
+> WordPress/WooCommerce remains the source of truth for products, customers, orders,
+> inventory, and commerce data. Do **not** turn WordPress off, delete its database,
+> or remove WooCommerce. See `docs/WORDPRESS-WOOCOMMERCE-MIGRATION.md` for the current plan.
+
+---
+
+# Historical document — Shutting down the old WordPress site
 
 The storefront used to load nine images directly from
 `himalayankoh.com/wp-content/uploads/`. Eighty-three references across the code
@@ -44,7 +64,7 @@ Every build prints which images are still coming from WordPress.
 
 ## Remaining step
 
-One thing is left, and it has to happen **before** WordPress goes offline,
+One thing is left, and it has to happen **before WordPress goes offline in the historical plan**,
 because it downloads from it.
 
 ### Download the images and commit them
@@ -84,7 +104,7 @@ WordPress afterwards.
 This has already been run against production, which is why the fallback rewrites
 exist: the database pointed at `/images/legacy/...` before the files did.
 
-### Verify, then turn WordPress off
+### Historical verification step
 
 ```bash
 npm run build   # includes the missing-image check
@@ -92,14 +112,13 @@ npm run build   # includes the missing-image check
 
 Load the home page, About, a category hub, the blog list, and a livestock
 product page, and confirm no request in the browser network tab goes to
-`himalayankoh.com/wp-content`. Then the WordPress install can be shut down.
+`himalayankoh.com/wp-content`.
 
 ## What stays behind
 
-Once the files are committed, delete `LEGACY_IMAGE_FALLBACKS` and the
-`rewrites()` block from `next.config.ts`, and drop the `himalayankoh.com` entry
-from `images.remotePatterns`. Those three are the last references to the old
-host; leaving them in place would keep the dependency alive silently.
+The removal steps below belong only to the retired architecture. Under the current
+WordPress/WooCommerce backend plan, keep WordPress reachable and do not remove the
+integration simply because images are rehosted.
 
 The old WordPress *page* URLs are a separate matter and still handled:
 `src/lib/seo/legacyRedirects.ts` 301-redirects them to their new locations so
