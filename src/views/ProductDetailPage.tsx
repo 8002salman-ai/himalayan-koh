@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../data/products';
-import { resolveProductBySlug } from '../lib/products/resolveProduct';
+import { lookupCatalogProduct } from '../lib/backend';
 import ProductDetailSections from '../components/product/ProductDetailSections';
 import ProductLifestyleGallery from '../components/product/ProductLifestyleGallery';
 import PdpEmptyState from '../components/product/PdpEmptyState';
@@ -40,15 +40,28 @@ export default function ProductDetailPage({ initialProduct = null }: ProductDeta
     let cancelled = false;
 
     const load = async () => {
-      const result = await resolveProductBySlug(routeSlug);
+      // The backend owns catalog resolution, including Supabase's ordering and
+      // its hidden-active-product guard; this is the only caller.
+      const lookup = await lookupCatalogProduct(routeSlug);
       if (cancelled) return;
+
+      if (lookup.error) {
+        console.error('[PDP] catalog product lookup failed:', lookup.error);
+      }
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[PDP] product resolve', {
+          routeParam: routeSlug,
+          matchedSlug: lookup.product?.slug ?? null,
+          matchedSource: lookup.provenance,
+        });
+      }
 
       // Keep the server-rendered product if the client resolve comes back
       // empty, so a transient Supabase failure cannot blank a live page.
-      if (result.product || !initialProduct) {
-        setProduct(result.product);
+      if (lookup.product || !initialProduct) {
+        setProduct(lookup.product);
       }
-      setRelated(result.related);
+      setRelated(lookup.related);
       setLoading(false);
     };
 

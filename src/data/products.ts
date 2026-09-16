@@ -8,14 +8,39 @@ export interface Testimonial {
   date?: string;
 }
 
+/**
+ * Stock state as reported by the catalog source.
+ *
+ * 'unknown' is a first-class value, not a fallback for a missing boolean: a
+ * source that cannot report stock (the WordPress core product route, for
+ * instance) must be able to say so instead of defaulting to in-stock.
+ */
+export type StockStatus = 'in_stock' | 'out_of_stock' | 'on_backorder' | 'unknown';
+
+/**
+ * The single product view model. Every catalog source maps into this shape;
+ * nothing else may define a competing one.
+ *
+ * Commercial fields carry an explicit unknown:
+ *  - `priceMin === null` means the source did not report a price. It is never
+ *    defaulted to 0, and the display string in `price` is empty.
+ *  - `sku` is null/absent when the source did not report one.
+ *  - `stockStatus === 'unknown'` means the source could not report stock.
+ * `missing` names the fields the source failed to supply so the UI can render
+ * "unknown" deliberately rather than by accident.
+ */
 export interface Product {
   id: number | string;
   slug: string;
   name: string;
+  /** Display string, e.g. "$9.95" or "$9.95 – $17.95". Empty when price is unknown. */
   price: string;
+  /** True when `priceMin`..`priceMax` is a range across variants, not a discount. */
   priceRange?: boolean;
   isFeatured?: boolean;
-  priceMin: number;
+  /** Lowest price, or null when the source reported no price. Never guessed. */
+  priceMin: number | null;
+  /** Top of the variant price range. Not a compare-at/discount price — see `priceRange`. */
   priceMax?: number;
   image: string;
   images?: string[];
@@ -26,6 +51,14 @@ export interface Product {
   metaTitle?: string;
   metaDescription?: string;
   testimonials?: Testimonial[];
+  /** SKU when the source reports one; null when it does not. */
+  sku?: string | null;
+  /** Stock as reported by the source. Absent on hand-written demo entries. */
+  stockStatus?: StockStatus;
+  /** Last modification time on the source, when it reports one. */
+  updatedAt?: string | null;
+  /** Catalog fields the source could not supply. Empty/absent means complete. */
+  missing?: string[];
 }
 
 // Demo fallback catalog used when Supabase environment variables are not configured.

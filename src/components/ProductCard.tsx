@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Heart, Eye } from 'lucide-react';
 import { Product } from '../data/products';
+import { formatPriceDisplay, isPriceKnown } from '../lib/products/price';
 import { useCart } from '../store/cartStore';
 import { useAuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -26,12 +27,21 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
   const { user } = useAuthContext();
   const toast = useToast();
 
+  // A product with no reported price cannot be sold: the cart line needs a
+  // real unit price, and falling back to 0 would let a customer check out for
+  // free. The backend reports `priceMin: null` for exactly this case.
+  const priceKnown = isPriceKnown(product);
+
   const handleAddToCart = async () => {
+    if (!priceKnown) {
+      toast.error(`${product.name} has no price available yet.`);
+      return;
+    }
     try {
       await addItem({
         id: String(product.id),
         name: product.name,
-        price: product.priceMin,
+        price: product.priceMin as number,
         image: product.image,
         grainSize: selectedGrain || undefined,
       }, qty);
@@ -119,7 +129,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
         </h3>
 
         <p className="text-himalayan font-bold text-base mb-2.5">
-          {product.price}
+          {formatPriceDisplay(product)}
         </p>
 
         {/* Grain Size Selector */}
@@ -155,10 +165,11 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
             </button>
           </div>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={priceKnown ? { scale: 1.02 } : undefined}
+            whileTap={priceKnown ? { scale: 0.98 } : undefined}
             onClick={handleAddToCart}
-            className={`flex-1 flex items-center justify-center gap-2 min-h-11 rounded-xl font-semibold text-sm transition-all duration-300 ${
+            disabled={!priceKnown}
+            className={`flex-1 flex items-center justify-center gap-2 min-h-11 rounded-xl font-semibold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
               addedToCart
                 ? 'bg-himalayan-green text-white'
                 : 'bg-himalayan hover:bg-himalayan-dark text-white'

@@ -11,9 +11,16 @@ import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
 import CategoryShopPanel from '../components/category/CategoryShopPanel';
 import { productMatchesCategoryFilter } from '../lib/categoryContent';
-import { productsApi } from '../lib/supabase/api';
+import { getCatalogProducts, isSupabaseDataSource } from '../lib/backend';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
-import { mapSupabaseProduct } from '../lib/products/mapProduct';
+
+/**
+ * The bundled demo catalog is a Supabase-source-only safety net: it exists so a
+ * Supabase outage does not blank the page. On the WooCommerce source an empty
+ * catalog is a genuine answer, so demo products must never be substituted.
+ * Module scope keeps it out of the effect's dependency array.
+ */
+const USES_SUPABASE_SOURCE = isSupabaseDataSource();
 import { useCategoryBlogArticles } from '../hooks/useCategoryBlogArticles';
 import { useCategoryHubContent } from '../hooks/useCategoryHubContent';
 import { useProductsCategoryFilter } from '../hooks/useProductsCategoryFilter';
@@ -23,7 +30,7 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
-  const [loading, setLoading] = useState(isSupabaseConfigured());
+  const [loading, setLoading] = useState(USES_SUPABASE_SOURCE ? isSupabaseConfigured() : true);
   const prevCategoryKey = useRef<string | null>(null);
   const hasLoadedOnce = useRef(false);
   const fetchSeq = useRef(0);
@@ -51,7 +58,7 @@ export default function ProductsPage() {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fetchProducts = async () => {
-      if (!isSupabaseConfigured()) {
+      if (USES_SUPABASE_SOURCE && !isSupabaseConfigured()) {
         setProducts(fallbackProducts);
         setLoading(false);
         hasLoadedOnce.current = true;
@@ -64,9 +71,9 @@ export default function ProductsPage() {
       const seq = ++fetchSeq.current;
 
       try {
-        const { products: supabaseProducts } = await productsApi.getProducts();
+        const { products: catalogProducts } = await getCatalogProducts();
         if (seq !== fetchSeq.current) return;
-        setProducts(supabaseProducts.map(mapSupabaseProduct));
+        setProducts(catalogProducts);
         hasLoadedOnce.current = true;
       } catch (err) {
         console.error('Failed to fetch products:', err);
@@ -75,7 +82,7 @@ export default function ProductsPage() {
         // background refetch (e.g. a realtime-triggered one) must NOT replace
         // the products already on screen — that swap is what made the grid
         // flicker between the live list and the fallback list.
-        if (!hasLoadedOnce.current) {
+        if (!hasLoadedOnce.current && USES_SUPABASE_SOURCE) {
           setProducts(fallbackProducts);
         }
       } finally {
@@ -94,7 +101,9 @@ export default function ProductsPage() {
 
     fetchProducts();
 
-    if (!isSupabaseConfigured()) {
+    // Realtime invalidation is a Supabase feature; the WooCommerce source
+    // refetches through the backend instead.
+    if (!USES_SUPABASE_SOURCE || !isSupabaseConfigured()) {
       return () => {
         if (debounceTimer) clearTimeout(debounceTimer);
       };

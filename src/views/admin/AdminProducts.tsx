@@ -122,7 +122,10 @@ export default function AdminProducts() {
         slug: p.name.toLowerCase().replace(/\s+/g, '-'),
         description: p.description || null,
         short_description: p.description || null,
-        price: p.priceMin,
+        // Demo-catalog fallback rows for the admin editor always carry a price;
+        // 0 only satisfies the form's numeric field if one ever does not. This
+        // never feeds the storefront.
+        price: p.priceMin ?? 0,
         compare_at_price: p.priceMax || null,
         cost_price: null,
         sku: `SKU-${p.id}`,

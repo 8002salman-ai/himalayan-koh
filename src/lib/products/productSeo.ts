@@ -26,22 +26,30 @@ function normalizeTitle(title: string): string {
 }
 
 function buildFallbackDescription(product: Product, displayName: string): string {
+  // The price sentence is dropped entirely when the source reported no price,
+  // rather than printing "$0.00" or "null" into a meta description. When the
+  // price IS known the emitted strings are byte-for-byte what they were before
+  // this change: `${price}.` with a leading space.
+  const priceMin = product.priceMin;
   const price =
-    product.priceRange && product.priceMax
-      ? `From $${product.priceMin.toFixed(2)}`
-      : `$${product.priceMin.toFixed(2)}`;
+    priceMin === null
+      ? ''
+      : product.priceRange && product.priceMax
+        ? `From $${priceMin.toFixed(2)}`
+        : `$${priceMin.toFixed(2)}`;
+  const priceClause = price ? ` ${price}.` : '';
 
   const category = product.category.toLowerCase();
 
   if (category.includes('edible') || category.includes('cooking')) {
-    return `${displayName} — unrefined Himalayan pink salt with 84+ trace minerals. ${price}. Free U.S. shipping on orders over $50.`;
+    return `${displayName} — unrefined Himalayan pink salt with 84+ trace minerals.${priceClause} Free U.S. shipping on orders over $50.`;
   }
 
   if (category.includes('horse') || category.includes('cattle') || category.includes('livestock')) {
-    return `${displayName} — natural mineral salt for herd health and hydration. ${price}. Ranch-ready shipping from ${SITE_NAME}.`;
+    return `${displayName} — natural mineral salt for herd health and hydration.${priceClause} Ranch-ready shipping from ${SITE_NAME}.`;
   }
 
-  return `${displayName}. Premium Himalayan pink salt — ${price}. Shop ${SITE_NAME} for natural, mineral-rich salt.`;
+  return `${displayName}. Premium Himalayan pink salt —${priceClause} Shop ${SITE_NAME} for natural, mineral-rich salt.`;
 }
 
 export function buildProductPageSeo(product: Product): { title: string; description: string } {
