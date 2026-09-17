@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   Package,
   FolderTree,
@@ -13,44 +12,68 @@ import {
   BarChart3,
   Plus,
   FileText,
+  PlugZap,
 } from 'lucide-react';
-import { SkeletonDashboard } from '../../components/ui/Skeleton';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
 import { getErrorMessage } from '../../lib/errors';
+import {
+  ADMIN_TD,
+  AdminChip,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatTile,
+  AdminTable,
+  AdminTableSkeleton,
+} from '../../components/admin/AdminUI';
+import { ICON_TILE, ICON_TILE_TONES, MICRO_LABEL } from '../../components/admin/adminTheme';
 
+/**
+ * The order and customer summary.
+ *
+ * Product and category facts are deliberately absent: they come from the catalog
+ * read model (`catalogStats`), so this dashboard cannot count one catalog while
+ * the storefront serves another.
+ */
 interface DashboardStats {
-  totalProducts: number;
-  activeProducts: number;
-  lowStockCount: number;
-  totalCategories: number;
   recentOrders: number;
   totalRevenue: number;
 }
 
+/**
+ * A figure the dashboard shows, or the reason it cannot.
+ *
+ * Orders, revenue and customers live in Supabase; the catalog does not. When
+ * Supabase is not configured those panels say so instead of rendering `0`,
+ * because zero orders and an unknown order count are different claims.
+ */
+type Figure = { value: number; formatted?: string } | null;
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
+  const [catalogStats, setCatalogStats] = useState<AdminCatalogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [realtimeNotice, setRealtimeNotice] = useState('');
 
-  const fetchDashboard = useCallback(async () => {
-      if (!isSupabaseConfigured()) {
-        setStats(null);
-        setAnalytics(null);
-        setLoading(false);
-        return;
-      }
+  const ordersConnected = isSupabaseConfigured();
 
+  const fetchDashboard = useCallback(async () => {
       try {
         setFetchError(null);
-        const [data, analyticsData] = await Promise.all([
-          adminApi.getDashboardStats(),
-          adminApi.getDashboardAnalytics(),
+        // The catalog is read through the backend seam, so it works even when
+        // Supabase — which still owns orders and customers — is not configured.
+        const [data, analyticsData, catalogData] = await Promise.all([
+          isSupabaseConfigured() ? adminApi.getDashboardStats() : Promise.resolve(null),
+          isSupabaseConfigured() ? adminApi.getDashboardAnalytics() : Promise.resolve(null),
+          readAdminCatalogStats(),
         ]);
         setStats(data);
         setAnalytics(analyticsData);
+        setCatalogStats(catalogData);
       } catch (err) {
         setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
       } finally {
@@ -86,370 +109,417 @@ export default function AdminDashboard() {
     };
   }, [fetchDashboard]);
 
-  const statCards = [
-    {
-      label: 'Total Products',
-      value: stats?.totalProducts || 0,
-      icon: Package,
-      color: 'bg-blue-500',
-      link: '/admin/products',
-    },
-    {
-      label: 'Categories',
-      value: stats?.totalCategories || 0,
-      icon: FolderTree,
-      color: 'bg-purple-500',
-      link: '/admin/categories',
-    },
-    {
-      label: 'Recent Orders',
-      value: stats?.recentOrders || 0,
-      icon: ShoppingCart,
-      color: 'bg-green-500',
-      link: '/admin/orders',
-    },
-    {
-      label: 'Total Revenue',
-      value: `$${(stats?.totalRevenue || 0).toLocaleString()}`,
-      icon: DollarSign,
-      color: 'bg-himalayan',
-      link: '/admin/analytics',
-    },
-    {
-      label: 'Customers',
-      value: analytics?.totalCustomers || 0,
-      icon: Users,
-      color: 'bg-indigo-500',
-      link: '/admin/customers',
-    },
-    {
-      label: 'New Customers',
-      value: analytics?.newCustomers || 0,
-      icon: TrendingUp,
-      color: 'bg-emerald-500',
-      link: '/admin/customers',
-    },
-    {
-      label: 'Repeat Customers',
-      value: analytics?.repeatCustomers || 0,
-      icon: Users,
-      color: 'bg-purple-500',
-      link: '/admin/customers',
-    },
-    {
-      label: 'Inventory Alerts',
-      value: analytics?.inventoryAlerts.length || stats?.lowStockCount || 0,
-      icon: AlertTriangle,
-      color: 'bg-amber-500',
-      link: '/admin/products?filter=low_stock',
-    },
-  ];
+  const orders: Figure = stats ? { value: stats.recentOrders } : null;
+  const revenue: Figure = stats
+    ? { value: stats.totalRevenue, formatted: `$${stats.totalRevenue.toLocaleString()}` }
+    : null;
+  const customers: Figure = analytics ? { value: analytics.totalCustomers } : null;
+  const newCustomers: Figure = analytics ? { value: analytics.newCustomers } : null;
+  const repeatCustomers: Figure = analytics ? { value: analytics.repeatCustomers } : null;
 
   const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
   const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
-  const mobileActions = [
-    // Creating a product is the Products page's own Add Product button now, so
-    // this leads there rather than to a second, more restrictive form.
-    { label: 'Add Product', path: '/admin/products', icon: Plus, color: 'bg-himalayan text-white' },
-    { label: 'Products', path: '/admin/products', icon: Package, color: 'bg-white text-charcoal' },
-    { label: 'Orders', path: '/admin/orders', icon: ShoppingCart, color: 'bg-white text-charcoal' },
-    { label: 'Blog', path: '/admin/blog', icon: FileText, color: 'bg-white text-charcoal' },
-    { label: 'Customers', path: '/admin/customers', icon: Users, color: 'bg-white text-charcoal' },
-    { label: 'Analytics', path: '/admin/analytics', icon: BarChart3, color: 'bg-white text-charcoal' },
+  const unconnectedLabel = 'Not connected';
+
+  const quickActions = [
+    { label: 'Add product', path: '/admin/products?action=new', icon: Plus },
+    { label: 'Categories', path: '/admin/categories', icon: FolderTree },
+    { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
+    { label: 'SEO centre', path: '/admin/seo', icon: TrendingUp },
+    { label: 'Blog posts', path: '/admin/blog', icon: FileText },
+    { label: 'Users & roles', path: '/admin/users', icon: Users },
   ];
 
-  if (loading) {
-    return <SkeletonDashboard />;
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-charcoal">Dashboard</h1>
-            <p className="text-charcoal-light">Welcome back! Here&apos;s what&apos;s happening.</p>
-          </div>
-          {realtimeNotice && (
-            <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium">
-              {realtimeNotice}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {!isSupabaseConfigured() && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-semibold">Supabase not connected</p>
-          <p className="mt-1">Add Supabase environment variables to view live orders, revenue, and inventory.</p>
-        </div>
-      )}
+    <>
+      <AdminPageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description="Live catalog, orders and customer health for the Himalayan Koh storefront."
+        actions={
+          <>
+            {realtimeNotice && <AdminChip tone="success">{realtimeNotice}</AdminChip>}
+            <Link
+              to="/admin/products?action=new"
+              className="inline-flex items-center gap-2 rounded-xl bg-himalayan px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-himalayan-dark"
+            >
+              <Plus size={16} />
+              Add product
+            </Link>
+          </>
+        }
+      />
 
       {fetchError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <p className="font-semibold">Dashboard failed to load</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchDashboard}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
+        <AdminNotice
+          tone="danger"
+          title="Dashboard failed to load"
+          action={
+            <button
+              type="button"
+              onClick={fetchDashboard}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Retry
+            </button>
+          }
+        >
+          {fetchError}
+        </AdminNotice>
       )}
 
-      <div className="lg:hidden grid grid-cols-2 gap-3">
-        {mobileActions.map((action) => (
-          <Link
-            key={action.label}
-            to={action.path}
-            className={`min-h-[72px] rounded-2xl shadow-sm p-4 flex items-center gap-3 ${action.color}`}
-          >
-            <action.icon size={20} />
-            <span className="font-semibold text-sm">{action.label}</span>
-          </Link>
-        ))}
+      {!ordersConnected && (
+        <AdminNotice tone="warning" title="Orders and customers are not connected">
+          Supabase holds orders, revenue and customers, and its environment variables are not
+          configured in this deployment. Those figures read <strong>Not connected</strong> below
+          rather than zero. The product catalog is unaffected — it comes from the configured
+          catalog source.
+        </AdminNotice>
+      )}
+
+      {/* Figures. Every tile is either a real value or the reason there is none. */}
+      <div className="grid grid-cols-4 gap-4">
+        <AdminStatTile
+          label="Total products"
+          icon={Package}
+          tone="brand"
+          value={catalogStats?.total}
+          unavailable={catalogStats === null ? 'Reading…' : undefined}
+          hint={catalogStats?.source === 'woocommerce' ? 'WooCommerce' : 'Supabase'}
+          to="/admin/products"
+        />
+        <AdminStatTile
+          label="Categories"
+          icon={FolderTree}
+          tone="violet"
+          value={catalogStats?.categories}
+          unavailable={catalogStats === null ? 'Reading…' : undefined}
+          to="/admin/categories"
+        />
+        <AdminStatTile
+          label="Recent orders"
+          icon={ShoppingCart}
+          tone="green"
+          value={orders?.value}
+          unavailable={orders === null ? unconnectedLabel : undefined}
+          hint="30 days"
+          to="/admin/orders"
+        />
+        <AdminStatTile
+          label="Total revenue"
+          icon={DollarSign}
+          tone="sky"
+          value={revenue?.formatted}
+          unavailable={revenue === null ? unconnectedLabel : undefined}
+          hint="30 days"
+          to="/admin/analytics"
+        />
+        <AdminStatTile
+          label="Customers"
+          icon={Users}
+          tone="slate"
+          value={customers?.value}
+          unavailable={customers === null ? unconnectedLabel : undefined}
+          to="/admin/customers"
+        />
+        <AdminStatTile
+          label="New customers"
+          icon={TrendingUp}
+          tone="green"
+          value={newCustomers?.value}
+          unavailable={newCustomers === null ? unconnectedLabel : undefined}
+          to="/admin/customers"
+        />
+        <AdminStatTile
+          label="Repeat customers"
+          icon={Users}
+          tone="violet"
+          value={repeatCustomers?.value}
+          unavailable={repeatCustomers === null ? unconnectedLabel : undefined}
+          to="/admin/customers"
+        />
+        {/* Inventory counts are a Supabase-column fact. A source that cannot
+            report them shows what it can instead: how much commercial data is
+            missing from the catalog. */}
+        {catalogStats?.source === 'woocommerce' ? (
+          <AdminStatTile
+            label="Price unavailable"
+            icon={AlertTriangle}
+            tone="amber"
+            value={catalogStats.priceUnavailable}
+            hint="Store API blocked"
+            to="/admin/products"
+          />
+        ) : (
+          <AdminStatTile
+            label="Inventory alerts"
+            icon={AlertTriangle}
+            tone="amber"
+            value={analytics?.inventoryAlerts.length ?? catalogStats?.lowStock}
+            unavailable={!analytics && catalogStats === null ? unconnectedLabel : undefined}
+            to="/admin/inventory"
+          />
+        )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Link
-              to={stat.link}
-              className="block bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center`}>
-                  <stat.icon size={20} className="text-white" />
-                </div>
-                <ArrowUpRight size={18} className="text-gray-300" />
+      {/* Catalog composition — the figures the active source can actually report. */}
+      {catalogStats && (
+        <AdminPanel
+          title="Catalog source"
+          description="What the storefront and this console read, and what that source can report about it."
+          action={
+            <AdminChip tone={catalogStats.source === 'woocommerce' ? 'brand' : 'neutral'}>
+              {catalogStats.source === 'woocommerce' ? 'WooCommerce' : 'Supabase'}
+            </AdminChip>
+          }
+        >
+          <div className="grid grid-cols-4 gap-4">
+            {(catalogStats.source === 'woocommerce'
+              ? [
+                  { label: 'Listed products', value: catalogStats.total },
+                  { label: 'Featured', value: catalogStats.featured },
+                  { label: 'SKU unavailable', value: catalogStats.skuUnavailable },
+                  { label: 'Stock unknown', value: catalogStats.stockUnknown },
+                ]
+              : [
+                  { label: 'Total products', value: catalogStats.total },
+                  { label: 'Active', value: catalogStats.active },
+                  { label: 'Inactive', value: catalogStats.inactive },
+                  { label: 'Low stock', value: catalogStats.lowStock },
+                ]
+            ).map((entry) => (
+              <div key={entry.label} className="rounded-xl border border-admin-line px-4 py-3">
+                <p className={MICRO_LABEL}>{entry.label}</p>
+                <p className="mt-1 text-xl font-bold text-admin-ink">{entry.value}</p>
               </div>
-              <p className="text-2xl font-bold text-charcoal">{stat.value}</p>
-              <p className="text-sm text-charcoal-light">{stat.label}</p>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
+            ))}
+          </div>
+        </AdminPanel>
+      )}
 
-      {/* Analytics Charts */}
-      {analytics && (
-        <div className="grid xl:grid-cols-3 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
+      {/* Analytics. Rendered only when the orders source answered. */}
+      {analytics ? (
+        <div className="grid grid-cols-3 gap-4">
+          <AdminPanel
+            className="col-span-2"
+            title="Revenue"
+            description="Last 7 days, from Supabase order history."
+            action={<BarChart3 size={18} className="text-himalayan" />}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-charcoal">Revenue Analytics</h3>
-                <p className="text-sm text-charcoal-light">Last 7 days revenue and order volume</p>
-              </div>
-              <BarChart3 size={20} className="text-himalayan" />
-            </div>
-            <div className="h-64 flex items-end gap-3">
+            <div className="flex h-64 items-end gap-3">
               {analytics.revenueSeries.map((point) => (
-                <div key={point.label} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full flex items-end justify-center h-48 bg-gray-50 rounded-xl overflow-hidden">
+                <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="flex h-48 w-full items-end justify-center overflow-hidden rounded-xl bg-admin-canvas">
                     <div
-                      className="w-full bg-himalayan rounded-t-xl min-h-2 transition-all"
+                      className="w-full min-h-2 rounded-t-xl bg-gradient-to-t from-himalayan-dark to-himalayan transition-all"
                       style={{ height: `${Math.max(6, (point.revenue / maxRevenue) * 100)}%` }}
                       title={`$${point.revenue.toFixed(2)} · ${point.orders} orders`}
                     />
                   </div>
-                  <span className="text-xs text-charcoal-light">{point.label}</span>
+                  <span className="text-xs text-admin-muted">{point.label}</span>
                 </div>
               ))}
             </div>
-          </motion.div>
+          </AdminPanel>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <h3 className="font-semibold text-charcoal mb-4">Orders Analytics</h3>
-            <div className="space-y-3">
+          <AdminPanel title="Order status" description="Counts across the recent window.">
+            <div className="space-y-3.5">
               {Object.entries(analytics.orderStatusCounts).map(([status, count]) => (
                 <div key={status}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-charcoal capitalize">{status}</span>
-                    <span className="font-semibold text-charcoal">{count}</span>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="capitalize text-admin-ink">{status}</span>
+                    <span className="font-semibold text-admin-ink">{count}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-admin-canvas">
                     <div
-                      className="h-full bg-himalayan rounded-full"
-                      style={{ width: `${stats?.recentOrders ? Math.min(100, (count / stats.recentOrders) * 100) : 0}%` }}
+                      className="h-full rounded-full bg-gradient-to-r from-himalayan to-himalayan-dark"
+                      style={{
+                        width: `${stats?.recentOrders ? Math.min(100, (count / stats.recentOrders) * 100) : 0}%`,
+                      }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-          </motion.div>
+          </AdminPanel>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
+          <AdminPanel
+            className="col-span-2"
+            title="Best sellers"
+            description="Revenue by product, from order history."
           >
-            <h3 className="font-semibold text-charcoal mb-4">Product Analytics</h3>
-            <div className="space-y-4">
-              {analytics.topProducts.length === 0 ? (
-                <p className="text-sm text-charcoal-light">No product sales yet.</p>
-              ) : analytics.topProducts.map((product) => (
-                <div key={product.productName}>
-                  <div className="flex justify-between gap-4 text-sm mb-1">
-                    <span className="font-medium text-charcoal truncate">{product.productName}</span>
-                    <span className="text-charcoal-light">${product.revenue.toFixed(2)}</span>
+            {analytics.topProducts.length === 0 ? (
+              <p className="text-sm text-admin-muted">No product sales yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {analytics.topProducts.map((product) => (
+                  <div key={product.productName}>
+                    <div className="mb-1 flex justify-between gap-4 text-sm">
+                      <span className="truncate font-medium text-admin-ink">{product.productName}</span>
+                      <span className="text-admin-muted">${product.revenue.toFixed(2)}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-admin-canvas">
+                      <div
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${Math.max(5, (product.revenue / maxProductRevenue) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-admin-muted">{product.quantity} units sold</p>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 rounded-full"
-                      style={{ width: `${Math.max(5, (product.revenue / maxProductRevenue) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-charcoal-light mt-1">{product.quantity} units sold</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                ))}
+              </div>
+            )}
+          </AdminPanel>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <h3 className="font-semibold text-charcoal mb-4">Inventory Alerts</h3>
-            <div className="space-y-3">
+          {/* Inventory counts come from Supabase, so this panel is only shown
+              when that is the catalog the storefront is reading. */}
+          {catalogStats?.source !== 'woocommerce' && (
+            <AdminPanel title="Inventory alerts" description="Low-stock products.">
               {analytics.inventoryAlerts.length === 0 ? (
-                <p className="text-sm text-charcoal-light">No low-stock alerts.</p>
-              ) : analytics.inventoryAlerts.map((alert) => (
-                <Link
-                  key={alert.productId}
-                  to="/admin/products?filter=low_stock"
-                  className="block p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
-                >
-                  <p className="text-sm font-medium text-amber-800 line-clamp-1">{alert.productName}</p>
-                  <p className="text-xs text-amber-700">Qty {alert.quantity} · threshold {alert.threshold}</p>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
+                <p className="text-sm text-admin-muted">No low-stock alerts.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {analytics.inventoryAlerts.map((alert) => (
+                    <Link
+                      key={alert.productId}
+                      to="/admin/inventory?filter=low_stock"
+                      className="block rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 transition-colors hover:bg-amber-100"
+                    >
+                      <p className="truncate text-sm font-medium text-amber-900">{alert.productName}</p>
+                      <p className="text-xs text-amber-800">
+                        Qty {alert.quantity} · threshold {alert.threshold}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </AdminPanel>
+          )}
         </div>
+      ) : (
+        !loading && (
+          <AdminPanel
+            title="Sales analytics"
+            description="Revenue, best sellers and order status come from Supabase order history."
+          >
+            <div className="flex items-start gap-3 rounded-xl border border-admin-line bg-admin-canvas px-4 py-4">
+              <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate}`}>
+                <PlugZap size={16} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-admin-ink">Not connected</p>
+                <p className="mt-0.5 text-sm text-admin-muted">
+                  No order source is configured for this deployment, so there are no sales figures to
+                  show. Nothing here is estimated.
+                </p>
+              </div>
+            </div>
+          </AdminPanel>
+        )
       )}
 
-      {/* Alerts & Quick Actions */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Low Stock Alert */}
-        {(stats?.lowStockCount || 0) > 0 && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
+      <div className="grid grid-cols-2 gap-4">
+        {catalogStats?.source === 'supabase' && catalogStats.lowStock > 0 && (
+          <AdminPanel
+            title="Low stock alert"
+            description={`${catalogStats.lowStock} products are running low and need attention.`}
+            action={
+              <Link
+                to="/admin/inventory?filter=low_stock"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-himalayan hover:underline"
+              >
+                Review
+                <ArrowUpRight size={14} />
+              </Link>
+            }
           >
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <AlertTriangle size={20} className="text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-amber-800">Low Stock Alert</h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  {stats?.lowStockCount} products are running low on stock and need attention.
-                </p>
-                <Link
-                  to="/admin/products?filter=low_stock"
-                  className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-amber-800 hover:underline"
-                >
-                  View Products
-                  <ArrowUpRight size={14} />
-                </Link>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className={`${ICON_TILE} ${ICON_TILE_TONES.amber}`}>
+                <AlertTriangle size={16} />
+              </span>
+              <p className="text-sm text-admin-muted">
+                Inventory counts are a Supabase column, so these figures disappear the moment the
+                catalog moves to WooCommerce.
+              </p>
             </div>
-          </motion.div>
+          </AdminPanel>
         )}
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl p-5 shadow-sm"
+        <AdminPanel
+          title="Quick actions"
+          description="The daily jumps."
+          className={catalogStats?.source === 'supabase' && catalogStats.lowStock > 0 ? '' : 'col-span-2'}
         >
-          <h3 className="font-semibold text-charcoal mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              to="/admin/products?action=new"
-              className="flex items-center gap-3 p-3 bg-himalayan/5 rounded-xl hover:bg-himalayan/10 transition-colors"
-            >
-              <Package size={18} className="text-himalayan" />
-              <span className="text-sm font-medium text-charcoal">Add Product</span>
-            </Link>
-            <Link
-              to="/admin/categories"
-              className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
-            >
-              <FolderTree size={18} className="text-purple-600" />
-              <span className="text-sm font-medium text-charcoal">Add Category</span>
-            </Link>
-            <Link
-              to="/admin/orders"
-              className="flex items-center gap-3 p-3 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
-            >
-              <ShoppingCart size={18} className="text-green-600" />
-              <span className="text-sm font-medium text-charcoal">View Orders</span>
-            </Link>
-            <Link
-              to="/admin/analytics"
-              className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
-            >
-              <TrendingUp size={18} className="text-blue-600" />
-              <span className="text-sm font-medium text-charcoal">Analytics</span>
-            </Link>
+          <div className="grid grid-cols-3 gap-3">
+            {quickActions.map((action) => (
+              <Link
+                key={action.label}
+                to={action.path}
+                className="flex items-center gap-3 rounded-xl border border-admin-line px-3.5 py-3 transition-colors hover:border-himalayan/40 hover:bg-himalayan-lighter"
+              >
+                <action.icon size={17} className="text-himalayan" />
+                <span className="text-sm font-medium text-admin-ink">{action.label}</span>
+              </Link>
+            ))}
           </div>
-        </motion.div>
+        </AdminPanel>
       </div>
 
-      {/* Recent Activity */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-      >
-        <h3 className="font-semibold text-charcoal mb-4">Recent Activity</h3>
-        <div className="space-y-4">
-          {(analytics?.recentActivity || []).length === 0 ? (
-            <p className="text-sm text-charcoal-light">No recent activity yet.</p>
-          ) : analytics?.recentActivity.map((item) => (
-            <div key={`${item.type}-${item.id}`} className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${activityColor(item.type)}`}>
-                {item.type === 'order' ? <ShoppingCart size={18} /> : item.type === 'inventory' ? <Package size={18} /> : <Users size={18} />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-charcoal">{item.action}</p>
-                <p className="text-xs text-charcoal-light">{new Date(item.time).toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
+      <AdminPanel title="Recent activity" description="Orders, inventory and customer events.">
+        {loading ? (
+          <AdminTable
+            columns={[
+              { key: 'event', label: 'Event' },
+              { key: 'time', label: 'When', align: 'right' },
+            ]}
+          >
+            <AdminTableSkeleton rows={4} columns={2} />
+          </AdminTable>
+        ) : (analytics?.recentActivity || []).length === 0 ? (
+          <p className="text-sm text-admin-muted">
+            {ordersConnected
+              ? 'No recent activity yet.'
+              : 'No activity source is connected, so there is no recent activity to show.'}
+          </p>
+        ) : (
+          <AdminTable
+            columns={[
+              { key: 'event', label: 'Event' },
+              { key: 'time', label: 'When', align: 'right' },
+            ]}
+          >
+            {analytics?.recentActivity.map((item) => (
+              <tr key={`${item.type}-${item.id}`}>
+                <td className={ADMIN_TD}>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`${ICON_TILE} ${
+                        item.type === 'order'
+                          ? ICON_TILE_TONES.green
+                          : item.type === 'inventory'
+                            ? ICON_TILE_TONES.amber
+                            : ICON_TILE_TONES.violet
+                      }`}
+                    >
+                      {item.type === 'order' ? (
+                        <ShoppingCart size={14} />
+                      ) : item.type === 'inventory' ? (
+                        <Package size={14} />
+                      ) : (
+                        <Users size={14} />
+                      )}
+                    </span>
+                    <span className="font-medium">{item.action}</span>
+                  </div>
+                </td>
+                <td className={`${ADMIN_TD} text-right text-admin-muted`}>
+                  {new Date(item.time).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </AdminTable>
+        )}
+      </AdminPanel>
+    </>
   );
-}
-
-function activityColor(type: 'order' | 'customer' | 'inventory') {
-  if (type === 'order') return 'text-green-600 bg-green-50';
-  if (type === 'customer') return 'text-purple-600 bg-purple-50';
-  return 'text-amber-600 bg-amber-50';
 }

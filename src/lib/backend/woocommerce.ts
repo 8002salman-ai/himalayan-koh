@@ -104,6 +104,15 @@ export interface WpCoreProduct {
   _embedded?: Record<string, Array<{ source_url?: string; alt_text?: string }>>;
 }
 
+/**
+ * Category name the catalog model carries when a source reported none.
+ *
+ * The storefront needs a non-empty string in `Product.category`, so the model has
+ * a placeholder. Consumers that must not invent taxonomy — the admin catalog read
+ * model counts categories — treat this value as "not reported" instead.
+ */
+export const UNCATEGORIZED_CATEGORY = 'Uncategorized';
+
 /* ------------------------------------------------------------------ */
 /* Pure helpers — unit tested                                          */
 /* ------------------------------------------------------------------ */
@@ -200,7 +209,7 @@ function buildProduct(input: {
     priceMax: input.priceMax,
     image: input.images[0] ?? '',
     images: input.images,
-    category: input.category || 'Uncategorized',
+    category: input.category || UNCATEGORIZED_CATEGORY,
     description: input.description || undefined,
     inStock: isPurchasable(input.stockStatus),
     isFeatured: input.isFeatured,

@@ -4,14 +4,22 @@ import { BarChart3, DollarSign, Loader2, Package, ShoppingCart, TrendingUp, User
 import { Button } from '../../components/ui';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
 import { getErrorMessage } from '../../lib/errors';
 
 export default function AdminAnalytics() {
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
+  const [catalogStats, setCatalogStats] = useState<AdminCatalogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(async () => {
+    // Low-stock alerts name live products, so they are read from the active
+    // catalog source — the same rule the dashboard follows. On the WooCommerce
+    // source stock is not reported at all, and an alert list built from the old
+    // Supabase rows would name products the storefront no longer sells.
+    setCatalogStats(await readAdminCatalogStats().catch(() => null));
+
     if (!isSupabaseConfigured()) {
       setAnalytics(null);
       setLoading(false);
@@ -152,7 +160,7 @@ export default function AdminAnalytics() {
         )}
       </div>
 
-      {analytics.inventoryAlerts.length > 0 && (
+      {catalogStats?.source !== 'woocommerce' && analytics.inventoryAlerts.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-charcoal flex items-center gap-2">

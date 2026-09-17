@@ -1,0 +1,203 @@
+import { describe, expect, it } from 'vitest';
+
+import type { Product as CatalogProduct } from '../../data/products';
+import {
+  rowFromCatalogProduct,
+  rowFromSupabaseProduct,
+  sortAdminCatalogRows,
+  statsFromRows,
+  type AdminCatalogRow,
+  type AdminEditableRecord,
+} from './adminCatalog';
+
+/** A row straight off the WooCommerce read, before any projection. */
+function catalogProduct(overrides: Partial<CatalogProduct> = {}): CatalogProduct {
+  return {
+    id: 2461,
+    slug: 'himalayan-koh-edible-salt-grain',
+    name: 'Edible Pink Salt',
+    price: '',
+    priceMin: null,
+    image: 'https://himalayankoh.com/staging/wp-content/uploads/salt.jpg',
+    images: ['https://himalayankoh.com/staging/wp-content/uploads/salt.jpg'],
+    category: 'Edible Cooking Salt',
+    inStock: false,
+    sku: null,
+    stockStatus: 'unknown',
+    missing: ['price', 'sku', 'stockStatus'],
+    ...overrides,
+  };
+}
+
+/**
+ * Builds a Supabase record carrying only the columns the projection reads.
+ *
+ * The generated row type has every table column, so the cast is deliberate: a
+ * pure mapping test should not have to invent 30 unrelated column values, and
+ * adding a column to the table must not break this test.
+ */
+function supabaseRecord(overrides: Record<string, unknown> = {}): AdminEditableRecord {
+  return {
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'Himalayan Salt Block 30 lbs',
+    slug: 'himalayan-salt-block-30-lbs',
+    price: 49.95,
+    compare_at_price: null,
+    thumbnail: 'https://example.supabase.co/storage/v1/object/public/products/block.jpg',
+    images: ['https://example.supabase.co/storage/v1/object/public/products/block.jpg'],
+    tags: [],
+    is_active: true,
+    is_featured: false,
+    category_id: 'category-1',
+    weight: 30,
+    weight_unit: 'lbs',
+    category: null,
+    inventory: null,
+    ...overrides,
+  } as unknown as AdminEditableRecord;
+}
+
+describe('rowFromCatalogProduct', () => {
+  it('reports what the source could not supply as unknown, never as a value', () => {
+    const row = rowFromCatalogProduct(catalogProduct());
+
+    expect(row.price).toBe('');
+    expect(row.priceMin).toBeNull();
+    expect(row.sku).toBeNull();
+    expect(row.stockStatus).toBe('unknown');
+    expect(row.stockQuantity).toBeNull();
+    expect(row.trackInventory).toBeNull();
+    expect(row.missing).toEqual(['price', 'sku', 'stockStatus']);
+  });
+
+  it('keeps the real values when the source reported them', () => {
+    const row = rowFromCatalogProduct(
+      catalogProduct({
+        price: '$19.95',
+        priceMin: 19.95,
+        sku: 'HK-LB-30LBS',
+        stockStatus: 'in_stock',
+        inStock: true,
+        isFeatured: true,
+        missing: [],
+      })
+    );
+
+    expect(row.price).toBe('$19.95');
+    expect(row.sku).toBe('HK-LB-30LBS');
+    expect(row.stockStatus).toBe('in_stock');
+    expect(row.isFeatured).toBe(true);
+    expect(row.missing).toEqual([]);
+  });
+
+  it('treats priceMax as a variant range, not a discount', () => {
+    const row = rowFromCatalogProduct(catalogProduct({ price: '$9.95 - $17.95', priceMin: 9.95, priceMax: 17.95 }));
+
+    expect(row.priceMax).toBe(17.95);
+    expect(row.compareAtPrice).toBeNull();
+  });
+
+  it('treats the model\'s category placeholder as a category the source never reported', () => {
+    const row = rowFromCatalogProduct(catalogProduct({ category: 'Uncategorized' }));
+
+    expect(row.categoryName).toBeNull();
+    expect(row.categoryId).toBeNull();
+  });
+
+  it('carries no editor record, so the row cannot be written back', () => {
+    const row = rowFromCatalogProduct(catalogProduct());
+
+    expect(row.source).toBe('woocommerce');
+    expect(row.record).toBeNull();
+  });
+});
+
+describe('rowFromSupabaseProduct', () => {
+  it('carries the record the editor saves back', () => {
+    const record = supabaseRecord();
+    const row = rowFromSupabaseProduct(record);
+
+    expect(row.source).toBe('supabase');
+    expect(row.record).toBe(record);
+    expect(row.price).toBe('$49.95');
+    expect(row.isListed).toBe(true);
+  });
+
+  it('derives stock status only from a tracked count', () => {
+    const inventory = (quantity: number, track_inventory = true) => ({
+      quantity,
+      track_inventory,
+      low_stock_threshold: 5,
+    });
+
+    expect(rowFromSupabaseProduct(supabaseRecord({ inventory: inventory(0) })).stockStatus).toBe('out_of_stock');
+    expect(rowFromSupabaseProduct(supabaseRecord({ inventory: inventory(12) })).stockStatus).toBe('in_stock');
+    // Tracking off is not a stock level, and a missing row is not zero either.
+    expect(
+      rowFromSupabaseProduct(supabaseRecord({ inventory: inventory(500, false) })).stockStatus
+    ).toBe('unknown');
+    expect(rowFromSupabaseProduct(supabaseRecord({ inventory: null })).stockStatus).toBe('unknown');
+    // Listing state says nothing about stock.
+    expect(
+      rowFromSupabaseProduct(supabaseRecord({ is_active: false, inventory: inventory(12) })).stockStatus
+    ).toBe('in_stock');
+  });
+
+  it('uses the storefront packing-profile rule to decide what is withheld', () => {
+    const withProfile = supabaseRecord({ tags: ['packing_profile:{"shipsSeparately":false}'] });
+
+    expect(rowFromSupabaseProduct(withProfile).isHiddenFromStorefront).toBe(false);
+    expect(rowFromSupabaseProduct(supabaseRecord({ tags: [] })).isHiddenFromStorefront).toBe(true);
+    // An inactive product is not "withheld" — it was never published.
+    expect(rowFromSupabaseProduct(supabaseRecord({ is_active: false, tags: [] })).isHiddenFromStorefront).toBe(false);
+  });
+
+  it('reports no missing catalog fields: every column exists on this source', () => {
+    expect(rowFromSupabaseProduct(supabaseRecord()).missing).toEqual([]);
+  });
+});
+
+describe('sortAdminCatalogRows', () => {
+  const priced = (id: string, priceMin: number | null): AdminCatalogRow =>
+    rowFromCatalogProduct(catalogProduct({ id, slug: `p-${id}`, priceMin, price: priceMin === null ? '' : `$${priceMin}` }));
+
+  it('orders unknown prices last in both directions', () => {
+    const rows = [priced('unknown', null), priced('cheap', 5), priced('dear', 50)];
+
+    expect(sortAdminCatalogRows(rows, 'price_asc').map((row) => row.id)).toEqual(['cheap', 'dear', 'unknown']);
+    expect(sortAdminCatalogRows(rows, 'price_desc').map((row) => row.id)).toEqual(['dear', 'cheap', 'unknown']);
+  });
+});
+
+describe('statsFromRows', () => {
+  it('counts the fields the WooCommerce source could not report', () => {
+    const rows = [
+      rowFromCatalogProduct(catalogProduct({ missing: ['price', 'sku', 'stockStatus'] })),
+      rowFromCatalogProduct(
+        catalogProduct({ id: 2, slug: 'p-2', sku: 'HK-2', stockStatus: 'in_stock', missing: ['price'] })
+      ),
+    ];
+
+    const stats = statsFromRows(rows);
+    if (stats.source !== 'woocommerce') throw new Error('expected the WooCommerce stats variant');
+
+    expect(stats.total).toBe(2);
+    expect(stats.priceUnavailable).toBe(2);
+    expect(stats.skuUnavailable).toBe(1);
+    expect(stats.stockUnknown).toBe(1);
+    expect(stats.featured).toBe(0);
+  });
+
+  it('counts categories, not products', () => {
+    const rows = [
+      rowFromCatalogProduct(catalogProduct({ id: 1, slug: 'a', category: 'Salt Lamps' })),
+      rowFromCatalogProduct(catalogProduct({ id: 2, slug: 'b', category: 'Salt Lamps' })),
+      rowFromCatalogProduct(catalogProduct({ id: 3, slug: 'c', category: 'Edible Cooking Salt' })),
+      rowFromCatalogProduct(catalogProduct({ id: 4, slug: 'd', category: '' })),
+      rowFromCatalogProduct(catalogProduct({ id: 5, slug: 'e', category: 'Uncategorized' })),
+    ];
+
+    expect(statsFromRows(rows).categories).toBe(2);
+    expect(statsFromRows(rows).total).toBe(5);
+  });
+});

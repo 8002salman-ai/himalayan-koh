@@ -21,3 +21,16 @@ export {
   type CatalogQuery,
   type CatalogResult,
 } from './products';
+
+export {
+  ADMIN_CATALOG_PER_PAGE,
+  readAdminCatalogPage,
+  readAdminCatalogStats,
+  type AdminCatalogFacet,
+  type AdminCatalogPage,
+  type AdminCatalogQuery,
+  type AdminCatalogRow,
+  type AdminCatalogSort,
+  type AdminCatalogStats,
+  type AdminEditableRecord,
+} from './adminCatalog';
