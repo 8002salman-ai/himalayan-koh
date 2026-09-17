@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   BUTTON,
+  INPUT,
+  MICRO_LABEL as MICRO_LABEL_CLASS,
   CHIP,
   CHIP_BASE,
   ICON_TILE,
@@ -16,6 +20,7 @@ import {
   TABLE_HEAD,
   TABLE_WRAP,
   TD,
+  TEXTAREA,
   TH,
   type ChipTone,
   type IconTone,
@@ -274,25 +279,27 @@ export function AdminTabs<T extends string>({
   active,
   onChange,
 }: {
-  tabs: Array<{ id: T; label: string; badge?: string }>;
+  tabs: Array<{ id: T; label: string; icon?: LucideIcon; badge?: string }>;
   active: T;
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-admin-line">
+    <div className="flex items-center gap-1 border-b border-admin-line">
       {tabs.map((tab) => {
         const isActive = tab.id === active;
+        const Icon = tab.icon;
         return (
           <button
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`-mb-px flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+            className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
               isActive
                 ? 'border-himalayan text-himalayan-dark'
                 : 'border-transparent text-admin-muted hover:text-admin-ink'
             }`}
           >
+            {Icon && <Icon size={15} />}
             {tab.label}
             {tab.badge && <AdminChip tone={isActive ? 'brand' : 'muted'}>{tab.badge}</AdminChip>}
           </button>
@@ -305,6 +312,107 @@ export function AdminTabs<T extends string>({
 /* ------------------------------------------------------------------ */
 /* Pending integration                                                 */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Dialog                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Dialog widths, widest last. `wide` is the full editor sheet. */
+const MODAL_SIZE = {
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  wide: 'w-[min(1100px,calc(100%-3rem))]',
+} as const;
+
+/**
+ * The console's dialog: backdrop, panel, titled header with one close
+ * affordance, scrolling body and an optional footer.
+ *
+ * Every confirm, editor and drawer in the admin is this component, so a dialog
+ * cannot drift from the rest of the console — and `variant="drawer"` is the
+ * same dialog against the right edge rather than a second implementation.
+ *
+ * Callers mount it inside `<AnimatePresence>` (it is a motion element, so the
+ * exit animation runs) and are responsible for what happens on save or delete;
+ * this component never decides policy.
+ */
+export function AdminModal({
+  title,
+  description,
+  onClose,
+  children,
+  footer,
+  size = 'md',
+  variant = 'center',
+  bodyClassName,
+  className,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  size?: keyof typeof MODAL_SIZE;
+  variant?: 'center' | 'drawer';
+  bodyClassName?: string;
+  className?: string;
+}) {
+  const isDrawer = variant === 'drawer';
+
+  return (
+    <div
+      className={
+        isDrawer
+          ? 'fixed inset-0 z-modal flex justify-end'
+          : 'fixed inset-0 z-modal flex items-center justify-center p-6'
+      }
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        initial={isDrawer ? { x: 32, opacity: 0 } : { opacity: 0, scale: 0.97, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+        exit={isDrawer ? { x: 32, opacity: 0 } : { opacity: 0, scale: 0.97, y: 12 }}
+        className={`relative flex flex-col overflow-hidden border-admin-line bg-admin-surface shadow-2xl ${
+          isDrawer
+            ? 'h-full w-full max-w-md border-l'
+            : `max-h-[90vh] w-full rounded-2xl border ${MODAL_SIZE[size]}`
+        } ${className ?? ''}`}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-admin-line px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-admin-ink">{title}</h2>
+            {description && <p className="mt-1 text-sm text-admin-muted">{description}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className={`min-h-0 flex-1 overflow-y-auto px-5 py-5 ${bodyClassName ?? ''}`}>{children}</div>
+        {footer && (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-admin-line bg-admin-canvas/50 px-5 py-4">
+            {footer}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
 
 /**
  * The honest state for a section whose backend is not connected.
@@ -359,6 +467,93 @@ export function AdminPendingPanel({
         honest state, not a placeholder.
       </p>
     </AdminPanel>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Controls                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The console's button.
+ *
+ * A component rather than a class string so a view never restates a button's
+ * padding, radius, weight or hover colour — the five variants here are the
+ * whole vocabulary, and `AdminDisabledAction` covers the sixth case (a control
+ * that cannot act yet).
+ */
+export function AdminButton({
+  variant = 'secondary',
+  icon: Icon,
+  children,
+  className,
+  ...props
+}: {
+  variant?: keyof typeof BUTTON;
+  icon?: LucideIcon;
+  children: ReactNode;
+  className?: string;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
+  return (
+    <button type="button" {...props} className={`${BUTTON[variant]} ${className ?? ''}`}>
+      {Icon && <Icon size={16} />}
+      {children}
+    </button>
+  );
+}
+
+/** Label + hint + control, so every form field shares one label rhythm. */
+export function AdminField({
+  label,
+  hint,
+  htmlFor,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  htmlFor?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <label htmlFor={htmlFor} className="block text-xs font-semibold text-admin-ink">
+        {label}
+      </label>
+      {hint && <p className="mt-0.5 text-[11px] text-admin-muted">{hint}</p>}
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
+}
+
+/** A plain text/number/email input on the console's field style. */
+export function AdminInput({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={`${INPUT} w-full ${className ?? ''}`} />;
+}
+
+/** A multi-line input on the same field style. */
+export function AdminTextarea({
+  className,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea {...props} className={`${TEXTAREA} w-full ${className ?? ''}`} />;
+}
+
+/** Key/value rows — settings summaries, order details, account facts. */
+export function AdminFacts({ children, className }: { children: ReactNode; className?: string }) {
+  return <dl className={`divide-y divide-admin-line text-sm ${className ?? ''}`}>{children}</dl>;
+}
+
+export function AdminFact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-6 py-2.5">
+      <dt className={MICRO_LABEL_CLASS}>{label}</dt>
+      <dd className="text-right font-medium text-admin-ink">{children}</dd>
+    </div>
   );
 }
 

@@ -1,14 +1,37 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, Search, Users } from 'lucide-react';
-import { Button } from '../../components/ui';
-import { SkeletonTable } from '../../components/ui/Skeleton';
-import EmptyState from '../../components/ui/EmptyState';
 import { adminApi } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import type { Profile } from '../../lib/supabase/database.types';
+import {
+  ADMIN_TD,
+  AdminButton,
+  AdminChip,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTable,
+  AdminTableSkeleton,
+} from '../../components/admin/AdminUI';
+import { ICON_TILE, ICON_TILE_TONES, INPUT } from '../../components/admin/adminTheme';
 
+const COLUMNS = [
+  { key: 'customer', label: 'Customer', width: '40%' },
+  { key: 'contact', label: 'Contact' },
+  { key: 'role', label: 'Role' },
+  { key: 'joined', label: 'Joined', align: 'right' as const },
+];
+
+/**
+ * Customers.
+ *
+ * The table is the desktop table at every viewport — contact details live in
+ * their own column rather than being folded into the name cell for small
+ * screens, because the console keeps one layout. The empty state distinguishes
+ * "no match for this search" from "no customers yet".
+ */
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +40,8 @@ export default function AdminCustomers() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  const connected = isSupabaseConfigured();
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -44,111 +69,140 @@ export default function AdminCustomers() {
   }, [fetchCustomers]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-charcoal">Customers</h1>
-        <p className="text-charcoal-light">Manage registered customer accounts</p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Commerce"
+        title="Customers"
+        description="Registered customer accounts, read from the authentication provider the storefront signs in against."
+        actions={
+          <AdminButton icon={Users} onClick={fetchCustomers} disabled={loading}>
+            Refresh
+          </AdminButton>
+        }
+      />
 
-      <div className="bg-white rounded-2xl shadow-sm p-4">
-        <div className="relative max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by name, email, or phone..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
-          />
-        </div>
-      </div>
+      {!connected && (
+        <AdminNotice tone="warning" title="Customer accounts are not connected">
+          Supabase holds the customer profiles and this deployment has no configuration for it, so the
+          table below is empty rather than filled from another source.
+        </AdminNotice>
+      )}
 
       {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Customers could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <Button variant="destructive" size="sm" onClick={fetchCustomers} className="mt-2">
-            Retry
-          </Button>
-        </div>
+        <AdminNotice tone="danger" title="Customers could not be loaded">
+          {fetchError}
+        </AdminNotice>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Joined</th>
-                </tr>
-              </thead>
-              <SkeletonTable rows={5} />
-            </table>
+      <AdminPanel bodyClassName="px-0 py-0">
+        <div className="flex items-center gap-3 border-b border-admin-line px-5 py-4">
+          <div className="relative min-w-[320px] flex-1">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+              placeholder="Search by name, email, or phone…"
+              aria-label="Search customers"
+              className={`${INPUT} w-full pl-10`}
+            />
           </div>
-        ) : customers.length === 0 ? (
-          <EmptyState
-            icon={<Users size={40} />}
-            title="No customers found"
-            description={search ? 'No customers match your search' : 'Customer accounts will appear here after sign-up'}
-            size="compact"
-            className="border-0 shadow-none rounded-none py-16"
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Joined</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-himalayan/10 flex items-center justify-center flex-shrink-0">
-                          <Users size={18} className="text-himalayan" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-charcoal">{customer.full_name || 'Unnamed customer'}</p>
-                          <p className="text-xs text-charcoal-light capitalize">{customer.role}</p>
-                          <p className="text-xs text-charcoal-light mt-0.5 truncate sm:hidden">{customer.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
-                      <p className="flex items-center gap-1.5"><Mail size={14} className="flex-shrink-0" /><span className="truncate">{customer.email}</span></p>
-                      {customer.phone && <p className="flex items-center gap-1.5 mt-1"><Phone size={14} className="flex-shrink-0" />{customer.phone}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
-                      {new Date(customer.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <span className="ml-auto text-[11px] font-semibold uppercase tracking-[0.08em] text-admin-muted">
+            {loading ? 'Reading…' : `${totalCount} customer${totalCount === 1 ? '' : 's'}`}
+          </span>
+        </div>
+
+        <AdminTable columns={COLUMNS}>
+          {loading ? (
+            <AdminTableSkeleton rows={5} columns={COLUMNS.length} />
+          ) : customers.length === 0 ? (
+            <tr>
+              <td className={ADMIN_TD} colSpan={COLUMNS.length}>
+                <div className="flex flex-col items-center gap-2 py-16 text-center">
+                  <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+                    <Users size={20} />
+                  </span>
+                  <p className="text-sm font-semibold text-admin-ink">
+                    {search ? 'No customers match this search' : 'No customer accounts yet'}
+                  </p>
+                  <p className="text-sm text-admin-muted">
+                    {search
+                      ? 'Try a different name, email or phone number.'
+                      : connected
+                        ? 'Accounts appear here as soon as someone signs up.'
+                        : 'Connect the authentication provider to read accounts.'}
+                  </p>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            customers.map((customer) => (
+              <tr key={customer.id}>
+                <td className={ADMIN_TD}>
+                  <div className="flex items-center gap-3">
+                    <span className={`${ICON_TILE} ${ICON_TILE_TONES.brand}`}>
+                      {(customer.full_name || customer.email || 'C').slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-admin-ink">
+                        {customer.full_name || 'Unnamed customer'}
+                      </p>
+                      <p className="truncate text-[11px] text-admin-muted">{customer.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`${ADMIN_TD} text-admin-muted`}>
+                  <p className="flex items-center gap-1.5">
+                    <Mail size={14} className="shrink-0" />
+                    <span className="truncate">{customer.email || '—'}</span>
+                  </p>
+                  {customer.phone && (
+                    <p className="mt-1 flex items-center gap-1.5">
+                      <Phone size={14} className="shrink-0" />
+                      {customer.phone}
+                    </p>
+                  )}
+                </td>
+                <td className={ADMIN_TD}>
+                  <AdminChip tone={customer.role === 'admin' ? 'brand' : 'neutral'}>
+                    {customer.role === 'admin' ? 'Super Admin' : customer.role}
+                  </AdminChip>
+                </td>
+                <td className={`${ADMIN_TD} text-right text-admin-muted`}>
+                  {new Date(customer.created_at).toLocaleDateString()}
+                </td>
+              </tr>
+            ))
+          )}
+        </AdminTable>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-admin-line px-5 py-3">
+            <p className="text-sm text-admin-muted">
+              Page {page} of {totalPages} · {totalCount} customers
+            </p>
+            <div className="flex gap-2">
+              <AdminButton onClick={() => setPage((p) => p - 1)} disabled={page === 1}>
+                Previous
+              </AdminButton>
+              <AdminButton onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>
+                Next
+              </AdminButton>
+            </div>
           </div>
         )}
-      </div>
+      </AdminPanel>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-charcoal-light">
-          <span>Showing page {page} of {totalPages} ({totalCount} customers)</span>
-          <div className="flex gap-2">
-            <button type="button" disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-50">Previous</button>
-            <button type="button" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-50">Next</button>
-          </div>
-        </div>
-      )}
-
-      <p className="text-sm text-charcoal-light">
-        View order history from the <Link to="/admin/orders" className="text-himalayan font-semibold hover:underline">Orders</Link> page.
+      <p className="text-sm text-admin-muted">
+        Order history for a customer lives on the{' '}
+        <Link to="/admin/orders" className="font-semibold text-himalayan hover:underline">
+          Orders
+        </Link>{' '}
+        page — it is not duplicated here.
       </p>
-    </div>
+    </>
   );
 }
-

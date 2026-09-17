@@ -46,6 +46,7 @@ import {
   ADMIN_TD,
   AdminChip,
   AdminDisabledAction,
+  AdminModal,
   AdminNotice,
   AdminPageHeader,
   AdminPanel,
@@ -351,14 +352,6 @@ export default function AdminProducts() {
 
     if (savedProduct?.is_active && !isRealCatalogProduct(savedProduct)) {
       toast.error('Saved, but this product is Active and still won\'t show on your public site until its Shippo Required box dimensions are completed.');
-    }
-  };
-
-  const selectAll = () => {
-    if (selectedIds.length === rows.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(rows.map(row => row.id));
     }
   };
 
@@ -791,25 +784,13 @@ export default function AdminProducts() {
       {/* Delete confirmation — the one destructive action on this screen. */}
       <AnimatePresence>
         {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-6"
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.97 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.97 }}
-              className="w-full max-w-sm rounded-2xl border border-admin-line bg-admin-surface p-6 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-admin-ink">Delete product</h3>
-              <p className="mt-2 text-sm text-admin-muted">
-                Are you sure you want to delete this product? This action cannot be undone.
-              </p>
-              <div className="mt-6 flex justify-end gap-2">
+          <AdminModal
+            size="sm"
+            title="Delete product"
+            description="This action cannot be undone."
+            onClose={() => setDeleteConfirm(null)}
+            footer={
+              <>
                 <button type="button" onClick={() => setDeleteConfirm(null)} className={BUTTON.secondary}>
                   Cancel
                 </button>
@@ -822,9 +803,14 @@ export default function AdminProducts() {
                   {actionLoading && <Loader2 size={16} className="animate-spin" />}
                   Delete
                 </button>
-              </div>
-            </motion.div>
-          </motion.div>
+              </>
+            }
+          >
+            <p className="text-sm text-admin-ink">
+              Deleting removes this product from the catalog this admin reads. If you only want it to
+              stop appearing on the storefront, archive it instead.
+            </p>
+          </AdminModal>
         )}
       </AnimatePresence>
 

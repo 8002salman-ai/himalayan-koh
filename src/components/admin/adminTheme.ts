@@ -60,6 +60,7 @@ const FIELD =
 
 export const INPUT = `${FIELD} py-2.5`;
 export const SELECT = `${FIELD} py-2.5 pr-8`;
+export const TEXTAREA = `${FIELD} py-2.5 resize-none`;
 
 /* ------------------------------------------------------------------ */
 /* Tables                                                              */

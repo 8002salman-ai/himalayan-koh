@@ -223,7 +223,7 @@ Four layers, each owning one thing. Add to the bottom layer that fits; do not in
 | Layer | File | Owns |
 | --- | --- | --- |
 | Visual system | `src/components/admin/adminTheme.ts` | Every surface, control, table, chip and rail class string. Colour comes from the `admin-*` tokens in `app/globals.css`. |
-| Primitives | `src/components/admin/AdminUI.tsx` | `AdminPageHeader`, `AdminPanel`, `AdminStatTile`, `AdminChip`, `AdminNotice`, `AdminTable` + `ADMIN_TD` + `AdminTableSkeleton`, `AdminTabs`, `AdminPendingPanel`, `AdminDisabledAction`. Each is dumb: no fetching, no policy. |
+| Primitives | `src/components/admin/AdminUI.tsx` | `AdminPageHeader`, `AdminPanel`, `AdminStatTile`, `AdminChip`, `AdminNotice`, `AdminTable` + `ADMIN_TD` + `AdminTableSkeleton`, `AdminTabs`, `AdminPendingPanel`, `AdminDisabledAction`, and the control/dialog set: `AdminButton`, `AdminField`, `AdminInput`, `AdminTextarea`, `AdminFacts`/`AdminFact`, `AdminModal`. Each is dumb: no fetching, no policy. |
 | Shell | `src/components/admin/AdminLayout.tsx` | The desktop canvas, the rail, the header, breadcrumb, global search, notifications, session menu. |
 | Navigation | `src/lib/adminNav.ts` | Route list, grouping (Overview / Commerce / Content / Growth / System), icons, and the `pending` flag that marks a section as built-but-not-connected. |
 
@@ -234,6 +234,12 @@ The shell is an application frame, not a responsive page: `ADMIN_CANVAS_MIN_WIDT
 - **Never add a structural breakpoint to admin code** (`hidden`, `sm:`, `md:`, `lg:`, `xl:`) for layout. Fixed grids only (`grid-cols-6`, not `md:grid-cols-3`) — media queries read the *viewport*, so a breakpoint would collapse the layout inside a canvas that is still 1280 wide. This is exactly how the dashboard lost its proportions under the old shell.
 - **No mobile admin navigation.** `ADMIN_MOBILE_NAV_ITEMS` and the drawer/hamburger/bottom-bar are deleted, not hidden. The rail renders at every viewport.
 - The public storefront keeps its own responsive behaviour; nothing in this folder touches it.
+
+### Dialogs — one implementation, three shapes
+
+Every console dialog is `AdminModal`: backdrop, panel, titled header with a single close affordance, scrolling body, optional footer. It is a `motion` element, so callers mount it inside `<AnimatePresence>` and the exit animation runs; the caller owns what save/delete do. `variant="drawer"` is the same dialog against the right edge (the CRM lead detail), `size` picks the width (`sm` confirmations, `md` forms, `lg`/`xl` editors, `wide` the full post editor), and `footer` holds the actions — including the destructive `BUTTON.danger` and the product editor's error banner, which lives beside the button that produces it rather than at the top of a scrolled panel.
+
+Consequence for new screens: never hand-roll an overlay. A page that needs a dialog composes `AdminModal`; a page that needs a confirm composes `AdminModal size="sm"` with `footer`.
 
 ### Unknown is a value
 
@@ -252,6 +258,15 @@ A source that cannot report a fact says so. `AdminStatTile` takes either a value
 | Coupons | `/admin/coupons` | Pending — WooCommerce owns discounts and no second store exists. |
 | Users & Roles | `/admin/users` | Real administrator accounts from the auth provider; invites, role changes and resets pending a server-side privileged route. |
 
-### Not yet re-skinned
+### Every route is on the system (this pass)
 
-`AdminCategories`, `AdminOrders`, `AdminCustomers`, `AdminAnalytics`, `AdminBlog`, `AdminCategoryHubs`, `AdminCRM`, `AdminShippingLabels`, `AdminSettings`, `AdminApiKeys` and the product editor modal still carry the older markup; they inherit the new shell but not the new page language, and `ProductEditorModal` / `ImageDropzone` / `ProductImageEditor` / `ShippingLabelPanel` still use responsive breakpoints internally. These are the next visual pass.
+The ten views that still carried the old page language are re-skinned: `AdminCategories`, `AdminOrders`, `AdminCustomers`, `AdminAnalytics`, `AdminBlog`, `AdminCategoryHubs`, `AdminCRM`, `AdminShippingLabels`, `AdminSettings`/`AdminApiKeys`. So are the components they embed (`ProductEditorModal`, `ImageDropzone`, `ProductImageEditor`, `ShippingLabelPanel`, `RichTextEditor`). There is no per-view bespoke surface, control, table or chip left: each page composes `AdminPageHeader` + `AdminPanel` + `AdminTable`/`AdminField`/`AdminModal` and keeps its own data logic.
+
+Two structural notes from that pass:
+
+- **Stale `/admin/settings` redirect deleted** (`next.config.ts`). It sent the console back to the dashboard because no settings screen existed; `AdminSettings` exists and the rail links to it, so the entry used to be a dead link that silently bounced.
+- **`TEXTAREA` moved into `adminTheme`** — `AdminBlog` and `AdminCategoryHubs` each had their own `const TEXTAREA = \`${INPUT} w-full resize-none\``; textareas now come from one export (or `AdminTextarea` when the label rhythm matters).
+
+### Still open (not visual)
+
+Product **writes** wait on the WooCommerce R/W credential; inventory counts, coupons, media library, SEO metadata write-back, marketing sends, and user administration all wait on their backends. Each says so through `AdminPendingPanel` rather than showing a number it does not have.

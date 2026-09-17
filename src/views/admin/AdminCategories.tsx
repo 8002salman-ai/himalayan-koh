@@ -1,23 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Loader2,
-  FolderTree,
-  Eye,
-  EyeOff,
-  X,
-} from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, FolderTree, Eye, EyeOff, X } from 'lucide-react';
 import { adminApi, CategoryFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { isSupabaseDataSource, readAdminCatalogPage, type AdminCatalogRow } from '../../lib/backend';
 import { getErrorMessage } from '../../lib/errors';
 import type { Category } from '../../lib/supabase/database.types';
-import { categories as fallbackCategories } from '../../data/products';
+import {
+  AdminButton,
+  AdminChip,
+  AdminDisabledAction,
+  AdminModal,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminPendingPanel,
+  AdminStatTile,
+} from '../../components/admin/AdminUI';
+import {
+  BUTTON,
+  ICON_TILE,
+  ICON_TILE_TONES,
+  INPUT,
+  MICRO_LABEL,
+  SURFACE,
+} from '../../components/admin/adminTheme';
 
+/** What a WooCommerce write needs before this screen owns it. */
+const WRITE_CONNECTION_REQUIRED = 'WooCommerce write connection required';
+
+/**
+ * Categories.
+ *
+ * The screen follows the catalog's owner rather than its own convenience.
+ *
+ *  - Supabase catalog: the real category rows, with create/edit/delete through
+ *    the Supabase admin query layer, exactly as before.
+ *  - WooCommerce catalog: categories are read from the same catalog read model
+ *    the storefront uses, so the console cannot list a taxonomy the site does
+ *    not have. Writes are disabled — editing categories in Supabase while the
+ *    storefront reads WooCommerce taxonomy is precisely the split-brain this
+ *    branch exists to remove.
+ *
+ * The old fallback to the bundled demo categories when nothing was configured is
+ * gone: a fabricated taxonomy under a real storefront's name is worse than an
+ * empty screen.
+ */
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rows, setRows] = useState<AdminCatalogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -26,27 +57,29 @@ export default function AdminCategories() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  /** Which catalog owns the taxonomy on this deployment. */
+  const READS_SUPABASE_CATALOG = isSupabaseDataSource();
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
 
+    // WooCommerce: one read through the shared catalog read model.
+    if (!READS_SUPABASE_CATALOG) {
+      try {
+        const page = await readAdminCatalogPage({ perPage: 100, sort: 'name' });
+        setRows(page.rows);
+      } catch (err) {
+        setFetchError(getErrorMessage(err, 'Failed to read the WooCommerce catalog.'));
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!isSupabaseConfigured()) {
-      setCategories(fallbackCategories.map((c, i) => ({
-        id: String(i + 1),
-        name: c.name,
-        slug: c.name.toLowerCase().replace(/\s+/g, '-'),
-        description: c.description,
-        image_url: c.image,
-        parent_id: null,
-        sort_order: i,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })));
+      setCategories([]);
       setLoading(false);
       return;
     }
@@ -59,32 +92,14 @@ export default function AdminCategories() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [READS_SUPABASE_CATALOG]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleSave = async (data: CategoryFormData) => {
     setActionLoading(true);
-
-    if (!isSupabaseConfigured()) {
-      if (editingCategory) {
-        setCategories(prev => prev.map(c => 
-          c.id === editingCategory.id ? { ...c, ...data, updated_at: new Date().toISOString() } : c
-        ));
-      } else {
-        setCategories(prev => [...prev, {
-          id: Date.now().toString(),
-          ...data,
-          parent_id: null,
-          sort_order: prev.length,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as Category]);
-      }
-      setEditorOpen(false);
-      setEditingCategory(null);
-      setActionLoading(false);
-      return;
-    }
-
     try {
       if (editingCategory) {
         const updated = await adminApi.updateCategory(editingCategory.id, data);
@@ -104,14 +119,6 @@ export default function AdminCategories() {
 
   const handleDelete = async (id: string) => {
     setActionLoading(true);
-
-    if (!isSupabaseConfigured()) {
-      setCategories(prev => prev.filter(c => c.id !== id));
-      setDeleteConfirm(null);
-      setActionLoading(false);
-      return;
-    }
-
     try {
       await adminApi.deleteCategory(id);
       setCategories(prev => prev.filter(c => c.id !== id));
@@ -124,13 +131,6 @@ export default function AdminCategories() {
   };
 
   const handleToggleActive = async (category: Category) => {
-    if (!isSupabaseConfigured()) {
-      setCategories(prev => prev.map(c => 
-        c.id === category.id ? { ...c, is_active: !c.is_active } : c
-      ));
-      return;
-    }
-
     try {
       await adminApi.updateCategory(category.id, { is_active: !category.is_active });
       setCategories(prev => prev.map(c =>
@@ -141,136 +141,229 @@ export default function AdminCategories() {
     }
   };
 
+  // WooCommerce taxonomy, counted from the products the read model actually
+  // returned. A category with no product in that read is not invented.
+  const wooFacets = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.categoryName) continue;
+    wooFacets.set(row.categoryName, (wooFacets.get(row.categoryName) ?? 0) + 1);
+  }
+  const uncategorised = rows.filter((row) => !row.categoryName).length;
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-charcoal">Categories</h1>
-          <p className="text-charcoal-light">Organize your products into categories</p>
-        </div>
-        <button
-          onClick={() => { setEditingCategory(null); setEditorOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-        >
-          <Plus size={18} />
-          Add Category
-        </button>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Commerce"
+        title="Categories"
+        description={
+          READS_SUPABASE_CATALOG
+            ? 'The category taxonomy the storefront groups products by.'
+            : 'The WooCommerce taxonomy the storefront groups products by, read through the shared catalog.'
+        }
+        actions={
+          READS_SUPABASE_CATALOG ? (
+            <AdminButton
+              variant="primary"
+              icon={Plus}
+              onClick={() => { setEditingCategory(null); setEditorOpen(true); }}
+            >
+              Add category
+            </AdminButton>
+          ) : (
+            <AdminDisabledAction label="Add category" reason={WRITE_CONNECTION_REQUIRED} />
+          )
+        }
+      />
 
       {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Categories could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchCategories}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
+        <AdminNotice
+          tone="danger"
+          title="Categories could not be loaded"
+          action={<AdminButton onClick={fetchCategories}>Retry</AdminButton>}
+        >
+          {fetchError}
+        </AdminNotice>
       )}
 
       {actionError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
-          <p>{actionError}</p>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="shrink-0 text-red-500 hover:text-red-700"
-            aria-label="Dismiss"
-          >
-            <X size={14} />
-          </button>
+        <AdminNotice
+          tone="danger"
+          title="That change was not saved"
+          action={<AdminButton icon={X} onClick={() => setActionError(null)}>Dismiss</AdminButton>}
+        >
+          {actionError}
+        </AdminNotice>
+      )}
+
+      {!READS_SUPABASE_CATALOG && (
+        <div className="grid grid-cols-4 gap-4">
+          <AdminStatTile
+            label="Categories in use"
+            icon={FolderTree}
+            tone="brand"
+            value={loading ? undefined : wooFacets.size}
+            unavailable={loading ? 'Reading…' : undefined}
+            hint="WooCommerce"
+          />
+          <AdminStatTile
+            label="Products read"
+            icon={FolderTree}
+            tone="green"
+            value={loading ? undefined : rows.length}
+            unavailable={loading ? 'Reading…' : undefined}
+          />
+          <AdminStatTile
+            label="Uncategorised"
+            icon={FolderTree}
+            tone="amber"
+            value={loading ? undefined : uncategorised}
+            unavailable={loading ? 'Reading…' : undefined}
+          />
+          <AdminStatTile
+            label="Edited here"
+            icon={FolderTree}
+            tone="slate"
+            unavailable="Write key required"
+          />
         </div>
       )}
 
-      {/* Categories Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-himalayan" />
-        </div>
-      ) : categories.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-          <FolderTree size={48} className="mx-auto mb-4 text-gray-200" />
-          <h3 className="text-lg font-semibold text-charcoal mb-1">No categories yet</h3>
-          <p className="text-charcoal-light mb-4">Create your first category to organize products</p>
-          <button
-            onClick={() => { setEditingCategory(null); setEditorOpen(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-          >
-            <Plus size={18} />
-            Add Category
-          </button>
-        </div>
+        <AdminPanel title="Categories" description="Reading the catalog…">
+          <div className="grid grid-cols-3 gap-4">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="h-32 animate-pulse rounded-xl bg-admin-canvas" />
+            ))}
+          </div>
+        </AdminPanel>
+      ) : READS_SUPABASE_CATALOG ? (
+        categories.length === 0 ? (
+          <AdminPanel title="Categories">
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+                <FolderTree size={20} />
+              </span>
+              <p className="text-sm font-semibold text-admin-ink">No categories yet</p>
+              <p className="text-sm text-admin-muted">
+                {isSupabaseConfigured()
+                  ? 'Create the first category to group products.'
+                  : 'No catalog source is configured, so there is no taxonomy to read.'}
+              </p>
+            </div>
+          </AdminPanel>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            {categories.map((category, index) => (
+              <motion.article
+                key={category.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                className={`${SURFACE} overflow-hidden`}
+              >
+                <div className="relative flex aspect-video items-center justify-center bg-admin-canvas">
+                  {category.image_url ? (
+                    <img src={category.image_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <FolderTree size={40} className="text-admin-muted/50" />
+                  )}
+                  <div className="absolute right-2 top-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(category)}
+                      className={`rounded-lg p-1.5 text-white ${category.is_active ? 'bg-emerald-500' : 'bg-slate-500'}`}
+                      title={category.is_active ? 'Active — click to hide' : 'Inactive — click to show'}
+                      aria-label={category.is_active ? 'Deactivate category' : 'Activate category'}
+                    >
+                      {category.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-semibold text-admin-ink">{category.name}</h3>
+                    <AdminChip tone={category.is_active ? 'success' : 'muted'}>
+                      {category.is_active ? 'Visible' : 'Hidden'}
+                    </AdminChip>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-admin-muted">
+                    {category.description || 'No description'}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[11px] text-admin-muted">/{category.slug}</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { setEditingCategory(category); setEditorOpen(true); }}
+                        className="rounded-lg p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+                        aria-label={`Edit ${category.name}`}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(category.id)}
+                        className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
+                        aria-label={`Delete ${category.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        )
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category, i) => (
-            <motion.div
-              key={category.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-2xl shadow-sm overflow-hidden"
-            >
-              <div className="aspect-video relative bg-gray-100">
-                {category.image_url ? (
-                  <img
-                    src={category.image_url}
-                    alt={category.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FolderTree size={48} className="text-gray-300" />
+        <>
+          <AdminPanel
+            title="Taxonomy in use"
+            description="Every category the catalog read returned, with the products counted in that same read."
+          >
+            {wooFacets.size === 0 ? (
+              <p className="text-sm text-admin-muted">
+                No category was reported by the catalog source. Products without one are counted as
+                uncategorised rather than filed under a guess.
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {[...wooFacets.entries()].map(([name, count]) => (
+                  <div key={name} className="rounded-xl border border-admin-line px-4 py-3.5">
+                    <p className="font-semibold text-admin-ink">{name}</p>
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-admin-muted">
+                      {count} product{count === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                ))}
+                {uncategorised > 0 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+                    <p className="font-semibold text-amber-900">Uncategorised</p>
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+                      {uncategorised} product{uncategorised === 1 ? '' : 's'}
+                    </p>
                   </div>
                 )}
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <button
-                    onClick={() => handleToggleActive(category)}
-                    className={`p-1.5 rounded-lg ${
-                      category.is_active
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-500 text-white'
-                    }`}
-                    title={category.is_active ? 'Active' : 'Inactive'}
-                  >
-                    {category.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
-                  </button>
-                </div>
               </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-charcoal">{category.name}</h3>
-                <p className="text-sm text-charcoal-light line-clamp-2 mt-1">
-                  {category.description || 'No description'}
-                </p>
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xs text-charcoal-light">
-                    /{category.slug}
-                  </span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => { setEditingCategory(category); setEditorOpen(true); }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Edit size={16} className="text-charcoal-light" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(category.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} className="text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+            )}
+          </AdminPanel>
+
+          <AdminPendingPanel
+            title="Category editing is not connected"
+            summary="Creating, renaming, hiding and deleting categories belongs to WooCommerce, and this console holds no credential for it yet."
+            needs={[
+              'A WooCommerce REST key with write access to product categories, stored server-side only.',
+              'A taxonomy slug source: the public product routes report category names, not their slugs, so slugs stay unreported until the authenticated route is available.',
+              'A guard that refuses to delete a category still attached to published products.',
+            ]}
+            available={[
+              `Categories above are read from the same catalog the storefront serves, so the two cannot disagree (${wooFacets.size} in use, ${rows.length} products read).`,
+              'Nothing is written to Supabase for a WooCommerce catalog, so no second taxonomy exists to drift.',
+            ]}
+          />
+        </>
       )}
 
-      {/* Category Editor Modal */}
       <CategoryEditorModal
         isOpen={editorOpen}
         onClose={() => { setEditorOpen(false); setEditingCategory(null); }}
@@ -279,52 +372,34 @@ export default function AdminCategories() {
         loading={actionLoading}
       />
 
-      {/* Delete Confirmation */}
       <AnimatePresence>
         {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-charcoal mb-2">Delete Category</h3>
-              <p className="text-charcoal-light mb-6">
-                Are you sure? Products in this category will become uncategorized.
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="px-4 py-2 text-charcoal hover:bg-gray-100 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-                >
+          <AdminModal
+            size="sm"
+            title="Delete category"
+            description="This action cannot be undone."
+            onClose={() => setDeleteConfirm(null)}
+            footer={
+              <>
+                <AdminButton onClick={() => setDeleteConfirm(null)}>Cancel</AdminButton>
+                <AdminButton variant="danger" onClick={() => handleDelete(deleteConfirm)} disabled={actionLoading}>
                   {actionLoading && <Loader2 size={16} className="animate-spin" />}
                   Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+                </AdminButton>
+              </>
+            }
+          >
+            <p className="text-sm text-admin-ink">
+              Products filed under this category become uncategorized; they are not deleted.
+            </p>
+          </AdminModal>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
-// Category Editor Modal Component
+/** Category editor. Supabase catalog only — the WooCommerce branch has no write path. */
 function CategoryEditorModal({
   isOpen,
   onClose,
@@ -356,13 +431,7 @@ function CategoryEditorModal({
         is_active: category.is_active,
       });
     } else {
-      setFormData({
-        name: '',
-        slug: '',
-        description: '',
-        image_url: '',
-        is_active: true,
-      });
+      setFormData({ name: '', slug: '', description: '', image_url: '', is_active: true });
     }
   }, [category, isOpen]);
 
@@ -374,124 +443,97 @@ function CategoryEditorModal({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     onSave(formData);
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={onClose}
+        <AdminModal
+          title={category ? 'Edit category' : 'Add category'}
+          description="Written to the Supabase catalog — the WooCommerce branch has no write path yet."
+          onClose={onClose}
+          bodyClassName="px-0 py-0"
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-charcoal">
-                {category ? 'Edit Category' : 'Add Category'}
-              </h2>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-5 space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 p-5">
               <div>
-                <label className="block text-sm font-medium text-charcoal mb-1.5">
-                  Category Name *
+                <label htmlFor="category-name" className={MICRO_LABEL}>
+                  Category name *
                 </label>
                 <input
+                  id="category-name"
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                  onChange={(event) => handleNameChange(event.target.value)}
+                  className={`${INPUT} mt-1.5 w-full`}
                   placeholder="Salt for Horses"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-charcoal mb-1.5">
-                  URL Slug
+                <label htmlFor="category-slug" className={MICRO_LABEL}>
+                  URL slug
                 </label>
                 <input
+                  id="category-slug"
                   type="text"
                   value={formData.slug}
-                  onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                  onChange={(event) => setFormData(prev => ({ ...prev, slug: event.target.value }))}
+                  className={`${INPUT} mt-1.5 w-full`}
                   placeholder="salt-for-horses"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-charcoal mb-1.5">
+                <label htmlFor="category-description" className={MICRO_LABEL}>
                   Description
                 </label>
                 <textarea
+                  id="category-description"
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(event) => setFormData(prev => ({ ...prev, description: event.target.value }))}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan resize-none"
-                  placeholder="Category description..."
+                  className={`${INPUT} mt-1.5 w-full resize-none`}
+                  placeholder="Category description…"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-charcoal mb-1.5">
+                <label htmlFor="category-image" className={MICRO_LABEL}>
                   Image URL
                 </label>
                 <input
+                  id="category-image"
                   type="url"
                   value={formData.image_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
-                  placeholder="https://..."
+                  onChange={(event) => setFormData(prev => ({ ...prev, image_url: event.target.value }))}
+                  className={`${INPUT} mt-1.5 w-full`}
+                  placeholder="https://…"
                 />
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-admin-ink">
                 <input
                   type="checkbox"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                  className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                  onChange={(event) => setFormData(prev => ({ ...prev, is_active: event.target.checked }))}
+                  className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                 />
-                <span className="text-sm text-charcoal">Active (visible on site)</span>
+                Active (visible on site)
               </label>
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-2.5 text-charcoal hover:bg-gray-100 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl disabled:opacity-70"
-                >
-                  {loading && <Loader2 size={18} className="animate-spin" />}
-                  {category ? 'Save Changes' : 'Create Category'}
+              <div className="flex justify-end gap-2 border-t border-admin-line pt-4">
+                <AdminButton onClick={onClose}>Cancel</AdminButton>
+                <button type="submit" disabled={loading} className={BUTTON.primary}>
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  {category ? 'Save changes' : 'Create category'}
                 </button>
               </div>
             </form>
-          </motion.div>
-        </motion.div>
+        </AdminModal>
       )}
     </AnimatePresence>
   );

@@ -18,11 +18,11 @@ const nextConfig: NextConfig = {
         destination: '/admin/categories',
         permanent: false,
       },
-      {
-        source: '/admin/settings',
-        destination: '/admin',
-        permanent: false,
-      },
+      // NOTE: /admin/settings deliberately has NO redirect here. It used to send
+      // the admin back to the dashboard because no settings screen existed; the
+      // console now has one (src/views/admin/AdminSettings.tsx, also served at
+      // /admin/api-keys), so the rail entry resolves instead of silently
+      // bouncing to the dashboard.
       // The separate shipping-ready form is gone — Add Product on the products
       // page opens the full editor, which does everything that page did and
       // more. Kept as a redirect so an existing bookmark lands somewhere useful
