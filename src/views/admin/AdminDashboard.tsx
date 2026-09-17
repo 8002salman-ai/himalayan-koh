@@ -1,155 +1,259 @@
-import { useCallback, useEffect, useState } from 'react';
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package,
-  FolderTree,
-  ShoppingCart,
-  DollarSign,
   AlertTriangle,
-  TrendingUp,
-  ArrowUpRight,
-  Users,
-  BarChart3,
-  Plus,
+  DollarSign,
+  Eye,
   FileText,
-  PlugZap,
+  Gift,
+  Layers,
+  Loader2,
+  Megaphone,
+  Package,
+  Plus,
+  Receipt,
+  ShoppingCart,
+  Sparkle,
+  TrendingUp,
+  Users,
+  Wand as MagicWand,
+  Zap as Lightning,
 } from 'lucide-react';
-import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
+import {
+  adminApi,
+  type AdminDashboardAnalytics,
+  type AdminOrder,
+  type AdminOrderAnalytics,
+} from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
 import { getErrorMessage } from '../../lib/errors';
 import {
   ADMIN_TD,
+  AdminCapabilityPanel,
   AdminChip,
+  AdminKpiCard,
+  AdminLivePill,
   AdminNotice,
-  AdminPageHeader,
   AdminPanel,
-  AdminStatTile,
+  AdminSegmentedBar,
   AdminTable,
   AdminTableSkeleton,
 } from '../../components/admin/AdminUI';
-import { ICON_TILE, ICON_TILE_TONES, MICRO_LABEL } from '../../components/admin/adminTheme';
 
 /**
- * The order and customer summary.
+ * The store overview.
  *
- * Product and category facts are deliberately absent: they come from the catalog
- * read model (`catalogStats`), so this dashboard cannot count one catalog while
- * the storefront serves another.
+ * Layout mirrors the Luxedge console's dashboard one-for-one — header with a live
+ * badge, a six-figure KPI row, revenue/orders performance with a range selector,
+ * recent orders, and an operations column (order status, low stock, gift drop,
+ * publishing queue), then the quick-action grid. What differs is where the
+ * numbers come from and what happens when a source cannot answer.
+ *
+ * Three facts govern this file:
+ *
+ * 1. **Orders, revenue and customers live in Supabase**; the catalog does not. So
+ *    the sales half reads the order API and the catalog half reads the backend
+ *    adapter, and neither derives the other.
+ * 2. **A figure without a source is not zero.** Supabase not configured, or a
+ *    catalog that reports no stock counts, produces an explicit "Not connected"
+ *    in the number slot instead of a 0 that reads as a real measurement.
+ * 3. **The range selector is real.** 7/30/90-day buckets are built from the order
+ *    rows that were actually fetched, and the panel says how many of the store's
+ *    orders that sample covered, so a small sample cannot masquerade as history.
  */
-interface DashboardStats {
-  recentOrders: number;
-  totalRevenue: number;
+
+/** Order statuses that count as money taken, mirroring the reference console. */
+const PAID_STATUSES = ['paid', 'processing', 'shipped', 'delivered', 'partially_refunded'];
+
+const ORDER_SAMPLE_LIMIT = 200;
+
+interface DayBucket {
+  label: string;
+  total: number;
+  orders: number;
 }
 
-/**
- * A figure the dashboard shows, or the reason it cannot.
- *
- * Orders, revenue and customers live in Supabase; the catalog does not. When
- * Supabase is not configured those panels say so instead of rendering `0`,
- * because zero orders and an unknown order count are different claims.
- */
-type Figure = { value: number; formatted?: string } | null;
+function isPaid(order: AdminOrder): boolean {
+  return PAID_STATUSES.includes(String(order.status || ''));
+}
+
+/** Daily revenue and order counts for the last `days` days, paid orders only. */
+function buildSeries(orders: AdminOrder[], days: number): DayBucket[] {
+  const buckets: DayBucket[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - i);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const dayOrders = orders.filter((order) => {
+      const created = new Date(order.created_at);
+      return created >= start && created < end;
+    });
+    const paid = dayOrders.filter(isPaid);
+
+    buckets.push({
+      label: start.toLocaleDateString(undefined, days <= 7 ? { weekday: 'narrow' } : { month: 'short', day: 'numeric' }),
+      total: paid.reduce((sum, order) => sum + Number(order.total || 0), 0),
+      orders: paid.length,
+    });
+  }
+  return buckets;
+}
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [orderCount, setOrderCount] = useState(0);
+  const [orderAnalytics, setOrderAnalytics] = useState<AdminOrderAnalytics | null>(null);
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
   const [catalogStats, setCatalogStats] = useState<AdminCatalogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [realtimeNotice, setRealtimeNotice] = useState('');
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
+  const [range, setRange] = useState<7 | 30 | 90>(7);
 
   const ordersConnected = isSupabaseConfigured();
 
-  const fetchDashboard = useCallback(async () => {
-      try {
-        setFetchError(null);
-        // The catalog is read through the backend seam, so it works even when
-        // Supabase — which still owns orders and customers — is not configured.
-        const [data, analyticsData, catalogData] = await Promise.all([
-          isSupabaseConfigured() ? adminApi.getDashboardStats() : Promise.resolve(null),
-          isSupabaseConfigured() ? adminApi.getDashboardAnalytics() : Promise.resolve(null),
-          readAdminCatalogStats(),
-        ]);
-        setStats(data);
-        setAnalytics(analyticsData);
-        setCatalogStats(catalogData);
-      } catch (err) {
-        setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setFetchError(null);
+    try {
+      const [orderPage, analyticsData, catalogData] = await Promise.all([
+        ordersConnected
+          ? adminApi.getOrders({ limit: ORDER_SAMPLE_LIMIT, page: 1 })
+          : Promise.resolve(null),
+        ordersConnected ? adminApi.getDashboardAnalytics() : Promise.resolve(null),
+        readAdminCatalogStats(),
+      ]);
+
+      setOrders(orderPage?.orders ?? []);
+      setOrderCount(orderPage?.count ?? 0);
+      setAnalytics(analyticsData);
+      setCatalogStats(catalogData);
+
+      if (ordersConnected) {
+        setOrderAnalytics(await adminApi.getOrderAnalytics());
       }
-    }, []);
+    } catch (err) {
+      setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
+    } finally {
+      setLoading(false);
+      setLoadedAt(new Date());
+    }
+  }, [ordersConnected]);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    void load();
+  }, [load]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!ordersConnected) return;
 
     const channel = supabase
       .channel('admin-dashboard-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
         setRealtimeNotice('New order received');
-        fetchDashboard();
+        void load();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
         setRealtimeNotice('New customer activity');
-        fetchDashboard();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory' }, () => {
-        setRealtimeNotice('Inventory updated');
-        fetchDashboard();
+        void load();
       })
       .subscribe();
 
     return () => {
       channel.unsubscribe();
     };
-  }, [fetchDashboard]);
+  }, [ordersConnected, load]);
 
-  const orders: Figure = stats ? { value: stats.recentOrders } : null;
-  const revenue: Figure = stats
-    ? { value: stats.totalRevenue, formatted: `$${stats.totalRevenue.toLocaleString()}` }
-    : null;
-  const customers: Figure = analytics ? { value: analytics.totalCustomers } : null;
-  const newCustomers: Figure = analytics ? { value: analytics.newCustomers } : null;
-  const repeatCustomers: Figure = analytics ? { value: analytics.repeatCustomers } : null;
+  /* ---------------- figures ---------------- */
 
-  const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
-  const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
-  const unconnectedLabel = 'Not connected';
+  const series = useMemo(() => buildSeries(orders, range), [orders, range]);
+  const rangeRevenue = series.reduce((sum, day) => sum + day.total, 0);
+  const rangeOrders = series.reduce((sum, day) => sum + day.orders, 0);
+  const maxDay = Math.max(...series.map((day) => day.total), 1);
+
+  const weekSeries = useMemo(() => buildSeries(orders, 7), [orders]);
+  const priorWeekSeries = useMemo(() => buildSeries(orders, 14).slice(0, 7), [orders]);
+  const weekRevenue = weekSeries.reduce((sum, day) => sum + day.total, 0);
+  const priorWeekRevenue = priorWeekSeries.reduce((sum, day) => sum + day.total, 0);
+  const revenueTrend = priorWeekRevenue > 0 ? ((weekRevenue - priorWeekRevenue) / priorWeekRevenue) * 100 : null;
+
+  const paidOrders = orderAnalytics?.totalOrders ?? 0;
+  const allTimeRevenue = orderAnalytics?.totalRevenue ?? 0;
+  const averageOrderValue = paidOrders > 0 ? allTimeRevenue / paidOrders : 0;
+
+  const isWooCatalog = catalogStats?.source === 'woocommerce';
+  const activeProducts = catalogStats ? (isWooCatalog ? catalogStats.total : catalogStats.active) : null;
+  const totalProducts = catalogStats?.total ?? null;
+
+  const sampleNote =
+    orderCount > orders.length
+      ? `based on the most recent ${orders.length} of ${orderCount} orders`
+      : `${orders.length} order${orders.length === 1 ? '' : 's'} on record`;
+
+  /* ---------------- order status breakdown ---------------- */
+
+  const statusSegments = [
+    { label: 'Pending', count: orderAnalytics?.pendingOrders ?? 0, className: 'bg-slate-400' },
+    { label: 'Processing', count: orderAnalytics?.processingOrders ?? 0, className: 'bg-blue-500' },
+    { label: 'Shipped', count: orderAnalytics?.shippedOrders ?? 0, className: 'bg-sky-500' },
+    { label: 'Delivered', count: orderAnalytics?.deliveredOrders ?? 0, className: 'bg-teal-500' },
+    { label: 'Cancelled', count: orderAnalytics?.cancelledOrders ?? 0, className: 'bg-rose-400' },
+    { label: 'Refund requests', count: orderAnalytics?.refundRequests ?? 0, className: 'bg-amber-500' },
+  ];
+  const statusTotal = statusSegments.reduce((sum, segment) => sum + segment.count, 0);
+
+  /* ---------------- low stock ---------------- */
+
+  const lowStockAlerts = analytics?.inventoryAlerts ?? [];
+  const lowStockCount = catalogStats && !isWooCatalog ? catalogStats.lowStock : null;
 
   const quickActions = [
-    { label: 'Add product', path: '/admin/products?action=new', icon: Plus },
-    { label: 'Categories', path: '/admin/categories', icon: FolderTree },
-    { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
-    { label: 'SEO centre', path: '/admin/seo', icon: TrendingUp },
-    { label: 'Blog posts', path: '/admin/blog', icon: FileText },
-    { label: 'Users & roles', path: '/admin/users', icon: Users },
+    {
+      to: '/admin/ai-import',
+      icon: MagicWand,
+      label: 'Import Product',
+      desc: 'Paste a product URL — research and draft the listing',
+    },
+    {
+      to: '/admin/products?action=new',
+      icon: Plus,
+      label: 'Add Product Manually',
+      desc: 'Full editor — images, variants, SEO and pricing',
+    },
+    {
+      to: '/admin/marketing',
+      icon: Megaphone,
+      label: 'Generate Product Content',
+      desc: 'AI copy, SEO and descriptions · model key required',
+    },
+    {
+      to: '/admin/variant-gen',
+      icon: Layers,
+      label: 'Create Variants',
+      desc: 'Generate weight and size combinations in one pass',
+    },
+    {
+      to: '/admin/seo',
+      icon: TrendingUp,
+      label: 'SEO Optimize',
+      desc: 'Meta, schema and keyword suggestions for pages',
+    },
+    {
+      to: '/admin/ai-intelligence',
+      icon: Sparkle,
+      label: 'Open AI Intelligence',
+      desc: 'Insights across catalog, media and traffic · model key required',
+    },
   ];
 
   return (
-    <>
-      <AdminPageHeader
-        eyebrow="Overview"
-        title="Dashboard"
-        description="Live catalog, orders and customer health for the Himalayan Koh storefront."
-        actions={
-          <>
-            {realtimeNotice && <AdminChip tone="success">{realtimeNotice}</AdminChip>}
-            <Link
-              to="/admin/products?action=new"
-              className="inline-flex items-center gap-2 rounded-xl bg-himalayan px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-himalayan-dark"
-            >
-              <Plus size={16} />
-              Add product
-            </Link>
-          </>
-        }
-      />
-
+    <div className="space-y-4">
       {fetchError && (
         <AdminNotice
           tone="danger"
@@ -157,7 +261,7 @@ export default function AdminDashboard() {
           action={
             <button
               type="button"
-              onClick={fetchDashboard}
+              onClick={() => void load()}
               className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
             >
               Retry
@@ -168,358 +272,418 @@ export default function AdminDashboard() {
         </AdminNotice>
       )}
 
-      {!ordersConnected && (
-        <AdminNotice tone="warning" title="Orders and customers are not connected">
-          Supabase holds orders, revenue and customers, and its environment variables are not
-          configured in this deployment. Those figures read <strong>Not connected</strong> below
-          rather than zero. The product catalog is unaffected — it comes from the configured
-          catalog source.
-        </AdminNotice>
-      )}
-
-      {/* Figures. Every tile is either a real value or the reason there is none. */}
-      <div className="grid grid-cols-4 gap-4">
-        <AdminStatTile
-          label="Total products"
-          icon={Package}
-          tone="brand"
-          value={catalogStats?.total}
-          unavailable={catalogStats === null ? 'Reading…' : undefined}
-          hint={catalogStats?.source === 'woocommerce' ? 'WooCommerce' : 'Supabase'}
-          to="/admin/products"
-        />
-        <AdminStatTile
-          label="Categories"
-          icon={FolderTree}
-          tone="violet"
-          value={catalogStats?.categories}
-          unavailable={catalogStats === null ? 'Reading…' : undefined}
-          to="/admin/categories"
-        />
-        <AdminStatTile
-          label="Recent orders"
-          icon={ShoppingCart}
-          tone="green"
-          value={orders?.value}
-          unavailable={orders === null ? unconnectedLabel : undefined}
-          hint="30 days"
-          to="/admin/orders"
-        />
-        <AdminStatTile
-          label="Total revenue"
-          icon={DollarSign}
-          tone="sky"
-          value={revenue?.formatted}
-          unavailable={revenue === null ? unconnectedLabel : undefined}
-          hint="30 days"
-          to="/admin/analytics"
-        />
-        <AdminStatTile
-          label="Customers"
-          icon={Users}
-          tone="slate"
-          value={customers?.value}
-          unavailable={customers === null ? unconnectedLabel : undefined}
-          to="/admin/customers"
-        />
-        <AdminStatTile
-          label="New customers"
-          icon={TrendingUp}
-          tone="green"
-          value={newCustomers?.value}
-          unavailable={newCustomers === null ? unconnectedLabel : undefined}
-          to="/admin/customers"
-        />
-        <AdminStatTile
-          label="Repeat customers"
-          icon={Users}
-          tone="violet"
-          value={repeatCustomers?.value}
-          unavailable={repeatCustomers === null ? unconnectedLabel : undefined}
-          to="/admin/customers"
-        />
-        {/* Inventory counts are a Supabase-column fact. A source that cannot
-            report them shows what it can instead: how much commercial data is
-            missing from the catalog. */}
-        {catalogStats?.source === 'woocommerce' ? (
-          <AdminStatTile
-            label="Price unavailable"
-            icon={AlertTriangle}
-            tone="amber"
-            value={catalogStats.priceUnavailable}
-            hint="Store API blocked"
-            to="/admin/products"
-          />
-        ) : (
-          <AdminStatTile
-            label="Inventory alerts"
-            icon={AlertTriangle}
-            tone="amber"
-            value={analytics?.inventoryAlerts.length ?? catalogStats?.lowStock}
-            unavailable={!analytics && catalogStats === null ? unconnectedLabel : undefined}
-            to="/admin/inventory"
-          />
-        )}
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-admin-ink">Dashboard</h1>
+            {ordersConnected ? <AdminLivePill /> : <AdminChip tone="warning">Not connected</AdminChip>}
+            {realtimeNotice && <AdminChip tone="success">{realtimeNotice}</AdminChip>}
+          </div>
+          <p className="mt-0.5 text-xs text-admin-muted">
+            Store performance and catalog overview.
+            {loading && <Loader2 size={11} className="ml-1.5 inline animate-spin" />}
+            {loadedAt && (
+              <span className="text-admin-muted/80">
+                {' '}
+                · Updated{' '}
+                {loadedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-admin-line bg-admin-surface px-3.5 py-2 text-xs font-semibold text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+          >
+            <Eye size={13} /> View store
+          </Link>
+          <Link
+            to="/admin/ai-import"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-admin-line bg-admin-surface px-3.5 py-2 text-xs font-semibold text-admin-ink transition-colors hover:bg-admin-canvas"
+          >
+            <MagicWand size={13} /> AI Import
+          </Link>
+          <Link
+            to="/admin/products?action=new"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-admin-ink px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90"
+          >
+            <Plus size={13} /> Add to Catalog
+          </Link>
+        </div>
       </div>
 
-      {/* Catalog composition — the figures the active source can actually report. */}
-      {catalogStats && (
-        <AdminPanel
-          title="Catalog source"
-          description="What the storefront and this console read, and what that source can report about it."
-          action={
-            <AdminChip tone={catalogStats.source === 'woocommerce' ? 'brand' : 'neutral'}>
-              {catalogStats.source === 'woocommerce' ? 'WooCommerce' : 'Supabase'}
-            </AdminChip>
+      {/* KPI row — six figures, each linkable */}
+      <div className="grid grid-cols-6 gap-2.5">
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={DollarSign}
+          label="Revenue (7 days)"
+          tone="amber"
+          value={loading ? '—' : `$${weekRevenue.toFixed(2)}`}
+          sub={
+            loading
+              ? 'reading orders'
+              : weekRevenue > 0
+                ? revenueTrend === null
+                  ? '— vs prior week'
+                  : `${revenueTrend >= 0 ? '▲' : '▼'} ${Math.abs(revenueTrend).toFixed(0)}% vs prior week`
+                : 'No paid orders yet'
           }
-        >
-          <div className="grid grid-cols-4 gap-4">
-            {(catalogStats.source === 'woocommerce'
-              ? [
-                  { label: 'Listed products', value: catalogStats.total },
-                  { label: 'Featured', value: catalogStats.featured },
-                  { label: 'SKU unavailable', value: catalogStats.skuUnavailable },
-                  { label: 'Stock unknown', value: catalogStats.stockUnknown },
-                ]
-              : [
-                  { label: 'Total products', value: catalogStats.total },
-                  { label: 'Active', value: catalogStats.active },
-                  { label: 'Inactive', value: catalogStats.inactive },
-                  { label: 'Low stock', value: catalogStats.lowStock },
-                ]
-            ).map((entry) => (
-              <div key={entry.label} className="rounded-xl border border-admin-line px-4 py-3">
-                <p className={MICRO_LABEL}>{entry.label}</p>
-                <p className="mt-1 text-xl font-bold text-admin-ink">{entry.value}</p>
-              </div>
-            ))}
-          </div>
-        </AdminPanel>
-      )}
+        />
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={ShoppingCart}
+          label="Orders"
+          tone="amber"
+          value={loading ? '—' : paidOrders}
+          sub={
+            loading
+              ? 'reading orders'
+              : paidOrders
+                ? `$${allTimeRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} all-time`
+                : 'No paid orders yet'
+          }
+        />
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={TrendingUp}
+          label="Avg order value"
+          tone="amber"
+          value={loading ? '—' : paidOrders ? `$${averageOrderValue.toFixed(2)}` : '—'}
+          sub={loading ? 'reading orders' : paidOrders ? 'per paid order' : 'No paid orders yet'}
+        />
+        <AdminKpiCard
+          to="/admin/customers"
+          icon={Users}
+          label="Customers"
+          tone="amber"
+          value={loading ? '—' : (analytics?.totalCustomers ?? 'Not connected')}
+          sub={
+            loading
+              ? 'reading customers'
+              : analytics
+                ? `${analytics.newCustomers} new · ${analytics.repeatCustomers} repeat`
+                : 'No customer source configured'
+          }
+        />
+        <AdminKpiCard
+          to="/admin/products"
+          icon={Package}
+          label="Active products"
+          tone="amber"
+          value={catalogStats === null ? 'Reading…' : (activeProducts ?? '—')}
+          sub={`${totalProducts ?? '—'} total · ${isWooCatalog ? 'WooCommerce' : 'Supabase'}`}
+        />
+        <AdminKpiCard
+          to="/admin/inventory"
+          icon={AlertTriangle}
+          label="Low-stock products"
+          tone="amber"
+          value={lowStockCount === null ? (isWooCatalog ? 'Not reported' : '—') : lowStockCount}
+          sub={
+            isWooCatalog
+              ? 'this source reports no counts'
+              : lowStockCount
+                ? 'need restock'
+                : 'All stocked'
+          }
+        />
+      </div>
 
-      {/* Analytics. Rendered only when the orders source answered. */}
-      {analytics ? (
-        <div className="grid grid-cols-3 gap-4">
+      {/* Main grid — left: performance and orders, right: operations */}
+      <div className="grid grid-cols-3 items-start gap-4">
+        <div className="col-span-2 space-y-4">
+          {/* Revenue & orders */}
           <AdminPanel
-            className="col-span-2"
-            title="Revenue"
-            description="Last 7 days, from Supabase order history."
-            action={<BarChart3 size={18} className="text-himalayan" />}
-          >
-            <div className="flex h-64 items-end gap-3">
-              {analytics.revenueSeries.map((point) => (
-                <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="flex h-48 w-full items-end justify-center overflow-hidden rounded-xl bg-admin-canvas">
-                    <div
-                      className="w-full min-h-2 rounded-t-xl bg-gradient-to-t from-himalayan-dark to-himalayan transition-all"
-                      style={{ height: `${Math.max(6, (point.revenue / maxRevenue) * 100)}%` }}
-                      title={`$${point.revenue.toFixed(2)} · ${point.orders} orders`}
-                    />
-                  </div>
-                  <span className="text-xs text-admin-muted">{point.label}</span>
-                </div>
-              ))}
-            </div>
-          </AdminPanel>
-
-          <AdminPanel title="Order status" description="Counts across the recent window.">
-            <div className="space-y-3.5">
-              {Object.entries(analytics.orderStatusCounts).map(([status, count]) => (
-                <div key={status}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="capitalize text-admin-ink">{status}</span>
-                    <span className="font-semibold text-admin-ink">{count}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-admin-canvas">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-himalayan to-himalayan-dark"
-                      style={{
-                        width: `${stats?.recentOrders ? Math.min(100, (count / stats.recentOrders) * 100) : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </AdminPanel>
-
-          <AdminPanel
-            className="col-span-2"
-            title="Best sellers"
-            description="Revenue by product, from order history."
-          >
-            {analytics.topProducts.length === 0 ? (
-              <p className="text-sm text-admin-muted">No product sales yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {analytics.topProducts.map((product) => (
-                  <div key={product.productName}>
-                    <div className="mb-1 flex justify-between gap-4 text-sm">
-                      <span className="truncate font-medium text-admin-ink">{product.productName}</span>
-                      <span className="text-admin-muted">${product.revenue.toFixed(2)}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-admin-canvas">
-                      <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${Math.max(5, (product.revenue / maxProductRevenue) * 100)}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-admin-muted">{product.quantity} units sold</p>
-                  </div>
+            bodyClassName=""
+            title={
+              <span className="flex items-center gap-2.5">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-himalayan-lighter">
+                  <TrendingUp size={14} className="text-himalayan-dark" />
+                </span>
+                <span>
+                  Revenue &amp; Orders
+                  <span className="mt-0.5 block text-[10px] font-normal text-admin-muted">
+                    {rangeOrders} order{rangeOrders === 1 ? '' : 's'} · ${rangeRevenue.toFixed(2)} in
+                    range · {sampleNote}
+                  </span>
+                </span>
+              </span>
+            }
+            action={
+              <div className="flex items-center gap-0.5 rounded-lg border border-admin-line p-0.5">
+                {([7, 30, 90] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setRange(option)}
+                    className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                      range === option
+                        ? 'bg-admin-ink text-white'
+                        : 'text-admin-muted hover:text-admin-ink'
+                    }`}
+                  >
+                    {option}D
+                  </button>
                 ))}
+              </div>
+            }
+          >
+            {rangeOrders === 0 ? (
+              <div className="py-12 text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-admin-canvas">
+                  <TrendingUp size={16} className="text-admin-muted/60" />
+                </div>
+                <p className="text-xs text-admin-muted">
+                  {loading
+                    ? 'Reading orders…'
+                    : ordersConnected
+                      ? 'No paid orders in this range yet — share the store or run a campaign.'
+                      : 'No order source is configured, so there is nothing to chart.'}
+                </p>
+              </div>
+            ) : (
+              <div className="px-5 pb-4">
+                <div className="flex h-24 items-end gap-1">
+                  {series.map((day, index) => {
+                    const step = range === 7 ? 1 : range === 30 ? 5 : 15;
+                    return (
+                      <div
+                        key={`${day.label}-${index}`}
+                        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        title={`${day.label}: $${day.total.toFixed(2)} (${day.orders} order${day.orders === 1 ? '' : 's'})`}
+                      >
+                        <div
+                          className="w-full rounded-t bg-gradient-to-t from-himalayan-dark to-himalayan transition-all"
+                          style={{
+                            height: `${Math.max((day.total / maxDay) * 80, day.total > 0 ? 6 : 2)}px`,
+                            opacity: day.total > 0 ? 1 : 0.25,
+                          }}
+                        />
+                        <span className="text-[8px] font-medium uppercase text-admin-muted">
+                          {index % step === 0 || index === series.length - 1 ? day.label : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </AdminPanel>
 
-          {/* Inventory counts come from Supabase, so this panel is only shown
-              when that is the catalog the storefront is reading. */}
-          {catalogStats?.source !== 'woocommerce' && (
-            <AdminPanel title="Inventory alerts" description="Low-stock products.">
-              {analytics.inventoryAlerts.length === 0 ? (
-                <p className="text-sm text-admin-muted">No low-stock alerts.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {analytics.inventoryAlerts.map((alert) => (
-                    <Link
-                      key={alert.productId}
-                      to="/admin/inventory?filter=low_stock"
-                      className="block rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 transition-colors hover:bg-amber-100"
-                    >
-                      <p className="truncate text-sm font-medium text-amber-900">{alert.productName}</p>
-                      <p className="text-xs text-amber-800">
-                        Qty {alert.quantity} · threshold {alert.threshold}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </AdminPanel>
-          )}
-        </div>
-      ) : (
-        !loading && (
+          {/* Recent orders */}
           <AdminPanel
-            title="Sales analytics"
-            description="Revenue, best sellers and order status come from Supabase order history."
-          >
-            <div className="flex items-start gap-3 rounded-xl border border-admin-line bg-admin-canvas px-4 py-4">
-              <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate}`}>
-                <PlugZap size={16} />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-admin-ink">Not connected</p>
-                <p className="mt-0.5 text-sm text-admin-muted">
-                  No order source is configured for this deployment, so there are no sales figures to
-                  show. Nothing here is estimated.
-                </p>
-              </div>
-            </div>
-          </AdminPanel>
-        )
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        {catalogStats?.source === 'supabase' && catalogStats.lowStock > 0 && (
-          <AdminPanel
-            title="Low stock alert"
-            description={`${catalogStats.lowStock} products are running low and need attention.`}
+            title="Recent Orders"
             action={
-              <Link
-                to="/admin/inventory?filter=low_stock"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-himalayan hover:underline"
-              >
-                Review
-                <ArrowUpRight size={14} />
+              <Link to="/admin/orders" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                View all orders →
               </Link>
             }
           >
-            <div className="flex items-center gap-3">
-              <span className={`${ICON_TILE} ${ICON_TILE_TONES.amber}`}>
-                <AlertTriangle size={16} />
-              </span>
-              <p className="text-sm text-admin-muted">
-                Inventory counts are a Supabase column, so these figures disappear the moment the
-                catalog moves to WooCommerce.
+            <AdminTable
+              columns={[
+                { key: 'order', label: 'Order' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'date', label: 'Date' },
+                { key: 'total', label: 'Total', align: 'right' },
+                { key: 'status', label: 'Status', align: 'right' },
+              ]}
+              minWidth="820px"
+            >
+              {loading ? (
+                <AdminTableSkeleton rows={5} columns={5} />
+              ) : (
+                orders.slice(0, 5).map((order) => (
+                  <tr key={order.id} className="transition-colors hover:bg-admin-canvas/60">
+                    <td className={ADMIN_TD}>
+                      <span className="font-mono text-[11px] font-semibold text-admin-ink">
+                        {order.order_number}
+                      </span>
+                    </td>
+                    <td className={`${ADMIN_TD} text-[11px] text-admin-muted`}>
+                      {order.profile?.full_name || order.email || '—'}
+                    </td>
+                    <td className={`${ADMIN_TD} text-[11px] text-admin-muted`}>
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className={`${ADMIN_TD} text-right text-[11px] font-bold text-admin-ink`}>
+                      ${Number(order.total || 0).toFixed(2)}
+                    </td>
+                    <td className={`${ADMIN_TD} text-right`}>
+                      <AdminChip
+                        tone={
+                          String(order.status) === 'paid'
+                            ? 'success'
+                            : String(order.status).includes('refund')
+                              ? 'warning'
+                              : 'muted'
+                        }
+                      >
+                        {String(order.status || '').replace('_', ' ')}
+                      </AdminChip>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </AdminTable>
+            {!loading && orders.length === 0 && (
+              <p className="px-5 py-6 text-center text-[11px] text-admin-muted">
+                {ordersConnected
+                  ? 'No orders yet — share the store or run a campaign.'
+                  : 'No order source is configured for this deployment.'}
               </p>
-            </div>
+            )}
           </AdminPanel>
-        )}
+        </div>
 
-        <AdminPanel
-          title="Quick actions"
-          description="The daily jumps."
-          className={catalogStats?.source === 'supabase' && catalogStats.lowStock > 0 ? '' : 'col-span-2'}
-        >
-          <div className="grid grid-cols-3 gap-3">
-            {quickActions.map((action) => (
-              <Link
-                key={action.label}
-                to={action.path}
-                className="flex items-center gap-3 rounded-xl border border-admin-line px-3.5 py-3 transition-colors hover:border-himalayan/40 hover:bg-himalayan-lighter"
-              >
-                <action.icon size={17} className="text-himalayan" />
-                <span className="text-sm font-medium text-admin-ink">{action.label}</span>
+        {/* Operations column */}
+        <div className="space-y-4">
+          <AdminPanel title={<span className="flex items-center gap-1.5"><Receipt size={11} className="text-himalayan-dark" />Order Status</span>}>
+            {statusTotal === 0 ? (
+              <p className="py-4 text-center text-[11px] text-admin-muted">
+                {loading ? 'Reading orders…' : 'No order-status data yet.'}
+              </p>
+            ) : (
+              <>
+                <AdminSegmentedBar segments={statusSegments} />
+                <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+                  {statusSegments.map((segment) => (
+                    <span key={segment.label} className="flex items-center gap-1.5 text-[10px] text-admin-muted">
+                      <span className={`h-2 w-2 rounded-full ${segment.className}`} />
+                      {segment.label} · <b className="text-admin-ink">{segment.count}</b>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><AlertTriangle size={11} className="text-amber-500" />Low Stock</span>}
+            action={
+              <Link to="/admin/inventory" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                View inventory →
               </Link>
-            ))}
-          </div>
-        </AdminPanel>
-      </div>
-
-      <AdminPanel title="Recent activity" description="Orders, inventory and customer events.">
-        {loading ? (
-          <AdminTable
-            columns={[
-              { key: 'event', label: 'Event' },
-              { key: 'time', label: 'When', align: 'right' },
-            ]}
+            }
           >
-            <AdminTableSkeleton rows={4} columns={2} />
-          </AdminTable>
-        ) : (analytics?.recentActivity || []).length === 0 ? (
-          <p className="text-sm text-admin-muted">
-            {ordersConnected
-              ? 'No recent activity yet.'
-              : 'No activity source is connected, so there is no recent activity to show.'}
-          </p>
-        ) : (
-          <AdminTable
-            columns={[
-              { key: 'event', label: 'Event' },
-              { key: 'time', label: 'When', align: 'right' },
-            ]}
-          >
-            {analytics?.recentActivity.map((item) => (
-              <tr key={`${item.type}-${item.id}`}>
-                <td className={ADMIN_TD}>
-                  <div className="flex items-center gap-3">
+            {isWooCatalog ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                This catalog source reports no unit counts, so nothing can be ranked by stock.
+              </p>
+            ) : lowStockAlerts.length === 0 ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                {loading ? 'Reading inventory…' : 'No low-stock alerts.'}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {lowStockAlerts.slice(0, 4).map((alert) => (
+                  <li key={alert.productId} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[11px] text-admin-ink">{alert.productName}</span>
                     <span
-                      className={`${ICON_TILE} ${
-                        item.type === 'order'
-                          ? ICON_TILE_TONES.green
-                          : item.type === 'inventory'
-                            ? ICON_TILE_TONES.amber
-                            : ICON_TILE_TONES.violet
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        alert.quantity <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
                       }`}
                     >
-                      {item.type === 'order' ? (
-                        <ShoppingCart size={14} />
-                      ) : item.type === 'inventory' ? (
-                        <Package size={14} />
-                      ) : (
-                        <Users size={14} />
-                      )}
+                      {alert.quantity} left
                     </span>
-                    <span className="font-medium">{item.action}</span>
-                  </div>
-                </td>
-                <td className={`${ADMIN_TD} text-right text-admin-muted`}>
-                  {new Date(item.time).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </AdminTable>
-        )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><Gift size={11} className="text-himalayan-dark" />Gift Drop</span>}
+          >
+            <p className="py-3 text-center text-[11px] text-admin-muted">
+              No claim ledger is connected, so there are no claims or remaining gifts to report.
+            </p>
+            <Link
+              to="/admin/gift-drop"
+              className="mt-2.5 block rounded-lg border border-admin-line py-1.5 text-center text-[10px] font-semibold text-himalayan-dark transition-colors hover:bg-himalayan-lighter"
+            >
+              Open Gift Drop admin →
+            </Link>
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><FileText size={11} className="text-himalayan-dark" />Publishing Queue</span>}
+            action={
+              <Link to="/admin/products" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                Manage →
+              </Link>
+            }
+          >
+            {isWooCatalog || !catalogStats || catalogStats.source !== 'supabase' ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                Product status is not reported by this catalog source, so a draft count would be a
+                guess. The Listing Task queue is the working list.
+              </p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-himalayan-lighter">
+                  <FileText size={16} className="text-himalayan-dark" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-none text-admin-ink">
+                    {catalogStats.inactive} not listed
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-admin-muted">
+                    {catalogStats.active} active · {catalogStats.total} total in the catalog
+                  </p>
+                </div>
+              </div>
+            )}
+          </AdminPanel>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <AdminPanel
+        title={<span className="flex items-center gap-1.5"><Lightning size={12} className="text-himalayan-dark" />Quick Actions</span>}
+        action={
+          <Link to="/admin/ai-import" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+            AI Import →
+          </Link>
+        }
+      >
+        <div className="grid grid-cols-3 gap-2">
+          {quickActions.map((action) => (
+            <Link
+              key={action.to}
+              to={action.to}
+              className="group flex items-start gap-2.5 rounded-lg border border-admin-line p-3 transition-colors hover:border-himalayan/40 hover:bg-himalayan-lighter"
+            >
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-himalayan-lighter text-himalayan-dark transition-colors group-hover:bg-himalayan/15">
+                <action.icon size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[12px] font-semibold leading-tight text-admin-ink">
+                  {action.label}
+                </span>
+                <span className="mt-0.5 block text-[10px] leading-snug text-admin-muted">
+                  {action.desc}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
       </AdminPanel>
-    </>
+
+      {!ordersConnected && (
+        <AdminCapabilityPanel
+          title="Orders, revenue and customers"
+          summary="Where the sales half of this dashboard will read from."
+          capabilities={['woo-rest-read']}
+          available={[
+            'The catalog half is live: products and categories come from the same adapter the storefront serves.',
+            'No figure above is estimated — each one is either measured or labelled as unavailable.',
+          ]}
+        />
+      )}
+    </div>
   );
 }

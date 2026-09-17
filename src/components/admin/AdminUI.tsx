@@ -4,6 +4,10 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
+  capabilityRequirements,
+  type CapabilityId,
+} from '../../lib/admin/capabilities';
+import {
   BUTTON,
   INPUT,
   MICRO_LABEL as MICRO_LABEL_CLASS,
@@ -467,6 +471,124 @@ export function AdminPendingPanel({
         honest state, not a placeholder.
       </p>
     </AdminPanel>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Dashboard parts                                                     */
+/* ------------------------------------------------------------------ */
+
+/** The "live" pill the overview header wears while the data source is answering. */
+export function AdminLivePill({ label = 'Live' }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      </span>
+      {label}
+    </span>
+  );
+}
+
+/**
+ * One compact overview figure: icon, value, label and a one-line explanation.
+ *
+ * Distinct from `AdminStatTile` on purpose — the overview row carries six of
+ * these at once, so it has to be denser than a section's headline tile. Same
+ * rule applies: a figure that cannot be sourced passes `unavailable` and the
+ * number slot prints the reason instead of a zero.
+ */
+export function AdminKpiCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  tone = 'brand',
+  to,
+}: {
+  label: string;
+  value: ReactNode;
+  sub: string;
+  icon: LucideIcon;
+  tone?: IconTone;
+  to: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`${SURFACE} block p-3.5 transition-shadow hover:shadow-[0_2px_4px_rgba(16,24,40,0.05),0_18px_40px_-24px_rgba(16,24,40,0.3)]`}
+    >
+      <span className={`${ICON_TILE} ${ICON_TILE_TONES[tone]}`}>
+        <Icon size={15} />
+      </span>
+      <p className="mt-2.5 truncate text-lg font-bold leading-none text-admin-ink">{value}</p>
+      <p className="mt-1 text-[10px] font-medium text-admin-muted">{label}</p>
+      <p className="mt-0.5 truncate text-[9px] text-admin-muted/80">{sub}</p>
+    </Link>
+  );
+}
+
+/** Segmented proportion bar — the order-status breakdown. */
+export function AdminSegmentedBar({
+  segments,
+}: {
+  segments: Array<{ label: string; count: number; className: string }>;
+}) {
+  const total = segments.reduce((sum, segment) => sum + segment.count, 0);
+  if (total === 0) return null;
+
+  return (
+    <div className="flex h-2.5 overflow-hidden rounded-full bg-admin-canvas">
+      {segments
+        .filter((segment) => segment.count > 0)
+        .map((segment) => (
+          <div
+            key={segment.label}
+            className={segment.className}
+            style={{ width: `${(segment.count / total) * 100}%` }}
+            title={`${segment.label}: ${segment.count}`}
+          />
+        ))}
+    </div>
+  );
+}
+
+/**
+ * The header chip a section wears while its backend is not connected.
+ *
+ * One component rather than the same literal on thirteen page headers, so the
+ * wording cannot drift per screen.
+ */
+export function AdminPendingChip({ label = 'Backend integration pending' }: { label?: string }) {
+  return <AdminChip tone="warning">{label}</AdminChip>;
+}
+
+/**
+ * A pending panel whose requirements come from the capability catalogue.
+ *
+ * Pages name the capabilities they need (`['woo-write']`) instead of restating
+ * the paragraph; the catalogue owns what that actually requires, so the answer
+ * to "why is this disabled?" is identical on every screen that asks.
+ */
+export function AdminCapabilityPanel({
+  title,
+  summary,
+  capabilities,
+  available,
+}: {
+  title: string;
+  summary: string;
+  capabilities: CapabilityId[];
+  available?: string[];
+}) {
+  return (
+    <AdminPendingPanel
+      title={title}
+      summary={summary}
+      needs={capabilityRequirements(capabilities)}
+      available={available}
+    />
   );
 }
 

@@ -50,6 +50,8 @@ export const BUTTON = {
   secondary: `${CONTROL_BASE} border border-admin-line bg-admin-surface px-4 py-2.5 text-admin-ink hover:bg-admin-canvas`,
   ghost: `${CONTROL_BASE} px-3 py-2 text-admin-muted hover:bg-admin-canvas hover:text-admin-ink`,
   danger: `${CONTROL_BASE} bg-red-600 px-4 py-2.5 text-white hover:bg-red-700`,
+  /** The console's high-emphasis action, on the near-black the reference console uses. */
+  dark: `${CONTROL_BASE} bg-admin-ink px-4 py-2.5 text-white hover:opacity-90`,
 } as const;
 
 export const CONTROL_DISABLED_NOTE =

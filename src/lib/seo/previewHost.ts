@@ -14,7 +14,13 @@
  * hosts, and `src/app/robots.ts` returns `Disallow: /` for them. Both are
  * no-ops for every other host, which is what keeps production untouched.
  */
-export const PREVIEW_HOSTS: readonly string[] = ['preview.himalayankoh.com'];
+export const PREVIEW_HOSTS: readonly string[] = [
+  'preview.himalayankoh.com',
+  // A temporary verification deployment carries the same guard by adding its
+  // host to this list for the duration of that deploy only, then reverting the
+  // addition: an alias that exists for one afternoon does not belong in a list
+  // that decides what is never indexed.
+];
 
 /** The `host` header may carry a port (`localhost:3002`) and any casing. */
 function normalizeHost(raw: string | null | undefined): string {
