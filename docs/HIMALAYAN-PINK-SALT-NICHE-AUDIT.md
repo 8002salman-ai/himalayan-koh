@@ -197,6 +197,15 @@ with no livestock name anywhere in the DOM; `/products/salt-licks` answers
 is `noindex, nofollow`; `/sitemap.xml` lists the 3 stocked shelves and 8 products
 and no livestock URL.
 
+**Temporary deployment.** `https://himalayan-koh-admin-verify.vercel.app` carries
+this branch publicly (`X-Robots-Tag: noindex, nofollow`, `robots.txt` Disallow,
+host listed in `PREVIEW_HOSTS` for the life of the alias). Its Preview
+environment has **no WooCommerce data source configured**, so its catalog renders
+empty rather than live: inspecting the salt-only catalog needs the local
+production build in WooCommerce mode (recipe in §6), and configuring that
+deployment would mean changing env vars the working `preview.himalayankoh.com`
+deployment also runs on — out of scope for this pass.
+
 One observation worth recording: in **`next dev`** the raw WordPress
 `/wp/v2/product` JSON — all 11 products — appears in the page source, because
 Next's dev-mode fetch instrumentation streams server response bodies. It is a
