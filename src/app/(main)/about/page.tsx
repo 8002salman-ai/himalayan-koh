@@ -4,9 +4,9 @@ import AboutClient from './AboutClient';
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'About Himalayan Koh - Premium Natural Pink Salt',
+    title: 'About Himalayan Koh — Unrefined Himalayan Pink Salt',
     description:
-      'Learn about Himalayan Koh and our premium, all-natural Himalayan pink salt for livestock, wildlife, and the kitchen.',
+      'Himalayan Koh packs unrefined Himalayan pink salt for kitchens and homes: fine and coarse edible grades, salt blocks, lamps and bulk bags.',
     path: '/about',
   });
 }

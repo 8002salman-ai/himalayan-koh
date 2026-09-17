@@ -1,6 +1,8 @@
 export {
+  ALL_LABEL,
   CATEGORY_FILTER_TABS,
   CATEGORY_QUERY_PARAM,
+  RETIRED_CATEGORY_QUERY_VALUES,
   buildProductsCategoryPath,
   buildProductsCategorySearch,
   categoryKeyFromFilterLabel,
@@ -8,12 +10,12 @@ export {
   isCategoryContentKey,
   normalizeCategoryQueryValue,
   parseCategoryFromSearchParams,
+  productMatchesCategoryFilter,
+  productShelfKey,
   productsPathForCategoryTitle,
   CATEGORY_LINK_BY_TITLE,
-  CATEGORY_PRODUCT_LABELS,
-  productMatchesCategoryFilter,
 } from './keys';
-export type { CategoryContentKey } from './keys';
+export type { CategoryContentKey, CategoryFilterTab } from './keys';
 export { CATEGORY_CONTENT_REGISTRY } from './registry';
 export { CATEGORY_BLOG_MAPPING } from './blogMapping';
 export { loadCategoryArticles, mapBlogPostToCategoryArticle } from './blogArticles';

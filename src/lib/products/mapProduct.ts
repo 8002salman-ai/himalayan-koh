@@ -1,6 +1,7 @@
 import type { Product } from '../../data/products';
 import { products as fallbackProducts } from '../../data/products';
 import type { Inventory, ProductWithCategory } from '../supabase/database.types';
+import type { StockStatus } from '../../data/products';
 import { collectMissingCatalogFields, priceDisplayFromRange } from './price';
 import { getFallbackProductBySlug as findFallbackBySlug, normalizeProductSlug, productSlugFromName, slugsMatch } from './slug';
 
@@ -20,12 +21,17 @@ function inventoryRow(inventory: ProductWithCategory['inventory']) {
  */
 export function mapSupabaseProduct(product: ProductWithCategory): Product {
   const inventory = inventoryRow(product.inventory) as Inventory | null;
-  const inStock = inventory ? inventory.quantity > inventory.reserved_quantity : true;
+  const availableUnits = inventory ? inventory.quantity - inventory.reserved_quantity : null;
+  // No inventory row is *unknown*, not "in stock". The previous default of true
+  // asserted availability the source never reported, and the Add to Cart button
+  // acted on it — the one place the storefront claimed stock it did not have.
+  const inStock = availableUnits !== null && availableUnits > 0;
   const sku = product.sku?.trim() ? product.sku.trim() : null;
 
   const priceMin = product.price;
   const priceMax = product.compare_at_price || undefined;
-  const stockStatus = inStock ? 'in_stock' : 'out_of_stock';
+  const stockStatus: StockStatus = availableUnits === null ? 'unknown' : inStock ? 'in_stock' : 'out_of_stock';
+  const stockQuantity = inventory && inventory.track_inventory !== false ? availableUnits : null;
 
   // `images` is deliberately NOT set here. ProductDetailView renders its
   // gallery as `product.images?.length ? product.images : [product.image]`, so
@@ -52,6 +58,7 @@ export function mapSupabaseProduct(product: ProductWithCategory): Product {
     isFeatured: product.is_featured,
     sku,
     stockStatus,
+    stockQuantity,
     updatedAt: product.updated_at ?? null,
     missing: collectMissingCatalogFields({
       priceMin: Number.isFinite(priceMin) ? priceMin : null,

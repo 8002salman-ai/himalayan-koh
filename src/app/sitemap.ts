@@ -1,10 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
-import {
-  CATEGORY_CONTENT_REGISTRY,
-  CATEGORY_PRODUCT_LABELS,
-  buildProductsCategoryPath,
-} from '@/lib/categoryContent';
+import { buildProductsCategoryPath, productShelfKey } from '@/lib/categoryContent';
+import { NICHE_SECTIONS } from '@/lib/catalog/niche';
 import type { CategoryContentKey } from '@/lib/categoryContent';
 import { getCatalogProducts } from '@/lib/backend';
 
@@ -50,23 +47,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq('is_published', true),
   ]);
 
-  // A category hub with no real (indexed) product isn't worth crawling — it's
-  // already noindexed on the page itself (see products/page.tsx), so listing
-  // it here would just send crawlers to a page that asks not to be indexed.
-  const categoriesWithProducts = new Set(
-    realProducts.map((product) => product.category).filter(Boolean)
+  // A category hub with no real product isn't worth crawling — it's already
+  // noindexed on the page itself (see products/page.tsx), so listing it here
+  // would just send crawlers to a page that asks not to be indexed.
+  //
+  // Shelves come from the niche taxonomy and are counted by the same placement
+  // function the shop grid uses, so the sitemap can never advertise a hub the
+  // grid would render empty, or omit one that has products behind it.
+  const shelvesWithProducts = new Set(
+    realProducts.map((product) => productShelfKey(product)).filter(Boolean)
   );
 
   // Category hubs are real landing pages (own hero, copy, guides, SEO title) served
   // from /products?category=<key>. Without these the hub content is unreachable to
   // crawlers, which only ever see the unfiltered /products page.
-  for (const key of Object.keys(CATEGORY_CONTENT_REGISTRY) as CategoryContentKey[]) {
-    const labels = CATEGORY_PRODUCT_LABELS[key];
-    const hasProducts = labels.some((label) => categoriesWithProducts.has(label));
-    if (!hasProducts) continue;
+  for (const section of NICHE_SECTIONS) {
+    if (!shelvesWithProducts.has(section.key)) continue;
 
     entries.push({
-      url: `${origin}${buildProductsCategoryPath(key)}`,
+      url: `${origin}${buildProductsCategoryPath(section.key)}`,
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.85,

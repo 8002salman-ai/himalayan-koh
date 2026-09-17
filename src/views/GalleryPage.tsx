@@ -42,7 +42,7 @@ export default function GalleryPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
           >
-            See how Himalayan Koh salt benefits livestock across ranches and farms
+Unrefined pink salt in the kitchen, on the table, and by the bag
           </motion.p>
         </div>
       </div>

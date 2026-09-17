@@ -39,14 +39,18 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   },
 
   // --- Legacy "services" pages (category-level intent) ----------------------
+  // The store no longer sells livestock salt, so the old animal-feed service
+  // pages point at the nearest shelf the shop does stock. They must not be sent
+  // to a retired `?category=` value: the filter would fall back to All, and the
+  // link equity would land on the full catalogue rather than on salt.
   {
     source: '/services/fresh-dairy-products',
-    destination: '/products?category=salt-blocks-deer',
+    destination: '/products?category=edible-pink-salt',
     permanent: true,
   },
   {
     source: '/services/salt-lumps-for-cattle',
-    destination: '/products?category=salt-cattle',
+    destination: '/products?category=bulk',
     permanent: true,
   },
 
@@ -56,9 +60,11 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
     destination: '/products/himalayan-pink-salt-16oz-jar',
     permanent: true,
   },
+  // Retired livestock SKUs: the products are gone from the catalogue, so their
+  // indexed URLs land on the shelves that replaced them rather than on a 404.
   {
     source: '/product/salt-licks-for-horses',
-    destination: '/products/himalayan-salt-licks-horses',
+    destination: '/products?category=bulk',
     permanent: true,
   },
   {
@@ -68,31 +74,33 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   },
   {
     source: '/product/bag-of-salt-for-livestock-45-lbs',
-    destination: '/products/himalayan-livestock-salt-45lbs',
+    destination: '/products?category=bulk',
     permanent: true,
   },
-  // Both legacy URLs describe the same 18 lb cattle rock salt bag.
+  // The 18 lb rock salt bag was sold as livestock salt; the store now carries
+  // rock salt as edible and bulk salt, which is where these two land.
   {
     source: '/product/rock-of-salt',
-    destination: '/products/himalayan-salt-cattle-18lbs',
+    destination: '/products?category=bulk',
     permanent: true,
   },
   {
     source: '/product/himalayan-rock-salt-bag',
-    destination: '/products/himalayan-salt-cattle-18lbs',
+    destination: '/products?category=bulk',
     permanent: true,
   },
-  // Deer blocks are a category here, not a single SKU.
+  // "Block of salt" was the deer block. Salt blocks are now the cooking and
+  // serving shelf, so that is the closest live equivalent.
   {
     source: '/product/block-of-salt',
-    destination: '/products?category=salt-blocks-deer',
+    destination: '/products?category=cooking-serving',
     permanent: true,
   },
-  // Salt lamps are not part of the current catalogue — send to the shop rather
-  // than 404. Point this at a product page if lamps are reintroduced.
+  // Sold in another era under the same slug; the lamp is a salt lamp today.
+  // If it leaves the catalogue again, point this at the shop rather than 404.
   {
     source: '/product/himalayan-crystal-rock-salt-lamp-ionizer-air-purifier-with-dimmable-control',
-    destination: '/products',
+    destination: '/products?category=lamps-decor',
     permanent: true,
   },
 

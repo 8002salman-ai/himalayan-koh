@@ -10,11 +10,18 @@ interface ChatMessage {
 
 const storageKey = 'himalayan_koh_ai_chat_history';
 
+/**
+ * Openers the shopper can tap.
+ *
+ * They ask about the salt the shop actually sells — edible grades, blocks,
+ * lamps and bulk — so the assistant is never led into recommending a product
+ * category that is not in the catalog.
+ */
 const quickPrompts = [
-  'Recommend salt for cattle',
-  'Compare horse licks and cattle rocks',
-  'How much salt do livestock need?',
-  'Help me choose cooking salt',
+  'Help me choose an edible salt',
+  'Fine, medium or coarse grain — which one?',
+  'How do I use a salt block?',
+  'Do you sell bulk salt?',
 ];
 
 const friendlyChatError = (message: string) => {
@@ -193,7 +200,7 @@ export default function AIChatWidget() {
                       How can I help?
                     </h3>
                     <p className="text-sm text-charcoal-light mb-5">
-                      Ask about product recommendations, livestock salt guidance, comparisons, FAQs, or support.
+                      Ask about pink salt grades, cooking and serving, salt lamps, bulk orders, or support.
                     </p>
                     <div className="grid gap-2">
                       {quickPrompts.map((prompt) => (
@@ -260,7 +267,7 @@ export default function AIChatWidget() {
                         sendMessage(input);
                       }
                     }}
-                    placeholder="Ask about products, livestock, FAQs..."
+                    placeholder="Ask about pink salt, orders, FAQs..."
                     rows={1}
                     className="flex-1 max-h-28 resize-none px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
                   />

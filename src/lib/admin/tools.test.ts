@@ -67,7 +67,7 @@ describe('taggedCampaignUrl', () => {
 
 describe('inspectImportUrl', () => {
   it('accepts an external product page and reports its host', () => {
-    const result = inspectImportUrl('https://supplier.example/products/salt-lick');
+    const result = inspectImportUrl('https://supplier.example/products/pink-salt-jar');
     expect(result.ok).toBe(true);
     expect(result.host).toBe('supplier.example');
   });
@@ -150,12 +150,12 @@ function row(overrides: Partial<AdminCatalogRow> = {}): AdminCatalogRow {
   return {
     source: 'woocommerce',
     id: '1',
-    name: 'Himalayan Salt Lick 5 lb',
-    slug: 'salt-lick-5lb',
-    image: '/images/lick.png',
+    name: 'Himalayan Pink Salt 5 lb Pouch',
+    slug: 'pink-salt-5lb',
+    image: '/images/salt.png',
     images: [],
-    categoryName: 'Livestock',
-    categoryId: 'livestock',
+    categoryName: 'Bulk Order',
+    categoryId: 'bulk-order',
     price: '$19.95',
     priceMin: 19.95,
     priceMax: null,
@@ -170,6 +170,7 @@ function row(overrides: Partial<AdminCatalogRow> = {}): AdminCatalogRow {
     isListed: true,
     isHiddenFromStorefront: null,
     isFeatured: false,
+    isOffNiche: false,
     missing: [],
     record: null,
     ...overrides,
@@ -215,20 +216,24 @@ describe('isCampaignReady', () => {
 describe('shelfComposition', () => {
   it('counts per category, thinnest first, and uses a real label for an absent one', () => {
     const entries = shelfComposition([
-      row({ id: '1', categoryName: 'Livestock' }),
-      row({ id: '2', categoryName: 'Livestock' }),
-      row({ id: '3', categoryName: 'Cooking' }),
+      row({ id: '1', categoryName: 'Bulk Order' }),
+      row({ id: '2', categoryName: 'Bulk Order', price: '', missing: ['price'], stockStatus: 'unknown' }),
+      row({ id: '3', categoryName: 'Salt Lamps & Décor' }),
       row({ id: '4', categoryName: null }),
-      row({ id: '5', categoryName: 'Cooking', price: '', missing: ['price'], stockStatus: 'unknown' }),
+      row({ id: '5', categoryName: 'Salt Lamps & Décor' }),
     ]);
 
     // Thinnest first: one uncategorised product, then the two two-product
     // shelves ordered by name.
-    expect(entries.map((entry) => entry.name)).toEqual(['Uncategorised', 'Cooking', 'Livestock']);
-    const cooking = entries[1];
-    expect(cooking.total).toBe(2);
-    expect(cooking.priced).toBe(1);
-    expect(cooking.stockKnown).toBe(1);
+    expect(entries.map((entry) => entry.name)).toEqual([
+      'Uncategorised',
+      'Bulk Order',
+      'Salt Lamps & Décor',
+    ]);
+    const bulk = entries[1];
+    expect(bulk.total).toBe(2);
+    expect(bulk.priced).toBe(1);
+    expect(bulk.stockKnown).toBe(1);
   });
 
   it('is empty for an empty catalog', () => {

@@ -1,42 +1,53 @@
 import { legacyImage } from '@/lib/images/legacyAssets';
 import type { CategoryContentBundle } from './types';
+import type { CategoryContentKey } from './keys';
 
+/**
+ * Editorial content for each shop shelf: hero, gallery, guides, articles, PDFs.
+ *
+ * Keys are the shelf keys owned by `lib/catalog/niche.ts`, so a shelf cannot have
+ * a hub page unless it is a real shelf the store stocks, and retiring a shelf
+ * retires its hub with it.
+ *
+ * Two rules the copy follows:
+ *
+ *  - **Only pink salt imagery.** The legacy photographs of horses and cattle are
+ *    deliberately not imported here; every image below shows salt or the kitchen.
+ *  - **No invented products or prices.** A shelf describes what it is and how the
+ *    salt is used. What is actually for sale, at what price and in what stock,
+ *    comes from WooCommerce and nowhere else.
+ */
 const IMG = {
-  horseLick: legacyImage('horseLickPaddock'),
-  horseLick2: legacyImage('horseLicking'),
-  horsesBanner: legacyImage('horsesBanner'),
-  cattleGrazing: legacyImage('cattleGrazing'),
-  cattleBag: legacyImage('cattleSaltBag'),
   saltBowl: legacyImage('bowlOfSalt'),
   pouch: legacyImage('saltPouch6lb'),
   jar: legacyImage('pinkSaltJar16oz'),
   rockBag: legacyImage('saltRockBag'),
 };
 
-export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = {
-  'edible-cooking-salt': {
-    key: 'edible-cooking-salt',
-    productCategoryLabel: 'Edible Cooking Salt',
+export const CATEGORY_CONTENT_REGISTRY: Record<CategoryContentKey, CategoryContentBundle> = {
+  'edible-pink-salt': {
+    key: 'edible-pink-salt',
+    productCategoryLabel: 'Edible Pink Salt',
     hero: {
-      eyebrow: 'Kitchen & wellness',
+      eyebrow: 'Kitchen & table',
       title: 'Edible Himalayan Pink Salt',
       subtitle:
-        'Unrefined cooking salt with natural trace minerals — from everyday seasoning to finishing salt and brines.',
+        'Unrefined cooking salt with its natural trace minerals intact — fine for baking and brining, coarse for the grinder and the finish.',
     },
     seo: {
-      title: 'Edible Himalayan Pink Cooking Salt | Himalayan Koh',
+      title: 'Edible Himalayan Pink Salt — Fine & Coarse | Himalayan Koh',
       description:
-        'Shop fine, medium, and coarse Himalayan pink cooking salt. Mineral-rich, unprocessed salt for home chefs and clean-label kitchens.',
+        'Shop edible Himalayan pink salt in fine, medium and coarse grain. Mineral-rich and unprocessed, in jars, pouches and bulk bags for the kitchen.',
     },
     trustPoints: [
-      { label: 'Unrefined crystals', detail: 'No anti-caking agents or chemical bleaching.' },
-      { label: '84+ trace minerals', detail: 'Natural iron and mineral profile from ancient deposits.' },
-      { label: 'USA family-owned', detail: 'Packed and shipped from our Texas fulfillment center.' },
+      { label: 'Unrefined crystals', detail: 'No anti-caking agents, no bleaching, nothing added.' },
+      { label: 'Natural mineral colour', detail: 'The pink is iron the rock already held.' },
+      { label: 'Packed for the kitchen', detail: 'Resealable jars, pouches and bags that keep salt dry.' },
     ],
     gallery: [
       { id: 'edible-bowl', src: IMG.saltBowl, alt: 'Bowl of pink Himalayan cooking salt crystals', width: 600, height: 450 },
-      { id: 'edible-pouch', src: IMG.pouch, alt: 'Himalayan pink salt pouch for home kitchens', width: 600, height: 450 },
-      { id: 'edible-jar', src: IMG.jar, alt: '16 oz jar of Himalayan pink table salt', width: 500, height: 500 },
+      { id: 'edible-pouch', src: IMG.pouch, alt: 'Resealable pouch of Himalayan pink salt for home kitchens', width: 600, height: 450 },
+      { id: 'edible-jar', src: IMG.jar, alt: 'Jar of Himalayan pink table salt', width: 500, height: 500 },
       { id: 'edible-rock', src: IMG.rockBag, alt: 'Coarse Himalayan rock salt in retail packaging', width: 600, height: 450 },
     ],
     articles: [
@@ -44,25 +55,24 @@ export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = 
         id: 'edible-brining',
         title: 'Brining with Himalayan Pink Salt',
         excerpt:
-          'Why unrefined salt improves moisture retention in poultry and pork — and how grain size affects dissolve time.',
+          'Why unrefined salt seasons evenly in a brine, and how grain size changes how fast it dissolves.',
         image: IMG.saltBowl,
         readTime: '4 min read',
         tag: 'Recipes',
       },
       {
         id: 'edible-minerals',
-        title: 'Trace Minerals in Everyday Cooking',
+        title: 'What “84+ Trace Minerals” Actually Means',
         excerpt:
-          'A practical look at what “84+ minerals” means on the label and how pink color reflects natural iron content.',
+          'A practical read on the label claim, and why the pink colour reflects the iron the rock contains.',
         image: IMG.jar,
         readTime: '5 min read',
-        tag: 'Wellness',
+        tag: 'Guides',
       },
       {
         id: 'edible-grind',
-        title: 'Choosing Fine, Medium, or Coarse Grain',
-        excerpt:
-          'Match crystal size to your grinder, baking, or finishing routine for consistent flavor and texture.',
+        title: 'Fine, Medium or Coarse: Choosing Your Grain',
+        excerpt: 'Match crystal size to your grinder, your baking and your finishing routine.',
         image: IMG.pouch,
         readTime: '3 min read',
         tag: 'Guides',
@@ -73,396 +83,353 @@ export const CATEGORY_CONTENT_REGISTRY: Record<string, CategoryContentBundle> = 
         id: 'kitchen-use',
         title: 'Kitchen Usage Guide',
         bullets: [
-          'Fine grain: baking, soups, and quick dissolve applications',
+          'Fine grain: baking, soups and anywhere you want a fast dissolve',
           'Medium grain: all-purpose cooking and table grinders',
-          'Coarse grain: finishing salt, rim salt, and slow-release brines',
-          'Store in a dry, airtight container away from steam',
-        ],
-        paragraphs: [
-          'Himalayan pink salt delivers a fuller mineral note than heavily refined table salt — a little goes a long way in everyday cooking.',
+          'Coarse grain: finishing salt, rim salt and slow-release brines',
+          'Store dry and airtight — steam is what makes salt clump',
         ],
       },
       {
-        id: 'food-safety',
-        title: 'Food Safety & Labeling',
+        id: 'kitchen-storage',
+        title: 'Storage & Shelf Life',
         bullets: [
-          'Not iodized unless separately labeled — plan iodine intake with your dietitian if needed',
-          'Inspect packaging for moisture damage before use',
-          'Use clean, dry scoops to prevent clumping in humid kitchens',
+          'Salt does not spoil; it only takes on moisture and odours',
+          'Keep the pouch sealed and away from the stove',
+          'A grain of rice in the grinder keeps fine salt flowing',
+          'Refill small jars rather than dipping into the bulk bag',
         ],
       },
       {
-        id: 'edible-faq',
+        id: 'kitchen-faq',
         title: 'Edible Salt FAQs',
         faqs: [
           {
-            question: 'Is Himalayan pink salt lower in sodium?',
+            question: 'Is pink salt iodised?',
             answer:
-              'Sodium chloride is still the primary component. Many cooks use slightly less volume because the mineral flavor is more pronounced.',
+              'No. Himalayan pink salt is unrefined and carries its naturally occurring minerals, not added iodine.',
           },
           {
-            question: 'Can I use it in salt grinders?',
-            answer: 'Yes — medium and coarse grains are ideal. Avoid damp storage that can cause bridging in grinders.',
+            question: 'Can I cook with the coarse grade?',
+            answer:
+              'Yes — coarse crystals are for finishing, grinding and long cooks. For baking, where salt has to disappear, use fine.',
           },
         ],
       },
     ],
     pdfs: [
       {
-        id: 'grain-size-chart',
-        title: 'Grain Size Selection Chart',
-        description: 'Quick reference for fine, medium, and coarse crystals in home and commercial kitchens.',
-        url: '/resources/edible-grain-size-chart.pdf',
-        fileSize: '142 KB',
-        publishedAt: '2026-02-10',
-      },
-      {
-        id: 'pantry-storage',
-        title: 'Pantry Storage Best Practices',
-        description: 'Humidity control, shelf life, and food-safe handling for bulk pouches and jars.',
-        url: '/resources/pantry-storage-guide.pdf',
-        fileSize: '118 KB',
-        publishedAt: '2026-01-20',
-      },
-    ],
-    emptyStates: {},
-  },
-
-  'salt-lick-horses': {
-    key: 'salt-lick-horses',
-    productCategoryLabel: 'Salt Lick for Horses',
-    hero: {
-      eyebrow: 'Equine mineral program',
-      title: 'Horse Salt Licks & Blocks',
-      subtitle:
-        'Natural Himalayan crystal licks for free-choice electrolytes, hydration support, and stall-side enrichment.',
-    },
-    seo: {
-      title: 'Himalayan Salt Licks for Horses | Himalayan Koh',
-      description:
-        'Mineral-rich horse salt licks and blocks. Ranch-trusted Himalayan pink salt for paddocks, barns, and training programs.',
-    },
-    trustPoints: [
-      { label: 'Free-choice intake', detail: 'Horses self-regulate licking based on workload and weather.' },
-      { label: 'Long-lasting crystal', detail: 'Harder than many pressed blocks — less waste in holders.' },
-      { label: 'Holder-safe guidance', detail: 'Mounting and placement resources included below.' },
-    ],
-    gallery: [
-      { id: 'horse-1', src: IMG.horseLick, alt: 'Horse licking a Himalayan salt lick in a paddock', width: 600, height: 450 },
-      { id: 'horse-2', src: IMG.horseLick2, alt: 'Horse using a natural mineral salt lick outdoors', width: 600, height: 450 },
-      { id: 'horse-3', src: IMG.horsesBanner, alt: 'Horses on open pasture at a USA ranch', width: 1300, height: 200 },
-      { id: 'horse-4', src: IMG.cattleBag, alt: 'Bulk Himalayan salt bag staged near equine barn', width: 600, height: 450 },
-    ],
-    articles: [
-      {
-        id: 'horse-electrolytes',
-        title: 'Electrolytes, Heat, and Travel Stress',
-        excerpt:
-          'How free-choice salt supports normal hydration when horses work hard or ship long distances in warm weather.',
-        image: IMG.horseLick,
-        readTime: '5 min read',
-        tag: 'Horse Care',
-      },
-      {
-        id: 'horse-holders',
-        title: 'Choosing the Right Lick Holder',
-        excerpt:
-          'Wall mounts, corner feeders, and rope kits — what to avoid so licks stay secure in high-traffic aisles.',
-        image: IMG.horseLick2,
-        readTime: '4 min read',
-        tag: 'Barn Setup',
-      },
-      {
-        id: 'horse-boredom',
-        title: 'Salt Licks as Stall Enrichment',
-        excerpt:
-          'Why natural crystal texture encourages licking behavior compared with smooth manufactured blocks.',
-        image: IMG.horsesBanner,
-        readTime: '3 min read',
-        tag: 'Wellness',
-      },
-    ],
-    guides: [
-      {
-        id: 'horse-benefits',
-        title: 'Benefits for Horses',
-        bullets: [
-          'Supports electrolyte balance during training and hot weather',
-          'Encourages natural licking — reducing boredom in stalls',
-          'Delivers calcium, magnesium, potassium, and trace minerals',
-          'Unrefined crystal structure without pressed additives',
-        ],
-      },
-      {
-        id: 'horse-safe-use',
-        title: 'Safe Mounting & Placement',
-        bullets: [
-          'Use licensed holders — never loose salt in walkways',
-          'Keep fresh water available at all times',
-          'Introduce gradually for horses new to large licks',
-          'Separate stations for dominant and subordinate horses in group turnout',
-        ],
-      },
-      {
-        id: 'horse-faq',
-        title: 'Horse Program FAQs',
-        faqs: [
-          {
-            question: 'How often should I replace a lick?',
-            answer:
-              'Replacement depends on herd size, weather, and holder type. Inspect weekly for size, cleanliness, and holder wear.',
-          },
-          {
-            question: 'Can I use cattle salt for horses?',
-            answer:
-              'Offer species-appropriate products and consult your veterinarian for horses on restricted diets or special formulations.',
-          },
-        ],
-      },
-    ],
-    pdfs: [
-      {
-        id: 'horse-lick-guide',
-        title: 'Horse Salt Lick Setup Guide',
-        description: 'Mounting height, holder safety checks, and barn placement diagrams.',
-        url: '/resources/horse-salt-lick-guide.pdf',
-        fileSize: '210 KB',
+        id: 'grain-size-guide',
+        title: 'Grain Size Guide',
+        description: 'Which grain to reach for, for baking, brining, grinding and finishing.',
+        url: '/resources/grain-size-guide.pdf',
+        fileSize: '140 KB',
         publishedAt: '2026-03-01',
       },
-      {
-        id: 'feeding-best-practices',
-        title: 'Feeding Best Practices',
-        description: 'Free-choice placement, water access, and intake guidelines for equine programs.',
-        url: '/resources/feeding-best-practices.pdf',
-        fileSize: '186 KB',
-        publishedAt: '2026-02-01',
-      },
     ],
     emptyStates: {},
   },
 
-  'salt-cattle': {
-    key: 'salt-cattle',
-    productCategoryLabel: 'Salt for Cattle',
+  'cooking-serving': {
+    key: 'cooking-serving',
+    productCategoryLabel: 'Cooking & Serving',
     hero: {
-      eyebrow: 'Ranch & pasture',
-      title: 'Cattle Salt & Livestock Minerals',
+      eyebrow: 'Grill, chill, serve',
+      title: 'Salt Blocks & Serving Plates',
       subtitle:
-        'Bulk bags and rock salt for pasture herds — built for Texas ranches and nationwide livestock programs.',
+        'Thick slabs of pink salt that hold heat in the oven, hold cold on the table, and season what rests on them.',
     },
     seo: {
-      title: 'Himalayan Salt for Cattle & Livestock | Himalayan Koh',
+      title: 'Himalayan Pink Salt Blocks & Serving Plates | Himalayan Koh',
       description:
-        '45 lb bags and cattle salt rocks with natural trace minerals. Free-choice supplementation for beef, dairy, and mixed herds.',
+        'Himalayan pink salt blocks and plates for the grill, the oven and the table. Heat them, chill them, serve on them — natural salt seasoning with no additives.',
     },
     trustPoints: [
-      { label: 'Pasture-ready', detail: 'Weather-resistant crystal salt for covered feeders.' },
-      { label: 'Bulk ranch value', detail: 'Bulk orders welcome for repeat herd orders.' },
-      { label: 'Vet-aligned guidance', detail: 'Placement and water access resources for your nutritionist.' },
+      { label: 'Solid salt, not coated', detail: 'Cut from the same mineral rock as our edible grades.' },
+      { label: 'Heat and chill', detail: 'Oven, grill and freezer safe with the right handling.' },
+      { label: 'Seasoning as you serve', detail: 'A gentle salt edge rather than an instant hit.' },
     ],
     gallery: [
-      { id: 'cattle-1', src: IMG.cattleGrazing, alt: 'Cattle herd grazing on open pasture', width: 600, height: 450 },
-      { id: 'cattle-2', src: IMG.cattleBag, alt: '45 lb Himalayan pink salt bag for livestock', width: 600, height: 450 },
-      { id: 'cattle-3', src: IMG.horseLick, alt: 'Mineral lick station shared in mixed livestock program', width: 600, height: 450 },
-      { id: 'cattle-4', src: IMG.horsesBanner, alt: 'Ranch landscape with livestock in background', width: 1300, height: 200 },
+      { id: 'block-slab', src: IMG.rockBag, alt: 'Large blocks of pink Himalayan salt packed for shipping', width: 600, height: 450 },
+      { id: 'block-bowl', src: IMG.saltBowl, alt: 'Coarse pink salt crystals from a serving block', width: 600, height: 450 },
+      { id: 'block-jar', src: IMG.jar, alt: 'Ground pink salt for finishing at the table', width: 500, height: 500 },
+      { id: 'block-pouch', src: IMG.pouch, alt: 'Pink salt pouch beside a serving block', width: 600, height: 450 },
     ],
     articles: [
       {
-        id: 'cattle-winter',
-        title: 'Winter Mineral Programs for Beef Herds',
-        excerpt:
-          'Adjust free-choice access when forage quality drops and water intake shifts in cold weather.',
-        image: IMG.cattleGrazing,
+        id: 'block-heat',
+        title: 'Heating a Salt Block Without Cracking It',
+        excerpt: 'Why the warm-up has to be slow, and how to come back down after the cook.',
+        image: IMG.rockBag,
         readTime: '5 min read',
-        tag: 'Seasonal Care',
+        tag: 'Technique',
       },
       {
-        id: 'cattle-feeders',
-        title: 'Feeder Count for Large Pastures',
-        excerpt:
-          'How many covered stations you need so subordinate cattle get equal mineral access across acreage.',
-        image: IMG.cattleBag,
+        id: 'block-chill',
+        title: 'The Cold Side: Chilling and Serving',
+        excerpt: 'Freeze the plate, shave, plate the dessert — salt on the cold side of the kitchen.',
+        image: IMG.saltBowl,
         readTime: '4 min read',
-        tag: 'Ranch Ops',
+        tag: 'Technique',
       },
       {
-        id: 'cattle-bulk',
-        title: 'Buying Bulk Salt for Ranch Economics',
-        excerpt:
-          'Storage tips, pallet handling, and when 45 lb bags beat smaller retail units for cow-calf operations.',
-        image: IMG.cattleGrazing,
-        readTime: '6 min read',
-        tag: 'Guides',
+        id: 'block-care',
+        title: 'Cleaning and Storing Salt Blocks',
+        excerpt: 'What to wipe, what never to soak, and how to stop a block from leaching into the shelf.',
+        image: IMG.pouch,
+        readTime: '3 min read',
+        tag: 'Care',
       },
     ],
     guides: [
       {
-        id: 'cattle-benefits',
-        title: 'Benefits for Cattle',
+        id: 'block-techniques',
+        title: 'Cooking Techniques',
         bullets: [
-          'Free-choice minerals for pasture and dry-lot herds',
-          'Supports hydration and electrolyte function in heat',
-          'Unrefined crystal — no anti-caking agents',
-          'Works in covered feeders for mixed herds',
+          'Warm the block gradually — cold block to hot grill is how they crack',
+          'Sear on the hot block, finish off it, then scrape clean while warm',
+          'Chill for charcuterie, sushi and cold service',
+          'Use separate blocks for raw meat and for anything served raw',
         ],
       },
       {
-        id: 'cattle-placement',
-        title: 'Pasture Placement & Feeders',
+        id: 'block-handling',
+        title: 'Handling & Care',
         bullets: [
-          'Elevate salt off bare soil to reduce grit and waste',
-          'Use multiple stations on large acreage',
-          'Keep feeders shaded and drained to limit rain pooling',
-          'Rotate station locations seasonally',
+          'Wipe with a damp cloth — never submerge a block in water',
+          'Let the block cool fully before cleaning',
+          'Store in a dry place; salt draws moisture from the air',
+          'Thin plates are for serving, thick slabs are for cooking',
         ],
       },
       {
-        id: 'cattle-faq',
-        title: 'Livestock FAQs',
+        id: 'block-faq',
+        title: 'Salt Block FAQs',
         faqs: [
           {
-            question: 'How much salt will my herd consume?',
+            question: 'How salty does food get?',
             answer:
-              'Intake varies with forage, water quality, and weather. Monitor stations weekly and work with your nutritionist on target intake.',
+              'It picks up a gentle salt edge, most on moist food left in contact the longest. Move it off the block when it tastes right.',
           },
           {
-            question: 'Do you offer ranch pricing?',
-            answer: 'Yes — contact us for bulk quotes and recurring shipment schedules.',
+            question: 'How many times can I reuse a block?',
+            answer:
+              'Many — years with care. Once it is badly cracked or pitted it stays a serving piece rather than a cooking surface.',
           },
         ],
       },
     ],
     pdfs: [
       {
-        id: 'bulk-feeder-guide',
-        title: 'Bulk Feeder Guide (45 lb)',
-        description: 'Feeder sizing, station count, and weather protection for pasture bags.',
-        url: '/resources/bulk-feeder-guide.pdf',
-        fileSize: '198 KB',
-        publishedAt: '2026-02-20',
-      },
-      {
-        id: 'mineral-overview',
-        title: 'Trace Mineral Overview',
-        description: 'Naturally occurring minerals in Himalayan pink salt for livestock programs.',
-        url: '/resources/trace-mineral-overview.pdf',
-        fileSize: '124 KB',
-        publishedAt: '2026-01-15',
+        id: 'salt-block-guide',
+        title: 'Salt Block Handling Guide',
+        description: 'Warm-up schedules, cleaning method and what to avoid.',
+        url: '/resources/salt-block-guide.pdf',
+        fileSize: '180 KB',
+        publishedAt: '2026-03-10',
       },
     ],
     emptyStates: {},
   },
 
-  'salt-blocks-deer': {
-    key: 'salt-blocks-deer',
-    productCategoryLabel: 'Salt Blocks for Deer',
+  'lamps-decor': {
+    key: 'lamps-decor',
+    productCategoryLabel: 'Salt Lamps & Décor',
     hero: {
-      eyebrow: 'Wildlife & land management',
-      title: 'Deer Salt Blocks & Wildlife Minerals',
+      eyebrow: 'Home & light',
+      title: 'Himalayan Salt Lamps & Décor',
       subtitle:
-        'Outdoor mineral blocks for whitetail programs — placement strategies for trails, food plots, and low-pressure sites.',
+        'Lamps, candle holders and carved pieces cut from pink salt — a warm amber light and a mineral object for the room.',
     },
     seo: {
-      title: 'Himalayan Salt Blocks for Deer & Wildlife | Himalayan Koh',
+      title: 'Himalayan Salt Lamps & Décor | Himalayan Koh',
       description:
-        'Natural mineral blocks for deer and wildlife habitat programs. Placement guides, outdoor durability, and trace mineral education.',
+        'Hand-carved Himalayan pink salt lamps, candle holders and décor. Natural mineral pieces with a warm amber glow, complete with dimmable cords where fitted.',
     },
     trustPoints: [
-      { label: 'Outdoor durability', detail: 'Crystal salt suited to covered field stations.' },
-      { label: 'Habitat-minded', detail: 'Placement guidance for low-pressure mineral sites.' },
-      { label: 'Natural minerals', detail: 'Unrefined salt without added binders.' },
+      { label: 'Carved from the rock', detail: 'Each piece keeps its own grain, colour and veins.' },
+      { label: 'Fitted cords', detail: 'Lamps ship with a dimmable cord where the product includes one.' },
+      { label: 'Made for a dry room', detail: 'Salt lamps like steady air and a place to breathe.' },
     ],
     gallery: [
-      { id: 'deer-1', src: IMG.cattleGrazing, alt: 'Open meadow habitat suitable for wildlife mineral sites', width: 600, height: 450 },
-      { id: 'deer-2', src: IMG.rockBag, alt: 'Natural rock salt block packaging for field use', width: 600, height: 450 },
-      { id: 'deer-3', src: IMG.horsesBanner, alt: 'Tree line and pasture edge on a managed property', width: 1300, height: 200 },
-      { id: 'deer-4', src: IMG.cattleBag, alt: 'Bulk mineral salt staged for land management', width: 600, height: 450 },
+      { id: 'lamp-rock', src: IMG.rockBag, alt: 'Salt rock used to carve Himalayan salt lamps', width: 600, height: 450 },
+      { id: 'lamp-jar', src: IMG.jar, alt: 'Ground pink salt beside a salt lamp at home', width: 500, height: 500 },
+      { id: 'lamp-bowl', src: IMG.saltBowl, alt: 'Coarse pink Himalayan salt crystals', width: 600, height: 450 },
+      { id: 'lamp-pouch', src: IMG.pouch, alt: 'Pink salt pouch packed alongside a salt lamp order', width: 600, height: 450 },
     ],
     articles: [
       {
-        id: 'deer-placement',
-        title: 'Low-Pressure Mineral Site Placement',
-        excerpt:
-          'Set blocks where deer approach naturally — not in high human-traffic zones that pattern wildlife away.',
-        image: IMG.cattleGrazing,
-        readTime: '5 min read',
-        tag: 'Land Management',
-      },
-      {
-        id: 'deer-seasonal',
-        title: 'Seasonal Mineral Use for Whitetail',
-        excerpt:
-          'When intake typically rises and how rainfall affects covered outdoor stations.',
+        id: 'lamp-placement',
+        title: 'Where to Put a Salt Lamp',
+        excerpt: 'Airflow, proximity to the wall, and the rooms a lamp can handle without sweating.',
         image: IMG.rockBag,
         readTime: '4 min read',
-        tag: 'Wildlife',
+        tag: 'Home',
       },
       {
-        id: 'deer-plot',
-        title: 'Coordinating Minerals with Food Plots',
-        excerpt:
-          'Separate mineral stations from bait-heavy areas to spread use across habitat zones.',
-        image: IMG.horsesBanner,
-        readTime: '4 min read',
+        id: 'lamp-care',
+        title: 'Keeping a Salt Lamp Dry',
+        excerpt: 'In humid weather a salt lamp attracts moisture. Here is what to do about it.',
+        image: IMG.saltBowl,
+        readTime: '3 min read',
+        tag: 'Care',
+      },
+      {
+        id: 'lamp-truth',
+        title: 'What Salt Lamps Do — and What They Do Not',
+        excerpt: 'An honest look at the claims made for salt lamps, and the ones we can stand behind.',
+        image: IMG.jar,
+        readTime: '5 min read',
         tag: 'Guides',
       },
     ],
     guides: [
       {
-        id: 'deer-outdoor',
-        title: 'Outdoor Placement Guide',
+        id: 'lamp-setup',
+        title: 'Setting Up a Salt Lamp',
         bullets: [
-          'Use covered stations to limit direct rainfall on blocks',
-          'Place on well-drained soil — avoid low basins that flood',
-          'Refresh sites when blocks are consumed or contaminated with mud',
-          'Follow all local wildlife feeding regulations in your state',
+          'Keep it on a saucer — salt likes to leave a ring',
+          'Leave a hand-width of space behind it for air movement',
+          'Use the dimmer to lift moisture out of the piece',
+          'Keep it away from running water and open windows in wet weather',
         ],
       },
       {
-        id: 'deer-minerals',
-        title: 'Mineral Composition for Wildlife',
-        paragraphs: [
-          'Himalayan pink salt provides sodium chloride plus naturally occurring trace elements that support normal wildlife mineral seeking behavior.',
-        ],
+        id: 'lamp-care-guide',
+        title: 'Care & Maintenance',
         bullets: [
-          'Sodium drives initial attraction and repeat visits',
-          'Trace elements vary by harvest — consistent natural source',
-          'No pressed molasses binders or added dyes',
+          'Wipe with a dry or barely damp cloth only',
+          'Leave the lamp lit for a few hours if it feels clammy',
+          'Bulbs and cords are replaceable — match the fitting',
+          'Handle with both hands; the pieces are heavier than they look',
         ],
       },
       {
-        id: 'deer-faq',
-        title: 'Wildlife Program FAQs',
+        id: 'lamp-faq',
+        title: 'Salt Lamp FAQs',
         faqs: [
           {
-            question: 'Is this a bait product?',
+            question: 'Why is my lamp wet?',
             answer:
-              'Our blocks are mineral supplements. Always comply with state and federal rules for wildlife feeding on your property.',
+              'Salt draws moisture from humid air. Leave it lit for a few hours and the warmth evaporates it; if the room stays damp, move the lamp.',
           },
           {
-            question: 'How many blocks per acre?',
+            question: 'Is every lamp the same colour?',
             answer:
-              'Density depends on deer population and habitat. Start with one low-pressure site per 40–80 acres and adjust based on use.',
+              'No. Iron content varies through the seam, so shade and veining differ from piece to piece.',
           },
         ],
       },
     ],
     pdfs: [
       {
-        id: 'wildlife-placement',
-        title: 'Wildlife Mineral Placement Checklist',
-        description: 'Site selection, drainage, and seasonal refresh schedule for outdoor blocks.',
-        url: '/resources/wildlife-mineral-placement.pdf',
-        fileSize: '165 KB',
-        publishedAt: '2026-02-28',
+        id: 'salt-lamp-care',
+        title: 'Salt Lamp Care Sheet',
+        description: 'Placement, moisture handling and bulb replacement.',
+        url: '/resources/salt-lamp-care.pdf',
+        fileSize: '150 KB',
+        publishedAt: '2026-03-15',
+      },
+    ],
+    emptyStates: {},
+  },
+
+  bulk: {
+    key: 'bulk',
+    productCategoryLabel: 'Bulk & Wholesale',
+    hero: {
+      eyebrow: 'Kitchen, retail & gifting',
+      title: 'Bulk Himalayan Pink Salt',
+      subtitle:
+        'Bigger bags, pouches in multi-packs and wholesale quantities of the same unrefined salt, for kitchens and shops that get through it.',
+    },
+    seo: {
+      title: 'Bulk Himalayan Pink Salt — Bags & Wholesale | Himalayan Koh',
+      description:
+        'Buy Himalayan pink salt in bulk: large bags and multi-pack pouches of unrefined edible salt for kitchens, retailers and wholesale orders.',
+    },
+    trustPoints: [
+      { label: 'Same rock, bigger bag', detail: 'Bulk grades are drawn from the same seam as the retail jars.' },
+      { label: 'Stores for years', detail: 'Kept dry and sealed, salt does not go off.' },
+      { label: 'Wholesale on request', detail: 'Recurring supply and larger quantities — ask us.' },
+    ],
+    gallery: [
+      { id: 'bulk-rock', src: IMG.rockBag, alt: 'Large bag of Himalayan rock salt in bulk packaging', width: 600, height: 450 },
+      { id: 'bulk-pouch', src: IMG.pouch, alt: 'Multi-pack pouches of pink Himalayan salt', width: 600, height: 450 },
+      { id: 'bulk-bowl', src: IMG.saltBowl, alt: 'Bowl of coarse pink salt from a bulk bag', width: 600, height: 450 },
+      { id: 'bulk-jar', src: IMG.jar, alt: 'Retail jar of pink salt for refilling from bulk stock', width: 500, height: 500 },
+    ],
+    articles: [
+      {
+        id: 'bulk-storage',
+        title: 'Storing Bulk Salt Without Clumping',
+        excerpt: 'Food-grade containers, humidity and why the garage is a bad idea in a wet climate.',
+        image: IMG.rockBag,
+        readTime: '4 min read',
+        tag: 'Storage',
       },
       {
-        id: 'trace-mineral-overview',
-        title: 'Trace Mineral Overview',
-        description: 'Naturally occurring minerals in Himalayan pink salt for wildlife programs.',
-        url: '/resources/trace-mineral-overview.pdf',
-        fileSize: '124 KB',
-        publishedAt: '2026-01-15',
+        id: 'bulk-refill',
+        title: 'Refilling Retail Jars from Bulk Stock',
+        excerpt: 'A simple kitchen or shop workflow that keeps one bulk bag clean and one jar on the shelf.',
+        image: IMG.pouch,
+        readTime: '3 min read',
+        tag: 'Operations',
+      },
+      {
+        id: 'bulk-wholesale',
+        title: 'Ordering Wholesale: What We Need From You',
+        excerpt: 'Volumes, lead time and shipping — how a wholesale order is put together.',
+        image: IMG.jar,
+        readTime: '3 min read',
+        tag: 'Wholesale',
+      },
+    ],
+    guides: [
+      {
+        id: 'bulk-buying',
+        title: 'Choosing a Bulk Size',
+        bullets: [
+          'Count households or servings per week, not per year',
+          'Small kitchens: multi-pack pouches keep salt dry between refills',
+          'Retail: large bags plus retail jars to refill from',
+          'Wholesale: tell us the volume and repeat schedule and we quote it',
+        ],
+      },
+      {
+        id: 'bulk-storage-guide',
+        title: 'Storage Guidance',
+        bullets: [
+          'Keep bulk bags closed and off a concrete floor',
+          'Store away from coffee, spices and anything with a strong smell',
+          'Use a clean dry scoop — never a wet one',
+          'Decant into a small jar rather than leaving the bag open',
+        ],
+      },
+      {
+        id: 'bulk-faq',
+        title: 'Bulk Orders FAQs',
+        faqs: [
+          {
+            question: 'Do you offer wholesale pricing?',
+            answer:
+              'Yes. Contact us with the volume, the grain size and how often you need it, and we will quote the order.',
+          },
+          {
+            question: 'How long does bulk salt last?',
+            answer:
+              'Indefinitely while it stays dry. Salt is a preservative; it does not spoil, it only picks up moisture or odours.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'bulk-storage-sheet',
+        title: 'Bulk Storage & Refill Sheet',
+        description: 'Container guidance, humidity notes and a refill workflow for retail shelves.',
+        url: '/resources/bulk-storage-sheet.pdf',
+        fileSize: '160 KB',
+        publishedAt: '2026-03-05',
       },
     ],
     emptyStates: {},

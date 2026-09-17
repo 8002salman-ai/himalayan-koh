@@ -78,7 +78,7 @@ export default function Layout({ children }: LayoutProps) {
         <motion.div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <p className="text-center sm:text-left text-xs sm:text-sm tracking-wide flex-1">
             <strong className="font-semibold text-himalayan">All Natural</strong>{' '}
-            Himalayan salt for horses, cattle and deer
+            Pure Himalayan pink salt for the kitchen, the table and the home
           </p>
           <div className="flex items-center gap-6 sm:gap-8 text-xs sm:text-sm font-medium flex-shrink-0">
             <a href="tel:8322246466" className="flex items-center gap-1.5 text-charcoal hover:text-himalayan transition-colors whitespace-nowrap">

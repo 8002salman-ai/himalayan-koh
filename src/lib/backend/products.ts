@@ -27,12 +27,13 @@
  */
 
 import type { Product } from '../../data/products';
-import { products as demoProducts } from '../../data/products';
+import { storefrontProducts as demoProducts } from '../../data/products';
 import { isSupabaseConfigured } from '../supabase/client';
 import { productsApi } from '../supabase/api';
 import { isHiddenActiveProduct } from '../supabase/api/products';
 import { getFallbackProductBySlug, mapSupabaseProduct } from '../products/mapProduct';
 import { normalizeProductSlug, productSlugFromName, slugsMatch } from '../products/slug';
+import { countOffNicheProducts, filterNicheProducts, isNicheProduct } from '../catalog/niche';
 import { isWooCommerceDataSource } from './config';
 import { fetchAdminProductBySlug, fetchAdminProducts, fetchStoreProductsSafe, fetchWpCoreProducts } from './woocommerce';
 import type { ProductQuery } from './woocommerce';
@@ -160,6 +161,12 @@ function matchesSlug(rowSlug: string, rowName: string, slug: string): boolean {
   return slugsMatch(rowSlug, slug) || slugsMatch(productSlugFromName(rowName, rowSlug), slug);
 }
 
+/**
+ * Related products from the bundled catalog.
+ *
+ * Reads the storefront-scoped list, so a recommendation can never surface a
+ * product the catalog itself would not serve.
+ */
 function relatedFromDemo(product: Product | null, slug: string): Product[] {
   if (!product) return [];
   return demoProducts.filter((entry) => !slugsMatch(entry.slug, slug)).slice(0, 3);
@@ -239,22 +246,76 @@ async function wooLookup(slug: string, signal?: AbortSignal): Promise<CatalogLoo
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Reads the product catalog through the configured source. */
-export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
+/**
+ * Storefront reads are scoped to the store's niche.
+ *
+ * `lib/catalog/niche.ts` is the single judgement about what belongs on the
+ * public site (Himalayan pink salt, no livestock or pet products). Applying it
+ * here — at the one seam every public surface already goes through — is what
+ * keeps the homepage, search, related products, category pages, sitemap and
+ * structured data from each filtering differently, or forgetting to.
+ *
+ * The admin console reads the same source through `readCatalogProducts` below,
+ * which deliberately skips this filter: the owner has to *see* an off-niche
+ * product in the console in order to archive it, so hiding it there would hide it
+ * from the only person who can fix it.
+ */
+function scopeToNiche(result: CatalogResult): CatalogResult {
+  const excluded = countOffNicheProducts(result.products);
+  if (excluded === 0) return result;
+
+  const products = filterNicheProducts(result.products);
+  return {
+    products,
+    count: Math.max(0, result.count - excluded),
+    degraded: result.degraded,
+    warnings: [
+      ...result.warnings,
+      `${excluded} product${excluded === 1 ? '' : 's'} outside the Himalayan pink salt niche ${excluded === 1 ? 'was' : 'were'} withheld from the storefront. Archive them in WooCommerce to remove this notice — see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md.`,
+    ],
+  };
+}
+
+/**
+ * The catalog exactly as the source reports it, with nothing withheld.
+ *
+ * This is the admin's read: a product that is off-niche is still a product the
+ * owner has to archive, so it must arrive. Storefront reads go through
+ * `getCatalogProducts` instead.
+ */
+export async function readCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
   return isWooCommerceDataSource() ? wooList(query) : supabaseList(query);
 }
 
-/** Resolves one product by slug, preserving the Supabase fallback semantics. */
+/** The storefront's catalog: the source's catalog, scoped to the store's niche. */
+export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
+  return scopeToNiche(await readCatalogProducts(query));
+}
+
+/**
+ * Resolves one product by slug, preserving the Supabase fallback semantics.
+ *
+ * An off-niche product resolves to *nothing* rather than to itself: a direct hit
+ * is how a link, a search result or a shared URL would otherwise reach a product
+ * the storefront is not allowed to serve.
+ */
 export async function lookupCatalogProduct(slug: string, signal?: AbortSignal): Promise<CatalogLookup> {
-  return isWooCommerceDataSource() ? wooLookup(slug, signal) : supabaseLookup(slug, signal);
+  const lookup = isWooCommerceDataSource()
+    ? await wooLookup(slug, signal)
+    : await supabaseLookup(slug, signal);
+
+  if (lookup.product && !isNicheProduct({ name: lookup.product.name, category: lookup.product.category })) {
+    return { product: null, related: [], provenance: null, error: lookup.error };
+  }
+  return lookup;
 }
 
 /** Featured products for the homepage. */
 export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
   if (!isWooCommerceDataSource()) {
     const rows = await productsApi.getFeaturedProducts(limit);
-    return rows.map(mapSupabaseProduct);
+    return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
   }
   const { products } = await wooList({ perPage: limit, isFeatured: true });
-  return products.slice(0, limit);
+  return filterNicheProducts(products).slice(0, limit);
 }

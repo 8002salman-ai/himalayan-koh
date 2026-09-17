@@ -15,9 +15,9 @@ export const SITE_URL =
     : 'http://localhost:3000');
 export const SITE_NAME = 'Himalayan Koh';
 export const DEFAULT_TITLE =
-  'Himalayan Koh - Premium Pink Salt for Livestock & Cooking';
+  'Himalayan Koh — Pure Himalayan Pink Salt for Cooking & Home';
 export const DEFAULT_DESCRIPTION =
-  'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
+  'All-natural Himalayan pink salt: fine and coarse edible grades, cooking and serving blocks, lamps and décor, and bulk salt by the bag. Mineral-rich, unrefined, and sourced from the Himalayan range.';
 /**
  * Social crawlers (Facebook, X, LinkedIn) and Google's rich results do not
  * accept SVG for og:image — this must stay a raster URL. Served as a real

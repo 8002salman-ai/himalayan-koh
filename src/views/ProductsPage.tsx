@@ -123,7 +123,7 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchesCategory = productMatchesCategoryFilter(p.category, categoryKey, activeFilter);
+      const matchesCategory = productMatchesCategoryFilter(p, categoryKey, activeFilter);
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });

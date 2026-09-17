@@ -6,7 +6,7 @@ export function generateMetadata(): Metadata {
   return buildMetadata({
     title: 'Gallery - Himalayan Koh Salt Products & Livestock Use',
     description:
-      'Browse Himalayan Koh product photos and real-world livestock, wildlife, and kitchen salt use cases.',
+      'Photos of Himalayan Koh pink salt: fine and coarse edible grades, bulk rock salt bags, and salt in the kitchen.',
     path: '/gallery',
   });
 }

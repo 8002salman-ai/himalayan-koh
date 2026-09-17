@@ -620,6 +620,12 @@ export default function AdminProducts() {
                           <span className="mt-1 inline-flex">
                             <AdminChip tone="danger" icon={AlertTriangle}>Not visible on storefront</AdminChip>
                           </span>
+                        ) : row.isOffNiche ? (
+                          // The console keeps off-niche rows visible so the owner can
+                          // archive them; the storefront withholds them until then.
+                          <span className="mt-1 inline-flex">
+                            <AdminChip tone="danger" icon={AlertTriangle}>Outside pink salt niche</AdminChip>
+                          </span>
                         ) : row.source === 'supabase' && productMissingShippingWeight(row.weight) ? (
                           <span className="mt-1 inline-flex">
                             <AdminChip tone="warning" icon={AlertTriangle}>Add shipping weight</AdminChip>

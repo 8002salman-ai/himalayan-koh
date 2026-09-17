@@ -28,8 +28,9 @@ import { adminApi } from '../supabase/api/admin';
 import { isRealCatalogProduct } from '../supabase/api/products';
 import { isSupabaseConfigured } from '../supabase/client';
 import { priceDisplayFromRange } from '../products/price';
+import { countOffNicheProducts, isNicheProduct } from '../catalog/niche';
 import { isWooCommerceDataSource, type DataSource } from './config';
-import { getCatalogProducts } from './products';
+import { readCatalogProducts } from './products';
 import { WORDPRESS_MAX_PER_PAGE } from './wordpress';
 import { UNCATEGORIZED_CATEGORY } from './woocommerce';
 
@@ -72,6 +73,12 @@ export interface AdminCatalogRow {
   /** Live but withheld from the storefront (the Supabase packing-profile rule). */
   isHiddenFromStorefront: boolean | null;
   isFeatured: boolean;
+  /**
+   * True when the product falls outside the store's niche (Himalayan pink salt).
+   * Such a row stays visible here on purpose — it is the owner who has to archive
+   * it in WooCommerce — and the storefront withholds it until they do.
+   */
+  isOffNiche: boolean;
   /** Catalog fields the source could not supply. */
   missing: string[];
   /** Present only when this row can be saved back through the admin editor. */
@@ -178,11 +185,12 @@ export function rowFromCatalogProduct(product: CatalogProduct): AdminCatalogRow 
     compareAtPrice: null,
     sku: product.sku ?? null,
     stockStatus: product.stockStatus ?? 'unknown',
-    // Only an authenticated WooCommerce route reports counts, and none is
-    // configured yet: the public routes report stock status at most.
-    stockQuantity: null,
+    // The same count the storefront caps a cart line with, from the same read:
+    // one number, so the console and the product page cannot disagree about how
+    // many units are left. Null when the route reports no count.
+    stockQuantity: product.stockQuantity ?? null,
     lowStockThreshold: null,
-    trackInventory: null,
+    trackInventory: product.stockQuantity == null ? null : true,
     weight: null,
     weightUnit: null,
     // Both public product routes return published products only, so a row that
@@ -190,6 +198,7 @@ export function rowFromCatalogProduct(product: CatalogProduct): AdminCatalogRow 
     isListed: true,
     isHiddenFromStorefront: null,
     isFeatured: product.isFeatured === true,
+    isOffNiche: !isNicheProduct(product),
     missing: product.missing ?? [],
     record: null,
   };
@@ -222,6 +231,10 @@ export function rowFromSupabaseProduct(record: AdminEditableRecord): AdminCatalo
     isListed: Boolean(record.is_active),
     isHiddenFromStorefront: isWithheldFromStorefront(record),
     isFeatured: Boolean(record.is_featured),
+    isOffNiche: !isNicheProduct({
+      name: record.name,
+      category: record.category?.name ?? null,
+    }),
     missing: [],
     record,
   };
@@ -362,7 +375,9 @@ async function supabasePage(query: AdminCatalogQuery): Promise<AdminCatalogPage>
 /* ------------------------------------------------------------------ */
 
 async function wooPage(query: AdminCatalogQuery): Promise<AdminCatalogPage> {
-  const read = await getCatalogProducts({
+  // The unscoped read: the console shows the source's whole catalog, including
+  // the products the storefront withholds, and says how many that is below.
+  const read = await readCatalogProducts({
     search: query.search || undefined,
     isFeatured: query.isFeatured,
     perPage: WORDPRESS_MAX_PER_PAGE,
@@ -370,6 +385,12 @@ async function wooPage(query: AdminCatalogQuery): Promise<AdminCatalogPage> {
   });
 
   const warnings = [...read.warnings];
+  const offNiche = countOffNicheProducts(read.products);
+  if (offNiche > 0) {
+    warnings.push(
+      `${offNiche} product${offNiche === 1 ? ' is' : 's are'} outside the Himalayan pink salt niche and ${offNiche === 1 ? 'is' : 'are'} withheld from the storefront. Archive them in WooCommerce to clear this — see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md.`
+    );
+  }
   if (read.products.length >= WORDPRESS_MAX_PER_PAGE) {
     warnings.push(
       `Only the first ${WORDPRESS_MAX_PER_PAGE} products were read: WordPress returns no more than that in one request, so this list may be incomplete.`
@@ -410,7 +431,10 @@ async function wooPage(query: AdminCatalogQuery): Promise<AdminCatalogPage> {
 }
 
 async function wooStats(): Promise<AdminCatalogStats> {
-  const read = await getCatalogProducts({ perPage: WORDPRESS_MAX_PER_PAGE });
+  // Stats describe the source's catalog, not the storefront's slice of it: a
+  // dashboard that quietly dropped off-niche rows would report a product count
+  // the owner cannot reconcile against WooCommerce.
+  const read = await readCatalogProducts({ perPage: WORDPRESS_MAX_PER_PAGE });
   return statsFromRows(read.products.map(rowFromCatalogProduct));
 }
 

@@ -87,7 +87,7 @@ describe('meta description honesty', () => {
     const { description } = buildProductPageSeo(unknownPriceProduct);
 
     expect(description).toBe(
-      'Salt Block — unrefined Himalayan pink salt with 84+ trace minerals. Free U.S. shipping on orders over $50.'
+      'Salt Block — a Himalayan pink salt block for grilling and serving. Unrefined, additive-free salt from Himalayan Koh.'
     );
     expect(description).not.toMatch(MONEY);
     expect(description).not.toMatch(/nan|NaN|null|undefined/);
@@ -96,11 +96,32 @@ describe('meta description honesty', () => {
   it('keeps the known-price description byte-identical to the legacy output', () => {
     const { description } = buildProductPageSeo(knownPriceProduct);
 
-    // Exactly what this helper produced before the price became nullable.
+    // The price clause is unchanged; only the shelf sentence moved, because the
+    // description now follows the shelf the product is actually listed under.
     expect(description).toBe(
-      'Salt Block — unrefined Himalayan pink salt with 84+ trace minerals. $49.95. Free U.S. shipping on orders over $50.'
+      'Salt Block — a Himalayan pink salt block for grilling and serving. $49.95. Unrefined, additive-free salt from Himalayan Koh.'
     );
     expect(description).not.toMatch(/nan|NaN|null|undefined/);
+  });
+
+  it('describes an edible product as edible, not as a block', () => {
+    // Placement comes from the shelf taxonomy, so the meta sentence and the hub
+    // the product appears on cannot disagree about what kind of salt this is.
+    const jar: Product = {
+      ...knownPriceProduct,
+      name: 'Himalayan Pink Salt Jar 1 lb',
+      category: 'Edible Cooking Salt',
+    };
+
+    expect(buildProductPageSeo(jar).description).toContain(
+      'unrefined Himalayan pink salt with its natural trace minerals'
+    );
+  });
+
+  it('says nothing about livestock for any product', () => {
+    const { description } = buildProductPageSeo({ ...knownPriceProduct, name: 'Salt Block 30 lbs' });
+
+    expect(description).not.toMatch(/livestock|herd|horse|cattle|deer|ranch/i);
   });
 });
 

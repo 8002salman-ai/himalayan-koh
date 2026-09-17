@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, ArrowRight, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { products } from '../data/products';
+import { storefrontProducts } from '../data/products';
 
 interface Props {
   isOpen: boolean;
@@ -33,7 +33,7 @@ export default function SearchModal({ isOpen, onClose }: Props) {
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return products.filter(
+    return storefrontProducts.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q),

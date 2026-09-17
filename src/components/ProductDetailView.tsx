@@ -13,8 +13,8 @@ import { isSupabaseConfigured } from '../lib/supabase/client';
 import ProductImageGallery from './ProductImageGallery';
 import {
   buildProductsCategoryPath,
-  categoryKeyFromFilterLabel,
   filterLabelFromKey,
+  productShelfKey,
 } from '../lib/categoryContent';
 
 interface ProductDetailViewProps {
@@ -36,7 +36,10 @@ export default function ProductDetailView({
   const { user } = useAuthContext();
   const toast = useToast();
   const displayName = getProductDisplayName(product);
-  const categoryKey = categoryKeyFromFilterLabel(product.category);
+  // The shelf comes from the product's own name and category through the shared
+  // taxonomy, not from a display-label lookup: a WooCommerce product whose
+  // category is "Uncategorized" still has a shelf if it is a salt lamp.
+  const categoryKey = productShelfKey(product);
   const categoryShopPath = categoryKey ? buildProductsCategoryPath(categoryKey) : '/products';
   const categoryShopLabel = categoryKey ? filterLabelFromKey(categoryKey) : 'Products';
 
@@ -49,6 +52,20 @@ export default function ProductDetailView({
   // No reported price means the product cannot be sold yet — the cart line
   // needs a real unit price and 0 would allow a free checkout.
   const priceKnown = isPriceKnown(product);
+
+  // Tracked units are a ceiling, not a suggestion: a customer cannot order past
+  // what the warehouse reports. No count means no ceiling, because inventing one
+  // would block an order the source never said was too large.
+  const maxQuantity =
+    typeof product.stockQuantity === 'number' && Number.isFinite(product.stockQuantity)
+      ? Math.max(0, product.stockQuantity)
+      : null;
+
+  // Switching products must not leave a quantity the new product cannot fill.
+  useEffect(() => {
+    if (maxQuantity === null) return;
+    setQty((current) => Math.min(Math.max(1, current), Math.max(1, maxQuantity)));
+  }, [maxQuantity]);
 
   const handleAddToCart = async () => {
     if (!priceKnown) {
@@ -176,9 +193,13 @@ export default function ProductDetailView({
           {product.stockStatus === 'out_of_stock' && (
             <p className="text-sm font-semibold text-red-600 mb-4">Currently out of stock</p>
           )}
-          {product.stockStatus === 'unknown' && !priceKnown && (
+          {/* An unknown stock state also disables Add to Cart, so it has to say
+              why — otherwise the button looks broken rather than honest. */}
+          {product.stockStatus === 'unknown' && (
             <p className="text-sm font-semibold text-charcoal/60 mb-4">
-              Price and availability to be confirmed
+              {priceKnown
+                ? 'Availability to be confirmed — add to cart is off until the warehouse reports stock'
+                : 'Price and availability to be confirmed'}
             </p>
           )}
 
@@ -233,13 +254,19 @@ export default function ProductDetailView({
               </span>
               <button
                 type="button"
-                onClick={() => setQty(qty + 1)}
-                className="px-4 py-3 hover:bg-gray-100 transition-colors"
+                onClick={() => setQty(maxQuantity === null ? qty + 1 : Math.min(maxQuantity, qty + 1))}
+                disabled={maxQuantity !== null && qty >= maxQuantity}
+                className="px-4 py-3 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Increase quantity"
               >
                 <Plus size={16} />
               </button>
             </div>
+            {maxQuantity !== null && (
+              <p className="mt-2 text-xs text-charcoal/60">
+                {maxQuantity} available — order up to {maxQuantity} in one go.
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3">

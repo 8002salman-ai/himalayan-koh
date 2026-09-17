@@ -131,7 +131,8 @@ export function localBusinessJsonLd(): Record<string, unknown> {
     },
     priceRange: '$$',
     image: absoluteImage(),
-    description: 'Premium Himalayan pink salt products for livestock and edible use',
+    description:
+      'Unrefined Himalayan pink salt for cooking and the home — edible grades, salt blocks, lamps and bulk bags.',
   };
 }
 
