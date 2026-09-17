@@ -16,10 +16,12 @@
  */
 export const PREVIEW_HOSTS: readonly string[] = [
   'preview.himalayankoh.com',
-  // A temporary verification deployment carries the same guard by adding its
-  // host to this list for the duration of that deploy only, then reverting the
-  // addition: an alias that exists for one afternoon does not belong in a list
-  // that decides what is never indexed.
+  // A temporary verification alias, added while the alias exists and removed
+  // with it: an alias that exists for one afternoon does not belong in a list
+  // that decides what is never indexed. `himalayan-koh-admin-verify` is a
+  // Vercel project alias pointed at a preview deployment of this branch, not at
+  // any storefront the owner publishes.
+  'himalayan-koh-admin-verify.vercel.app',
 ];
 
 /** The `host` header may carry a port (`localhost:3002`) and any casing. */
