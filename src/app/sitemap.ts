@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
+import { siteOrigin, fetchSeoBlogPosts } from '@/lib/seo/server';
 import { buildProductsCategoryPath, productShelfKey } from '@/lib/categoryContent';
 import { NICHE_SECTIONS } from '@/lib/catalog/niche';
 import type { CategoryContentKey } from '@/lib/categoryContent';
@@ -39,12 +39,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // "real catalog product" gate this file used to apply itself. Category
   // membership now comes from each product's resolved category name, so the
   // separate categories query is no longer needed to join the two.
-  const [{ products: realProducts }, { data: posts }] = await Promise.all([
+  // The posts read goes through the blog layer rather than a query of its own, so
+  // an unreachable CMS costs the sitemap its article URLs instead of failing the
+  // prerender — which is what took a deployment build down.
+  const [{ products: realProducts }, posts] = await Promise.all([
     getCatalogProducts(),
-    getSeoSupabase()
-      .from('blog_posts')
-      .select('slug, updated_at, published_at')
-      .eq('is_published', true),
+    fetchSeoBlogPosts(),
   ]);
 
   // A category hub with no real product isn't worth crawling — it's already
@@ -81,7 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  for (const post of (posts as { slug: string; updated_at: string | null; published_at: string | null }[] | null) || []) {
+  for (const post of posts) {
     if (!post.slug) continue;
     entries.push({
       url: `${origin}/blog/${post.slug}`,
