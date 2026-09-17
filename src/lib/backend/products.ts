@@ -72,27 +72,52 @@ export interface CatalogLookup {
 /* Supabase source                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The Supabase catalog read, reported rather than thrown.
+ *
+ * Both sources honour the same contract: a catalog that cannot be read returns
+ * nothing *and says so*, instead of throwing through a page render. Supabase is
+ * optional here and is pointed at a sentinel host in environments that run
+ * without it, where the query rejects with a DNS failure — which used to fail the
+ * sitemap's prerender and take a whole deployment build down with it.
+ *
+ * The fallback is an empty catalog, never the bundled demo list: substituting
+ * someone else's inventory for a failed read is how a storefront ends up
+ * advertising products it cannot sell.
+ */
 async function supabaseList(query: CatalogQuery): Promise<CatalogResult> {
   const perPage = query.perPage;
   const offset = query.page && query.page > 1 ? (query.page - 1) * (perPage ?? 24) : undefined;
 
-  const { products, count } = await productsApi.getProducts(
-    {
-      limit: perPage,
-      offset,
-      search: query.search,
-      categorySlug: query.categorySlug,
-      isFeatured: query.isFeatured,
-    },
-    { signal: query.signal }
-  );
+  try {
+    const { products, count } = await productsApi.getProducts(
+      {
+        limit: perPage,
+        offset,
+        search: query.search,
+        categorySlug: query.categorySlug,
+        isFeatured: query.isFeatured,
+      },
+      { signal: query.signal }
+    );
 
-  return {
-    products: products.map(mapSupabaseProduct),
-    count,
-    degraded: false,
-    warnings: [],
-  };
+    return {
+      products: products.map(mapSupabaseProduct),
+      count,
+      degraded: false,
+      warnings: [],
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return {
+      products: [],
+      count: 0,
+      degraded: true,
+      warnings: [
+        `The Supabase catalog could not be read (${reason}). No products are shown, because the bundled demo catalog is not this store's inventory.`,
+      ],
+    };
+  }
 }
 
 async function supabaseLookup(slug: string, signal?: AbortSignal): Promise<CatalogLookup> {
@@ -313,8 +338,15 @@ export async function lookupCatalogProduct(slug: string, signal?: AbortSignal): 
 /** Featured products for the homepage. */
 export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
   if (!isWooCommerceDataSource()) {
-    const rows = await productsApi.getFeaturedProducts(limit);
-    return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
+    // A failed featured read costs the homepage its row; it must not cost it the
+    // page. The same rule as the list read: report, never throw.
+    try {
+      const rows = await productsApi.getFeaturedProducts(limit);
+      return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
+    } catch (error) {
+      console.error('Featured products could not be read from Supabase.', error);
+      return [];
+    }
   }
   const { products } = await wooList({ perPage: limit, isFeatured: true });
   return filterNicheProducts(products).slice(0, limit);
