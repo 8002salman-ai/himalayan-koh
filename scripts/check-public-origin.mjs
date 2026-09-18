@@ -21,11 +21,21 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 
-/** Extensions that can carry a public URL. Binary assets are skipped by magic-byte check below. */
-const TEXT_EXTENSIONS = new Set([
-  '.js', '.mjs', '.cjs', '.json', '.html', '.htm', '.rsc',
-  '.xml', '.txt', '.css', '.map',
-]);
+/**
+ * Document extensions only — the artifacts a visitor or crawler actually receives.
+ *
+ * Bundled JavaScript is deliberately not scanned. `localhost` appears in shipped
+ * code for legitimate reasons that cannot be removed: the development default in
+ * `src/lib/site/origin.ts`, and third-party dev fallbacks. Flagging those would
+ * make this check fail forever and teach everyone to ignore it. A loopback URL in
+ * a *document*, by contrast, has no innocent explanation — that is a canonical
+ * tag, a sitemap entry or a JSON-LD URL pointing at somebody's laptop.
+ *
+ * This still catches the bug that motivated the check: the inlined origin reached
+ * the prerendered HTML and RSC payloads as canonicals and OG URLs before it
+ * reached the sitemap at all.
+ */
+const DOCUMENT_EXTENSIONS = new Set(['.html', '.htm', '.rsc', '.xml', '.txt', '.json']);
 
 /**
  * Files that legitimately hold a loopback URL:
@@ -72,7 +82,7 @@ const expected = [];
 
 for (const file of files) {
   const ext = file.slice(file.lastIndexOf('.'));
-  if (!TEXT_EXTENSIONS.has(ext)) continue;
+  if (!DOCUMENT_EXTENSIONS.has(ext)) continue;
 
   const info = await stat(file);
   if (info.size > 12 * 1024 * 1024) continue;
