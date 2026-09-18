@@ -16,7 +16,6 @@ import {
   Truck,
   UserCog,
   Settings,
-  KeyRound,
   Gift,
   Star,
   TrendingUp,
@@ -52,6 +51,11 @@ import {
  * There is deliberately no mobile navigation list. The admin is a desktop tool
  * (see `ADMIN_CANVAS_MIN_WIDTH`), so the shell renders this rail at every
  * viewport instead of swapping to a drawer, bottom bar or hamburger.
+ *
+ * There is also no second entry for the integration keys: `AdminSettings` is one
+ * screen ("Settings & API keys"), so a separate API Keys rail item pointed at the
+ * same view — the audit found the duplicate. `/admin/api-keys` still resolves as
+ * an alias for old links; it just is not a second destination in the rail.
  */
 
 export interface AdminNavItem {
@@ -126,7 +130,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { label: 'Payments', path: '/admin/payments', icon: CreditCard },
       { label: 'Settings', path: '/admin/settings', icon: Settings },
       { label: 'Listing Playbook', path: '/admin/listing-playbook', icon: BookOpen },
-      { label: 'API Keys', path: '/admin/api-keys', icon: KeyRound },
     ],
   },
 ];
