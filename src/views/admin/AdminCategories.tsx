@@ -175,9 +175,10 @@ export default function AdminCategories() {
       await fetchCategories();
     } catch (err) {
       // The store refuses a delete while products are filed under the term; its
-      // own sentence is the message, so it is shown rather than replaced.
+      // own sentence is the message, so it is shown rather than replaced. The
+      // dialog stays open so the refusal is read where the click happened —
+      // closing it would leave the reason behind a modal the user just dismissed.
       setActionError(getErrorMessage(err, 'WooCommerce did not delete that category.'));
-      setWooDeleteTarget(null);
     } finally {
       setActionLoading(false);
     }
@@ -224,6 +225,7 @@ export default function AdminCategories() {
                 return;
               }
               setWooEditing(null);
+              setActionError(null);
               setWooEditorOpen(true);
             }}
           >
@@ -439,6 +441,7 @@ export default function AdminCategories() {
                         type="button"
                         onClick={() => {
                           setWooEditing(category);
+                          setActionError(null);
                           setWooEditorOpen(true);
                         }}
                         className="rounded-lg p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
@@ -448,7 +451,7 @@ export default function AdminCategories() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setWooDeleteTarget(category)}
+                        onClick={() => { setActionError(null); setWooDeleteTarget(category); }}
                         className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
                         aria-label={`Delete ${category.name}`}
                       >
@@ -473,10 +476,11 @@ export default function AdminCategories() {
 
       <WooCategoryEditorModal
         isOpen={wooEditorOpen}
-        onClose={() => { setWooEditorOpen(false); setWooEditing(null); }}
+        onClose={() => { setWooEditorOpen(false); setWooEditing(null); setActionError(null); }}
         category={wooEditing}
         onSave={handleWooSave}
         loading={actionLoading}
+        error={actionError}
       />
 
       <AnimatePresence>
@@ -485,10 +489,12 @@ export default function AdminCategories() {
             size="sm"
             title="Delete category"
             description="The category is removed from WooCommerce. Products are not deleted."
-            onClose={() => setWooDeleteTarget(null)}
+            onClose={() => { setWooDeleteTarget(null); setActionError(null); }}
             footer={
               <>
-                <AdminButton onClick={() => setWooDeleteTarget(null)}>Cancel</AdminButton>
+                <AdminButton onClick={() => { setWooDeleteTarget(null); setActionError(null); }}>
+                  Cancel
+                </AdminButton>
                 <AdminButton
                   variant="danger"
                   onClick={() => handleWooDelete(wooDeleteTarget)}
@@ -500,6 +506,11 @@ export default function AdminCategories() {
               </>
             }
           >
+            {actionError && (
+              <AdminNotice tone="danger" title="That change was not saved">
+                {actionError}
+              </AdminNotice>
+            )}
             <p className="text-sm text-admin-ink">
               <span className="font-semibold">{wooDeleteTarget.name}</span> currently holds{' '}
               {wooDeleteTarget.count} product{wooDeleteTarget.count === 1 ? '' : 's'}. WooCommerce refuses
@@ -555,12 +566,21 @@ function WooCategoryEditorModal({
   category,
   onSave,
   loading,
+  error,
 }: {
   isOpen: boolean;
   onClose: () => void;
   category: AdminCategory | null;
   onSave: (input: { name: string; slug: string; description: string }) => void;
   loading: boolean;
+  /**
+   * The store's refusal, shown inside the form.
+   *
+   * It used to be rendered only as a page-level notice, which sits *behind* this
+   * dialog: submitting a slug another category already owns answered `409` with a
+   * perfectly clear sentence that the person who typed the slug could not see.
+   */
+  error?: string | null;
 }) {
   const [form, setForm] = useState({ name: '', slug: '', description: '' });
 
@@ -648,6 +668,12 @@ function WooCategoryEditorModal({
                 placeholder="Category description…"
               />
             </div>
+
+            {error && (
+              <AdminNotice tone="danger" title="That change was not saved">
+                {error}
+              </AdminNotice>
+            )}
 
             <div className="flex justify-end gap-2 border-t border-admin-line pt-4">
               <AdminButton onClick={onClose}>Cancel</AdminButton>
