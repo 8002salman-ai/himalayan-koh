@@ -5,13 +5,19 @@ import { adminApi, CategoryFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { isSupabaseDataSource } from '../../lib/backend/dataSource';
 import { fetchAdminCatalogPage } from '../../lib/admin/adminCatalogClient';
+import {
+  createAdminCategory,
+  deleteAdminCategory,
+  listAdminCategories,
+  updateAdminCategory,
+  type AdminCategory,
+} from '../../lib/admin/wooCategoryApi';
 import type { AdminCatalogRow } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import type { Category } from '../../lib/supabase/database.types';
 import {
   AdminButton,
   AdminChip,
-  AdminDisabledAction,
   AdminModal,
   AdminNotice,
   AdminPageHeader,
@@ -28,9 +34,6 @@ import {
   SURFACE,
 } from '../../components/admin/adminTheme';
 
-/** What a WooCommerce write needs before this screen owns it. */
-const WRITE_CONNECTION_REQUIRED = 'WooCommerce write connection required';
-
 /**
  * Categories.
  *
@@ -38,11 +41,16 @@ const WRITE_CONNECTION_REQUIRED = 'WooCommerce write connection required';
  *
  *  - Supabase catalog: the real category rows, with create/edit/delete through
  *    the Supabase admin query layer, exactly as before.
- *  - WooCommerce catalog: categories are read from the same catalog read model
- *    the storefront uses, so the console cannot list a taxonomy the site does
- *    not have. Writes are disabled — editing categories in Supabase while the
- *    storefront reads WooCommerce taxonomy is precisely the split-brain this
- *    branch exists to remove.
+ *  - WooCommerce catalog: the store's own taxonomy, read and written through
+ *    `/api/admin/categories`, which holds the credentials server-side. The screen
+ *    used to say category editing was "not connected" while the same process had
+ *    a working WooCommerce write path for products — the connection existed, the
+ *    screen just did not use it.
+ *
+ * What the write path refuses is deliberate: a slug another term already holds
+ * (no `-2` suffix invented behind the owner's back) and a delete while products
+ * are still filed under the term (WooCommerce would move them to Uncategorized
+ * and report success). Both come back as the store's own message.
  *
  * The old fallback to the bundled demo categories when nothing was configured is
  * gone: a fabricated taxonomy under a real storefront's name is worse than an
@@ -58,6 +66,11 @@ export default function AdminCategories() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  /** The store's own taxonomy, on the WooCommerce deployment. */
+  const [wooCategories, setWooCategories] = useState<AdminCategory[]>([]);
+  const [wooEditorOpen, setWooEditorOpen] = useState(false);
+  const [wooEditing, setWooEditing] = useState<AdminCategory | null>(null);
+  const [wooDeleteTarget, setWooDeleteTarget] = useState<AdminCategory | null>(null);
 
   /** Which catalog owns the taxonomy on this deployment. */
   const READS_SUPABASE_CATALOG = isSupabaseDataSource();
@@ -66,11 +79,15 @@ export default function AdminCategories() {
     setLoading(true);
     setFetchError(null);
 
-    // WooCommerce: one read through the shared catalog read model.
+    // WooCommerce: the catalog read model plus the store's own taxonomy.
     if (!READS_SUPABASE_CATALOG) {
       try {
-        const page = await fetchAdminCatalogPage({ perPage: 100, sort: 'name' });
+        const [page, terms] = await Promise.all([
+          fetchAdminCatalogPage({ perPage: 100, sort: 'name' }),
+          listAdminCategories(),
+        ]);
         setRows(page.rows);
+        setWooCategories(terms);
       } catch (err) {
         setFetchError(getErrorMessage(err, 'Failed to read the WooCommerce catalog.'));
         setRows([]);
@@ -132,6 +149,40 @@ export default function AdminCategories() {
     }
   };
 
+  /** Saves through WooCommerce and re-reads, so the list shows the store's row. */
+  const handleWooSave = async (input: { name: string; slug: string; description: string }) => {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      if (wooEditing) await updateAdminCategory(wooEditing.id, input);
+      else await createAdminCategory(input);
+      setWooEditorOpen(false);
+      setWooEditing(null);
+      await fetchCategories();
+    } catch (err) {
+      setActionError(getErrorMessage(err, 'WooCommerce did not save that category.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleWooDelete = async (category: AdminCategory) => {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      await deleteAdminCategory(category.id);
+      setWooDeleteTarget(null);
+      await fetchCategories();
+    } catch (err) {
+      // The store refuses a delete while products are filed under the term; its
+      // own sentence is the message, so it is shown rather than replaced.
+      setActionError(getErrorMessage(err, 'WooCommerce did not delete that category.'));
+      setWooDeleteTarget(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleToggleActive = async (category: Category) => {
     try {
       await adminApi.updateCategory(category.id, { is_active: !category.is_active });
@@ -163,17 +214,21 @@ export default function AdminCategories() {
             : 'The WooCommerce taxonomy the storefront groups products by, read through the shared catalog.'
         }
         actions={
-          READS_SUPABASE_CATALOG ? (
-            <AdminButton
-              variant="primary"
-              icon={Plus}
-              onClick={() => { setEditingCategory(null); setEditorOpen(true); }}
-            >
-              Add category
-            </AdminButton>
-          ) : (
-            <AdminDisabledAction label="Add category" reason={WRITE_CONNECTION_REQUIRED} />
-          )
+          <AdminButton
+            variant="primary"
+            icon={Plus}
+            onClick={() => {
+              if (READS_SUPABASE_CATALOG) {
+                setEditingCategory(null);
+                setEditorOpen(true);
+                return;
+              }
+              setWooEditing(null);
+              setWooEditorOpen(true);
+            }}
+          >
+            Add category
+          </AdminButton>
         }
       />
 
@@ -222,10 +277,12 @@ export default function AdminCategories() {
             unavailable={loading ? 'Reading…' : undefined}
           />
           <AdminStatTile
-            label="Edited here"
+            label="Editable here"
             icon={FolderTree}
             tone="slate"
-            unavailable="Write key required"
+            value={loading ? undefined : wooCategories.length}
+            unavailable={loading ? 'Reading…' : undefined}
+            hint="Written to WooCommerce"
           />
         </div>
       )}
@@ -350,19 +407,59 @@ export default function AdminCategories() {
             )}
           </AdminPanel>
 
-          <AdminPendingPanel
-            title="Category editing is not connected"
-            summary="Creating, renaming, hiding and deleting categories belongs to WooCommerce, and this console holds no credential for it yet."
-            needs={[
-              'A WooCommerce REST key with write access to product categories, stored server-side only.',
-              'A taxonomy slug source: the public product routes report category names, not their slugs, so slugs stay unreported until the authenticated route is available.',
-              'A guard that refuses to delete a category still attached to published products.',
-            ]}
-            available={[
-              `Categories above are read from the same catalog the storefront serves, so the two cannot disagree (${wooFacets.size} in use, ${rows.length} products read).`,
-              'Nothing is written to Supabase for a WooCommerce catalog, so no second taxonomy exists to drift.',
-            ]}
-          />
+          <AdminPanel
+            title="Taxonomy"
+            description="Every category in the store, with the product count WooCommerce reports for it. Edits are written to WooCommerce and re-read from it."
+          >
+            {wooCategories.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+                  <FolderTree size={20} />
+                </span>
+                <p className="text-sm font-semibold text-admin-ink">No categories yet</p>
+                <p className="text-sm text-admin-muted">
+                  WooCommerce reported no product categories. Create the first one to group products.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-admin-line">
+                {wooCategories.map((category) => (
+                  <li key={category.id} className="flex items-center justify-between gap-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-admin-ink">{category.name}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-admin-muted">
+                        /{category.slug} · WooCommerce id {category.id}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <AdminChip tone={category.count > 0 ? 'success' : 'muted'}>
+                        {category.count} product{category.count === 1 ? '' : 's'}
+                      </AdminChip>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWooEditing(category);
+                          setWooEditorOpen(true);
+                        }}
+                        className="rounded-lg p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+                        aria-label={`Edit ${category.name}`}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWooDeleteTarget(category)}
+                        className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
+                        aria-label={`Delete ${category.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminPanel>
         </>
       )}
 
@@ -373,6 +470,45 @@ export default function AdminCategories() {
         onSave={handleSave}
         loading={actionLoading}
       />
+
+      <WooCategoryEditorModal
+        isOpen={wooEditorOpen}
+        onClose={() => { setWooEditorOpen(false); setWooEditing(null); }}
+        category={wooEditing}
+        onSave={handleWooSave}
+        loading={actionLoading}
+      />
+
+      <AnimatePresence>
+        {wooDeleteTarget && (
+          <AdminModal
+            size="sm"
+            title="Delete category"
+            description="The category is removed from WooCommerce. Products are not deleted."
+            onClose={() => setWooDeleteTarget(null)}
+            footer={
+              <>
+                <AdminButton onClick={() => setWooDeleteTarget(null)}>Cancel</AdminButton>
+                <AdminButton
+                  variant="danger"
+                  onClick={() => handleWooDelete(wooDeleteTarget)}
+                  disabled={actionLoading}
+                >
+                  {actionLoading && <Loader2 size={16} className="animate-spin" />}
+                  Delete
+                </AdminButton>
+              </>
+            }
+          >
+            <p className="text-sm text-admin-ink">
+              <span className="font-semibold">{wooDeleteTarget.name}</span> currently holds{' '}
+              {wooDeleteTarget.count} product{wooDeleteTarget.count === 1 ? '' : 's'}. WooCommerce refuses
+              the delete while products are still filed under it, because it would move them to
+              Uncategorized.
+            </p>
+          </AdminModal>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {deleteConfirm && (
@@ -398,6 +534,132 @@ export default function AdminCategories() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * Category editor for the WooCommerce deployment.
+ *
+ * Same three fields the store actually owns — name, slug, description — and no
+ * image or visibility control, because WooCommerce product categories have
+ * neither: the Supabase screen's image/active columns are a Supabase shape, and
+ * offering them here would mean inventing fields the store would silently drop.
+ *
+ * The slug is only generated from the name for a *new* category. On an edit it is
+ * whatever the owner typed: the slug is a public URL, so it is never recomputed
+ * behind their back.
+ */
+function WooCategoryEditorModal({
+  isOpen,
+  onClose,
+  category,
+  onSave,
+  loading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  category: AdminCategory | null;
+  onSave: (input: { name: string; slug: string; description: string }) => void;
+  loading: boolean;
+}) {
+  const [form, setForm] = useState({ name: '', slug: '', description: '' });
+
+  useEffect(() => {
+    setForm({
+      name: category?.name ?? '',
+      slug: category?.slug ?? '',
+      description: category?.description ?? '',
+    });
+  }, [category, isOpen]);
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSave({ name: form.name, slug: form.slug, description: form.description });
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <AdminModal
+          title={category ? 'Edit category' : 'Add category'}
+          description={
+            category
+              ? 'Written to WooCommerce. Changing the slug changes the public category URL.'
+              : 'Written to WooCommerce as a new product category.'
+          }
+          onClose={onClose}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="woo-category-name" className={MICRO_LABEL}>
+                Category name *
+              </label>
+              <input
+                id="woo-category-name"
+                type="text"
+                required
+                value={form.name}
+                onChange={(event) => {
+                  const name = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    name,
+                    slug: category
+                      ? prev.slug
+                      : name
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/(^-|-$)/g, ''),
+                  }));
+                }}
+                className={`${INPUT} mt-1.5 w-full`}
+                placeholder="Salt Licks"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="woo-category-slug" className={MICRO_LABEL}>
+                URL slug
+              </label>
+              <input
+                id="woo-category-slug"
+                type="text"
+                value={form.slug}
+                onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
+                className={`${INPUT} mt-1.5 w-full`}
+                placeholder="salt-licks"
+              />
+              <p className="mt-1 text-[11px] text-admin-muted">
+                Lowercase letters, numbers and hyphens. A slug another category already uses is
+                refused — not renamed.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="woo-category-description" className={MICRO_LABEL}>
+                Description
+              </label>
+              <textarea
+                id="woo-category-description"
+                value={form.description}
+                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                rows={3}
+                className={`${INPUT} mt-1.5 w-full resize-none`}
+                placeholder="Category description…"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-admin-line pt-4">
+              <AdminButton onClick={onClose}>Cancel</AdminButton>
+              <button type="submit" disabled={loading} className={BUTTON.primary}>
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {category ? 'Save changes' : 'Create category'}
+              </button>
+            </div>
+          </form>
+        </AdminModal>
+      )}
+    </AnimatePresence>
   );
 }
 
