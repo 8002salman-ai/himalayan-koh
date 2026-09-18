@@ -34,11 +34,21 @@
    * fetch. Commerce data (products, prices, stock, orders) is never cached
    * here; it is read from WooCommerce per request, because stock has to stay
    * live (see docs/CLOUDFLARE-MIGRATION.md, "Never cached").
+   *
+   * The id belongs to the account this Worker is deployed into, and that is not a
+   * free choice: a Worker custom domain — which is how preview.himalayankoh.com is
+   * attached — requires the zone and the Worker to be in the *same* account, and
+   * `himalayankoh.com` lives in `Himalayankoh.pk@gmail.com`'s account
+   * (fd383fa3284298b20cd3ca9ba8b1dffa). The Worker was first built in
+   * `8002salman@gmail.com`'s account (f542683e97458480452b0b8ef37a898a), whose
+   * namespace id was `1cab497b7f394525941245bc84ff43cb`; that deployment is kept as
+   * rollback and still runs, but its binding is fixed at its last deploy, so this
+   * file describes the live staging deployment only. A binding id is not a secret.
    */
   "kv_namespaces": [
     {
       "binding": "VINEXT_KV_CACHE",
-      "id": "1cab497b7f394525941245bc84ff43cb"
+      "id": "7e62970fbe5049dfb678409d6f28d064"
     }
   ],
 
