@@ -37,7 +37,7 @@
     "build:vinext": "node scripts/clean-next-route-types.mjs && vinext build && node scripts/check-public-origin.mjs && node scripts/check-build-secrets.mjs",
     "build:deploy": "node scripts/prepare-deploy-env.mjs && node scripts/clean-next-route-types.mjs && vinext build && node scripts/check-public-origin.mjs && node scripts/check-build-secrets.mjs",
     "start:vinext": "wrangler dev --config dist/server/wrangler.json",
-    "deploy:vinext": "vinext-cloudflare deploy --config dist/server/wrangler.json"
+    "deploy:vinext": "vinext-cloudflare deploy --config dist/server/wrangler.json && node scripts/check-build-secrets.mjs"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",

@@ -18,6 +18,15 @@
  * left in `dist` is searched for the *values* of the server-side variables this
  * machine actually has. A hit fails the build.
  *
+ * It runs at deploy time too, and that is not belt-and-braces. The same plugin
+ * regenerates `dist/server/wrangler.json` and re-stages `.dev.vars` beside it when
+ * `vinext-cloudflare deploy` runs — `start:vinext` (`wrangler dev`) needs those
+ * values to read the backend locally, so they are put back after the build-time
+ * check has already passed. A build-time-only guard, therefore, leaves the artifact
+ * dirty again by the time it is shipped. Cleaning and verifying at both points is
+ * what makes the invariant "no credentials in the build output" hold rather than
+ * "held briefly".
+ *
  * What it deliberately does not do
  * -------------------------------
  * It never prints, hashes or partially reveals a value. It does not flag
