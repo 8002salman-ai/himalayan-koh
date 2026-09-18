@@ -2,29 +2,39 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Phone, ArrowRight, Send } from 'lucide-react';
-import { productsPathForCategoryTitle } from '../lib/categoryContent';
+import { buildProductsCategoryPath } from '../lib/categoryContent';
 
+/**
+ * Business pages, all of which are real routes carrying the store's own content.
+ * The FAQ and shipping pages were migrated from the production WordPress site in
+ * the frontend content pass (see `docs/FRONTEND-CONTENT-AUDIT.md`), so every link
+ * here resolves to a page that exists rather than to an anchor placeholder.
+ */
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
   { label: 'Shop Products', to: '/products' },
   { label: 'Customer Login', to: '/login' },
   { label: 'Contact Us', to: '/contact' },
+  { label: 'FAQs', to: '/faqs' },
+  { label: 'Shipping & Delivery', to: '/shipping' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Privacy Policy', to: '/privacy' },
 ];
 
 /**
- * The shop's shelves, in the store's own niche.
+ * The shop's shelves, taken from the same taxonomy the catalogue uses.
  *
- * Only edible salt has a hub page today, so the other three point at the
- * catalogue rather than at a filter that would render empty. They become real
- * hub links once the matching WooCommerce categories exist.
+ * Each link is the shelf's own hub URL (`/products?category=<key>`), built from
+ * `lib/catalog/niche.ts` through `categoryContent` rather than written out here,
+ * so a shelf key can never drift from the filter the grid reads. A shelf with no
+ * products yet is simply not linked — the navigation only advertises what the
+ * shop can actually show.
  */
 const productLinks = [
-  { label: 'Edible Pink Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
-  { label: 'Cooking & Serving', to: '/products' },
-  { label: 'Salt Lamps & Décor', to: '/products' },
-  { label: 'Bulk & Wholesale', to: '/products' },
+  { label: 'Edible Pink Salt', to: buildProductsCategoryPath('edible-pink-salt') },
+  { label: 'Cooking & Serving', to: buildProductsCategoryPath('cooking-serving') },
+  { label: 'Salt Lamps & Décor', to: buildProductsCategoryPath('lamps-decor') },
+  { label: 'Bulk & Wholesale', to: buildProductsCategoryPath('bulk') },
 ];
 
 export default function Footer() {
@@ -137,7 +147,7 @@ export default function Footer() {
               className="h-12 mb-5 brightness-0 invert"
             />
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">
-              Pure Himalayan pink salt for cooking, serving and the home — fine and coarse edible grades, salt blocks, lamps and bulk bags, sourced from the Himalayan range.
+              Pure Himalayan pink salt for cooking, serving and the home — fine and coarse edible grades, salt blocks, lamps and bulk bags, from the Khewra salt mine and packed in Houston, Texas.
             </p>
 
           </div>
@@ -184,6 +194,10 @@ export default function Footer() {
                 <Phone size={18} className="text-himalayan flex-shrink-0" />
                 (832) 224-6466
               </a>
+              <p className="text-white/60 text-sm leading-relaxed">
+                12620 FM 1960 W Ste A-4<br />
+                Houston, TX 77065
+              </p>
             </div>
 
             {/* Trust badges */}
@@ -203,7 +217,9 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
+            <Link to="/shipping" className="hover:text-white/60 transition-colors">Shipping</Link>
             <Link to="/return" className="hover:text-white/60 transition-colors">Return Policy</Link>
+            <Link to="/faqs" className="hover:text-white/60 transition-colors">FAQs</Link>
             <a href="/sitemap.xml" className="hover:text-white/60 transition-colors">Sitemap</a>
           </div>
         </div>

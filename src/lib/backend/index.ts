@@ -16,6 +16,7 @@ export { isSupabaseDataSource } from './config';
 export {
   getCatalogProducts,
   getFeaturedCatalogProducts,
+  invalidateCatalogReads,
   lookupCatalogProduct,
   type CatalogLookup,
   type CatalogQuery,

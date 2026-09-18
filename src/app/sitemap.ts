@@ -11,10 +11,11 @@ type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'y
 const STATIC_ROUTES: { path: string; priority: number; changeFrequency: ChangeFrequency }[] = [
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/products', priority: 0.9, changeFrequency: 'daily' },
-  { path: '/blog', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/about', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/gallery', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/contact', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/faqs', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/shipping', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/return', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/terms', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/privacy', priority: 0.3, changeFrequency: 'yearly' },
@@ -46,6 +47,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getCatalogProducts(),
     fetchSeoBlogPosts(),
   ]);
+
+  // `/blog` is listed only when a pink-salt article is actually published. The
+  // blog store still holds the livestock-era posts, and `fetchSeoBlogPosts`
+  // withholds them — so the listing can legitimately be empty, and advertising an
+  // empty listing sends crawlers to a page with nothing on it. It returns to the
+  // sitemap on its own as soon as a suitable article exists.
+  if (posts.length > 0) {
+    entries.push({
+      url: `${origin}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    });
+  }
 
   // A category hub with no real product isn't worth crawling — it's already
   // noindexed on the page itself (see products/page.tsx), so listing it here

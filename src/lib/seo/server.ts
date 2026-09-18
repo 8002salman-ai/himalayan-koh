@@ -8,6 +8,7 @@ import type {
 import type { Product } from '@/data/products';
 import { lookupCatalogProduct } from '@/lib/backend';
 import { isRealCatalogProduct } from '@/lib/supabase/api/products';
+import { filterNicheBlogPosts } from '@/lib/catalog/nicheBlog';
 import { publicEnv } from '@/lib/env';
 
 /**
@@ -223,7 +224,24 @@ export async function fetchSeoBlogPosts(limit = 24): Promise<SeoBlogPostFull[]> 
         .limit(limit)
         .abortSignal(seoFetchDeadline());
 
-      return (data as unknown as SeoBlogPostFull[] | null) ?? [];
+      const posts = (data as unknown as SeoBlogPostFull[] | null) ?? [];
+
+      // The store is Himalayan pink salt. Articles written for the livestock and
+      // pet trade are still in the blog store from the old site, and listing them
+      // here — or handing their URLs to crawlers through the sitemap, which reads
+      // this same function — advertises a business this storefront no longer is.
+      // The judgement lives in `lib/catalog/nicheBlog.ts`; the admin blog console
+      // still reads the store unfiltered, because the owner is who decides what to
+      // do with those posts.
+      const niche = filterNicheBlogPosts(posts);
+      const withheld = posts.length - niche.length;
+      if (withheld > 0) {
+        console.info(
+          `${withheld} blog post${withheld === 1 ? '' : 's'} outside the Himalayan pink salt niche ${withheld === 1 ? 'was' : 'were'} withheld from public listings and the sitemap.`
+        );
+      }
+
+      return niche;
     },
     []
   );

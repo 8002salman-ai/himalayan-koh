@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'Blog - Livestock Health & Himalayan Salt Guides | Himalayan Koh',
+    title: 'Blog - Himalayan Pink Salt Guides | Himalayan Koh',
     description:
       'Guides on Himalayan pink salt: grain sizes, brining and cooking, storage, salt blocks, lamps and buying in bulk.',
     path: '/blog',

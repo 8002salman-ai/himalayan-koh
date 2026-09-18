@@ -11,7 +11,7 @@ import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
 import CategoryShopPanel from '../components/category/CategoryShopPanel';
 import { productMatchesCategoryFilter } from '../lib/categoryContent';
-import { getCatalogProducts, isSupabaseDataSource } from '../lib/backend';
+import { getCatalogProducts, invalidateCatalogReads, isSupabaseDataSource } from '../lib/backend';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 
 /**
@@ -25,15 +25,31 @@ import { useCategoryBlogArticles } from '../hooks/useCategoryBlogArticles';
 import { useCategoryHubContent } from '../hooks/useCategoryHubContent';
 import { useProductsCategoryFilter } from '../hooks/useProductsCategoryFilter';
 
-export default function ProductsPage() {
+/**
+ * The catalogue the server already read for this request, when there is one.
+ *
+ * Passing it in removes the browser's own catalogue read on first paint: the grid
+ * renders the products the page was rendered with, and only a later invalidation
+ * (a realtime change) asks the backend again. That read then goes through the
+ * shared cache in `lib/backend/products.ts` rather than issuing a fresh
+ * full-catalogue request per mount.
+ */
+export interface ProductsPageProps {
+  initialProducts?: Product[] | null;
+}
+
+export default function ProductsPage({ initialProducts }: ProductsPageProps = {}) {
   const { activeFilter, categoryKey } = useProductsCategoryFilter();
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
-  const [products, setProducts] = useState<Product[]>(fallbackProducts);
-  const [loading, setLoading] = useState(USES_SUPABASE_SOURCE ? isSupabaseConfigured() : true);
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? fallbackProducts);
+  const [loading, setLoading] = useState(
+    initialProducts ? false : USES_SUPABASE_SOURCE ? isSupabaseConfigured() : true
+  );
   const prevCategoryKey = useRef<string | null>(null);
-  const hasLoadedOnce = useRef(false);
+  const hasLoadedOnce = useRef(Boolean(initialProducts));
   const fetchSeq = useRef(0);
+  const serverCatalogRef = useRef(Boolean(initialProducts));
 
   const { content: categoryContent, loading: hubContentLoading } = useCategoryHubContent(categoryKey);
 
@@ -99,7 +115,13 @@ export default function ProductsPage() {
       }, 400);
     };
 
-    fetchProducts();
+    // The server already sent this request's catalogue, so there is nothing to
+    // fetch on mount. A realtime event still schedules a read — and drops the
+    // shared cache first, so that read is fresh rather than served from the
+    // window the catalogue was read in.
+    if (!serverCatalogRef.current) {
+      fetchProducts();
+    }
 
     // Realtime invalidation is a Supabase feature; the WooCommerce source
     // refetches through the backend instead.
@@ -109,10 +131,15 @@ export default function ProductsPage() {
       };
     }
 
+    const invalidateThenFetch = () => {
+      invalidateCatalogReads();
+      scheduleFetch();
+    };
+
     const channel = supabase
       .channel('shop-products-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => scheduleFetch())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => scheduleFetch())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => invalidateThenFetch())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => invalidateThenFetch())
       .subscribe();
 
     return () => {

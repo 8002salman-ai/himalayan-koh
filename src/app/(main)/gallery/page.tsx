@@ -4,7 +4,7 @@ import GalleryClient from './GalleryClient';
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'Gallery - Himalayan Koh Salt Products & Livestock Use',
+    title: 'Gallery - Himalayan Pink Salt Products | Himalayan Koh',
     description:
       'Photos of Himalayan Koh pink salt: fine and coarse edible grades, bulk rock salt bags, and salt in the kitchen.',
     path: '/gallery',

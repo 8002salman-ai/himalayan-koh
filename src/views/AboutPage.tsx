@@ -226,17 +226,22 @@ export default function AboutPage() {
             viewport={{ once: true }}
           >
             <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-6">
-              Our Commitment to Quality
+              Where the Salt Comes From
             </h2>
             <p className="text-white/70 text-lg leading-relaxed mb-6">
-              At Himalayan Koh, we source our salt from the Himalayan salt range and check every
-              batch for grain consistency and cleanliness before it is packed. If a batch does not
-              meet the standard, it does not go out.
+              Our Himalayan rose pink salt comes from the Khewra salt mine, in the Jhelum
+              District of Pakistan. We work only with hand-picked exporters, so the salt that
+              reaches us is the salt we asked for, and we check each batch for grain consistency
+              before it is packed.
+            </p>
+            <p className="text-white/70 text-lg leading-relaxed mb-6">
+              From there it is packed and shipped from our warehouse in Houston, Texas — jars and
+              pouches for the kitchen, blocks for the grill and the table, and bulk bags for
+              kitchens and shops that go through salt quickly.
             </p>
             <p className="text-white/70 text-lg leading-relaxed">
-              Our mission is simple: bring the same unrefined pink salt to home cooks, restaurants
-              and shops — in jars for the counter, blocks for the grill, and bulk bags for kitchens
-              that go through salt quickly.
+              Bulk and wholesale orders are welcome, including orders shipping outside the United
+              States. If you are buying in quantity, call us and we will work it out with you.
             </p>
           </motion.div>
         </div>

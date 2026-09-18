@@ -26,8 +26,10 @@
  * so nothing invented can reach a WooCommerce-powered page.
  */
 
+import { cache } from 'react';
 import type { Product } from '../../data/products';
 import { storefrontProducts as demoProducts } from '../../data/products';
+import { invalidateSharedReads, readShared } from '../catalog/readCache';
 import { isSupabaseConfigured } from '../supabase/client';
 import { productsApi } from '../supabase/api';
 import { isHiddenActiveProduct } from '../supabase/api/products';
@@ -312,9 +314,71 @@ export async function readCatalogProducts(query: CatalogQuery = {}): Promise<Cat
   return isWooCommerceDataSource() ? wooList(query) : supabaseList(query);
 }
 
-/** The storefront's catalog: the source's catalog, scoped to the store's niche. */
+/**
+ * A stable cache key for a catalog query.
+ *
+ * Only the fields that change the answer are included, so two callers asking for
+ * the same page of the same catalogue share one read, and a caller that passes an
+ * equivalent query in a different object shape still hits it.
+ */
+function catalogQueryKey(query: CatalogQuery): string {
+  return JSON.stringify({
+    perPage: query.perPage ?? null,
+    page: query.page ?? null,
+    slug: query.slug ?? null,
+    search: query.search ?? null,
+    categorySlug: query.categorySlug ?? null,
+    isFeatured: query.isFeatured ?? null,
+  });
+}
+
+/**
+ * Per-request memo for the server read.
+ *
+ * `/products` reads the catalogue twice in one request — once for the metadata
+ * (the category noindex decision, the AggregateOffer price range) and once for
+ * the page — and the sitemap reads it too. Without this memo each of those issued
+ * its own upstream request chain. React's `cache` scopes the result to the current
+ * request, so two renders in the same request share a read while a later request
+ * always re-reads: stock stays fresh, and nothing is cached across visitors.
+ */
+const readCatalogForRequest = cache(async (key: string): Promise<CatalogResult> =>
+  readCatalogProducts(JSON.parse(key) as CatalogQuery)
+);
+
+/**
+ * The storefront's catalog: the source's catalog, scoped to the store's niche.
+ *
+ * Server renders share one read per request (above). In the browser the same read
+ * goes through `readShared`, which shares an in-flight request between components
+ * and reuses the answer for a short window instead of every catalogue surface
+ * re-reading the whole catalogue on mount.
+ */
 export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
-  return scopeToNiche(await readCatalogProducts(query));
+  const key = catalogQueryKey(query);
+
+  if (typeof window === 'undefined') {
+    return scopeToNiche(await readCatalogForRequest(key));
+  }
+
+  // A caller that can abort expects its own request; a cache would hand it a
+  // promise it cannot cancel and keep the result afterwards.
+  const result = await readShared(
+    `catalog:${key}`,
+    () => readCatalogProducts(query),
+    { noStore: Boolean(query.signal) }
+  );
+  return scopeToNiche(result);
+}
+
+/**
+ * Drop the browser cache of catalog reads.
+ *
+ * Called when the catalogue is known to have changed (a realtime product event),
+ * so the next read is fresh instead of waiting out the TTL.
+ */
+export function invalidateCatalogReads(): void {
+  invalidateSharedReads();
 }
 
 /**
@@ -335,11 +399,22 @@ export async function lookupCatalogProduct(slug: string, signal?: AbortSignal): 
   return lookup;
 }
 
-/** Featured products for the homepage. */
+/**
+ * Featured products for the homepage.
+ *
+ * The WooCommerce branch goes through the same sharing rules as the main list
+ * read: memoized per request on the server, and served from the browser's shared
+ * read cache so a homepage visit does not re-read the catalogue on every mount.
+ * The Supabase branch keeps its own behaviour — a failed featured read costs the
+ * homepage its row, never the page.
+ */
+const readFeaturedForRequest = cache(async (limit: number): Promise<Product[]> => {
+  const { products } = await wooList({ perPage: limit, isFeatured: true });
+  return products;
+});
+
 export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
   if (!isWooCommerceDataSource()) {
-    // A failed featured read costs the homepage its row; it must not cost it the
-    // page. The same rule as the list read: report, never throw.
     try {
       const rows = await productsApi.getFeaturedProducts(limit);
       return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
@@ -348,6 +423,14 @@ export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> 
       return [];
     }
   }
-  const { products } = await wooList({ perPage: limit, isFeatured: true });
+
+  const products =
+    typeof window === 'undefined'
+      ? await readFeaturedForRequest(limit)
+      : await readShared(`catalog:featured:${limit}`, async () => {
+          const { products: featured } = await wooList({ perPage: limit, isFeatured: true });
+          return featured;
+        });
+
   return filterNicheProducts(products).slice(0, limit);
 }

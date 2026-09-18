@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Clock, Send, MessageSquare, CheckCircle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Mail, Phone, Clock, Send, MessageSquare, CheckCircle, Loader2, MapPin } from 'lucide-react';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -112,10 +113,30 @@ export default function ContactPage() {
                     <Clock size={20} className="text-himalayan" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-charcoal mb-1">Business Hours</h4>
+                    <h4 className="font-semibold text-charcoal mb-1">Phone Hours</h4>
                     <p className="text-charcoal-light text-sm">
-                      Mon - Fri: 9:00 AM - 6:00 PM<br />
-                      Sat: 10:00 AM - 4:00 PM
+                      Monday - Friday: 8:00 AM - 5:00 PM CST<br />
+                      Closed weekends and holidays
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-himalayan-lighter rounded-xl flex items-center justify-center flex-shrink-0">
+                    <MapPin size={20} className="text-himalayan" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-charcoal mb-1">Mailing Address</h4>
+                    <p className="text-charcoal-light text-sm">
+                      12620 FM 1960 W Ste A-4<br />
+                      Houston, TX 77065
+                    </p>
+                    <p className="text-charcoal-light text-xs mt-2">
+                      Returns go to a different address - see the{' '}
+                      <Link href="/return" className="text-himalayan hover:underline font-semibold">
+                        return policy
+                      </Link>
+                      .
                     </p>
                   </div>
                 </div>
@@ -149,7 +170,8 @@ export default function ContactPage() {
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
               <h3 className="font-serif text-2xl font-bold text-charcoal mb-2">Send us a Message</h3>
               <p className="text-charcoal-light mb-8">
-                Fill out the form below and we&apos;ll get back to you within 24 hours.
+                Fill out the form and we&apos;ll get back to you. We answer messages during
+                business hours, Monday to Friday.
               </p>
 
               {submitted ? (
@@ -252,6 +274,16 @@ export default function ContactPage() {
                     {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                     {submitting ? 'Sending…' : 'Send Message'}
                   </motion.button>
+
+                  <p className="text-xs text-charcoal-light leading-relaxed pt-1">
+                    By sending this form you agree that the details you submit are collected and
+                    stored so we can answer you. For further details on how we handle your data,
+                    see our{' '}
+                    <Link href="/privacy" className="text-himalayan hover:underline">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </p>
                 </form>
               )}
             </div>

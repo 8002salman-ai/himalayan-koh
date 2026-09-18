@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonLd';
 import { fetchSeoBlogPostFull } from '@/lib/seo/server';
+import { isOffNicheBlogPost } from '@/lib/catalog/nicheBlog';
 import { SITE_NAME } from '@/lib/seo/constants';
 import JsonLd from '@/components/seo/JsonLd';
 import BlogDetailClient from './BlogDetailClient';
@@ -19,7 +20,7 @@ export async function generateMetadata({
   if (!post) {
     return buildMetadata({
       title: 'Blog - Himalayan Koh',
-      description: 'Livestock health, mineral nutrition, and Himalayan salt guides.',
+      description: 'Himalayan pink salt guides: grain sizes, cooking, storage and buying in bulk.',
       path: `/blog/${slug}`,
     });
   }
@@ -32,6 +33,11 @@ export async function generateMetadata({
     path: `/blog/${post.slug}`,
     ogImage: post.featured_image,
     ogType: 'article',
+    // Articles written for the livestock/pet trade are still in the blog store
+    // from the old site. They stay readable at their old URL so nothing that was
+    // ever public 404s, but they are noindexed and kept out of the listing and
+    // the sitemap, because this storefront sells Himalayan pink salt for people.
+    noindex: isOffNicheBlogPost({ title: post.title, slug: post.slug, excerpt: post.excerpt }),
   });
 }
 

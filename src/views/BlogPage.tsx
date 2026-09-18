@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowUpRight, Clock, Loader2, Search, Tag, User } from 'lucide-react';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { filterNicheBlogPosts } from '../lib/catalog/nicheBlog';
 
 interface BlogPageProps {
   /**
@@ -28,9 +29,13 @@ export default function BlogPage({ initialPosts = [] }: BlogPageProps) {
 
       try {
         const { posts: fetched } = await blogApi.getPosts();
+        // Filtered the same way the server filters, so the listing cannot change
+        // its niche after hydration: the storefront is Himalayan pink salt, and
+        // the livestock articles in the blog store are not part of it.
+        const niche = filterNicheBlogPosts(fetched);
         // Keep the server-rendered list if the refetch returns nothing.
-        if (fetched.length || !initialPosts.length) {
-          setPosts(fetched);
+        if (niche.length || !initialPosts.length) {
+          setPosts(niche);
         }
       } catch (err) {
         console.error('Failed to fetch blog posts:', err);
@@ -106,7 +111,18 @@ Notes on pink salt: how it is used, how it is stored, and what the labels mean
           </div>
         ) : filteredPosts.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-12 text-center text-charcoal-light">
-            No blog posts found.
+            <p className="mb-2">
+              {searchQuery.trim()
+                ? 'No articles match that search.'
+                : 'Our guides are being migrated to the new site.'}
+            </p>
+            <p className="text-sm">
+              In the meantime, the{' '}
+              <Link to="/faqs" className="text-himalayan hover:underline">
+                FAQ
+              </Link>{' '}
+              covers cooking, grain sizes, shipping and returns.
+            </p>
           </div>
         ) : (
           <>

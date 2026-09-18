@@ -83,18 +83,26 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     });
   }
 
-  // Price range for the AggregateOffer on the main listing.
+  // One catalogue read serves the page, the schema below and the client grid.
   //
-  // The range is read from the catalog seam — the same source the page renders —
-  // so schema can never advertise a price the shop is not actually showing. When
-  // the source cannot report prices no offer is emitted at all, which is why
-  // this is silent rather than an error, and why `availability` is omitted
-  // unless the source reported stock we can stand behind.
+  // The read goes through the catalog seam — the same source the grid renders —
+  // so schema can never advertise a price the shop is not actually showing, and
+  // the client is handed the products this render was built from instead of
+  // asking the backend for the whole catalogue again on mount. The seam memoizes
+  // per request, so `generateMetadata` (the hub noindex decision) does not pay for
+  // a second upstream read.
+  //
+  // When the source cannot report prices no AggregateOffer is emitted at all,
+  // which is why this is silent rather than an error, and why `availability` is
+  // omitted unless the source reported stock we can stand behind.
+  let catalogProducts: Awaited<ReturnType<typeof getCatalogProducts>>['products'] | null = null;
   let aggregateOffer = null;
-  if (!category) {
-    try {
-      const { products } = await getCatalogProducts();
-      const priced = products.filter(
+  try {
+    const read = await getCatalogProducts();
+    catalogProducts = read.products;
+
+    if (!category) {
+      const priced = read.products.filter(
         (product) => typeof product.priceMin === 'number' && Number.isFinite(product.priceMin)
       );
       if (priced.length > 0) {
@@ -107,16 +115,18 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
           availability: priced.some((product) => product.inStock) ? 'InStock' : 'OutOfStock',
         });
       }
-    } catch (err) {
-      console.error('Could not fetch product prices for schema:', err);
     }
+  } catch (err) {
+    // A failed read costs the page its schema and its first paint data, not the
+    // page: the grid then reads for itself and reports the failure there.
+    console.error('Could not read the catalog for /products:', err);
   }
 
   return (
     <>
       <JsonLd data={breadcrumbJsonLd(breadcrumb)} />
       {aggregateOffer && <JsonLd data={aggregateOffer} />}
-      <ProductsClient />
+      <ProductsClient initialProducts={catalogProducts} />
     </>
   );
 }

@@ -208,7 +208,12 @@ export default function ProductDetailView({
           )}
 
           <div className="space-y-2 mb-5">
-            {['100% Natural & Pure', 'Rich in 84+ Minerals', 'Free Shipping on $50+'].map((feat) => (
+            {/* Three claims, each traceable to the business's own product copy
+                ("100% Natural & Unrefined", "Over 80 essential minerals", packed in
+                Houston TX). A previous line here advertised "Free Shipping on $50+",
+                which appears nowhere in production content — shipping is priced by
+                weight and destination — so it is gone rather than implied. */}
+            {['100% Natural & Unrefined', 'Up to 84 trace minerals', 'Packed in Houston, Texas'].map((feat) => (
               <div key={feat} className="flex items-center gap-2 text-sm text-charcoal">
                 <Check size={16} className="text-green-500 flex-shrink-0" />
                 {feat}
