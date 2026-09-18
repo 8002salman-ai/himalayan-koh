@@ -17,13 +17,13 @@
 /**
  * The pink salt photographs the storefront uses.
  *
- * The five livestock-era images that used to be registered here (paddock and
- * cattle shots, a horse banner) are gone with the products they illustrated. An
- * asset record is not harmless: its `alt` text and file name are what a gallery
- * renders, so leaving them registered would leave livestock copy one import away
- * from the page.
+ * The registry is deliberately small: an asset record is not harmless, because
+ * its `alt` text and file name are what a gallery renders. This is the set the
+ * approved public pages actually reference — the homepage hero among them — and
+ * nothing is registered "just in case".
  */
 export type LegacyImageKey =
+  | 'horseLicking'
   | 'bowlOfSalt'
   | 'saltPouch6lb'
   | 'pinkSaltJar16oz'
@@ -42,6 +42,12 @@ const LEGACY_DIR = '/images/legacy';
 const WP_BASE = 'https://himalayankoh.com/wp-content/uploads';
 
 export const LEGACY_IMAGES: Record<LegacyImageKey, LegacyImage> = {
+  horseLicking: {
+    src: `${LEGACY_DIR}/horse-licking-salt.jpg`,
+    width: 600,
+    height: 450,
+    wordpress: `${WP_BASE}/2017/10/slat-licking-horse.jpg`,
+  },
   bowlOfSalt: {
     src: `${LEGACY_DIR}/bowl-of-salt.jpg`,
     width: 600,

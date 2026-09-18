@@ -14,32 +14,33 @@ import { isSupabaseConfigured } from '@/lib/supabase/client';
 const USES_SUPABASE_SOURCE = isSupabaseDataSource();
 
 /**
- * The storefront's opening pitch.
+ * The storefront's opening pitch, restored to the wording the owner approved on
+ * the public site.
  *
- * Every claim here is about the salt itself — where it comes from and how it is
- * used — because the shop sells pink salt and nothing else. What is actually for
- * sale, at what price and in what stock, is read from the catalog below and
- * never stated in this copy.
+ * The migration had rewritten this copy into a kitchen-only voice; that was a
+ * content change, not part of moving the runtime, so the approved text is back.
+ * What is actually for sale, at what price and in what stock, is still read from
+ * the catalog below and never stated in this copy.
  */
 const saltBenefits = [
-  'Unrefined rock salt, mined from the Himalayan range and packed without anti-caking agents or bleaching.',
-  'The pink colour is iron the rock already held — a sign the salt was not washed into pure white sodium chloride.',
-  'Fine, medium and coarse grains for baking, brining, grinders and finishing.',
-  'Blocks, lamps and bulk bags from the same seam, for cooking, the table and the home.',
+  'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
+  'Livestock need sodium and chloride to maintain appetite, weight, milk production, and healthy growth.',
+  'Pure Himalayan pink salt provides natural magnesium and mineral support that helps animals stay stronger and healthier.',
+  'Our Himalayan salt licks and rock salt are a natural improvement over livestock salts with added mineral supplements.',
 ];
 
 const healthCards = [
   {
-    title: 'Unrefined by Design',
-    text: 'Nothing is added and nothing is stripped out. What the rock contained is what reaches the kitchen.',
+    title: 'Better Livestock Health',
+    text: 'Quality sodium and chloride support appetite, body weight, hydration, and daily herd performance.',
   },
   {
-    title: 'Grain for the Job',
-    text: 'Fine dissolves into baking and brines, medium fills a grinder, coarse finishes a plate and seasons a block.',
+    title: 'Milk Production Support',
+    text: 'Good salt intake helps mothers maintain the mineral balance needed for stronger milk production.',
   },
   {
-    title: 'Packed to Stay Dry',
-    text: 'Resealable pouches, jars and bags — salt keeps indefinitely as long as it is sealed and away from steam.',
+    title: 'Magnesium & Nutrition',
+    text: 'Natural Himalayan minerals support recovery, strength, and overall wellness for working animals.',
   },
 ];
 
@@ -93,27 +94,24 @@ export default function HomePage() {
             >
               <div className="flex justify-center mb-6">
                 <span className="inline-block px-5 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full text-center">
-                  Pure Himalayan Pink Salt
+                  World&apos;s Best for Livestock
                 </span>
               </div>
               {/* h1, not h2: this is the homepage's main heading — the page had
                   no h1 at all, so search engines had no primary topic signal.
                   Styling lives in the className, so the visual size is unchanged. */}
-              {/* Headline restored to the approved storefront wording. The copy
-                  the owner signed off on opens on the crystal salt and its cooking
-                  pedigree; the salt-only framing is what keeps it publishable. */}
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
                 Rich All Natural Himalayan Pink Salt
               </h1>
               <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
-                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks — a natural rock salt that keeps the trace minerals and iron the seam gave it instead of being washed into pure white sodium chloride.
+                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
                 </p>
                 <p>
-                  We carry it the way a kitchen actually uses it: fine grain for baking and brines, coarse for the grinder and for finishing, thick blocks for the grill and the table, and lamps and décor carved from the same rock.
+                  Himalayan pink rock salt not only tastes its salty best, but gives cattle, horses, deer, and other animals the quality NaCl they need to stay healthy and be more productive.
                 </p>
                 <p>
-                  Shop the salt, read how to use it, or ask us about bulk and wholesale orders.
+                  Ensure your herd is healthy and happy. Shop our convenient premium Himalayan Pink Salt products and enjoy friendly customer service from Himalayan Koh.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 mb-8">
@@ -142,15 +140,15 @@ export default function HomePage() {
               className="grid grid-cols-2 gap-5"
             >
               <img
-                src={legacyImage('pinkSaltJar16oz')}
-                alt="Jar of unrefined pink Himalayan cooking salt"
+                src={legacyImage('horseLicking')}
+                alt="Horse licking Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
               />
               <img
                 src={legacyImage('bowlOfSalt')}
-                alt="Bowl of coarse unrefined pink salt crystals"
+                alt="Bowls of Himalayan salt"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}

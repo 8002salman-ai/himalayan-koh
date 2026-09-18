@@ -14,10 +14,13 @@ export const SITE_URL =
     ? 'https://himalayankoh.com'
     : 'http://localhost:3000');
 export const SITE_NAME = 'Himalayan Koh';
+// Restored to the approved public metadata. The migration had rewritten both into
+// a kitchen-only voice, which is a content change rather than part of moving the
+// runtime, so the wording the owner approved is back.
 export const DEFAULT_TITLE =
-  'Himalayan Koh — Pure Himalayan Pink Salt for Cooking & Home';
+  'Himalayan Koh - Premium Pink Salt for Livestock & Cooking';
 export const DEFAULT_DESCRIPTION =
-  'All-natural Himalayan pink salt: fine and coarse edible grades, cooking and serving blocks, lamps and décor, and bulk salt by the bag. Mineral-rich, unrefined, and sourced from the Himalayan range.';
+  'Premium Himalayan Pink Salt for horses, cattle, deer, and edible cooking. All natural, mineral-rich Himalayan salt products.';
 /**
  * Social crawlers (Facebook, X, LinkedIn) and Google's rich results do not
  * accept SVG for og:image — this must stay a raster URL. Served as a real

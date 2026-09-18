@@ -26,17 +26,15 @@ const WP_BASE = 'https://himalayankoh.com/wp-content/uploads';
 /**
  * Original WordPress path -> filename to save it as.
  *
- * The five livestock-era images that used to head this list (a horse paddock
- * shot, a horse licking a salt block, a horses-grazing banner, and two cattle
- * shots) are gone, along with the files in public/images/legacy/. They are no
- * longer referenced by src/lib/images/legacyAssets.ts, so nothing rendered them
- * — but a public/ file is served to anyone who asks for its URL, and this store
- * sells Himalayan pink salt for kitchens, not salt licks for livestock. Leaving
- * the entries here would have quietly re-downloaded them on the next
- * `npm run images:fetch`.
+ * This list mirrors `src/lib/images/legacyAssets.ts` exactly, and
+ * scripts/check-legacy-images.mjs fails the build if the two drift. It is kept
+ * to the images the approved public pages actually render: the homepage hero
+ * uses the horse shot, so it belongs here, and the paddock/banner/cattle shots
+ * that nothing references do not.
  */
 const IMAGES = [
   ['2017/10/bowl-of-salt.jpg', 'bowl-of-salt.jpg'],
+  ['2017/10/slat-licking-horse.jpg', 'horse-licking-salt.jpg'],
   ['2025/07/6-lbs-pouche.webp', 'salt-pouch-6lb.webp'],
   ['2024/08/WhatsApp-Image-2024-08-02-at-11.31.07-PM-500x500.jpeg', 'pink-salt-16oz-jar.jpg'],
   ['2023/08/S6-600x450.jpg', 'salt-rock-bag.jpg'],
