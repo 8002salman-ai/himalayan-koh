@@ -53,6 +53,29 @@ Full suite, commit `4fbc39f` (`/api/version` reports the same SHA):
 - Catalog: 18 authorised SKUs public with live Woo prices; 0 duplicate SKUs.
 - Crafted URLs for retired livestock products still 308 to the catalogue.
 
+## Product 404s are real 404s now (2026-09-18)
+
+A retired or invented product URL used to answer **`200`** with the title "Product not
+found" and no product in the body — a soft 404 that a crawler is invited to index.
+All five hidden records (`/products/pouches`, `/products/salt-licks`,
+`/products/himalayan-rock-salt-bag`, `/products/himalayan-edible-pink-salt`,
+`/products/himalayan-koh-edible-salt-grain`) and every invented slug did it.
+
+**Cause: `src/app/loading.tsx`.** A `loading.tsx` in any ancestor segment wraps the
+page in a Suspense boundary, so Next streams the skeleton with `HTTP 200` before the
+page resolves, and the `notFound()` the page raises afterwards can no longer set the
+status. The page's own `notFound()` was correct in every review of it — the boundary
+above it was the whole bug, which is why it survived this long. The file is gone; its
+comment justified it as load-bearing for `useSearchParams`, and the production build
+passes without it. `app/admin/loading.tsx` stays: the admin console has no 404 to
+report.
+
+What this costs: the cold-load skeleton on public routes is gone, so a cold load now
+paints the real document instead of a placeholder. What it buys: `HTTP 404` with the
+shop's not-found page, no product data serialised, and a route-level regression test
+(`src/app/(main)/products/[slug]/page.status.test.ts`) that fails if a boundary is
+reintroduced anywhere above the product route.
+
 ## Open blocker: the checkout chain is not verifiable
 
 `product → cart → checkout → Stripe → Woo order → My Orders → Shippo` was **not**
@@ -71,6 +94,37 @@ Independently of credentials, the write path for orders is still Supabase: cart,
 legacy database. WooCommerce is authoritative for products, prices, stock,
 categories and coupon/order *reads*; it is **not** yet the order write target. That
 is a dual source of truth and is recorded here rather than quietly left.
+
+### Order source of truth — audit, 2026-09-18 (read-only, nothing migrated)
+
+| Area | Where it actually lives |
+|---|---|
+| Checkout order creation | `CheckoutPage.tsx` → `ordersApi.createOrder` → `POST /api/orders/create` → `serverCreateOrder()` → Supabase `orders` + `order_items` (service-role) |
+| Order pricing | re-priced inside `serverCreateOrder` from **Supabase `products.price`** — not from WooCommerce |
+| Cart | Supabase `carts` / `cart_items` (`cartStore.ts`), keyed by product id |
+| Stripe | PaymentIntent metadata carries the **Supabase order id**; `verify-payment` and the webhook both call `markOrderPaid()` → Supabase `orders` |
+| Customer "My Orders" | `/account` → `ordersApi.getUserOrders` → Supabase `orders` filtered by `user_id`; guests via `/api/orders/get`, `/api/orders/track` |
+| Admin Orders | `/admin/orders` → `adminApi.getOrders` / `getOrderAnalytics` → Supabase |
+| Shipping label + tracking | `/api/shippo/create-label` reads and writes Supabase `orders` (`tracking_number`, `label_url`, `shipped_at`) |
+| Inventory decrement | **nowhere.** No trigger on `orders`, no application code decrements stock; `inventory` rows are only edited by hand in the admin console |
+| WooCommerce order read/write | **none.** `src/lib/woo/` is product-write only; no `/wc/v3/orders` call exists anywhere in `src/` |
+| Dual write | **none** — there is no second writer, so there is no dual write to reconcile, only a source that cannot serve the catalog it sells |
+
+One consequence is structural rather than a matter of credentials: `cart_items.product_id`
+is `UUID REFERENCES products(id)`, while the public catalog's product ids are
+WooCommerce **integers** (e.g. `2497`). Adding a WooCommerce product to the cart therefore
+inserts a numeric id into a uuid column, and `serverCreateOrder` re-prices through
+`cart_items → products` joins that only exist in Supabase. The order path is not merely
+unmigrated — it cannot complete against the WooCommerce catalog as it stands today. That
+finding is from reading the schema and the code paths, not from executing a checkout: no
+checkout was run, and nothing was written during this audit.
+
+Before production, orders must move as one unit: cart keyed by Woo ids → order created
+through `/wc/v3/orders` and priced from Woo → Stripe PaymentIntent referencing the Woo
+order id → `My Orders` and the admin console reading Woo orders (customer matched by the
+authenticated identity) → label/tracking stored on the Woo order → stock left to
+WooCommerce, which decrements it itself when the order is created there. Supabase can
+stay for authentication until that replacement is proven, which is a separate decision.
 
 ## Owner decisions resolved (2026-09-18)
 
