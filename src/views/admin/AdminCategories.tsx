@@ -513,10 +513,24 @@ export default function AdminCategories() {
             )}
             <p className="text-sm text-admin-ink">
               <span className="font-semibold">{wooDeleteTarget.name}</span> currently holds{' '}
-              {wooDeleteTarget.count} product{wooDeleteTarget.count === 1 ? '' : 's'}. WooCommerce refuses
-              the delete while products are still filed under it, because it would move them to
-              Uncategorized.
+              {wooDeleteTarget.count} product{wooDeleteTarget.count === 1 ? '' : 's'}.
             </p>
+            {/*
+              The refusal sentence belongs to the case it describes. It used to be
+              printed unconditionally, so an empty category announced that the
+              store would refuse a delete it was about to accept.
+            */}
+            {wooDeleteTarget.count > 0 ? (
+              <p className="mt-2 text-sm text-admin-muted">
+                WooCommerce refuses this delete while products are still filed under the term,
+                because it would move them to Uncategorized. Move them to another category first.
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-admin-muted">
+                No products are filed under it, so nothing else is affected. The products
+                themselves are never deleted.
+              </p>
+            )}
           </AdminModal>
         )}
       </AnimatePresence>
