@@ -19,11 +19,14 @@ import {
  * set of shelves.
  *
  * The livestock shelves that used to live here are gone rather than renamed: the
- * store no longer sells those products, so the hubs, their copy and their filter
- * pills were retired together with the SKUs. A link that still carries one of the
- * old values is not special-cased anywhere — `normalizeCategoryQueryValue` treats
- * every value that is not a live shelf key as All, so a retired shelf and a
- * misspelled one behave identically and neither can render an empty hub.
+ * store does not sell feed-trade products, so those hubs, their copy and their
+ * filter pills were retired together with the SKUs. `licks-blocks` is not one of
+ * them returning — it is the shelf for the Salt Licks range the owner authorises
+ * in the price list, which is why it exists in `NICHE_SECTIONS` and is admitted by
+ * SKU rather than by the term guard. A link that still carries a retired value is
+ * not special-cased anywhere — `normalizeCategoryQueryValue` treats every value
+ * that is not a live shelf key as All, so a retired shelf and a misspelled one
+ * behave identically and neither can render an empty hub.
  */
 
 /** Display label for "no shelf selected". */

@@ -231,6 +231,43 @@ export const CATEGORY_CONTENT_REGISTRY: Record<CategoryContentKey, CategoryConte
     emptyStates: {},
   },
 
+  'licks-blocks': {
+    key: 'licks-blocks',
+    productCategoryLabel: 'Salt Licks & Blocks',
+    hero: {
+      eyebrow: 'Solid pink salt',
+      title: 'Salt Licks & Blocks',
+      subtitle:
+        'Solid pieces of Himalayan pink salt from the Khewra range, supplied in the weights our price list states.',
+    },
+    seo: {
+      title: 'Himalayan Pink Salt Licks & Blocks | Himalayan Koh',
+      description:
+        'Solid Himalayan pink salt licks and blocks from the Khewra range, in the weights our price list covers. Packed in Houston and shipped across the U.S.',
+    },
+    trustPoints: [
+      { label: 'Solid salt, not coated', detail: 'Cut from the same mineral rock as our edible grades.' },
+      { label: 'Weight as listed', detail: 'Sold at the weight the product line states.' },
+      { label: 'Packed in Houston', detail: 'Ships from our Texas warehouse in 1–2 business days.' },
+    ],
+    gallery: [
+      { id: 'lick-rock', src: IMG.rockBag, alt: 'Large pieces of solid pink Himalayan salt', width: 600, height: 450 },
+      { id: 'lick-bowl', src: IMG.saltBowl, alt: 'Coarse pink salt crystals beside a solid salt piece', width: 600, height: 450 },
+    ],
+    // Empty on purpose. These collections are content, and inventing guides or
+    // articles about a range the owner has only just authorised would be exactly
+    // the kind of unverified claim this migration has been removing. The shelf
+    // says so in its own empty states instead of rendering nothing.
+    guides: [],
+    articles: [],
+    pdfs: [],
+    emptyStates: {
+      guides: 'Handling guides for this range are being written.',
+      articles: 'Articles for this range are coming soon.',
+      pdfs: 'No downloads are published for this range yet.',
+    },
+  },
+
   'lamps-decor': {
     key: 'lamps-decor',
     productCategoryLabel: 'Salt Lamps & Décor',

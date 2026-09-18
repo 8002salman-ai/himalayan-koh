@@ -25,6 +25,17 @@ export interface NicheCheckInput {
    * bring one back.
    */
   id?: number | string | null;
+  /**
+   * The record's SKU, when the source reports one.
+   *
+   * This is the key the *owner* uses: `Himalayan Salt Products Price List.xlsx`
+   * authorises the catalog by SKU, and those SKUs are the ones that carry the
+   * salt-lick and salt-block lines — names the term guard would otherwise refuse
+   * for containing the word "lick". Approval is therefore keyed on the SKU (see
+   * `OWNER_APPROVED_SKUS` in `./niche.ts`), which is also the only product field
+   * that stays stable across a rename.
+   */
+  sku?: string | null;
   name: string;
   /** The product's category label, when the source reports one. */
   category?: string | null;
@@ -40,7 +51,12 @@ export interface NicheCheckInput {
   description?: string | null;
 }
 
-export type NicheSectionKey = 'edible-pink-salt' | 'cooking-serving' | 'lamps-decor' | 'bulk';
+export type NicheSectionKey =
+  | 'edible-pink-salt'
+  | 'cooking-serving'
+  | 'licks-blocks'
+  | 'lamps-decor'
+  | 'bulk';
 
 export interface NicheSection {
   key: NicheSectionKey;
@@ -59,6 +75,11 @@ export const NICHE_SECTIONS: readonly NicheSection[] = [
     key: 'cooking-serving',
     label: 'Cooking & Serving',
     description: 'Salt blocks and plates for grilling, chilling and serving at the table.',
+  },
+  {
+    key: 'licks-blocks',
+    label: 'Salt Licks & Blocks',
+    description: 'Solid pink salt licks and blocks in the sizes the owner price list covers.',
   },
   {
     key: 'lamps-decor',
@@ -94,7 +115,10 @@ export function nicheSectionKeyFor(input: NicheCheckInput): NicheSectionKey | nu
   if (!/\bsalt\b|\blamp|\blantern\b/.test(haystack)) return null;
 
   if (/\blamp|lantern|decor|décor|holder|candle|tealight|carved\b/.test(haystack)) return 'lamps-decor';
+  // Checked before the block rule: "Salt Lick" names a mineral lick line, and the
+  // owner list carries it under its own heading (`Salt Licks`), not under cooking.
+  if (/\blick|licks\b/.test(haystack)) return 'licks-blocks';
   if (/\bblock|plate|slab|grill|plank\b/.test(haystack)) return 'cooking-serving';
-  if (/\bbulk|wholesale|25 kg|25kg|50 lb|18 lbs|18lb|pallet\b/.test(haystack)) return 'bulk';
+  if (/\bbulk|wholesale|25 kg|25kg|50 lb|45 lbs|45lb|18 lbs|18lb|pallet\b/.test(haystack)) return 'bulk';
   return 'edible-pink-salt';
 }

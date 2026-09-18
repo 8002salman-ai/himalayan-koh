@@ -8,12 +8,19 @@ import {
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE,
   DEFAULT_TITLE,
+  GOOGLE_SITE_VERIFICATION,
   SITE_NAME,
 } from '@/lib/seo/constants';
 
 const origin = siteOrigin();
 
 export const metadata: Metadata = {
+  // Omitted entirely until the owner sets the token — an empty
+  // `google-site-verification` tag fails verification in a way that looks like a
+  // mistake on the site rather than a missing configuration.
+  ...(GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: GOOGLE_SITE_VERIFICATION } }
+    : {}),
   title: {
     default: DEFAULT_TITLE,
     template: '%s',

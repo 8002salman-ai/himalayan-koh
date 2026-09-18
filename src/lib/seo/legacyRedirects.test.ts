@@ -42,7 +42,48 @@ const LIVE_PRODUCT_SLUGS = new Set([
 
 const SHELF_KEYS = new Set<string>(NICHE_SECTIONS.map((section) => section.key));
 
+/**
+ * Paths this app renders itself (`find src/app -name page.tsx`). `redirects()`
+ * runs before the filesystem in Next.js, so a legacy rule naming one of these
+ * silently replaces a real page — which is exactly what happened to
+ * `/checkout`: it was filed as a legacy WooCommerce URL next to `/cart`, and
+ * every customer who pressed Checkout in the cart drawer was sent back to the
+ * catalogue instead of to the page this repo builds for them.
+ */
+const APP_OWNED_PATHS = [
+  '/',
+  '/about',
+  '/account',
+  '/blog',
+  '/checkout',
+  '/checkout/cancel',
+  '/checkout/failed',
+  '/checkout/success',
+  '/contact',
+  '/faqs',
+  '/forgot-password',
+  '/gallery',
+  '/login',
+  '/privacy',
+  '/products',
+  '/reset-password',
+  '/return',
+  '/shipping',
+  '/signup',
+  '/terms',
+  '/track',
+  '/verify-email',
+  '/wishlist',
+];
+
 describe('legacy redirect map', () => {
+  it('never shadows a route this app serves', () => {
+    const sources = new Set(LEGACY_REDIRECTS.map((rule) => rule.source));
+    const shadowed = APP_OWNED_PATHS.filter((path) => sources.has(path));
+
+    expect(shadowed).toEqual([]);
+  });
+
   it('has no duplicate sources', () => {
     const sources = LEGACY_REDIRECTS.map((rule) => rule.source);
     expect(new Set(sources).size).toBe(sources.length);

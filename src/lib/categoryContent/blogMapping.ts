@@ -28,6 +28,16 @@ export const CATEGORY_BLOG_MAPPING: Record<CategoryContentKey, CategoryBlogMappi
     blogTags: ['salt block', 'serving', 'grilling', 'technique'],
     maxArticles: 4,
   },
+  'licks-blocks': {
+    // Deliberately empty, and not a placeholder to fill later by guessing: the
+    // shelf was added with the owner's Salt Licks range, and no editorial category
+    // exists for it yet. An empty mapping returns nothing rather than appearing to
+    // be broken, which is the same reason the retired livestock mappings were
+    // deleted instead of left dangling.
+    blogCategories: [],
+    blogTags: [],
+    maxArticles: 0,
+  },
   'lamps-decor': {
     blogCategories: ['Guides', 'Industry Insights'],
     blogTags: ['salt lamp', 'decor', 'home', 'care'],

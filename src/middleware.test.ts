@@ -20,17 +20,25 @@ function run(url: string) {
 }
 
 describe('middleware — content URLs that name something off-niche', () => {
-  it('retires a withheld product slug instead of echoing it', () => {
+  it('retires a livestock product slug instead of echoing it', () => {
     expect(run('/products/salt-licks-for-horses')).toEqual({
       passesThrough: false,
       status: 308,
       location: 'https://himalayankoh.com/products',
     });
-    expect(run('/products/salt-licks').status).toBe(308);
+    expect(run('/products/salt-block-for-deer').status).toBe(308);
+  });
+
+  it("serves the shop's own Salt Licks line rather than retiring it", () => {
+    // 'lick'/'licks' used to be denylist terms, which retired the URL of a product
+    // the owner sells. The animal-feed trade is still refused, because those
+    // records name their animal — so the word alone must not cost a real page.
+    expect(run('/products/salt-licks').status).toBe(200);
+    expect(run('/products/salt%2Dlicks').status).toBe(200);
   });
 
   it('decodes the segment before judging it', () => {
-    expect(run('/products/salt%2Dlicks').status).toBe(308);
+    expect(run('/products/horse%2Dsalt').status).toBe(308);
   });
 
   it('retires a livestock article URL rather than rendering its slug', () => {

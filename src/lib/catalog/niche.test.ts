@@ -5,6 +5,9 @@ import {
   isNicheCategory,
   isNicheProduct,
   isOffNicheText,
+  isOwnerApprovedSku,
+  OWNER_APPROVED_SKUS,
+  OWNER_REJECTED_PRODUCT_IDS,
   sectionsWithProducts,
 } from './niche';
 import { nicheSectionKeyFor } from './nicheSections';
@@ -44,7 +47,6 @@ const STAGING_CATALOG = [
 describe('isOffNicheText', () => {
   it('matches the animal terms the store does not sell', () => {
     for (const text of [
-      'SALT LICKS',
       'Himalayan Salt Licks for Horses',
       'Salt Block for Deer',
       'animal feed',
@@ -79,16 +81,17 @@ describe('isOffNicheText', () => {
 describe('isNicheProduct', () => {
   it('keeps every genuine pink salt product in the current catalog', () => {
     const kept = filterNicheProducts(STAGING_CATALOG).map((product) => product.name);
-    expect(kept).toHaveLength(7);
+    expect(kept).toHaveLength(8);
     expect(kept).toContain('Himalayan Koh Edible Pink Salt');
     expect(kept).toContain('HIMALAYAN CRYSTAL ROCK SALT LAMP IONIZER AIR PURIFIER WITH DIMMABLE CORD');
     expect(kept).toContain('HIMALAYAN ROCK SALT BAG 18 LBS');
   });
 
-  it('drops the four off-niche products, by name, category or copy', () => {
-    expect(countOffNicheProducts(STAGING_CATALOG)).toBe(4);
+  it('drops the off-niche products, by name, category or copy', () => {
+    expect(countOffNicheProducts(STAGING_CATALOG)).toBe(3);
     const kept = filterNicheProducts(STAGING_CATALOG).map((product) => product.name);
-    expect(kept).not.toContain('SALT LICKS');
+    // The shop's own salt-lick line is kept; the animal-feed records are not.
+    expect(kept).toContain('SALT LICKS');
     expect(kept).not.toContain('Himalayan Pink Salt Block for Deer');
     expect(kept).not.toContain('Himalayan Koh Salt Licks for Horses');
     expect(kept).not.toContain('Himalayan Koh Pink Salt Pouches');
@@ -110,10 +113,55 @@ describe('isNicheProduct', () => {
     ).toBe(false);
   });
 
+  it('no longer refuses the word "lick", because the shop sells a Salt Licks range', () => {
+    // The term guard used to carry 'lick'/'licks', which made it refuse the
+    // owner's own authorised line. The animal-feed trade is still refused — the
+    // retired records name their animal — so the word alone is not evidence.
+    expect(isOffNicheText('SALT LICKS')).toBe(false);
+    expect(isOffNicheText('Himalayan Salt Lick — 1 to 2 lbs')).toBe(false);
+    expect(isOffNicheText('Himalayan Salt Licks for Horses')).toBe(true);
+    expect(isOffNicheText('Salt Block for Deer')).toBe(true);
+  });
+
   it('treats a missing category or description as no evidence of being off-niche', () => {
     expect(isNicheProduct({ name: 'Himalayan Pink Salt Jar', category: null })).toBe(true);
     expect(isNicheProduct({ name: 'Himalayan Pink Salt Jar', description: null })).toBe(true);
     expect(isNicheProduct({ name: 'Himalayan Pink Salt Jar', description: '' })).toBe(true);
+  });
+});
+
+describe('owner catalog policy', () => {
+  it('admits an authorised SKU whatever the name says', () => {
+    // The owner's price list authorises the Salt Licks range, and "Salt Lick" is
+    // exactly the kind of name the term guard exists to distrust — so approval has
+    // to be a positive list that outranks it.
+    expect(isOwnerApprovedSku('HK-LFH-2lbs')).toBe(true);
+    expect(isOwnerApprovedSku('hk-lfh-2lbs')).toBe(true);
+    expect(isOwnerApprovedSku(' HK-LFH-30lbs ')).toBe(true);
+    expect(isOwnerApprovedSku('HK-NOT-A-REAL-SKU')).toBe(false);
+    expect(isOwnerApprovedSku('')).toBe(false);
+    expect(isOwnerApprovedSku(null)).toBe(false);
+
+    // Every SKU on the owner list is admissible, even under an animal-feed
+    // category — the SKU is the owner's decision about membership.
+    for (const sku of OWNER_APPROVED_SKUS) {
+      expect(isNicheProduct({ sku, name: 'Himalayan Salt Lick', category: 'animal feed' })).toBe(true);
+    }
+  });
+
+  it('lets a refusal outrank an approval', () => {
+    // Order of precedence is the design: the owner rejecting a specific record
+    // must not be undone by a SKU that happens to be authorised.
+    const rejected = OWNER_REJECTED_PRODUCT_IDS[0];
+    expect(isNicheProduct({ id: rejected, sku: 'HK-ESF-16oz', name: 'Himalayan Pink Salt' })).toBe(false);
+  });
+
+  it('still refuses the animal-feed records the owner never approved', () => {
+    expect(isNicheProduct({ name: 'Himalayan Pink Salt Block for Deer', category: 'animal feed' })).toBe(false);
+    expect(isNicheProduct({ name: 'Himalayan Koh Salt Licks for Horses' })).toBe(false);
+    // No SKU on the retired records, which is why the term guard still earns its
+    // place as the net underneath the positive list.
+    expect(isNicheProduct({ sku: null, name: 'Himalayan Salt Licks for Horses' })).toBe(false);
   });
 });
 
@@ -156,14 +204,19 @@ describe('sectionsWithProducts', () => {
     const sections = sectionsWithProducts(STAGING_CATALOG);
     expect(sections.map((section) => section.key)).toEqual([
       'edible-pink-salt',
+      'licks-blocks',
       'lamps-decor',
       'bulk',
     ]);
     expect(sections.find((section) => section.key === 'edible-pink-salt')?.count).toBe(4);
     expect(sections.find((section) => section.key === 'bulk')?.count).toBe(2);
     expect(sections.find((section) => section.key === 'lamps-decor')?.count).toBe(1);
+    // The shelf the owner's Salt Licks line lands on. It appears only because a
+    // kept product is actually filed there, which is the point of composing the
+    // rail from the guard rather than maintaining a second list.
+    expect(sections.find((section) => section.key === 'licks-blocks')?.count).toBe(1);
     // No bath or gift-set shelf exists yet, and none is invented to fill the row.
-    expect(sections).toHaveLength(3);
+    expect(sections).toHaveLength(4);
   });
 
   it('does not invent a section for an empty catalog', () => {

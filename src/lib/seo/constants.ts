@@ -25,6 +25,42 @@ export const DEFAULT_DESCRIPTION =
  */
 export const DEFAULT_OG_IMAGE = '/og.png';
 
+/**
+ * Google Search Console site-verification token, when the owner has run the
+ * verification step.
+ *
+ * Empty by default and never invented: the token is issued per property in Search
+ * Console, so the only correct source is the owner pasting it into the
+ * environment. While it is empty no `google-site-verification` tag is emitted at
+ * all, rather than an empty one that would fail verification confusingly.
+ *
+ * Server-side on purpose (not `NEXT_PUBLIC_*`): the tag is public once rendered,
+ * but nothing in the browser needs to read the variable, and keeping it off the
+ * client avoids carrying it in every bundle.
+ *
+ * This does **not** make staging indexable. Indexing is decided per request by
+ * `lib/seo/indexing.ts` — an allowlist of production hosts — and every host that
+ * is not `himalayankoh.com` stays `noindex, nofollow` whether or not this token is
+ * set. Verifying a staging property in Search Console is therefore pointless by
+ * design; verify the production property.
+ */
+export const GOOGLE_SITE_VERIFICATION =
+  process.env.GOOGLE_SITE_VERIFICATION?.trim() || '';
+
+/**
+ * The SEO configuration surface the later SEO phase reads, gathered so a new
+ * origin, token or sitemap path is added in one place rather than found by
+ * grepping for string literals.
+ */
+export const SEO_CONFIG = {
+  siteUrl: SITE_URL,
+  canonicalOrigin: SITE_URL,
+  siteName: SITE_NAME,
+  sitemapPath: '/sitemap.xml',
+  robotsPath: '/robots.txt',
+  googleSiteVerification: GOOGLE_SITE_VERIFICATION,
+} as const;
+
 export const ORGANIZATION_JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'Organization',

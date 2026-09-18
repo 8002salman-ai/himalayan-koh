@@ -63,8 +63,16 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   // sends an unauthenticated visitor to /login with a `from` that comes back
   // here — the same destination for a guest, and the right one for everyone
   // else. Duplicate sources are ambiguous, so the rule lives in one place.
+  // `/cart` has no page of its own — the cart is a drawer (CartDrawer.tsx) — so
+  // the legacy WooCommerce URL is pointed at the catalogue.
   { source: '/cart', destination: '/products', permanent: false },
-  { source: '/checkout', destination: '/products', permanent: false },
+  // NOTE: `/checkout` deliberately has NO entry here. It was listed alongside
+  // `/cart` as a legacy WooCommerce URL, but this app *serves* /checkout
+  // (src/app/(main)/checkout/page.tsx) and `redirects()` runs before the
+  // filesystem, so the rule shadowed the real page and sent every customer who
+  // pressed Checkout in the cart drawer back to the catalogue. Legacy-redirect
+  // sources must never name a route this app renders — `legacyRedirects.test.ts`
+  // now asserts that, so the two lists cannot drift apart again.
 
   // The store's own FAQ page already lives at /faqs, so only the spelling
   // variants above need redirects.

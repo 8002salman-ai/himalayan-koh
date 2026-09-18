@@ -114,6 +114,44 @@ const SHELF_DEFAULTS: Record<NicheSectionKey, Omit<ProductContent, 'displayName'
       },
     ],
   },
+  'licks-blocks': {
+    // Written to describe what the product *is* — a solid piece of pink salt sold
+    // at a stated weight — and nothing about what it is for. The owner sells this
+    // range; the storefront does not get to invent a use for it, and the retreat
+    // from "livestock" framing makes a purpose claim the one thing worse than no
+    // copy at all.
+    useCases: [
+      'Solid pink salt supplied in the weight the price list states',
+      'Larger pieces for kitchens, workshops and volume buyers',
+      'Pairs with our edible grades and salt blocks',
+    ],
+    mineralHighlights: [
+      'Unrefined Himalayan pink salt, cut from the Khewra range',
+      'Solid pieces rather than ground or powdered salt',
+      'Packed at the weight shown on the product, not an approximate one',
+    ],
+    shippingInfo: [
+      ...SHARED_SHIPPING,
+      'Heavy pieces ship individually boxed so the corners arrive intact.',
+      'Bulk quantities are quoted on request — ask before ordering a pallet.',
+    ],
+    trustIndicators: [
+      ...SHARED_TRUST,
+      { label: 'Weight as listed', detail: 'Sold at the weight the product states, so freight can be quoted accurately.' },
+    ],
+    faqs: [
+      {
+        question: 'What weight do these ship at?',
+        answer:
+          'The weight shown on the product line. Solid salt is heavy and the box is sized around it, so the shipping weight is close to the product weight.',
+      },
+      {
+        question: 'Can I order in bulk?',
+        answer:
+          'Yes. Contact us with the quantity and we will quote it, including freight, before you order.',
+      },
+    ],
+  },
   'lamps-decor': {
     useCases: [
       'Warm amber light for a living room, bedroom or hallway',
