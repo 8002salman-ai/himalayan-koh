@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "node scripts/test-integration.mjs",
     "build": "next build",
     "postbuild": "node scripts/mark-build.mjs",
     "images:fetch": "node scripts/fetch-legacy-images.mjs",

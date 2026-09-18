@@ -28,7 +28,8 @@ import {
   type AdminOrderAnalytics,
 } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
+import { fetchAdminCatalogStats } from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogStats } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import {
   ADMIN_TD,
@@ -127,7 +128,7 @@ export default function AdminDashboard() {
           ? adminApi.getOrders({ limit: ORDER_SAMPLE_LIMIT, page: 1 })
           : Promise.resolve(null),
         ordersConnected ? adminApi.getDashboardAnalytics() : Promise.resolve(null),
-        readAdminCatalogStats(),
+        fetchAdminCatalogStats(),
       ]);
 
       setOrders(orderPage?.orders ?? []);

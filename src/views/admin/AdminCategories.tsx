@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Loader2, FolderTree, Eye, EyeOff, X } from 'lucide-react';
 import { adminApi, CategoryFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
-import { isSupabaseDataSource, readAdminCatalogPage, type AdminCatalogRow } from '../../lib/backend';
+import { isSupabaseDataSource } from '../../lib/backend/dataSource';
+import { fetchAdminCatalogPage } from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogRow } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import type { Category } from '../../lib/supabase/database.types';
 import {
@@ -67,7 +69,7 @@ export default function AdminCategories() {
     // WooCommerce: one read through the shared catalog read model.
     if (!READS_SUPABASE_CATALOG) {
       try {
-        const page = await readAdminCatalogPage({ perPage: 100, sort: 'name' });
+        const page = await fetchAdminCatalogPage({ perPage: 100, sort: 'name' });
         setRows(page.rows);
       } catch (err) {
         setFetchError(getErrorMessage(err, 'Failed to read the WooCommerce catalog.'));

@@ -439,8 +439,13 @@ describe('backend source flag', () => {
     const blocked = describeReadiness({ wordpressApiRoot: '', consumerKey: '', consumerSecret: '' });
     expect(blocked.ready).toBe(false);
     expect(blocked.blockers).toHaveLength(2);
-    expect(blocked.blockers.join(' ')).toContain('WORDPRESS_BASE_URL');
-    expect(blocked.blockers.join(' ')).toContain('WOOCOMMERCE_CONSUMER_KEY');
+    // Each blocker names the missing capability in owner-facing words. None of
+    // them ships a server credential variable name: this string is rendered in
+    // the admin console, so it is browser-bound.
+    expect(blocked.blockers.join(' ')).toContain('origin');
+    expect(blocked.blockers.join(' ')).toContain('WooCommerce REST credentials');
+    expect(blocked.blockers.join(' ')).not.toContain('WOOCOMMERCE_CONSUMER');
+    expect(blocked.blockers.join(' ')).not.toContain('WORDPRESS_BASE_URL');
 
     // Credentials alone are not enough: with no origin there is nothing to call.
     const halfConfigured = describeReadiness({

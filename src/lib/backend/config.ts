@@ -86,11 +86,14 @@ export interface BackendReadinessInput {
 export function describeReadiness(input: BackendReadinessInput): { ready: boolean; blockers: string[] } {
   const blockers: string[] = [];
   if (!input.wordpressApiRoot) {
-    blockers.push('WORDPRESS_BASE_URL is not set — no WordPress/WooCommerce origin configured.');
+    blockers.push('No WordPress/WooCommerce origin is configured for this deployment.');
   }
   if (!(input.consumerKey && input.consumerSecret)) {
+    // Phrased for the owner rather than for the developer: the exact variable
+    // names belong in the server-only credentials module and the setup docs,
+    // not in a string that ships to the browser.
     blockers.push(
-      'WOOCOMMERCE_CONSUMER_KEY / WOOCOMMERCE_CONSUMER_SECRET are not set — price and stock cannot be read from any public endpoint (the public Store API products route is currently failing on staging).'
+      'WooCommerce REST credentials are not configured on the server — price and stock cannot be read from any public endpoint (the public Store API products route is currently failing on staging).'
     );
   }
   return { ready: blockers.length === 0, blockers };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, RefreshCw, Search, ShieldCheck, XCircle } from 'lucide-react';
-import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
+import { fetchAdminCatalogStats } from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogStats } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import {
   ADMIN_TD,
@@ -57,7 +58,7 @@ export default function AdminSeo() {
       const [robots, sitemap, catalogStats] = await Promise.all([
         fetch('/robots.txt', { headers: { accept: 'text/plain' } }),
         fetch('/sitemap.xml', { headers: { accept: 'application/xml, text/xml' } }),
-        readAdminCatalogStats().catch(() => null),
+        fetchAdminCatalogStats().catch(() => null),
       ]);
 
       const robotsBody = robots.ok ? await robots.text() : '';

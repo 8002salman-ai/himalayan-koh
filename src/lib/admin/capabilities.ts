@@ -61,15 +61,19 @@ export const CAPABILITIES: Record<CapabilityId, Capability> = {
     id: 'woo-rest-read',
     label: 'WooCommerce REST read',
     enables: 'Orders, customers, coupons, reviews, payment gateways and unit stock counts.',
+    // The exact variable names live in the server-only credentials module and in
+    // the setup docs. They are deliberately not spelled out here: this record is
+    // rendered in the browser, and a bundle naming the credential variables is
+    // how the next component ends up reading the source directly.
     requires:
-      'A WooCommerce REST API key with read scope on the staging store, set server-side as WOOCOMMERCE_CONSUMER_KEY / WOOCOMMERCE_CONSUMER_SECRET — never as NEXT_PUBLIC, and never the production key.',
+      'A WooCommerce REST API key with read scope on the staging store, configured server-side for this deployment — never in a public variable, and never the production key.',
   },
   'woo-write': {
     id: 'woo-write',
     label: 'WooCommerce write',
     enables: 'Creating and editing products, prices, stock, categories and coupons from the console.',
     requires:
-      'The same key with read/write scope on the staging store. Until then every write control stays disabled rather than falling back to another database.',
+      'The same key with read/write scope on the staging store. Every write on the products console goes to the store; nothing falls back to another database.',
   },
   'ai-text': {
     id: 'ai-text',

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { BarChart3, DollarSign, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
-import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
+import { fetchAdminCatalogStats } from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogStats } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import {
   AdminButton,
@@ -36,7 +37,7 @@ export default function AdminAnalytics() {
     // catalog source — the same rule the dashboard follows. On the WooCommerce
     // source stock is not reported at all, and an alert list built from the old
     // Supabase rows would name products the storefront no longer sells.
-    setCatalogStats(await readAdminCatalogStats().catch(() => null));
+    setCatalogStats(await fetchAdminCatalogStats().catch(() => null));
 
     if (!isSupabaseConfigured()) {
       setAnalytics(null);

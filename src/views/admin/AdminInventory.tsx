@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Boxes, PackageCheck, RefreshCw } from 'lucide-react';
 import {
-  readAdminCatalogPage,
-  readAdminCatalogStats,
-  type AdminCatalogRow,
-  type AdminCatalogStats,
-} from '../../lib/backend';
+  fetchAdminCatalogPage,
+  fetchAdminCatalogStats,
+} from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogRow, AdminCatalogStats } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import {
   ADMIN_TD,
@@ -42,8 +41,8 @@ export default function AdminInventory() {
     setError(null);
     try {
       const [page, catalogStats] = await Promise.all([
-        readAdminCatalogPage({ perPage: INVENTORY_PAGE_SIZE, sort: 'name' }),
-        readAdminCatalogStats(),
+        fetchAdminCatalogPage({ perPage: INVENTORY_PAGE_SIZE, sort: 'name' }),
+        fetchAdminCatalogStats(),
       ]);
       setRows(page.rows);
       setWarnings(page.warnings);
@@ -190,7 +189,7 @@ export default function AdminInventory() {
         title="Inventory management is not connected"
         summary="Counts, low-stock thresholds, backorders and stock writes all live in WooCommerce behind its authenticated REST API. Nothing on this page is derived from another system to fill the gap."
         needs={[
-          'A WooCommerce REST API key with read access, set server-side as WOOCOMMERCE_CONSUMER_KEY / WOOCOMMERCE_CONSUMER_SECRET (never NEXT_PUBLIC).',
+          'A WooCommerce REST API key with read access, configured server-side for this deployment and never in a public variable.',
           'A write key for stock adjustments, so the console can set quantity and threshold on the WooCommerce product.',
           'The WordPress-side Store API fatal fixed, so public stock status reaches the storefront as well.',
         ]}

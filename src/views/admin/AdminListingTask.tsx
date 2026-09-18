@@ -17,7 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAdminCatalog } from '../../lib/admin/useAdminCatalog';
 import { catalogSourceLabel } from '../../lib/admin/capabilities';
-import type { AdminCatalogRow } from '../../lib/backend';
+import type { AdminCatalogRow } from '../../lib/backend/adminCatalog';
 
 type Tab = 'queue' | 'ready' | 'rules';
 

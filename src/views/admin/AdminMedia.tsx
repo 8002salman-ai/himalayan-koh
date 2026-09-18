@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Image as ImageIcon, RefreshCw, UploadCloud } from 'lucide-react';
-import { readAdminCatalogPage, type AdminCatalogRow } from '../../lib/backend';
+import { fetchAdminCatalogPage } from '../../lib/admin/adminCatalogClient';
+import type { AdminCatalogRow } from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import {
   AdminChip,
@@ -32,7 +33,7 @@ export default function AdminMedia() {
     setLoading(true);
     setError(null);
     try {
-      const page = await readAdminCatalogPage({ perPage: MEDIA_PAGE_SIZE, sort: 'name' });
+      const page = await fetchAdminCatalogPage({ perPage: MEDIA_PAGE_SIZE, sort: 'name' });
       setRows(page.rows);
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to read catalog images.'));

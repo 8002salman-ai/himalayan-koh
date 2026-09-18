@@ -21,9 +21,15 @@
 
 import type { Product, StockStatus } from '../../data/products';
 import { collectMissingCatalogFields, priceDisplayFromRange } from '../products/price';
+import { variationPriceRange, type WooVariationLike } from '../woo/productPayload';
 import { backendConfig } from './config';
 import { hasWooCommerceCredentials } from './credentials';
-import { wordpressRequest, wordpressRequestSafe, type QueryValue } from './wordpress';
+import {
+  wordpressRequest,
+  wordpressRequestSafe,
+  WORDPRESS_MAX_PER_PAGE,
+  type QueryValue,
+} from './wordpress';
 
 const STORE_API = '/wc/store/v1';
 const REST_V3 = '/wc/v3';
@@ -98,6 +104,10 @@ export interface RestV3Product {
   images?: Array<{ id?: number; src?: string; alt?: string }>;
   categories?: Array<{ id?: number; name?: string; slug?: string }>;
   date_modified_gmt?: string;
+  /** 'simple' | 'variable' | … — decides whether prices live on the variations. */
+  type?: string;
+  /** Variation ids, present only on a variable product. */
+  variations?: number[];
 }
 
 /** WordPress core product (public; no price or stock, used only as fallback). */
@@ -378,6 +388,11 @@ export async function fetchStoreProductsSafe(
 /**
  * Authenticated REST v3 read — the only route reporting price and stock while
  * the Store API product routes are broken. Null when no credentials are set.
+ *
+ * Variable products are the reason this is more than a map: WooCommerce keeps
+ * their prices on the variations, so the parent row reports an empty
+ * `regular_price` even though the product is priced. Without the extra read the
+ * storefront showed "Price unavailable" on products a customer could buy.
  */
 export async function fetchAdminProducts(query: ProductQuery = {}): Promise<Product[] | null> {
   if (!hasWooCommerceCredentials()) return null;
@@ -387,7 +402,8 @@ export async function fetchAdminProducts(query: ProductQuery = {}): Promise<Prod
     useCredentials: true,
     signal: query.signal,
   });
-  return (Array.isArray(raw) ? raw : []).map(mapRestV3Product);
+  const rows = Array.isArray(raw) ? raw : [];
+  return withVariationPricing(rows, rows.map(mapRestV3Product), query.signal);
 }
 
 /** Authenticated REST v3 single-product lookup by slug. */
@@ -395,14 +411,79 @@ export async function fetchAdminProductBySlug(
   slug: string,
   signal?: AbortSignal
 ): Promise<Product | null> {
-  if (!hasWooCommerceCredentials()) return null;
-  const raw = await wordpressRequest<RestV3Product[]>(`${REST_V3}/products`, {
-    params: { slug, status: 'publish', per_page: 1 },
-    useCredentials: true,
-    signal,
-  });
-  const first = Array.isArray(raw) ? raw[0] : null;
-  return first ? mapRestV3Product(first) : null;
+  if (hasWooCommerceCredentials()) {
+    const raw = await wordpressRequest<RestV3Product[]>(`${REST_V3}/products`, {
+      params: { slug, status: 'publish', per_page: 1 },
+      useCredentials: true,
+      signal,
+    });
+    const rows = Array.isArray(raw) ? raw : [];
+    const [product] = await withVariationPricing(rows, rows.map(mapRestV3Product), signal);
+    if (product) return product;
+  }
+  return null;
+}
+
+/**
+ * Fills in the price range of variable products whose parent reports none.
+ *
+ * Only those rows are read: a priced product needs no extra request, and the
+ * fetches run in parallel so a catalog page costs one round trip plus one per
+ * variable product rather than a serial chain. A failure here leaves the price
+ * unknown — never zero — because an unavailable price and a free product are
+ * very different things to advertise.
+ */
+async function withVariationPricing(
+  rows: RestV3Product[],
+  products: Product[],
+  signal?: AbortSignal
+): Promise<Product[]> {
+  const targets = rows
+    .map((row, index) => ({ row, product: products[index] }))
+    .filter(
+      (entry): entry is { row: RestV3Product; product: Product } =>
+        Boolean(entry.product) &&
+        entry.row.type === 'variable' &&
+        entry.product.priceMin === null &&
+        (entry.row.variations?.length ?? 0) > 0
+    );
+
+  if (!targets.length) return products;
+
+  await Promise.all(
+    targets.map(async ({ row, product }) => {
+      // Prices, cached briefly. The parent read still runs uncached, so a stock
+      // change is visible on the next request; what this avoids is paying the
+      // origin's latency for every variation on every screen that lists the
+      // catalog, which is what made the console's catalog read take longer than
+      // a request is allowed to.
+      const { data } = await wordpressRequestSafe<WooVariationLike[]>(
+        `${REST_V3}/products/${row.id}/variations`,
+        {
+          params: { per_page: WORDPRESS_MAX_PER_PAGE },
+          useCredentials: true,
+          signal,
+          timeoutMs: 20000,
+          revalidate: 60,
+        }
+      );
+      if (!data) return;
+
+      const range = variationPriceRange(data);
+      if (!range) return;
+
+      // `priceMax` is the top of a variant range and stays absent when every
+      // variation costs the same, so a single-price product does not render as
+      // "$34.57 - $34.57". The display string is derived from the same
+      // normalised max, or the label and the range would disagree.
+      const max = range.max > range.min ? range.max : null;
+      product.priceMin = range.min;
+      product.priceMax = max ?? undefined;
+      product.price = priceDisplayFromRange(range.min, max);
+    })
+  );
+
+  return products;
 }
 
 /**

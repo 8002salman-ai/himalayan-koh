@@ -1,14 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  readAdminCatalogPage,
-  readAdminCatalogStats,
-  type AdminCatalogFacet,
-  type AdminCatalogRow,
-  type AdminCatalogSort,
-  type AdminCatalogStats,
-} from '../backend';
+import { fetchAdminCatalog } from './adminCatalogClient';
+// Types only: erasing them at compile time is what keeps the server read model
+// out of the console's bundle. The read itself goes through the client above.
+import type {
+  AdminCatalogFacet,
+  AdminCatalogRow,
+  AdminCatalogSort,
+  AdminCatalogStats,
+} from '../backend/adminCatalog';
 import { getErrorMessage } from '../errors';
 
 export interface AdminCatalogState {
@@ -27,10 +28,10 @@ export interface AdminCatalogState {
  *
  * Every admin module that shows products had grown its own copy of the same
  * load/stats/error/finally block, so each one refreshed differently and reported
- * failure differently. This is that block, once: it always fetches the page and
- * the stats together (they come from the same adapter and the same source, so
- * fetching them separately was two round trips for one question), and it clears
- * rows on failure rather than leaving a stale list under an error banner.
+ * failure differently. This is that block, once: the page and its stats come
+ * from one request (they describe the same catalog, so asking twice was two
+ * round trips for one question), and a failure clears the rows rather than
+ * leaving a stale list under an error banner.
  *
  * It never invents a value: a source that cannot report price, SKU or stock
  * leaves the matching `missing` entries on the row, and the caller decides how to
@@ -52,10 +53,7 @@ export function useAdminCatalog(
     setLoading(true);
     setError(null);
     try {
-      const [page, catalogStats] = await Promise.all([
-        readAdminCatalogPage({ perPage, sort, search }),
-        readAdminCatalogStats(),
-      ]);
+      const { page, stats: catalogStats } = await fetchAdminCatalog({ perPage, sort, search });
       setRows(page.rows);
       setFacets(page.facets);
       setWarnings(page.warnings);

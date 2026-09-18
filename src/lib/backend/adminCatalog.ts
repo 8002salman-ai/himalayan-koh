@@ -24,6 +24,7 @@
 
 import type { Product as CatalogProduct, StockStatus } from '../../data/products';
 import type { Category, Inventory, Product as SupabaseProduct } from '../supabase/database.types';
+import { ADMIN_CATALOG_PER_PAGE } from '../admin/catalogPageSize';
 import { adminApi } from '../supabase/api/admin';
 import { isRealCatalogProduct } from '../supabase/api/products';
 import { isSupabaseConfigured } from '../supabase/client';
@@ -155,7 +156,10 @@ export type AdminCatalogStats =
       categories: number;
     };
 
-export const ADMIN_CATALOG_PER_PAGE = 10;
+// The page size is owned by a client-safe leaf module so the products screen can
+// compute its pager without importing this read model. Re-exported for the
+// server callers that already import it from here.
+export { ADMIN_CATALOG_PER_PAGE };
 
 /* ------------------------------------------------------------------ */
 /* Projections (pure)                                                  */

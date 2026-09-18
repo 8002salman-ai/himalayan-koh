@@ -18,21 +18,23 @@ import {
   Archive,
   DollarSign,
   Tag,
+  Copy,
 } from 'lucide-react';
 import { adminApi } from '../../lib/supabase/api/admin';
 import { isRealCatalogProduct } from '../../lib/supabase/api/products';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import {
-  ADMIN_CATALOG_PER_PAGE,
-  isSupabaseDataSource,
-  readAdminCatalogPage,
-  readAdminCatalogStats,
-  type AdminCatalogFacet,
-  type AdminCatalogRow,
-  type AdminCatalogSort,
-  type AdminCatalogStats,
-  type AdminEditableRecord,
-} from '../../lib/backend';
+import { isSupabaseDataSource } from '../../lib/backend/dataSource';
+import { fetchAdminCatalog } from '../../lib/admin/adminCatalogClient';
+import { ADMIN_CATALOG_PER_PAGE } from '../../lib/admin/catalogPageSize';
+// Types only — erased at compile time, so the server read model stays out of
+// the console's bundle while the screens still describe its rows exactly.
+import type {
+  AdminCatalogFacet,
+  AdminCatalogRow,
+  AdminCatalogSort,
+  AdminCatalogStats,
+  AdminEditableRecord,
+} from '../../lib/backend/adminCatalog';
 import { getErrorMessage } from '../../lib/errors';
 import { useToast } from '../../context/ToastContext';
 import type { Category, Product as SupabaseProduct } from '../../lib/supabase/database.types';
@@ -42,6 +44,12 @@ import {
   productMissingShippingWeight,
 } from '../../lib/products/shippingWeight';
 import ProductEditorModal from '../../components/admin/ProductEditorModal';
+import WooProductEditorModal from '../../components/admin/WooProductEditorModal';
+import {
+  archiveWooAdminProduct,
+  duplicateWooAdminProduct,
+  updateWooAdminProduct,
+} from '../../lib/admin/wooProductApi';
 import {
   ADMIN_TD,
   AdminChip,
@@ -74,8 +82,33 @@ import {
  */
 const READS_SUPABASE_CATALOG = isSupabaseDataSource();
 
-/** What a WooCommerce row's write path is waiting for. */
-const WRITE_CONNECTION_REQUIRED = 'WooCommerce write connection required';
+/**
+ * Whether the console can write products, and to where.
+ *
+ * When WooCommerce is the source it is also the store of record, so every
+ * write on this screen goes to it. There is deliberately no second write path
+ * to fall back to: a save that cannot reach the store must fail visibly, not
+ * quietly land somewhere the storefront never reads.
+ */
+const WRITES_TO_WOOCOMMERCE = !READS_SUPABASE_CATALOG;
+
+/**
+ * A row the console can open in an editor.
+ *
+ * Two shapes reach this screen. Supabase rows carry their full record; a
+ * WooCommerce row carries its product id and is edited through the store. The
+ * difference is confined to this predicate and the handlers below, so the row
+ * markup and actions stay one implementation.
+ */
+function isEditableRow(row: AdminCatalogRow): boolean {
+  return row.record !== null || WRITES_TO_WOOCOMMERCE;
+}
+
+/** The WooCommerce product id a row addresses, or null when it has none. */
+function wooRowId(row: AdminCatalogRow): number | null {
+  const id = Number(row.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
 
 const PLACEHOLDER_IMAGE = '/images/placeholder-product.svg';
 
@@ -141,6 +174,9 @@ export default function AdminProducts() {
   // Modals
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminEditableRecord | null>(null);
+  /** The WooCommerce product the store editor is open on; null creates one. */
+  const [wooEditorId, setWooEditorId] = useState<number | null>(null);
+  const [wooEditorOpen, setWooEditorOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -155,19 +191,16 @@ export default function AdminProducts() {
     setLoading(true);
 
     try {
-      const [catalogPage, stats] = await Promise.all([
-        readAdminCatalogPage({
-          search: search || undefined,
-          categoryId: categoryFilter || undefined,
-          listing: statusFilter === 'active' ? 'active' : statusFilter === 'inactive' ? 'inactive' : undefined,
-          isFeatured: statusFilter === 'featured' ? true : undefined,
-          lowStock: statusFilter === 'low_stock' ? true : undefined,
-          sort: sortBy,
-          page,
-          perPage: ADMIN_CATALOG_PER_PAGE,
-        }),
-        readAdminCatalogStats(),
-      ]);
+      const { page: catalogPage, stats } = await fetchAdminCatalog({
+        search: search || undefined,
+        categoryId: categoryFilter || undefined,
+        listing: statusFilter === 'active' ? 'active' : statusFilter === 'inactive' ? 'inactive' : undefined,
+        isFeatured: statusFilter === 'featured' ? true : undefined,
+        lowStock: statusFilter === 'low_stock' ? true : undefined,
+        sort: sortBy,
+        page,
+        perPage: ADMIN_CATALOG_PER_PAGE,
+      });
       setProductStats(stats);
       setWarnings(catalogPage.warnings);
       setFacets(catalogPage.facets);
@@ -256,12 +289,116 @@ export default function AdminProducts() {
    */
   const handleOpenRow = (row: AdminCatalogRow) => {
     setContextMenu(null);
-    if (!row.record) {
+
+    if (!isEditableRow(row)) {
       if (row.slug) window.open(`/products/${row.slug}`, '_blank', 'noopener');
       return;
     }
+
+    if (WRITES_TO_WOOCOMMERCE) {
+      const id = wooRowId(row);
+      if (id === null) return;
+      setWooEditorId(id);
+      setWooEditorOpen(true);
+      return;
+    }
+
     setEditingProduct(row.record);
     setEditorOpen(true);
+  };
+
+  /** Row actions that write straight to the store. */
+  const handleWooStatus = async (row: AdminCatalogRow, status: 'publish' | 'draft') => {
+    const id = wooRowId(row);
+    if (id === null) return;
+    setActionLoading(true);
+    try {
+      await updateWooAdminProduct(id, { status });
+      setRows((prev) => prev.map((entry) =>
+        entry.id === row.id
+          ? { ...entry, isListed: status === 'publish', price: entry.price, stockStatus: entry.stockStatus }
+          : entry
+      ));
+      toast.success(status === 'publish' ? 'Published to the storefront.' : 'Moved to draft.');
+      fetchCatalog();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'The store rejected the change.'));
+    } finally {
+      setActionLoading(false);
+      setContextMenu(null);
+    }
+  };
+
+  const handleWooFeatured = async (row: AdminCatalogRow) => {
+    const id = wooRowId(row);
+    if (id === null) return;
+    try {
+      await updateWooAdminProduct(id, { featured: !row.isFeatured });
+      setRows((prev) => prev.map((entry) =>
+        entry.id === row.id ? { ...entry, isFeatured: !row.isFeatured } : entry
+      ));
+      toast.success(row.isFeatured ? 'Removed from featured.' : 'Marked as featured.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'The store rejected the change.'));
+    } finally {
+      setContextMenu(null);
+    }
+  };
+
+  const handleWooArchive = async (row: AdminCatalogRow) => {
+    const id = wooRowId(row);
+    if (id === null) return;
+    setActionLoading(true);
+    try {
+      await archiveWooAdminProduct(id);
+      setRows((prev) => prev.filter((entry) => entry.id !== row.id));
+      setDeleteConfirm(null);
+      setContextMenu(null);
+      toast.info('Moved to the store’s trash. WooCommerce keeps it recoverable.');
+      fetchCatalog();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'The product could not be archived.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleWooDuplicate = async (row: AdminCatalogRow) => {
+    const id = wooRowId(row);
+    if (id === null) return;
+    setActionLoading(true);
+    try {
+      await duplicateWooAdminProduct(id);
+      toast.success(`Created a draft copy of “${row.name}”. Give it its own SKU before publishing.`);
+      setContextMenu(null);
+      fetchCatalog();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'The product could not be duplicated.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleWooBulkArchive = async () => {
+    const ids = selectedIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (!ids.length) return;
+
+    setActionLoading(true);
+    const failures: string[] = [];
+    let archived = 0;
+    for (const id of ids) {
+      try {
+        await archiveWooAdminProduct(id);
+        archived += 1;
+      } catch (err) {
+        failures.push(getErrorMessage(err, `Product ${id} could not be archived.`));
+      }
+    }
+    setSelectedIds([]);
+    setActionLoading(false);
+    toast.info(`${archived} product${archived === 1 ? '' : 's'} moved to the store’s trash.`);
+    failures.forEach((failure) => toast.error(failure));
+    fetchCatalog();
   };
 
   /**
@@ -396,26 +533,25 @@ export default function AdminProducts() {
         description={
           READS_SUPABASE_CATALOG
             ? 'Create, edit and publish the products the storefront serves.'
-            : 'The WooCommerce catalog the storefront serves. Product writes arrive with the WooCommerce connection.'
+            : 'The WooCommerce catalog the storefront serves. Creating, editing and archiving here write straight to the store.'
         }
         actions={
-          READS_SUPABASE_CATALOG ? (
-            <button type="button" onClick={handleCreate} className={BUTTON.primary}>
-              <Plus size={16} />
-              Add product
-            </button>
-          ) : (
-            <AdminDisabledAction label="Add product" reason={WRITE_CONNECTION_REQUIRED} />
-          )
+          <button
+            type="button"
+            onClick={READS_SUPABASE_CATALOG ? handleCreate : () => { setWooEditorId(null); setWooEditorOpen(true); }}
+            className={BUTTON.primary}
+          >
+            <Plus size={16} />
+            Add product
+          </button>
         }
       />
 
-      {!READS_SUPABASE_CATALOG && (
-        <AdminNotice tone="info" title="Read-only: this list is your WooCommerce catalog">
+      {WRITES_TO_WOOCOMMERCE && (
+        <AdminNotice tone="info" title="These products are your WooCommerce catalog">
           Products come from WordPress/WooCommerce staging — the same source the storefront reads — so the
-          console and the site can no longer show different catalogs. Creating, editing and deleting stay
-          disabled until WooCommerce write access is configured; nothing falls back to Supabase.{' '}
-          <strong>View</strong> opens the live product page.
+          console and the site cannot show different catalogs. Saving here writes to the store, and nothing
+          falls back to Supabase.
         </AdminNotice>
       )}
 
@@ -535,12 +671,12 @@ export default function AdminProducts() {
             <span className="text-sm font-semibold text-admin-ink">{selectedIds.length} selected</span>
             <button
               type="button"
-              onClick={handleBulkDelete}
+              onClick={WRITES_TO_WOOCOMMERCE ? handleWooBulkArchive : handleBulkDelete}
               disabled={actionLoading}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-55"
             >
               <Trash2 size={14} />
-              Delete
+              {WRITES_TO_WOOCOMMERCE ? 'Archive' : 'Delete'}
             </button>
             <button
               type="button"
@@ -583,7 +719,7 @@ export default function AdminProducts() {
                 >
                   <td className={ADMIN_TD}>
                     <div className="flex items-center gap-3">
-                      {row.record && (
+                      {isEditableRow(row) && (
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(row.id)}
@@ -673,12 +809,12 @@ export default function AdminProducts() {
                         type="button"
                         onClick={() => handleOpenRow(row)}
                         className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-himalayan transition-colors hover:bg-himalayan-lighter"
-                        aria-label={`${row.record ? 'Edit' : 'View'} ${productName}`}
+                        aria-label={`${isEditableRow(row) ? 'Edit' : 'View'} ${productName}`}
                       >
-                        {row.record ? <Edit size={14} /> : <Eye size={14} />}
-                        <span>{row.record ? 'Edit' : 'View'}</span>
+                        {isEditableRow(row) ? <Edit size={14} /> : <Eye size={14} />}
+                        <span>{isEditableRow(row) ? 'Edit' : 'View'}</span>
                       </button>
-                      {row.record && (
+                      {isEditableRow(row) && (
                         <button
                           type="button"
                           aria-label={`More actions for ${productName}`}
@@ -690,7 +826,7 @@ export default function AdminProducts() {
                       )}
 
                       <AnimatePresence>
-                        {row.record && contextMenu === row.id && (
+                        {isEditableRow(row) && contextMenu === row.id && (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.97 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -707,27 +843,39 @@ export default function AdminProducts() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleToggleActive(row)}
+                              onClick={() => (WRITES_TO_WOOCOMMERCE
+                                ? handleWooStatus(row, row.isListed ? 'draft' : 'publish')
+                                : handleToggleActive(row))}
                               className="flex w-full items-center gap-2 px-4 py-2 text-sm text-admin-ink hover:bg-admin-canvas"
                             >
                               {row.isListed ? <EyeOff size={14} /> : <Eye size={14} />}
-                              {row.isListed ? 'Deactivate' : 'Activate'}
+                              {row.isListed ? 'Move to draft' : 'Publish'}
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleToggleFeatured(row)}
+                              onClick={() => (WRITES_TO_WOOCOMMERCE ? handleWooFeatured(row) : handleToggleFeatured(row))}
                               className="flex w-full items-center gap-2 px-4 py-2 text-sm text-admin-ink hover:bg-admin-canvas"
                             >
                               <Star size={14} className={row.isFeatured ? 'fill-amber-500 text-amber-500' : ''} />
                               {row.isFeatured ? 'Remove featured' : 'Set featured'}
                             </button>
+                            {WRITES_TO_WOOCOMMERCE && (
+                              <button
+                                type="button"
+                                onClick={() => handleWooDuplicate(row)}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-admin-ink hover:bg-admin-canvas"
+                              >
+                                <Copy size={14} />
+                                Duplicate as draft
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => { setDeleteConfirm(row.id); setContextMenu(null); }}
                               className="flex w-full items-center gap-2 border-t border-admin-line px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                             >
                               <Trash2 size={14} />
-                              Delete
+                              {WRITES_TO_WOOCOMMERCE ? 'Archive' : 'Delete'}
                             </button>
                           </motion.div>
                         )}
@@ -792,8 +940,10 @@ export default function AdminProducts() {
         {deleteConfirm && (
           <AdminModal
             size="sm"
-            title="Delete product"
-            description="This action cannot be undone."
+            title={WRITES_TO_WOOCOMMERCE ? 'Archive product' : 'Delete product'}
+            description={WRITES_TO_WOOCOMMERCE
+              ? 'WooCommerce moves it to the trash and takes it off the storefront. It stays recoverable.'
+              : 'This action cannot be undone.'}
             onClose={() => setDeleteConfirm(null)}
             footer={
               <>
@@ -802,19 +952,24 @@ export default function AdminProducts() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(deleteConfirm)}
+                  onClick={() => {
+                    const row = rows.find((entry) => entry.id === deleteConfirm);
+                    if (WRITES_TO_WOOCOMMERCE && row) return handleWooArchive(row);
+                    return handleDelete(deleteConfirm as string);
+                  }}
                   disabled={actionLoading}
                   className={BUTTON.danger}
                 >
                   {actionLoading && <Loader2 size={16} className="animate-spin" />}
-                  Delete
+                  {WRITES_TO_WOOCOMMERCE ? 'Archive' : 'Delete'}
                 </button>
               </>
             }
           >
             <p className="text-sm text-admin-ink">
-              Deleting removes this product from the catalog this admin reads. If you only want it to
-              stop appearing on the storefront, archive it instead.
+              {WRITES_TO_WOOCOMMERCE
+                ? 'The product is removed from the storefront and every catalog read. Nothing is permanently deleted, so it can be restored in WooCommerce.'
+                : 'Deleting removes this product from the catalog this admin reads. If you only want it to stop appearing on the storefront, archive it instead.'}
             </p>
           </AdminModal>
         )}
@@ -824,13 +979,27 @@ export default function AdminProducts() {
         <div className="fixed inset-0 z-dropdown" onClick={() => setContextMenu(null)} />
       )}
 
-      <ProductEditorModal
-        isOpen={editorOpen}
-        onClose={() => { setEditorOpen(false); setEditingProduct(null); }}
-        product={editingProduct}
-        categories={editorCategories}
-        onSave={handleSaveProduct}
-      />
+      {WRITES_TO_WOOCOMMERCE ? (
+        <WooProductEditorModal
+          isOpen={wooEditorOpen}
+          onClose={() => { setWooEditorOpen(false); setWooEditorId(null); }}
+          productId={wooEditorId}
+          categories={facets.map((facet) => ({ id: facet.id, name: facet.name }))}
+          onSaved={(message, warnings) => {
+            fetchCatalog();
+            toast.success(message);
+            warnings.forEach((warning) => toast.info(warning));
+          }}
+        />
+      ) : (
+        <ProductEditorModal
+          isOpen={editorOpen}
+          onClose={() => { setEditorOpen(false); setEditingProduct(null); }}
+          product={editingProduct}
+          categories={editorCategories}
+          onSave={handleSaveProduct}
+        />
+      )}
     </>
   );
 }
