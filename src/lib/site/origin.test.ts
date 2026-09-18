@@ -1,0 +1,111 @@
+import { describe, expect, it, vi } from 'vitest';
+import {
+  isLoopbackOrigin,
+  resolveSiteOrigin,
+  SITE_ORIGIN_LOCAL,
+  SITE_ORIGIN_PRODUCTION,
+  SITE_ORIGIN_STAGING,
+} from './origin';
+
+/**
+ * The bug these tests exist for: a local `.env.local` carried
+ * `NEXT_PUBLIC_SITE_URL=http://localhost:3001`, `NEXT_PUBLIC_*` is inlined at
+ * build time, and every prerendered artifact plus the deployed sitemap shipped
+ * localhost URLs while the deployment's own environment variables said otherwise.
+ * The rule under test is that a production build can never emit a loopback origin.
+ */
+describe('isLoopbackOrigin', () => {
+  it.each([
+    'http://localhost:3001',
+    'http://localhost',
+    'https://127.0.0.1:8787',
+    'http://0.0.0.0:3000',
+    'http://[::1]:3000',
+    'http://shop.localhost',
+    'http://himalayan.local',
+  ])('treats %s as loopback', (origin) => {
+    expect(isLoopbackOrigin(origin)).toBe(true);
+  });
+
+  it.each([
+    'https://preview.himalayankoh.com',
+    'https://himalayankoh.com',
+    'https://himalayan-koh-ecommerce.8002salman.workers.dev',
+    'https://himalayan-koh.vercel.app',
+  ])('does not treat %s as loopback', (origin) => {
+    expect(isLoopbackOrigin(origin)).toBe(false);
+  });
+
+  it('is not fooled by a hostname that merely contains the word localhost', () => {
+    expect(isLoopbackOrigin('https://localhost.himalayankoh.com')).toBe(false);
+  });
+});
+
+describe('resolveSiteOrigin', () => {
+  it('honours a configured non-loopback origin', () => {
+    expect(
+      resolveSiteOrigin({ configured: SITE_ORIGIN_STAGING, nodeEnv: 'production' })
+    ).toBe(SITE_ORIGIN_STAGING);
+  });
+
+  it('strips a trailing slash so canonical URLs never double up', () => {
+    expect(
+      resolveSiteOrigin({ configured: 'https://himalayankoh.com/', nodeEnv: 'production' })
+    ).toBe('https://himalayankoh.com');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(
+      resolveSiteOrigin({ configured: '  https://preview.himalayankoh.com  ', nodeEnv: 'production' })
+    ).toBe(SITE_ORIGIN_STAGING);
+  });
+
+  it('refuses a loopback origin in a production build and falls back to production', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(
+      resolveSiteOrigin({ configured: 'http://localhost:3001', nodeEnv: 'production' })
+    ).toBe(SITE_ORIGIN_PRODUCTION);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0][0])).toContain('http://localhost:3001');
+    warn.mockRestore();
+  });
+
+  it('allows a loopback origin in a development build', () => {
+    expect(
+      resolveSiteOrigin({ configured: 'http://localhost:3001', nodeEnv: 'development' })
+    ).toBe('http://localhost:3001');
+  });
+
+  it('allows a loopback origin in a production build only behind the explicit escape hatch', () => {
+    expect(
+      resolveSiteOrigin({
+        configured: 'http://localhost:8787',
+        nodeEnv: 'production',
+        allowLoopback: true,
+      })
+    ).toBe('http://localhost:8787');
+  });
+
+  it('defaults a production build with nothing configured to the production origin', () => {
+    expect(resolveSiteOrigin({ configured: '', nodeEnv: 'production' })).toBe(SITE_ORIGIN_PRODUCTION);
+    expect(resolveSiteOrigin({ configured: null, nodeEnv: 'production' })).toBe(SITE_ORIGIN_PRODUCTION);
+  });
+
+  it('defaults a development build with nothing configured to loopback', () => {
+    expect(resolveSiteOrigin({ configured: '', nodeEnv: 'development' })).toBe(SITE_ORIGIN_LOCAL);
+  });
+
+  it('ignores a value that is not a URL rather than emitting a broken canonical', () => {
+    expect(resolveSiteOrigin({ configured: 'preview.himalayankoh.com', nodeEnv: 'production' })).toBe(
+      SITE_ORIGIN_PRODUCTION
+    );
+    expect(resolveSiteOrigin({ configured: 'ftp://himalayankoh.com', nodeEnv: 'production' })).toBe(
+      SITE_ORIGIN_PRODUCTION
+    );
+  });
+
+  it('publishes the staging origin for the Worker deployment and production for the store', () => {
+    expect(SITE_ORIGIN_STAGING).toBe('https://preview.himalayankoh.com');
+    expect(SITE_ORIGIN_PRODUCTION).toBe('https://himalayankoh.com');
+  });
+});

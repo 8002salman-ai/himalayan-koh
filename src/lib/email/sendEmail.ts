@@ -1,3 +1,5 @@
+import { SITE_ORIGIN } from '@/lib/site/origin';
+
 interface SendEmailAttachment {
   filename: string;
   /** Raw PDF (or other) bytes — base64-encoded before sending to Resend. */
@@ -66,9 +68,13 @@ export function adminNotificationEmails(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Absolute site origin used for links inside outgoing email.
+ *
+ * Delegates to `@/lib/site/origin` so a customer never receives a link to
+ * localhost, a preview hostname, or whichever origin a different part of the
+ * code happened to resolve.
+ */
 export function siteBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
-    'https://himalayankoh.com'
-  );
+  return SITE_ORIGIN;
 }

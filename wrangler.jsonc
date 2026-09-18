@@ -54,8 +54,19 @@
    * non-indexable (src/lib/seo/indexing.ts) and should point at the real home
    * rather than invent a canonical of its own.
    */
+  /**
+   * Public, non-secret values only — anything here is world-readable.
+   *
+   * `NEXT_PUBLIC_SITE_URL` is the staging/QA origin, because this Worker *is* the
+   * staging deployment (preview.himalayankoh.com). Two traps, both learned the
+   * hard way: the value is inlined into the bundle at build time, so the build
+   * environment must be given the same origin or the runtime var is ignored
+   * (`scripts/check-public-origin.mjs` fails the build if a loopback URL slips
+   * in); and a production Worker must override this with
+   * https://himalayankoh.com rather than inherit it. See src/lib/site/origin.ts.
+   */
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://himalayankoh.com",
+    "NEXT_PUBLIC_SITE_URL": "https://preview.himalayankoh.com",
     "NEXT_PUBLIC_DATA_SOURCE": "woocommerce",
     "NEXT_PUBLIC_WORDPRESS_BASE_URL": "https://himalayankoh.com/staging",
     "NEXT_PUBLIC_WOOCOMMERCE_BASE_URL": "https://himalayankoh.com/staging"

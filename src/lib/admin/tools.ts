@@ -13,6 +13,7 @@
  */
 
 import type { AdminCatalogRow } from '../backend';
+import { prohibitedClaimReason } from '../products/claims';
 
 /* ------------------------------------------------------------------ */
 /* Campaign links                                                      */
@@ -195,6 +196,13 @@ export function listingDefects(row: AdminCatalogRow): string[] {
   if (!row.image) defects.push('No image');
   if (row.isListed === false) defects.push('Listing is inactive');
   if (row.isHiddenFromStorefront === true) defects.push('Hidden from the storefront');
+
+  // A claim the salt cannot support is a defect of the listing, not of the copy
+  // template, so it belongs on the row an operator is already reviewing. The rule
+  // deliberately does not touch livestock words — see `lib/products/claims.ts` for
+  // why that distinction is the whole point.
+  const claim = prohibitedClaimReason(row.name);
+  if (claim) defects.push(claim);
   return defects;
 }
 

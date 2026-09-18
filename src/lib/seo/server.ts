@@ -10,6 +10,7 @@ import { lookupCatalogProduct } from '@/lib/backend/serverCatalog';
 import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 import { filterNicheBlogPosts } from '@/lib/catalog/nicheBlog';
 import { publicEnv } from '@/lib/env';
+import { SITE_ORIGIN } from '@/lib/site/origin';
 
 /**
  * Server-only Supabase client for SEO/metadata fetches during server render.
@@ -47,9 +48,11 @@ export function seoFetchDeadline(): AbortSignal {
 }
 
 /**
- * Absolute site origin for canonical URLs / OG tags. Prefers the configured
- * NEXT_PUBLIC_SITE_URL; falls back to the production domain (never a
- * vercel.app preview URL, which would leak into search results).
+ * Absolute site origin for canonical URLs / OG tags.
+ *
+ * Delegates to `@/lib/site/origin`, which owns the decision and refuses a
+ * loopback origin in a production build; this function exists so the many SEO
+ * call sites keep one import path.
  */
 /**
  * Runs a server-side CMS read, degrading instead of throwing.
@@ -70,9 +73,7 @@ async function safeSeoRead<T>(label: string, run: () => Promise<T>, fallback: T)
 }
 
 export function siteOrigin(): string {
-  const configured = publicEnv.siteUrl?.trim();
-  if (configured) return configured.replace(/\/$/, '');
-  return 'https://himalayankoh.com';
+  return SITE_ORIGIN;
 }
 
 export function absoluteUrl(path: string): string {

@@ -1,19 +1,18 @@
+import { SITE_ORIGIN } from '@/lib/site/origin';
+
 /**
- * Dynamic site URL based on environment. `VERCEL_URL` is deliberately never
- * used here — Vercel sets it to the unique per-deployment hostname (e.g.
- * `himalayan-<hash>-<team>.vercel.app`), not the stable production alias, so
- * reading it leaked a dead preview URL into Product/FAQ/WebPage JSON-LD.
- * `VERCEL_PROJECT_PRODUCTION_URL` is the one that always points at the
- * current production alias/custom domain.
+ * The canonical origin, resolved by `@/lib/site/origin` and nowhere else.
+ *
+ * `VERCEL_URL` is deliberately never read: Vercel sets it to the unique
+ * per-deployment hostname (e.g. `himalayan-<hash>-<team>.vercel.app`), not the
+ * stable alias, so it leaked a dead preview URL into Product/FAQ/WebPage JSON-LD.
+ * `VERCEL_PROJECT_PRODUCTION_URL` is no longer consulted either — the origin is
+ * one decision made in one module, and a second environment-specific branch here
+ * is exactly how the two can disagree.
  */
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.NODE_ENV === 'production'
-    ? 'https://himalayankoh.com'
-    : 'http://localhost:3000');
+export const SITE_URL = SITE_ORIGIN;
 export const SITE_NAME = 'Himalayan Koh';
+export { SITE_ORIGIN_STAGING, SITE_ORIGIN_PRODUCTION } from '@/lib/site/origin';
 // Restored to the approved public metadata. The migration had rewritten both into
 // a kitchen-only voice, which is a content change rather than part of moving the
 // runtime, so the wording the owner approved is back.
