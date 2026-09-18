@@ -189,6 +189,12 @@ export default function AdminDashboard() {
   const averageOrderValue = paidOrders > 0 ? allTimeRevenue / paidOrders : 0;
 
   const isWooCatalog = catalogStats?.source === 'woocommerce';
+  /**
+   * Flip to false in the pass that reads WooCommerce orders. Until then the
+   * order/revenue/customer tiles describe the legacy order database, and the
+   * notice below says so rather than letting them read as this store's sales.
+   */
+  const ORDERS_FROM_LEGACY_SOURCE = true;
   const activeProducts = catalogStats ? (isWooCatalog ? catalogStats.total : catalogStats.active) : null;
   const totalProducts = catalogStats?.total ?? null;
 
@@ -315,6 +321,22 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {/*
+        Two sources answer this row, so it says which one answered what. The
+        products tile names WooCommerce; the order, revenue and customer tiles
+        are still read from the legacy order database, and presenting them side
+        by side without saying so reads as one store's takings. WooCommerce
+        orders are not wired to the console yet, so these are records rather
+        than storefront sales.
+      */}
+      {isWooCatalog && ORDERS_FROM_LEGACY_SOURCE ? (
+        <AdminNotice tone="info" title="Which system answered these figures">
+          Products, prices and stock come from WooCommerce, which is what the storefront reads. Order,
+          revenue and customer figures are still read from the legacy order database, and WooCommerce
+          orders are not wired to the console yet, so those numbers are not storefront takings.
+        </AdminNotice>
+      ) : null}
 
       {/* KPI row — six figures, each linkable */}
       <div className="grid grid-cols-6 gap-2.5">
