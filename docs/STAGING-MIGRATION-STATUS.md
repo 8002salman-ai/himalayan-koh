@@ -286,3 +286,46 @@ comment "Vercel preview storefront (noindex-guarded)"
 Reverting the cutover means restoring exactly that record. Apex `A`, `www` CNAME,
 MX (`*.jellyfish.systems`) and the SPF/DKIM TXT records are untouched by this
 migration and must stay untouched.
+
+## Admin completion pass (React #419, Categories, refusal visibility)
+
+**Every admin route was failing with React error #419**, which the browser showed
+as the generic "an error occurred in the Server Components render" page. Root
+cause was a single hook: `NavigationProgress` read the query string with
+`useSearchParams()` from `next/navigation`, which may only be called inside a
+Suspense boundary, so `app/providers.tsx` wrapped the client effects in one with a
+`null` fallback. That boundary sat above every route, had to hydrate before it
+could resolve the query string, and received that update mid-hydration. The same
+boundary also meant every prerendered document was missing what it guarded, so the
+console redrew once it hydrated — the reported flicker.
+
+The component now reads `window.location.search` through the app's router shim, so
+nothing above a route suspends and the boundary is gone. Guard:
+`src/lib/router-compat.test.ts` scans **every** file under `src/` and fails if
+`useSearchParams` from `next/navigation` returns anywhere.
+
+Measured after the fix: 34/34 admin routes render, **0 console errors**, and one
+load of `/admin/products` issues exactly **one** `GET /api/admin/catalog` — no
+repeat, no loop.
+
+**Categories are now real WooCommerce terms.** The screen said "category editing is
+not connected" while the same process already held staging Woo credentials that
+write products, so only the write path was missing (`lib/woo/taxonomyWrite.ts` +
+`/api/admin/categories[/:id]`, admin-session guarded; anonymous requests get 401).
+Two rules live in the module, both measured against the live store rather than
+assumed:
+
+- a term holding products is **never** deleted — WooCommerce accepts that delete and
+  moves the products to Uncategorized, and it reported `200` when probed;
+- a taken slug is **refused**, not suffixed — WooCommerce answers `201` and appends
+  `-2`, inventing a second public URL for the same shelf.
+
+Console-verified: create → edit → delete (a real term was created and removed,
+taxonomy back to 8), the slug-collision refusal renders **inside** the dialog, and
+the delete guard's sentence is now shown only when the term actually holds products.
+
+Remaining known items on this surface: the admin Blog screen requests two legacy
+livestock images that 404 (`/images/legacy/cattle-grazing.jpg`,
+`/images/legacy/horse-salt-lick-paddock.jpg`), and the empty WooCommerce term
+`animal feed` (`/animal-feed`, id 58, 0 products) is still in the taxonomy — visible
+in the console, not published on the storefront. Both are recorded, neither changed.
