@@ -99,12 +99,15 @@ export default function HomePage() {
               {/* h1, not h2: this is the homepage's main heading — the page had
                   no h1 at all, so search engines had no primary topic signal.
                   Styling lives in the className, so the visual size is unchanged. */}
+              {/* Headline restored to the approved storefront wording. The copy
+                  the owner signed off on opens on the crystal salt and its cooking
+                  pedigree; the salt-only framing is what keeps it publishable. */}
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
-                Unrefined Himalayan Pink Salt
+                Rich All Natural Himalayan Pink Salt
               </h1>
               <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
-                  Pink Himalayan crystal salt has long been the standard for cooking — a natural rock salt that keeps the trace minerals and iron the seam gave it instead of being washed into pure white sodium chloride.
+                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks — a natural rock salt that keeps the trace minerals and iron the seam gave it instead of being washed into pure white sodium chloride.
                 </p>
                 <p>
                   We carry it the way a kitchen actually uses it: fine grain for baking and brines, coarse for the grinder and for finishing, thick blocks for the grill and the table, and lamps and décor carved from the same rock.
