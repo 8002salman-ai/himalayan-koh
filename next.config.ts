@@ -113,9 +113,15 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Only hosts this storefront actually serves images from. `**.vercel.app` was
+    // here so the Vercel-era deployment could optimise its own assets; nothing has
+    // referenced it since the content moved to WooCommerce and the legacy images
+    // became self-hosted, and a wildcard over a shared domain is an image proxy for
+    // anyone who can get a URL into the page. Re-add it only with a reason.
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: '**.vercel.app' },
+      { protocol: 'https', hostname: 'himalayankoh.com' },
+      { protocol: 'https', hostname: '**.himalayankoh.com' },
     ],
   },
 };
