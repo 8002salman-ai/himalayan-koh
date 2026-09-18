@@ -98,6 +98,35 @@ is a dual source of truth and is recorded here rather than quietly left.
    public by intent — the shipping-from address is advertised on Contact and in the
    policies.
 
+## Staging-safe technical cleanup (2026-09-18)
+
+- **`next-env.d.ts` is untracked.** Two toolchains own that filename and write
+  different contents (`vinext build` imports its own type augmentations, `next lint`
+  restores Next's navigation types), so a tracked copy came back dirty after a lint
+  run. Typecheck passes without the file — verified with `.next/types` removed — and
+  both build tools write it back before anything needs it. A full `npm run build`
+  and `npm run build:deploy` now leave a **clean tree**.
+- **Nothing in the app asks about Vercel any more.** The AI route's CORS allowlist
+  read `VERCEL_URL`/`VERCEL_PROJECT_PRODUCTION_URL` and fell back to the literal
+  `himalayan-koh.vercel.app`; on Workers those are absent, so it was effectively
+  asking whether a caller was the old Vercel host. It now allows the origin the
+  deployment is served from (from the request's own URL) plus the configured public
+  origin — verified on the Worker: own host and preview reflected, `evil.example` and
+  `someone-elses-app.vercel.app` get no CORS header at all.
+- **`images.remotePatterns` no longer wildcards `**.vercel.app`**, a shared domain
+  nothing has referenced since content moved to WooCommerce.
+- **`robots` meta is denial-only** (see the commit): staging pages were emitting
+  `index, follow` while their own headers said `noindex, nofollow`. All three signals
+  now agree on every route; `/login` and `/account` keep an explicit denial so they
+  stay out of the index on production too.
+- **Credentials are checked at build *and* deploy.** The plugin re-stages
+  `.dev.vars` into `dist/server` when the deploy runs, so a build-time-only guard
+  left the artifact dirty again before it shipped. `deploy:vinext` runs the check
+  afterwards, which also leaves `dist` clean at rest.
+- **Deploy propagation.** A deploy can answer from the previous version for a few
+  seconds; `/api/version` read immediately after a deploy returned the *old* SHA
+  before settling. Poll it, do not single-shot it.
+
 ## Still outstanding
 
 - **`HK-LFH-6lbs` price conflict** — the workbook disagrees with itself (Sheet1
