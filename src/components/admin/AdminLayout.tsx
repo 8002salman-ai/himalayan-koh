@@ -169,22 +169,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="h-full w-full overflow-x-auto">
         <div className="flex h-full" style={{ minWidth: ADMIN_CANVAS_MIN_WIDTH }}>
           <aside className={`flex h-full ${RAIL_WIDTH} shrink-0 flex-col bg-admin-rail`}>
-            {/* The mark sits on its own light chip. Inverting the artwork to white
-                filled the rail with an unreadable blob, so the brand keeps its
-                real colours on a small tile instead. */}
-            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5">
-              <span className="flex h-9 w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
-                <img src="/logo.svg" alt="Himalayan Koh" className="h-7 w-auto" />
+            {/* The console's own identity, not the shop's. The storefront logo
+                used to sit here and it made the admin read as a second header of
+                the website; a compact monogram plus a wordmark says which tool
+                this is without repeating the storefront's artwork. */}
+            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-himalayan to-himalayan-dark text-[13px] font-bold tracking-tight text-white shadow-[0_6px_16px_-8px_rgba(0,0,0,0.8)]">
+                HK
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-admin-rail-text">
-                Admin
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+                  Admin Console
+                </span>
+                <span className="block truncate text-[10px] font-medium tracking-[0.08em] text-admin-rail-text">
+                  Himalayan Koh
+                </span>
               </span>
             </div>
 
-            <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-              {ADMIN_NAV_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+            <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+              {ADMIN_NAV_GROUPS.map((group, groupIndex) => (
+                <div
+                  key={group.label}
+                  className={groupIndex > 0 ? 'border-t border-white/[0.07] pt-4' : undefined}
+                >
+                  <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
                     {group.label}
                   </p>
                   <div className="space-y-1">
@@ -199,7 +208,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           aria-current={isActive ? 'page' : undefined}
                           className={`${RAIL_LINK_BASE} ${isActive ? RAIL_LINK_ACTIVE : RAIL_LINK_IDLE}`}
                         >
-                          <item.icon size={17} className="shrink-0" />
+                          <item.icon
+                            size={17}
+                            className={`shrink-0 ${isActive ? 'text-himalayan' : 'text-admin-rail-text group-hover:text-white'}`}
+                          />
                           <span className="truncate">{item.label}</span>
                           {item.pending && (
                             <span
@@ -216,10 +228,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </nav>
 
             <div className="shrink-0 border-t border-white/10 p-3">
-              <Link
-                to="/"
-                className={`${RAIL_LINK_BASE} ${RAIL_LINK_IDLE}`}
-              >
+              <Link to="/" className={`${RAIL_LINK_BASE} ${RAIL_LINK_IDLE}`}>
                 <ExternalLink size={17} className="shrink-0" />
                 <span>View storefront</span>
               </Link>

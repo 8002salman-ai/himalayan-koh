@@ -1,17 +1,13 @@
 'use client';
 
 import NextLink from 'next/link';
-import {
-  useRouter,
-  usePathname,
-  useSearchParams as useNextSearchParams,
-  useParams as useNextParams,
-} from 'next/navigation';
+import { useRouter, usePathname, useParams as useNextParams } from 'next/navigation';
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ComponentProps,
   type MouseEvent,
   type ReactNode,
@@ -30,6 +26,46 @@ type StoredNavigation = { path: string; state: unknown };
 
 /** Shared across all useLocation() callers so Layout/SEO do not steal navigation state. */
 let sharedNavigationState: StoredNavigation | null = null;
+
+/**
+ * The query string, read from the browser instead of from `next/navigation`.
+ *
+ * `useSearchParams()` from `next/navigation` may only be called during a render
+ * that sits **inside a Suspense boundary**. Every caller of this shim — the admin
+ * shell's `AdminRoute`, `ProtectedRoute`, the account sidebar, `LoginPage`,
+ * `/account`, `/checkout/success`, `/track` — is a component that renders at the
+ * top of its route, so each one either needed its own boundary or took the whole
+ * route down. That is not a hypothetical: with the app's root boundary removed to
+ * let a retired product URL answer a real `404` (a boundary above the product
+ * route swallows the status — see `app/(main)/products/[slug]/page.status.test.ts`),
+ * every admin route answered `200` with React's "error occurred in the Server
+ * Components render" boundary and React error #419 in the console.
+ *
+ * Reading `window.location.search` removes the requirement entirely: the value is
+ * empty on the server and React uses exactly that for the hydration render (the
+ * `getServerSnapshot` contract), then swaps in the real query string on the
+ * client. Freshness comes from `usePathname()` — any router navigation re-renders
+ * this component, which re-reads the snapshot — plus `popstate` for back/forward.
+ */
+function subscribeToLocation(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('popstate', onChange);
+  return () => window.removeEventListener('popstate', onChange);
+}
+
+function clientSearch(): string {
+  return typeof window === 'undefined' ? '' : window.location.search;
+}
+
+function serverSearch(): string {
+  return '';
+}
+
+/** Query string as a stable `URLSearchParams`, empty until the client mounts. */
+function useClientSearchParams(): URLSearchParams {
+  const search = useSyncExternalStore(subscribeToLocation, clientSearch, serverSearch);
+  return useMemo(() => new URLSearchParams(search), [search]);
+}
 
 /**
  * sessionStorage does not exist during server rendering. Every access below is
@@ -163,8 +199,9 @@ export function useNavigate() {
 
 export function useLocation() {
   const pathname = usePathname() ?? '/';
-  const nextParams = useNextSearchParams();
-  const search = nextParams?.toString() ? `?${nextParams.toString()}` : '';
+  const params = useClientSearchParams();
+  const query = params.toString();
+  const search = query ? `?${query}` : '';
   // Initialised from memory only, so server and first client render agree; the
   // effect below pulls any persisted state in immediately after mount.
   const [state, setState] = useState<unknown>(() => readNavigationStateSync(pathname));
@@ -219,14 +256,9 @@ export function useSearchParams(): [
   URLSearchParams,
   (arg: SetSearchParamsArg, options?: SetSearchParamsOptions) => void,
 ] {
-  const nextParams = useNextSearchParams();
   const router = useRouter();
   const pathname = usePathname() ?? '/';
-
-  const searchParams = useMemo(
-    () => new URLSearchParams(nextParams?.toString() ?? ''),
-    [nextParams]
-  );
+  const searchParams = useClientSearchParams();
 
   const setSearchParams = useCallback(
     (arg: SetSearchParamsArg, options?: SetSearchParamsOptions) => {
