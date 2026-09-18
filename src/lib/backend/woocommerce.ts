@@ -21,7 +21,8 @@
 
 import type { Product, StockStatus } from '../../data/products';
 import { collectMissingCatalogFields, priceDisplayFromRange } from '../products/price';
-import { backendConfig, hasWooCommerceCredentials } from './config';
+import { backendConfig } from './config';
+import { hasWooCommerceCredentials } from './credentials';
 import { wordpressRequest, wordpressRequestSafe, type QueryValue } from './wordpress';
 
 const STORE_API = '/wc/store/v1';

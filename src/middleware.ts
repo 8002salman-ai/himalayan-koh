@@ -1,63 +1,121 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { offNicheTerm } from '@/lib/catalog/niche';
 import { NICHE_SECTIONS } from '@/lib/catalog/nicheSections';
 
 /**
- * `?category=` normalisation for the shop, decided before the page renders.
+ * Request-URL normalisation for the public shop, decided before anything renders.
  *
- * `/products?category=<shelf>` is how a shelf hub is addressed, and a value that
- * is not a live shelf — a retired one, a typo, an invented one — must not render a
- * page at all. Two reasons, and the second is the one that put this here:
+ * This runs ahead of the page because **Next serialises the request into the
+ * response it streams**: every response body carries the requested path and query
+ * in its flight payload, so a URL that names an animal product is echoed back in
+ * the raw HTML of a pink salt shop. That is not a rendering bug that can be fixed
+ * inside a component — measured on the running build, `/products/salt-licks-for-horses`
+ * returned the word three times and `/blog/why-do-dairy-cows-need-trace-minerals`
+ * eight, while no such product or article was served, and `/products?search=horses`
+ * echoed the query. The only place a URL can be refused is before the page runs,
+ * which is here. Nothing off-niche is serialised into any response — not payload,
+ * not metadata, not JSON-LD.
  *
- * 1. **It is a duplicate URL.** Every unknown value rendered the same catalogue
- *    under a different query string, with a canonical pointing at itself.
- * 2. **The rendered page echoes the value.** Next serialises the request path into
- *    the response, so the storefront's own old shelf names — the livestock hubs its
- *    navigation used to link, `?category=salt-lick-horses` among them — came back
- *    out in the HTML of a pink salt shop, twice each. Answering with a redirect
- *    means nothing renders for that URL in the first place.
+ * Three rules, all of them about URL text the shop must not carry:
  *
- * The redirect also can't be replaced by a check inside the page: the root
- * `app/loading.tsx` skeleton flushes the response shell before a page or
- * `generateMetadata` can call `redirect()`, so the best a page-level check manages
- * is a meta-refresh inside a 200 (verified — that is what it produced). Middleware
- * runs first and can answer with a real 308.
+ * 1. **A content URL whose last segment names something off-niche is retired.**
+ *    The storefront guard (`lib/catalog/niche.ts`) withholds the products and
+ *    articles themselves; this closes the same door on the URL space, so the
+ *    retired slugs the old navigation used to link answer with a redirect instead
+ *    of a page that repeats the name back.
+ * 2. **`?query=` values that name something off-niche are dropped.** A search term
+ *    is serialised too, so it is judged the same way, and the rest of the request
+ *    (sort, page, a valid shelf) is left alone.
+ * 3. **`?category=` values must be live shelves.** An unknown value rendered the
+ *    whole catalogue under a different query string with a canonical to itself, and
+ *    echoed the retired shelf name in the process.
  *
- * Scoped to `/products` exactly: the shop's catalogue only. Admin, account,
- * checkout and API routes are untouched.
+ * One denylist, one shelf list, both borrowed from the modules that already own
+ * them — no second copy of either judgement lives here.
+ *
+ * Scoped to the two public browse routes that take user-supplied text. Admin,
+ * account, checkout, order confirmation and API routes are untouched: their query
+ * strings carry payment and session parameters and are never rewritten.
  */
 
-const VALID_SHELF_KEYS = new Set<string>(NICHE_SECTIONS.map((section) => section.key));
+/** Routes whose trailing segment is user-supplied, and where a refused URL lands. */
+const CONTENT_ROUTES: ReadonlyArray<{ pattern: RegExp; fallback: string }> = [
+  { pattern: /^\/products\/([^/]+)\/?$/, fallback: '/products' },
+  { pattern: /^\/blog\/([^/]+)\/?$/, fallback: '/blog' },
+];
+
+/** Browse routes whose query string names content, and so is judged for the niche. */
+const BROWSE_PATHS = new Set(['/products', '/blog']);
+
+const CATALOG_PATH = '/products';
 const CATEGORY_PARAM = 'category';
+
+const VALID_SHELF_KEYS = new Set<string>(NICHE_SECTIONS.map((section) => section.key));
+
+/** A path segment as text, or the raw segment when it is not valid escaping. */
+function decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/** Where a refused content URL goes: the index of the section it belonged to. */
+function retireOffNicheContentUrl(request: NextRequest, pathname: string): NextResponse | null {
+  for (const route of CONTENT_ROUTES) {
+    const match = route.pattern.exec(pathname);
+    if (!match) continue;
+
+    if (offNicheTerm(decodePathSegment(match[1]))) {
+      const url = request.nextUrl.clone();
+      url.pathname = route.fallback;
+      url.search = '';
+      return NextResponse.redirect(url, 308);
+    }
+
+    return null;
+  }
+
+  return null;
+}
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname, searchParams } = request.nextUrl;
 
-  if (pathname !== '/products') return NextResponse.next();
+  // --- 1. Content URLs that name something the shop does not sell ------------
+  const retired = retireOffNicheContentUrl(request, pathname);
+  if (retired) return retired;
 
-  const raw = searchParams.get(CATEGORY_PARAM);
-  if (!raw) return NextResponse.next();
+  // --- 2 and 3. The browse routes' own query strings -------------------------
+  if (!BROWSE_PATHS.has(pathname)) return NextResponse.next();
 
-  const normalized = raw.trim().toLowerCase();
+  const params = new URLSearchParams(searchParams);
 
-  // An invalid shelf goes to the plain catalogue: the shelf no longer exists, and
-  // the catalogue is where a shopper who followed an old link should land.
-  if (!VALID_SHELF_KEYS.has(normalized)) {
-    const url = request.nextUrl.clone();
-    url.searchParams.delete(CATEGORY_PARAM);
-    return NextResponse.redirect(url, 308);
+  // A term that names an animal product is not a filter this shop can answer, and
+  // the response would repeat it verbatim — key or value, both are URL text.
+  for (const [key, value] of [...params.entries()]) {
+    if (offNicheTerm(key) || offNicheTerm(value)) params.delete(key);
   }
 
-  // A live shelf addressed with different casing or padding is the same shelf;
-  // redirect so the URL a crawler keeps is the exact one the hub declares.
-  if (normalized !== raw) {
-    const url = request.nextUrl.clone();
-    url.searchParams.set(CATEGORY_PARAM, normalized);
-    return NextResponse.redirect(url, 308);
+  const requestedShelf = params.get(CATEGORY_PARAM);
+  if (requestedShelf !== null) {
+    // A retired, invented or mis-cased shelf value is not a URL this shop serves:
+    // it is dropped, so an old link lands on the whole catalogue instead of on a
+    // duplicate URL that names a shelf the shop no longer has.
+    const shelf = requestedShelf.trim().toLowerCase();
+    if (VALID_SHELF_KEYS.has(shelf)) params.set(CATEGORY_PARAM, shelf);
+    else params.delete(CATEGORY_PARAM);
   }
 
-  return NextResponse.next();
+  const query = params.toString();
+  if (query === searchParams.toString()) return NextResponse.next();
+
+  const url = request.nextUrl.clone();
+  url.search = query ? `?${query}` : '';
+  return NextResponse.redirect(url, 308);
 }
 
 export const config = {
-  matcher: '/products',
+  matcher: ['/products', '/products/:path*', '/blog', '/blog/:path*'],
 };

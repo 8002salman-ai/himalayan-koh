@@ -1,14 +1,25 @@
 /**
- * Central backend configuration.
+ * Central backend configuration — the public facts only.
  *
  * The migration from Supabase to WordPress/WooCommerce is staged, so the data
  * source is a flag rather than a rewrite. Default stays 'supabase': flipping it
  * must be a deliberate, reversible act, and the Supabase path stays intact as
  * the rollback target until WooCommerce parity is verified.
+ *
+ * Credentials are NOT here. They live in `./credentials`, which only server
+ * modules import, because this file is reachable from client components and
+ * every "no secret in the browser bundle" rule needs a structural owner rather
+ * than a convention. The data-source flag it re-exports has its own module
+ * (`./dataSource`) for the same reason: a client component that wants the flag
+ * should not pull the origin and timeout in with it.
  */
 
-/** Which backend serves catalog/commerce reads. */
-export type DataSource = 'supabase' | 'woocommerce';
+import { dataSource, resolveDataSource } from './dataSource';
+
+import type { DataSource } from './dataSource';
+
+export { resolveDataSource };
+export type { DataSource };
 
 function normaliseBaseUrl(value: string | undefined): string {
   const trimmed = (value || '').trim();
@@ -33,35 +44,15 @@ const woocommerceBaseUrl = normaliseBaseUrl(
     wordpressBaseUrl
 );
 
-/**
- * Maps a raw `NEXT_PUBLIC_DATA_SOURCE` value to a data source.
- *
- * Pure and exported so the default can be pinned by a test without depending on
- * whatever the environment happens to hold. The previous test asserted the
- * ambient default, so it failed for anyone who followed the migration doc and
- * set the flag — the exact state that doc tells a developer to reach.
- */
-export function resolveDataSource(raw: string | undefined): DataSource {
-  return (raw || '').trim().toLowerCase() === 'woocommerce' ? 'woocommerce' : 'supabase';
-}
-
 export const backendConfig = {
   /** 'supabase' (default, rollback target) or 'woocommerce'. */
-  dataSource: resolveDataSource(process.env.NEXT_PUBLIC_DATA_SOURCE),
+  dataSource,
   wordpressBaseUrl,
   woocommerceBaseUrl,
   /** WordPress REST API root, e.g. https://example.com/staging/wp-json */
   get wordpressApiRoot(): string {
     return wordpressBaseUrl ? `${wordpressBaseUrl}/wp-json` : '';
   },
-  /**
-   * WooCommerce REST API consumer credentials. Server-only: a consumer
-   * secret grants full store access, so it must never reach the browser via a
-   * NEXT_PUBLIC_ variable. Empty here means "use the public Store API only",
-   * which cannot read price or stock.
-   */
-  consumerKey: process.env.WOOCOMMERCE_CONSUMER_KEY || '',
-  consumerSecret: process.env.WOOCOMMERCE_CONSUMER_SECRET || '',
   /** Default read timeout for backend calls, in ms. */
   requestTimeoutMs: Number(process.env.WORDPRESS_REQUEST_TIMEOUT_MS || 12000),
 };
@@ -78,11 +69,6 @@ export function isWooCommerceDataSource(): boolean {
  */
 export function isSupabaseDataSource(): boolean {
   return backendConfig.dataSource === 'supabase';
-}
-
-/** True when WooCommerce REST credentials are present (enables price/stock reads). */
-export function hasWooCommerceCredentials(): boolean {
-  return Boolean(backendConfig.consumerKey && backendConfig.consumerSecret);
 }
 
 /** The configuration facts readiness depends on, so the rule can be tested directly. */
@@ -110,14 +96,3 @@ export function describeReadiness(input: BackendReadinessInput): { ready: boolea
   return { ready: blockers.length === 0, blockers };
 }
 
-/**
- * Describes why the current configuration can or cannot serve a full catalog.
- * Used by diagnostics and by the degraded-mode warnings the UI surfaces.
- */
-export function describeBackendReadiness(): { ready: boolean; blockers: string[] } {
-  return describeReadiness({
-    wordpressApiRoot: backendConfig.wordpressApiRoot,
-    consumerKey: backendConfig.consumerKey,
-    consumerSecret: backendConfig.consumerSecret,
-  });
-}

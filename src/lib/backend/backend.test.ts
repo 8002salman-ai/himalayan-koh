@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   backendConfig,
-  describeBackendReadiness,
   describeReadiness,
   isSupabaseDataSource,
   isWooCommerceDataSource,
   resolveDataSource,
 } from './config';
+import { describeBackendReadiness, wooCredentials } from './credentials';
 import { buildQueryString, toBodySnippet, WordPressApiError } from './wordpress';
 import { looksLikeHtml, looksLikeWordPressFatal } from './wordpressFatal.mjs';
 import {
@@ -460,11 +460,14 @@ describe('backend source flag', () => {
     expect(ready.blockers).toEqual([]);
 
     // The ambient wrapper must delegate to that same rule, not re-derive it.
+    // It reads the credentials itself (they are no longer on `backendConfig`,
+    // which browser code imports), so the expectation supplies the same pair.
+    const credentials = wooCredentials();
     expect(describeBackendReadiness()).toEqual(
       describeReadiness({
         wordpressApiRoot: backendConfig.wordpressApiRoot,
-        consumerKey: backendConfig.consumerKey,
-        consumerSecret: backendConfig.consumerSecret,
+        consumerKey: credentials?.username ?? '',
+        consumerSecret: credentials?.password ?? '',
       })
     );
   });

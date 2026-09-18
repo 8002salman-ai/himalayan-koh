@@ -17,12 +17,12 @@
  * theoretical: it did, in a 33 kB chunk shared by `/`, `/products` and
  * `/products/[slug]`.
  *
- * So: **storefront code imports its modules directly** — `./products` for the
+ * So: **storefront code imports its modules directly** — `./catalogClient` for the
  * browser catalog client, `./config` for the data-source flag — and this barrel is
  * for the console. Sealed server reads are in `./serverCatalog`.
  */
 
-export { isSupabaseDataSource } from './config';
+export { isSupabaseDataSource } from './dataSource';
 
 /**
  * The storefront catalog client for *browser* code: it reads `/api/catalog`.
@@ -38,10 +38,9 @@ export {
   getFeaturedCatalogProducts,
   invalidateCatalogReads,
   lookupCatalogProduct,
-  type CatalogLookup,
-  type CatalogQuery,
-  type CatalogResult,
-} from './products';
+} from './catalogClient';
+
+export type { CatalogLookup, CatalogQuery, CatalogResult } from './products';
 
 export {
   ADMIN_CATALOG_PER_PAGE,

@@ -11,8 +11,8 @@ import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
 import CategoryShopPanel from '../components/category/CategoryShopPanel';
 import { productMatchesCategoryFilter } from '../lib/categoryContent';
-import { getCatalogProducts, invalidateCatalogReads } from '../lib/backend/products';
-import { isSupabaseDataSource } from '../lib/backend/config';
+import { getCatalogProducts, invalidateCatalogReads } from '../lib/backend/catalogClient';
+import { isSupabaseDataSource } from '../lib/backend/dataSource';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 
 /**
@@ -32,7 +32,7 @@ import { useProductsCategoryFilter } from '../hooks/useProductsCategoryFilter';
  * Passing it in removes the browser's own catalogue read on first paint: the grid
  * renders the products the page was rendered with, and only a later invalidation
  * (a realtime change) asks the backend again. That read then goes through the
- * shared cache in `lib/backend/products.ts` rather than issuing a fresh
+ * shared cache in `lib/backend/catalogClient.ts` rather than issuing a fresh
  * full-catalogue request per mount.
  */
 export interface ProductsPageProps {

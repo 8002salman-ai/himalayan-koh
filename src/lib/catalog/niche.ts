@@ -91,10 +91,26 @@ export const OFF_NICHE_TERMS: readonly string[] = [
 
 const OFF_NICHE_PATTERN = new RegExp(`\\b(${OFF_NICHE_TERMS.join('|')})\\b`, 'i');
 
+/**
+ * The off-niche term a piece of text names, or `null` when it names none.
+ *
+ * Returned rather than reduced to a boolean because there is a second caller with
+ * a second question: `middleware.ts` asks it about the *request URL*. Next
+ * serialises the requested path and query into the response it streams, so a URL
+ * that names an animal product comes back out in the raw HTML of a pink salt shop
+ * — measured at three occurrences for `/products/salt-licks-for-horses` — even
+ * though no such product was ever served. One denylist, asked about data at the
+ * read seam and about URL text at the edge.
+ */
+export function offNicheTerm(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const match = OFF_NICHE_PATTERN.exec(text);
+  return match ? match[0].toLowerCase() : null;
+}
+
 /** True when the text names something outside the pink salt niche. */
 export function isOffNicheText(text: string | null | undefined): boolean {
-  if (!text) return false;
-  return OFF_NICHE_PATTERN.test(text);
+  return offNicheTerm(text) !== null;
 }
 
 /**

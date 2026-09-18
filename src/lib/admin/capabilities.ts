@@ -18,7 +18,7 @@
  * server-side, next to the credential it inspects.
  */
 
-import { isWooCommerceDataSource } from '../backend/config';
+import { isWooCommerceDataSource } from '../backend/dataSource';
 
 export type CapabilityId =
   /* Commerce */

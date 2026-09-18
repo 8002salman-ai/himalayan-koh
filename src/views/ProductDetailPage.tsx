@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../data/products';
-import { lookupCatalogProduct } from '../lib/backend/products';
+import { lookupCatalogProduct } from '../lib/backend/catalogClient';
 import ProductDetailSections from '../components/product/ProductDetailSections';
 
 interface ProductDetailPageProps {

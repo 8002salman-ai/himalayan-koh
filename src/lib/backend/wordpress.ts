@@ -12,6 +12,7 @@
  */
 
 import { backendConfig } from './config';
+import { wooCredentials } from './credentials';
 import { looksLikeHtml, looksLikeWordPressFatal } from './wordpressFatal.mjs';
 
 /** A structured backend failure. Never wraps the raw HTML body in the message. */
@@ -72,6 +73,10 @@ export interface WordPressRequestOptions {
   credentials?: { username: string; password: string } | null;
   /** Shorthand: use the configured WooCommerce consumer key/secret. */
   useCredentials?: boolean;
+  /** HTTP method. Anything other than GET is a write and is never cached. */
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /** JSON request body, for writes. */
+  body?: unknown;
   headers?: Record<string, string>;
 }
 
@@ -117,6 +122,8 @@ export async function wordpressRequest<T>(
   options: WordPressRequestOptions = {}
 ): Promise<T> {
   const { params, revalidate, signal, headers } = options;
+  const method = options.method ?? 'GET';
+  const isWrite = method !== 'GET';
   const timeoutMs = options.timeoutMs ?? backendConfig.requestTimeoutMs;
   const base = backendConfig.wordpressApiRoot;
 
@@ -141,10 +148,7 @@ export async function wordpressRequest<T>(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   const credentials =
-    options.credentials ??
-    (options.useCredentials && backendConfig.consumerKey
-      ? { username: backendConfig.consumerKey, password: backendConfig.consumerSecret }
-      : null);
+    options.credentials ?? (options.useCredentials ? wooCredentials() : null);
 
   const requestHeaders: Record<string, string> = {
     Accept: 'application/json',
@@ -155,12 +159,22 @@ export async function wordpressRequest<T>(
     requestHeaders.Authorization = `Basic ${token}`;
   }
 
+  const requestBody =
+    options.body === undefined ? undefined : JSON.stringify(options.body);
+  if (requestBody !== undefined) requestHeaders['Content-Type'] = 'application/json';
+
   let response: Response;
   try {
     response = await fetch(url, {
+      method,
       headers: requestHeaders,
       signal: controller.signal,
-      ...(revalidate === undefined ? { cache: 'no-store' as RequestCache } : { next: { revalidate } }),
+      // A write is never cached, and never revalidated into a cache entry: the
+      // next read must see the store's own answer, not ours.
+      ...(isWrite || revalidate === undefined
+        ? { cache: 'no-store' as RequestCache }
+        : { next: { revalidate } }),
+      ...(requestBody === undefined ? {} : { body: requestBody }),
     });
   } catch (error) {
     const aborted = error instanceof Error && error.name === 'AbortError';

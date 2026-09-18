@@ -6,8 +6,8 @@ import { legacyImage } from '@/lib/images/legacyAssets';
 import { storefrontProducts, Product } from '@/data/products';
 import ProductCard from '@/components/ProductCard';
 import { SkeletonProductCard } from '@/components/ui/Skeleton';
-import { getFeaturedCatalogProducts } from '@/lib/backend/products';
-import { isSupabaseDataSource } from '@/lib/backend/config';
+import { getFeaturedCatalogProducts } from '@/lib/backend/catalogClient';
+import { isSupabaseDataSource } from '@/lib/backend/dataSource';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 /** Module scope so it stays out of the effect's dependency array. */
