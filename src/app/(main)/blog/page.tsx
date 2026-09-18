@@ -11,7 +11,7 @@ export function generateMetadata(): Metadata {
   return buildMetadata({
     title: 'Blog - Livestock Health & Himalayan Salt Guides | Himalayan Koh',
     description:
-      'Read guides on livestock health, trace-mineral nutrition, salt lick feeding, and cooking with Himalayan pink salt.',
+      'Guides on Himalayan pink salt: grain sizes, brining and cooking, storage, salt blocks, lamps and buying in bulk.',
     path: '/blog',
   });
 }

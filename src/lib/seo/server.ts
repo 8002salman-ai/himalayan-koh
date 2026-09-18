@@ -50,6 +50,24 @@ export function seoFetchDeadline(): AbortSignal {
  * NEXT_PUBLIC_SITE_URL; falls back to the production domain (never a
  * vercel.app preview URL, which would leak into search results).
  */
+/**
+ * Runs a server-side CMS read, degrading instead of throwing.
+ *
+ * Supabase is optional on this storefront and is disabled outright in some
+ * environments (`disabled.supabase.co`), where a raw query rejects with a DNS
+ * failure. Awaiting it directly meant the sitemap route failed its prerender and
+ * took a whole deployment build down with it. A missing CMS must cost the page
+ * its blog links, not the site its build.
+ */
+async function safeSeoRead<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    console.error(`SEO read failed (${label}); rendering without it.`, error);
+    return fallback;
+  }
+}
+
 export function siteOrigin(): string {
   const configured = publicEnv.siteUrl?.trim();
   if (configured) return configured.replace(/\/$/, '');
@@ -139,17 +157,23 @@ export async function fetchSeoBlogPost(slug: string): Promise<SeoBlogPost | null
   const normalized = slug?.trim().toLowerCase();
   if (!normalized) return null;
 
-  const { data } = await getSeoSupabase()
-    .from('blog_posts')
-    .select(
-      'title, slug, excerpt, featured_image, meta_title, meta_description, published_at, updated_at'
-    )
-    .eq('slug', normalized)
-    .eq('is_published', true)
-    .abortSignal(seoFetchDeadline())
-    .maybeSingle();
+  return safeSeoRead(
+    `blog post ${normalized}`,
+    async () => {
+      const { data } = await getSeoSupabase()
+        .from('blog_posts')
+        .select(
+          'title, slug, excerpt, featured_image, meta_title, meta_description, published_at, updated_at'
+        )
+        .eq('slug', normalized)
+        .eq('is_published', true)
+        .abortSignal(seoFetchDeadline())
+        .maybeSingle();
 
-  return (data as SeoBlogPost | null) ?? null;
+      return (data as SeoBlogPost | null) ?? null;
+    },
+    null
+  );
 }
 
 /** Same shape the client blog API returns, so the view can be seeded with it directly. */
@@ -165,15 +189,21 @@ export async function fetchSeoBlogPostFull(slug: string): Promise<SeoBlogPostFul
   const normalized = slug?.trim().toLowerCase();
   if (!normalized) return null;
 
-  const { data } = await getSeoSupabase()
-    .from('blog_posts')
-    .select('*, author:profiles(id, full_name, avatar_url)')
-    .eq('slug', normalized)
-    .eq('is_published', true)
-    .abortSignal(seoFetchDeadline())
-    .maybeSingle();
+  return safeSeoRead(
+    `blog article ${normalized}`,
+    async () => {
+      const { data } = await getSeoSupabase()
+        .from('blog_posts')
+        .select('*, author:profiles(id, full_name, avatar_url)')
+        .eq('slug', normalized)
+        .eq('is_published', true)
+        .abortSignal(seoFetchDeadline())
+        .maybeSingle();
 
-  return (data as unknown as SeoBlogPostFull | null) ?? null;
+      return (data as unknown as SeoBlogPostFull | null) ?? null;
+    },
+    null
+  );
 }
 
 /**
@@ -182,13 +212,19 @@ export async function fetchSeoBlogPostFull(slug: string): Promise<SeoBlogPostFul
  * to the individual articles.
  */
 export async function fetchSeoBlogPosts(limit = 24): Promise<SeoBlogPostFull[]> {
-  const { data } = await getSeoSupabase()
-    .from('blog_posts')
-    .select('*, author:profiles(id, full_name, avatar_url)')
-    .eq('is_published', true)
-    .order('published_at', { ascending: false })
-    .limit(limit)
-    .abortSignal(seoFetchDeadline());
+  return safeSeoRead(
+    'blog index',
+    async () => {
+      const { data } = await getSeoSupabase()
+        .from('blog_posts')
+        .select('*, author:profiles(id, full_name, avatar_url)')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(limit)
+        .abortSignal(seoFetchDeadline());
 
-  return (data as unknown as SeoBlogPostFull[] | null) ?? [];
+      return (data as unknown as SeoBlogPostFull[] | null) ?? [];
+    },
+    []
+  );
 }

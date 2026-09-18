@@ -13,11 +13,18 @@ const aboutLinks = [
   { label: 'Privacy Policy', to: '/privacy' },
 ];
 
+/**
+ * The shop's shelves, in the store's own niche.
+ *
+ * Only edible salt has a hub page today, so the other three point at the
+ * catalogue rather than at a filter that would render empty. They become real
+ * hub links once the matching WooCommerce categories exist.
+ */
 const productLinks = [
-  { label: 'Edible Cooking Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
-  { label: 'Salt Lick for Horses', to: productsPathForCategoryTitle('Salt Lick for Horses') },
-  { label: 'Salt for Cattle', to: productsPathForCategoryTitle('Salt for Cattle') },
-  { label: 'Salt Blocks for Deer', to: productsPathForCategoryTitle('Salt Blocks for Deer') },
+  { label: 'Edible Pink Salt', to: productsPathForCategoryTitle('Edible Cooking Salt') },
+  { label: 'Cooking & Serving', to: '/products' },
+  { label: 'Salt Lamps & Décor', to: '/products' },
+  { label: 'Bulk & Wholesale', to: '/products' },
 ];
 
 export default function Footer() {
@@ -68,7 +75,7 @@ export default function Footer() {
                 Stay Updated
               </h3>
               <p className="text-white/90 text-base md:text-lg leading-relaxed">
-                Subscribe for exclusive offers, livestock health tips, and product updates.
+                Subscribe for new arrivals, recipes and offers from the salt works.
               </p>
             </div>
             <div>
@@ -130,7 +137,7 @@ export default function Footer() {
               className="h-12 mb-5 brightness-0 invert"
             />
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">
-              Premium Himalayan Pink Salt products for livestock, horses, cattle, deer, and gourmet cooking. Trusted by ranchers across America.
+              Pure Himalayan pink salt for cooking, serving and the home — fine and coarse edible grades, salt blocks, lamps and bulk bags, sourced from the Himalayan range.
             </p>
 
           </div>

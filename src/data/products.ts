@@ -1,4 +1,5 @@
 import { legacyImage } from '@/lib/images/legacyAssets';
+import { filterNicheProducts } from '@/lib/catalog/niche';
 
 export interface Testimonial {
   author: string;
@@ -55,6 +56,15 @@ export interface Product {
   sku?: string | null;
   /** Stock as reported by the source. Absent on hand-written demo entries. */
   stockStatus?: StockStatus;
+  /**
+   * Units the source says are available, or null when it reports no count.
+   *
+   * The storefront caps a cart line at this figure instead of letting a customer
+   * order past what the warehouse has. Null means "not reported" — the cart then
+   * behaves as it did before, because inventing a ceiling is as wrong as
+   * inventing stock.
+   */
+  stockQuantity?: number | null;
   /** Last modification time on the source, when it reports one. */
   updatedAt?: string | null;
   /** Catalog fields the source could not supply. Empty/absent means complete. */
@@ -403,6 +413,24 @@ export const categories = [
     description: "Optimize nutritional support for your entire herd with our Himalayan Round Rope Salt Lick – Essential Trace Minerals, 6 lb premium version. Double the mineral content of our 2 lb option, this 6 lb round lick with rope attachment serves multiple animals or provides extended supplementation. Perfectly sized for barns, pastures, and run-in sheds. The integrated rope enables secure hanging at ideal consumption height. All livestock benefit from the 80+ natural minerals: horses maintain coat and muscle quality, cattle improve milk production, and other animals enjoy enhanced overall health. Weather-resistant exterior ensures durability through all seasons. Complement with our other salt products for comprehensive mineral management.",
   },
 ];
+
+/**
+ * The bundled catalog, filtered to what the storefront may show.
+ *
+ * This is the demo data used when no backend is configured and the seed for
+ * local development, and it still carries entries from the store's livestock
+ * era. Nothing serves the raw list any more: the search suggestions, the
+ * homepage's first paint and the related-products fallback all read this one, so
+ * a retired product cannot reappear on a single surface while being hidden
+ * everywhere else.
+ *
+ * The filter is the same guard the live seam applies to WooCommerce and Supabase
+ * reads (`lib/catalog/niche.ts`), so all three sources agree on what the shop
+ * sells. Rewriting the bundled entries themselves — the ones that remain are
+ * genuine salt products but some still carry livestock-era copy and imagery — is
+ * tracked in docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md.
+ */
+export const storefrontProducts: Product[] = filterNicheProducts(products);
 
 export const blogPosts: BlogPost[] = [
   {
@@ -1313,47 +1341,40 @@ Make your salt lick selection count. Your herd's health depends on it.`,
   },
 ];
 
+/**
+ * The gallery shows salt, and only salt.
+ *
+ * The livestock photographs that used to be here (horses at a lick, cattle
+ * grazing) are gone with the products they advertised. Each image is labelled
+ * with the shelf it belongs to, and the filter list below is derived from these
+ * labels rather than written out, so a category can never be offered with
+ * nothing behind it.
+ */
 export const galleryImages: GalleryImage[] = [
   {
-    src: legacyImage('horseLickPaddock'),
-    alt: "Horse licking Himalayan salt",
-    category: "Horses",
-  },
-  {
-    src: legacyImage('saltRockBag'),
-    alt: "Himalayan salt products",
-    category: "Products",
-  },
-  {
     src: legacyImage('bowlOfSalt'),
-    alt: "Bowl of Himalayan salt",
-    category: "Products",
-  },
-  {
-    src: legacyImage('cattleSaltBag'),
-    alt: "Himalayan salt bags",
-    category: "Products",
-  },
-  {
-    src: legacyImage('horseLicking'),
-    alt: "Horse with salt lick",
-    category: "Horses",
-  },
-  {
-    src: legacyImage('cattleGrazing'),
-    alt: "Livestock grazing",
-    category: "Cattle",
+    alt: "Coarse pink Himalayan salt in a bowl",
+    category: "Edible Pink Salt",
   },
   {
     src: legacyImage('pinkSaltJar16oz'),
-    alt: "Pink salt jar",
-    category: "Products",
+    alt: "Jar of pink Himalayan table salt",
+    category: "Edible Pink Salt",
   },
   {
     src: legacyImage('saltPouch6lb'),
-    alt: "Salt pouch packaging",
-    category: "Products",
+    alt: "Resealable pouch of pink Himalayan salt",
+    category: "Edible Pink Salt",
+  },
+  {
+    src: legacyImage('saltRockBag'),
+    alt: "Bulk bag of Himalayan rock salt",
+    category: "Bulk & Wholesale",
   },
 ];
 
-export const galleryCategories = ["All", "Products", "Horses", "Cattle"];
+/** "All" plus the shelves that actually have a photograph. */
+export const galleryCategories: string[] = [
+  'All',
+  ...Array.from(new Set(galleryImages.map((image) => image.category))),
+];

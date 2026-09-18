@@ -1,10 +1,7 @@
 import type { MetadataRoute } from 'next';
-import { siteOrigin, getSeoSupabase } from '@/lib/seo/server';
-import {
-  CATEGORY_CONTENT_REGISTRY,
-  CATEGORY_PRODUCT_LABELS,
-  buildProductsCategoryPath,
-} from '@/lib/categoryContent';
+import { siteOrigin, fetchSeoBlogPosts } from '@/lib/seo/server';
+import { buildProductsCategoryPath, productShelfKey } from '@/lib/categoryContent';
+import { NICHE_SECTIONS } from '@/lib/catalog/niche';
 import type { CategoryContentKey } from '@/lib/categoryContent';
 import { getCatalogProducts } from '@/lib/backend';
 
@@ -42,31 +39,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // "real catalog product" gate this file used to apply itself. Category
   // membership now comes from each product's resolved category name, so the
   // separate categories query is no longer needed to join the two.
-  const [{ products: realProducts }, { data: posts }] = await Promise.all([
+  // The posts read goes through the blog layer rather than a query of its own, so
+  // an unreachable CMS costs the sitemap its article URLs instead of failing the
+  // prerender — which is what took a deployment build down.
+  const [{ products: realProducts }, posts] = await Promise.all([
     getCatalogProducts(),
-    getSeoSupabase()
-      .from('blog_posts')
-      .select('slug, updated_at, published_at')
-      .eq('is_published', true),
+    fetchSeoBlogPosts(),
   ]);
 
-  // A category hub with no real (indexed) product isn't worth crawling — it's
-  // already noindexed on the page itself (see products/page.tsx), so listing
-  // it here would just send crawlers to a page that asks not to be indexed.
-  const categoriesWithProducts = new Set(
-    realProducts.map((product) => product.category).filter(Boolean)
+  // A category hub with no real product isn't worth crawling — it's already
+  // noindexed on the page itself (see products/page.tsx), so listing it here
+  // would just send crawlers to a page that asks not to be indexed.
+  //
+  // Shelves come from the niche taxonomy and are counted by the same placement
+  // function the shop grid uses, so the sitemap can never advertise a hub the
+  // grid would render empty, or omit one that has products behind it.
+  const shelvesWithProducts = new Set(
+    realProducts.map((product) => productShelfKey(product)).filter(Boolean)
   );
 
   // Category hubs are real landing pages (own hero, copy, guides, SEO title) served
   // from /products?category=<key>. Without these the hub content is unreachable to
   // crawlers, which only ever see the unfiltered /products page.
-  for (const key of Object.keys(CATEGORY_CONTENT_REGISTRY) as CategoryContentKey[]) {
-    const labels = CATEGORY_PRODUCT_LABELS[key];
-    const hasProducts = labels.some((label) => categoriesWithProducts.has(label));
-    if (!hasProducts) continue;
+  for (const section of NICHE_SECTIONS) {
+    if (!shelvesWithProducts.has(section.key)) continue;
 
     entries.push({
-      url: `${origin}${buildProductsCategoryPath(key)}`,
+      url: `${origin}${buildProductsCategoryPath(section.key)}`,
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.85,
@@ -82,7 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  for (const post of (posts as { slug: string; updated_at: string | null; published_at: string | null }[] | null) || []) {
+  for (const post of posts) {
     if (!post.slug) continue;
     entries.push({
       url: `${origin}/blog/${post.slug}`,

@@ -9,6 +9,15 @@ import { createShippoLabel } from '../../lib/shippo/client';
 import { getShippoClientConfig } from '../../lib/shippo/clientConfig';
 import { publicEnv } from '../../lib/env';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
+import {
+  AdminButton,
+  AdminChip,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatTile,
+} from '../../components/admin/AdminUI';
+import { BUTTON, INPUT } from '../../components/admin/adminTheme';
 
 export default function AdminShippingLabels() {
   const { session } = useAuthContext();
@@ -173,112 +182,116 @@ export default function AdminShippingLabels() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-serif text-2xl font-bold text-charcoal">Shipping Labels</h2>
-          <p className="text-sm text-charcoal-light mt-1">
-            Download and print Shippo labels. Create new labels for paid orders ready to ship.
-          </p>
-        </div>
-        <Link
-          to="/admin/orders"
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-charcoal hover:bg-gray-50"
-        >
-          <Package size={16} />
-          All orders
-        </Link>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="System"
+        title="Shipping labels"
+        description="Download and print Shippo labels, and create new ones for paid orders that are ready to ship."
+        actions={
+          <Link to="/admin/orders" className={BUTTON.secondary}>
+            <Package size={16} />
+            All orders
+          </Link>
+        }
+      />
 
       {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Shipping labels could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchLabels}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
+        <AdminNotice
+          tone="danger"
+          title="Shipping labels could not be loaded"
+          action={<AdminButton onClick={fetchLabels}>Retry</AdminButton>}
+        >
+          {fetchError}
+        </AdminNotice>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <StatCard label="Ready to download" value={ready.length} tone="indigo" />
-        <StatCard label="Need label" value={pending.length} tone="amber" />
-        <StatCard label="Shippo" value={shippoEnabled ? 'On' : 'Off'} tone={shippoEnabled ? 'green' : 'gray'} />
-      </div>
+      {!isSupabaseConfigured() && (
+        <AdminNotice tone="warning" title="Orders are not connected">
+          Labels are created against orders, and this deployment has no order source configured, so there
+          is nothing here to label.
+        </AdminNotice>
+      )}
 
-      <div className="relative">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-light" />
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search order number, email, tracking..."
-          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm focus:border-himalayan focus:outline-none focus:ring-2 focus:ring-himalayan/20"
+      <div className="grid grid-cols-3 gap-4">
+        <AdminStatTile
+          label="Ready to download"
+          icon={Download}
+          tone="sky"
+          value={loading ? undefined : ready.length}
+          unavailable={loading ? 'Reading…' : undefined}
+        />
+        <AdminStatTile
+          label="Need a label"
+          icon={Package}
+          tone="amber"
+          value={loading ? undefined : pending.length}
+          unavailable={loading ? 'Reading…' : undefined}
+        />
+        <AdminStatTile
+          label="Shippo integration"
+          icon={Printer}
+          tone={shippoEnabled ? 'green' : 'slate'}
+          value={shippoEnabled ? 'Enabled' : 'Disabled'}
         />
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-charcoal-light">
-          <Loader2 size={32} className="animate-spin mr-2" />
-          Loading labels...
+      <AdminPanel bodyClassName="px-5 py-4">
+        <div className="relative">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search order number, email or tracking…"
+            aria-label="Search labels"
+            className={`${INPUT} w-full pl-10`}
+          />
         </div>
+      </AdminPanel>
+
+      {loading ? (
+        <AdminPanel title="Labels" description="Reading orders…">
+          <div className="space-y-3">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-14 animate-pulse rounded-xl bg-admin-canvas" />
+            ))}
+          </div>
+        </AdminPanel>
       ) : (
         <>
-          <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-charcoal">Download labels</h3>
-                <p className="text-xs text-charcoal-light mt-0.5">PDF labels you can print anytime</p>
-              </div>
-              <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                {filteredReady.length}
-              </span>
-            </div>
-
+          <AdminPanel
+            title="Download labels"
+            description="PDF labels you can print at any time"
+            action={<AdminChip tone="info">{filteredReady.length}</AdminChip>}
+            bodyClassName="px-0 py-0"
+          >
             {filteredReady.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-charcoal-light">
-                No labels yet. Create a label from a paid order below — it will show up here for download.
-              </div>
+              <p className="px-5 py-12 text-center text-sm text-admin-muted">
+                No labels yet. Create one from a paid order below and it appears here for download.
+              </p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-admin-line">
                 {filteredReady.map((order) => (
-                  <div key={order.id} className="px-5 py-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div key={order.id} className="flex items-center justify-between gap-4 px-5 py-4">
                     <div className="min-w-0">
-                      <p className="font-semibold text-charcoal">{order.order_number}</p>
-                      <p className="text-sm text-charcoal-light truncate">
+                      <p className="font-semibold text-admin-ink">{order.order_number}</p>
+                      <p className="truncate text-sm text-admin-muted">
                         {order.profile?.full_name || order.email} · {new Date(order.created_at).toLocaleDateString()}
                       </p>
-                      <p className="text-xs text-charcoal-light mt-1">
+                      <p className="mt-1 text-xs text-admin-muted">
                         {order.shipping_carrier || 'Carrier'} · {order.tracking_number || 'No tracking'}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                      <a
-                        href={order.label_url!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
-                      >
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <a href={order.label_url!} target="_blank" rel="noopener noreferrer" className={BUTTON.primary}>
                         <Download size={16} />
                         Download PDF
                       </a>
-                      <a
-                        href={order.label_url!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-                      >
+                      <a href={order.label_url!} target="_blank" rel="noopener noreferrer" className={BUTTON.secondary}>
                         <Printer size={16} />
                         Print
                       </a>
-                      <Link
-                        to={`/admin/orders?orderId=${order.id}`}
-                        className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-charcoal hover:bg-gray-50"
-                      >
+                      <Link to={`/admin/orders?orderId=${order.id}`} className={BUTTON.secondary}>
                         View order
                       </Link>
                     </div>
@@ -286,40 +299,38 @@ export default function AdminShippingLabels() {
                 ))}
               </div>
             )}
-          </section>
+          </AdminPanel>
 
-          <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-charcoal">Create labels</h3>
-                <p className="text-xs text-charcoal-light mt-0.5">Paid orders waiting for a shipping label</p>
-              </div>
+          <AdminPanel
+            title="Create labels"
+            description="Paid orders waiting for a shipping label. Each label is a separate, real carrier charge."
+            action={
               <div className="flex items-center gap-3">
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                  {filteredPending.length}
-                </span>
+                <AdminChip tone="warning">{filteredPending.length}</AdminChip>
                 {filteredPending.length > 0 && (
                   <button
                     type="button"
                     onClick={() => handleCreateAllLabels(filteredPending)}
                     disabled={bulkRunning || !shippoEnabled}
-                    className="inline-flex items-center gap-2 rounded-xl bg-charcoal px-4 py-2.5 text-sm font-semibold text-white hover:bg-charcoal-light disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`${BUTTON.primary} disabled:cursor-not-allowed`}
                   >
                     {bulkRunning && <Loader2 size={16} className="animate-spin" />}
                     {bulkRunning
-                      ? `Creating ${bulkProgress?.done ?? 0}/${bulkProgress?.total ?? filteredPending.length}...`
-                      : `Create All (${filteredPending.length})`}
+                      ? `Creating ${bulkProgress?.done ?? 0}/${bulkProgress?.total ?? filteredPending.length}…`
+                      : `Create all (${filteredPending.length})`}
                   </button>
                 )}
               </div>
-            </div>
+            }
+            bodyClassName="px-0 py-0"
+          >
 
             {bulkSummary && (
               <div
                 className={`mx-5 mt-4 rounded-xl border px-4 py-3 text-sm ${
                   bulkSummary.failed > 0
                     ? 'border-amber-200 bg-amber-50 text-amber-900'
-                    : 'border-green-200 bg-green-50 text-green-800'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
                 }`}
               >
                 <p className="font-semibold">
@@ -336,17 +347,17 @@ export default function AdminShippingLabels() {
             )}
 
             {filteredPending.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-charcoal-light">
+              <p className="px-5 py-12 text-center text-sm text-admin-muted">
                 All paid orders have labels, or nothing is ready to ship yet.
-              </div>
+              </p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-admin-line">
                 {filteredPending.map((order) => (
                   <div key={order.id} className="px-5 py-4">
-                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-charcoal">{order.order_number}</p>
-                        <p className="text-sm text-charcoal-light">
+                        <p className="font-semibold text-admin-ink">{order.order_number}</p>
+                        <p className="text-sm text-admin-muted">
                           {order.profile?.full_name || order.email} · ${order.total.toFixed(2)}
                         </p>
                       </div>
@@ -370,33 +381,9 @@ export default function AdminShippingLabels() {
                 ))}
               </div>
             )}
-          </section>
+          </AdminPanel>
         </>
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number | string;
-  tone: 'indigo' | 'amber' | 'green' | 'gray';
-}) {
-  const colors = {
-    indigo: 'bg-indigo-50 text-indigo-700',
-    amber: 'bg-amber-50 text-amber-800',
-    green: 'bg-green-50 text-green-700',
-    gray: 'bg-gray-100 text-gray-700',
-  };
-
-  return (
-    <div className={`rounded-2xl px-4 py-4 ${colors[tone]}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
-    </div>
+    </>
   );
 }

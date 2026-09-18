@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd, aggregateOfferJsonLd } from '@/lib/seo/jsonLd';
-import { getSeoSupabase, seoFetchDeadline } from '@/lib/seo/server';
+import { getCatalogProducts } from '@/lib/backend';
 import {
   buildProductsCategoryPath,
   filterLabelFromKey,
   getCategoryContent,
   normalizeCategoryQueryValue,
-  CATEGORY_PRODUCT_LABELS,
+  productShelfKey,
   CATEGORY_QUERY_PARAM,
 } from '@/lib/categoryContent';
 import JsonLd from '@/components/seo/JsonLd';
@@ -22,9 +22,9 @@ function firstValue(value: string | string[] | undefined): string | null {
 }
 
 const DEFAULT_PRODUCTS_SEO = {
-  title: 'Shop Himalayan Pink Salt Products - Himalayan Koh',
+  title: 'Shop Himalayan Pink Salt — Edible, Blocks & Lamps | Himalayan Koh',
   description:
-    'Shop premium Himalayan pink salt for horses, cattle, deer, and cooking. Natural mineral-rich salt licks, blocks, and edible grades.',
+    'Shop Himalayan pink salt: fine and coarse edible grades, salt blocks and serving plates, lamps and décor, and bulk bags. Unrefined and mineral-rich.',
 };
 
 export async function generateMetadata({
@@ -42,31 +42,15 @@ export async function generateMetadata({
     // A category hub with zero purchasable products is a real page (gallery,
     // guides) but nothing to buy — noindex it so it doesn't rank for a
     // product search and disappoint the shopper who clicks through. Drop the
-    // noindex the moment a matching SKU goes active. products.category is a
-    // display label resolved client-side from categories.name via
-    // category_id — the raw table has no `category` column, so the id has
-    // to be looked up first.
+    // noindex the moment a matching SKU goes live.
+    //
+    // The count comes from the catalog seam, not from a database of its own: the
+    // hub is indexed exactly when the same products the grid will render place
+    // onto it, whatever source is configured.
     let hasProducts = true;
     try {
-      const supabase = getSeoSupabase();
-      const { data: categoryRows } = await supabase
-        .from('categories')
-        .select('id')
-        .in('name', [...CATEGORY_PRODUCT_LABELS[categoryKey]])
-        .abortSignal(seoFetchDeadline());
-      const categoryIds = ((categoryRows ?? []) as { id: string }[]).map((row) => row.id);
-
-      if (categoryIds.length > 0) {
-        const { count } = await supabase
-          .from('products')
-          .select('id', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .in('category_id', categoryIds)
-          .abortSignal(seoFetchDeadline());
-        hasProducts = Boolean(count && count > 0);
-      } else {
-        hasProducts = false;
-      }
+      const { products } = await getCatalogProducts();
+      hasProducts = products.some((product) => productShelfKey(product) === categoryKey);
     } catch (err) {
       console.error('Could not check category product count for robots meta:', err);
     }
@@ -99,30 +83,29 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     });
   }
 
-  // Fetch price range for AggregateOffer schema on main listing
+  // Price range for the AggregateOffer on the main listing.
+  //
+  // The range is read from the catalog seam — the same source the page renders —
+  // so schema can never advertise a price the shop is not actually showing. When
+  // the source cannot report prices no offer is emitted at all, which is why
+  // this is silent rather than an error, and why `availability` is omitted
+  // unless the source reported stock we can stand behind.
   let aggregateOffer = null;
   if (!category) {
     try {
-      const supabase = getSeoSupabase();
-      const { data: products } = await supabase
-        .from('products')
-        .select('price')
-        .eq('is_active', true)
-        .abortSignal(seoFetchDeadline());
-
-      if (products && products.length > 0) {
-        const prices = (products as { price: number }[]).map((p) => Number(p.price)).filter(Boolean);
-        if (prices.length > 0) {
-          const minPrice = Math.min(...prices);
-          const maxPrice = Math.max(...prices);
-          aggregateOffer = aggregateOfferJsonLd({
-            minPrice,
-            maxPrice,
-            priceCurrency: 'USD',
-            offerCount: prices.length,
-            availability: 'InStock',
-          });
-        }
+      const { products } = await getCatalogProducts();
+      const priced = products.filter(
+        (product) => typeof product.priceMin === 'number' && Number.isFinite(product.priceMin)
+      );
+      if (priced.length > 0) {
+        const prices = priced.map((product) => product.priceMin as number);
+        aggregateOffer = aggregateOfferJsonLd({
+          minPrice: Math.min(...prices),
+          maxPrice: Math.max(...prices),
+          priceCurrency: 'USD',
+          offerCount: priced.length,
+          availability: priced.some((product) => product.inStock) ? 'InStock' : 'OutOfStock',
+        });
       }
     } catch (err) {
       console.error('Could not fetch product prices for schema:', err);

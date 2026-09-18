@@ -193,7 +193,8 @@ mattered for the first milestone were concentrated in three modules:
 | `wordpressFatal.mjs` | The **single owner** of PHP-fatal / HTML-body detection, shared by `wordpress.ts` and `scripts/check-wordpress-setup.mjs` (plain ESM because the no-build script imports it directly) |
 | `woocommerce.ts` | Store API + REST v3 clients and **pure** raw→`Product` mappers |
 | `products.ts` | Catalog adapter with a documented, explicitly *degraded* fallback chain |
-| `index.ts` | Barrel — only the names the app imports: `isSupabaseDataSource`, `getCatalogProducts`, `getFeaturedCatalogProducts`, `lookupCatalogProduct`, plus their types |
+| `adminCatalog.ts` | **Admin-facing read model.** The admin list, its filters/facets/stats and the dashboard's product counts all read through here, so `/admin` and the storefront cannot disagree about which products exist |
+| `index.ts` | Barrel — only the names the app imports: `isSupabaseDataSource`, `getCatalogProducts`, `getFeaturedCatalogProducts`, `lookupCatalogProduct`, `readAdminCatalogPage`, `readAdminCatalogStats`, plus their types |
 
 ### Design commitments
 
@@ -207,6 +208,39 @@ mattered for the first milestone were concentrated in three modules:
    failed to supply, so the UI can render "unknown" deliberately.
 4. **Degradation is visible.** `CatalogResult.degraded` and `.warnings` record
    the exact backend error that forced a fallback.
+
+### Admin catalog reads — one catalog for both surfaces
+
+The storefront read WooCommerce (11 products) while `/admin` read the old Supabase
+rows (7), so the catalog had two owners and the panel edited one while the site
+served the other. `adminCatalog.ts` closes that split-brain:
+
+| Surface | Reads through |
+| --- | --- |
+| `/admin/products` list, filters, category facets, stat cards | `readAdminCatalogPage()`, `readAdminCatalogStats()` |
+| `/admin` product and category counts | `readAdminCatalogStats()` |
+| Product detail, Supabase source | the row's `record`, opened in the existing editor |
+| Product detail, WooCommerce source | the live product page — read-only, because no WooCommerce write path exists yet |
+
+Rules the module holds to:
+
+1. **`null` means "the source did not report it".** Price, SKU, stock, inventory
+   count, listing state and weight are null where the active source cannot answer,
+   and the UI says so. `statsFromRows()` counts those into `priceUnavailable` /
+   `skuUnavailable` / `stockUnknown` rather than showing zeros.
+2. **Stats are a union.** The WooCommerce source has no active/inactive or
+   low-stock figures, so its variant does not carry them and the view renders that
+   source's cards. Nothing falls back to another source's numbers — the dashboard's
+   Supabase inventory panels are hidden when WooCommerce is the catalog.
+3. **Writes stay on the source that can accept them.** A row carrying `record`
+   opens the editor; a row without one offers *View* instead, so a WooCommerce row
+   can never be edited into Supabase.
+4. **Facets come from the source too.** Category options are
+   `AdminCatalogPage.facets`; the model's `Uncategorized` placeholder
+   (`UNCATEGORIZED_CATEGORY`) counts as unreported, not as a category.
+5. **No fabricated catalog.** The bundled demo products are no longer substituted
+   when the configured source is unreachable — the panel shows an empty list and
+   why.
 
 ### Read order (WooCommerce source)
 
@@ -350,6 +384,29 @@ endpoint, then states plainly whether price and stock are obtainable and prints
 the remediation steps. Exits non-zero when no endpoint can serve commercial
 data, so it is safe to wire into CI.
 
+Both flag values can be exercised from one checkout by overriding the four
+non-secret variables for a single dev server (never edit `.env.local` for this):
+
+```bash
+NEXT_PUBLIC_DATA_SOURCE=woocommerce \
+NEXT_PUBLIC_WORDPRESS_BASE_URL=https://himalayankoh.com/staging \
+WORDPRESS_BASE_URL=https://himalayankoh.com/staging \
+NEXT_PUBLIC_WOOCOMMERCE_BASE_URL=https://himalayankoh.com/staging \
+WOOCOMMERCE_BASE_URL=https://himalayankoh.com/staging \
+npm run dev -- -p 3021
+```
+
+With no override the app runs the `supabase` default. What to expect on each:
+
+| Check | `supabase` | `woocommerce` |
+| --- | --- | --- |
+| `/admin/products` rows | every Supabase product, active and inactive | the published WooCommerce catalog, 10 per page |
+| Price column | the stored price | `Price unavailable` (no public route reports price) |
+| Stock column | units, or `Unknown` when untracked | `Unknown` + `Stock unknown` |
+| Row action | `Edit` (opens the editor) | `View` (opens the live product page) |
+| Stat cards | Total / Active / Inactive / Featured / Low Stock / Out of Stock | Total / Featured / Price Unavailable / SKU Unavailable / Stock Unknown |
+| Supabase inventory panels on `/admin` | shown | hidden |
+
 ---
 
 ## 8. Phase tracker
@@ -359,7 +416,7 @@ data, so it is safe to wire into CI.
 | 0 | Repo audit → this document | ✅ Done |
 | 1 | `src/lib/backend/` adapter layer | ✅ Done |
 | 2 | WordPress staging connectivity | ⚠️ Content OK · **Store API products fatal** |
-| 3 | Products first, behind a flag | ✅ Read paths wired and verified on both flag values · ⛔ price/stock blocked by §1 |
+| 3 | Products first, behind a flag | ✅ Read paths wired and verified on both flag values — storefront **and admin** (`adminCatalog.ts`); the two surfaces now serve the same catalog · ⛔ price/stock blocked by §1 |
 | 4 | WordPress content pages | ⏸ Not started — no code written. The speculative WordPress page/post mapper was removed as unused surface rather than left as untested groundwork. |
 | 5 | SEO from WordPress + Yoast | ⏸ Not started |
 | 6 | Images from WordPress media | ✅ Real staging images render. No `next.config.ts` change is actually needed: the storefront never uses `next/image` (40 plain `<img>` elements), so absolute staging URLs load directly. `images.remotePatterns` only matters if the app later migrates to `next/image`. |

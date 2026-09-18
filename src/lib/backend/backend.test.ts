@@ -123,7 +123,7 @@ describe('Product view model — one definition, one price meaning', () => {
       lead_time_days: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-08-19T11:56:27Z',
-      category: { id: 'c1', name: 'Salt Lumps for Cattle' } as ProductWithCategory['category'],
+      category: { id: 'c1', name: 'Bulk Order' } as ProductWithCategory['category'],
       inventory: null,
       ...over,
     } as ProductWithCategory;
@@ -149,14 +149,62 @@ describe('Product view model — one definition, one price meaning', () => {
   });
 
   it('surfaces the real SKU and stock the row already had', () => {
-    const product = mapSupabaseProduct(supabaseRow());
+    const product = mapSupabaseProduct(
+      supabaseRow({
+        inventory: {
+          id: 'i1',
+          product_id: 'p1',
+          quantity: 5,
+          reserved_quantity: 1,
+          low_stock_threshold: 2,
+          track_inventory: true,
+          allow_backorder: false,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-08-19T11:56:27Z',
+        },
+      })
+    );
 
     expect(product.sku).toBe('HK-LB-30LBS');
     expect(product.stockStatus).toBe('in_stock');
+    // Reserved units are not available units: 5 on hand with 1 reserved leaves 4
+    // the storefront may sell, which is the ceiling the PDP caps a cart line at.
+    expect(product.stockQuantity).toBe(4);
     expect(product.updatedAt).toBe('2026-08-19T11:56:27Z');
     // SKU is present, so it must not be reported as missing (the old adapter
     // hardcoded `missing: []` while emitting `sku: null`).
     expect(product.missing).not.toContain('sku');
+  });
+
+  it('reports stock as unknown when the row has no inventory at all', () => {
+    // The old default asserted in-stock here, and Add to Cart acted on it. No
+    // inventory row means the source reported nothing, so nothing is claimed.
+    const product = mapSupabaseProduct(supabaseRow({ inventory: null }));
+
+    expect(product.stockStatus).toBe('unknown');
+    expect(product.stockQuantity).toBeNull();
+    expect(product.inStock).toBe(false);
+  });
+
+  it('reports no count for a row that tracks stock without numbers yet', () => {
+    const product = mapSupabaseProduct(
+      supabaseRow({
+        inventory: {
+          id: 'i2',
+          product_id: 'p1',
+          quantity: 3,
+          reserved_quantity: 0,
+          low_stock_threshold: 2,
+          track_inventory: false,
+          allow_backorder: false,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-08-19T11:56:27Z',
+        },
+      })
+    );
+
+    // Turned off tracking is not a reported unit count, so no ceiling is set.
+    expect(product.stockQuantity).toBeNull();
   });
 
   it('deliberately does not populate `images`, preserving the single-image PDP', () => {
@@ -222,6 +270,14 @@ describe('mapStoreProduct', () => {
     expect(backorder.inStock).toBe(true);
   });
 
+  it('carries the unit count only when WooCommerce reports one', () => {
+    expect(mapStoreProduct({ ...base, stock_availability: { remaining: 7 } }).stockQuantity).toBe(7);
+    // A status without a count is not a count: an untracked product must not
+    // come through as zero available.
+    expect(mapStoreProduct({ ...base, stock_availability: { text: 'In stock' } }).stockQuantity).toBeNull();
+    expect(mapStoreProduct(base).stockQuantity).toBeNull();
+  });
+
   it('carries images and the category name through', () => {
     const product = mapStoreProduct(base);
     expect(product.images).toEqual(['https://example.test/uploads/6-lbs-pouche.webp']);
@@ -233,26 +289,34 @@ describe('mapStoreProduct', () => {
 describe('mapRestV3Product', () => {
   it('reads price, stock and sku — the fields the fatal Store API cannot return', () => {
     const product = mapRestV3Product({
-      id: 2352,
-      name: 'Salt Licks',
-      slug: 'salt-licks',
-      sku: 'HK-LICK',
+      id: 2372,
+      name: 'Himalayan Rock Salt Bag 18 lbs',
+      slug: 'himalayan-rock-salt-bag',
+      sku: 'HK-ROCK-18',
       price: '24.99',
       regular_price: '29.99',
       sale_price: '24.99',
       stock_status: 'instock',
       stock_quantity: 42,
-      images: [{ id: 1, src: 'https://example.test/lick.webp' }],
-      categories: [{ id: 58, name: 'animal feed', slug: 'animal-feed' }],
-      short_description: '<p>For horses.</p>',
+      images: [{ id: 1, src: 'https://example.test/rock-salt.webp' }],
+      categories: [{ id: 105, name: 'Bulk Order', slug: 'bulk-order' }],
+      short_description: '<p>Coarse rock salt in a bulk bag.</p>',
     });
 
     expect(product.priceMin).toBe(24.99);
-    expect(product.sku).toBe('HK-LICK');
+    expect(product.sku).toBe('HK-ROCK-18');
     expect(product.stockStatus).toBe('in_stock');
     expect(product.inStock).toBe(true);
-    expect(product.category).toBe('animal feed');
+    // REST v3 is the route that actually reports units, so the storefront's
+    // quantity ceiling and the console's stock column read the same number.
+    expect(product.stockQuantity).toBe(42);
+    expect(product.category).toBe('Bulk Order');
     expect(product.missing).not.toContain('price');
+  });
+
+  it('keeps an untracked product count-less rather than zero', () => {
+    expect(mapRestV3Product({ stock_quantity: null }).stockQuantity).toBeNull();
+    expect(mapRestV3Product({}).stockQuantity).toBeNull();
   });
 
   it('falls back through price -> sale -> regular', () => {

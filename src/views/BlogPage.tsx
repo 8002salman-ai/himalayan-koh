@@ -83,7 +83,7 @@ export default function BlogPage({ initialPosts = [] }: BlogPageProps) {
             transition={{ delay: 0.2 }}
             className="text-white/70 text-lg max-w-2xl mx-auto"
           >
-            Expert insights on livestock health and Himalayan salt benefits
+Notes on pink salt: how it is used, how it is stored, and what the labels mean
           </motion.p>
         </div>
       </div>

@@ -1,11 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Save, XCircle } from 'lucide-react';
-import { SkeletonSettings } from '../../components/ui/Skeleton';
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Save,
+} from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { SETTINGS_REGISTRY, type SettingsCategory } from '../../lib/settings/registry';
+import {
+  AdminButton,
+  AdminChip,
+  AdminField,
+  AdminInput,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+} from '../../components/admin/AdminUI';
+import { ICON_TILE, ICON_TILE_TONES } from '../../components/admin/adminTheme';
 
 type SourceMap = Record<string, Record<string, 'db' | 'env' | 'unset'>>;
 type ValuesMap = Record<string, Record<string, string>>;
@@ -22,12 +40,11 @@ async function apiFetch(path: string, token: string, options?: RequestInit) {
   return res.json();
 }
 
+/** Where a field's current value comes from — never a value itself. */
 function SourceBadge({ source }: { source: 'db' | 'env' | 'unset' }) {
-  if (source === 'db')
-    return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">DB</span>;
-  if (source === 'env')
-    return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">ENV</span>;
-  return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">unset</span>;
+  if (source === 'db') return <AdminChip tone="success">DB</AdminChip>;
+  if (source === 'env') return <AdminChip tone="info">ENV</AdminChip>;
+  return <AdminChip tone="muted">Unset</AdminChip>;
 }
 
 function isConfigured(category: SettingsCategory, values: ValuesMap, sources: SourceMap): boolean {
@@ -38,6 +55,15 @@ function isConfigured(category: SettingsCategory, values: ValuesMap, sources: So
   return (src === 'db' || src === 'env') && Boolean(val);
 }
 
+/**
+ * Settings and API keys — one screen behind both routes.
+ *
+ * It is the same registry either way, so it stays one view: the console shows
+ * which fields exist, where each value is coming from (database override,
+ * environment variable, or unset), and writes an override per category. Secret
+ * values are typed as passwords, never echoed back, and never displayed as
+ * plain text by default.
+ */
 export default function AdminSettings() {
   const { session } = useAuthContext();
   const toast = useToast();
@@ -47,10 +73,13 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showValues, setShowValues] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await apiFetch('/api/admin/settings', session.access_token);
@@ -97,148 +126,172 @@ export default function AdminSettings() {
   const toggleExpanded = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  if (loading) {
-    return <SkeletonSettings count={4} />;
-  }
+  const configuredCount = SETTINGS_REGISTRY.filter((category) =>
+    isConfigured(category, values, sources)
+  ).length;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-xl bg-himalayan/10 flex items-center justify-center">
-          <KeyRound size={20} className="text-himalayan" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-charcoal">API Keys & Integrations</h1>
-          <p className="text-sm text-charcoal-light">
-            Keys saved here are used first. Vercel environment variables are the fallback.
+    <>
+      <AdminPageHeader
+        eyebrow="System"
+        title="Settings & API keys"
+        description="Keys saved here are used first; environment variables on the deployment are the fallback."
+        actions={
+          <AdminButton icon={KeyRound} onClick={load} disabled={loading}>
+            Reload
+          </AdminButton>
+        }
+      />
+
+      <AdminNotice tone="warning" title="Supabase keys cannot be set from this screen">
+        <code className="rounded bg-amber-100 px-1 text-xs">NEXT_PUBLIC_SUPABASE_URL</code>,{' '}
+        <code className="rounded bg-amber-100 px-1 text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and{' '}
+        <code className="rounded bg-amber-100 px-1 text-xs">SUPABASE_SERVICE_ROLE_KEY</code> must stay in
+        the environment variables of the deployment — the app needs them before any screen, including
+        this one, can authenticate.
+      </AdminNotice>
+
+      {!session?.access_token && !loading && (
+        <AdminNotice tone="warning" title="No admin session">
+          Settings are read with the access token of the signed-in administrator, so they cannot be
+          shown until that session exists.
+        </AdminNotice>
+      )}
+
+      {loading ? (
+        <AdminPanel title="Integrations" description="Reading current configuration…">
+          <div className="space-y-3">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-16 animate-pulse rounded-xl bg-admin-canvas" />
+            ))}
+          </div>
+        </AdminPanel>
+      ) : (
+        <>
+          <p className="text-sm text-admin-muted">
+            {configuredCount} of {SETTINGS_REGISTRY.length} integrations configured.
           </p>
-        </div>
-      </div>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <p className="font-semibold mb-1">Supabase keys cannot be set here</p>
-        <p>
-          <code className="text-xs bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code>,{' '}
-          <code className="text-xs bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, and{' '}
-          <code className="text-xs bg-amber-100 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
-          must stay in Vercel → Environment Variables (app needs them to start).
-        </p>
-      </div>
+          {SETTINGS_REGISTRY.map((category) => {
+            const configured = isConfigured(category, values, sources);
+            const open = expanded[category.id] ?? true;
+            const isSaving = saving === category.id;
 
-      {SETTINGS_REGISTRY.map((category) => {
-        const configured = isConfigured(category, values, sources);
-        const open = expanded[category.id] ?? true;
-        const isSaving = saving === category.id;
-
-        return (
-          <div key={category.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header */}
-            <button
-              type="button"
-              onClick={() => toggleExpanded(category.id)}
-              className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {configured ? (
-                  <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
-                ) : (
-                  <XCircle size={20} className="text-red-400 flex-shrink-0" />
-                )}
-                <div className="text-left">
-                  <p className="font-semibold text-charcoal">{category.label}</p>
-                  <p className="text-xs text-charcoal-light">{category.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {category.docsHref && (
-                  <a
-                    href={category.docsHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-himalayan flex items-center gap-1 hover:underline"
-                  >
-                    Docs <ExternalLink size={12} />
-                  </a>
-                )}
-                {open ? <ChevronUp size={18} className="text-charcoal-light" /> : <ChevronDown size={18} className="text-charcoal-light" />}
-              </div>
-            </button>
-
-            {/* Fields */}
-            {open && (
-              <div className="px-6 pb-6 pt-2 space-y-4 border-t border-gray-100">
-                {category.fields.map((field) => {
-                  const src = sources[category.id]?.[field.key] ?? 'unset';
-                  const currentVal = localEdits[category.id]?.[field.key] ?? '';
-
-                  return (
-                    <div key={field.key}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-sm font-semibold text-charcoal">{field.label}</label>
-                        <SourceBadge source={src} />
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={
-                            field.type === 'password'
-                              ? showPasswords[`${category.id}:${field.key}`] ? 'text' : 'password'
-                              : field.type === 'email' ? 'email' : 'text'
-                          }
-                          value={currentVal}
-                          onChange={(e) => handleChange(category.id, field.key, e.target.value)}
-                          placeholder={
-                            src === 'env'
-                              ? `${field.placeholder} (using env var)`
-                              : field.placeholder
-                          }
-                          autoComplete="off"
-                          className={`w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white ${field.type === 'password' ? 'pr-10' : ''}`}
-                        />
-                        {field.type === 'password' && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowPasswords((prev) => ({
-                                ...prev,
-                                [`${category.id}:${field.key}`]: !prev[`${category.id}:${field.key}`],
-                              }))
-                            }
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-light hover:text-charcoal transition-colors"
-                            aria-label={showPasswords[`${category.id}:${field.key}`] ? 'Hide' : 'Show'}
-                          >
-                            {showPasswords[`${category.id}:${field.key}`]
-                              ? <EyeOff size={16} />
-                              : <Eye size={16} />}
-                          </button>
-                        )}
-                      </div>
-                      {field.hint && (
-                        <p className="text-xs text-charcoal-light mt-1">{field.hint}</p>
-                      )}
-                    </div>
-                  );
-                })}
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-charcoal-light">
-                    Leave a field blank to remove its DB override (env var will be used).
-                  </span>
+            return (
+              <AdminPanel
+                key={category.id}
+                title={
                   <button
                     type="button"
-                    onClick={() => handleSave(category.id)}
-                    disabled={isSaving}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-himalayan hover:bg-himalayan-dark disabled:bg-gray-300 text-white text-sm font-semibold rounded-xl transition-colors"
+                    onClick={() => toggleExpanded(category.id)}
+                    className="flex items-center gap-2 text-left"
                   >
-                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    Save {category.label.split('—')[0].trim()}
+                    <span className={`${ICON_TILE} h-7 w-7 ${configured ? ICON_TILE_TONES.green : ICON_TILE_TONES.slate}`}>
+                      <KeyRound size={13} />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-admin-ink">{category.label}</span>
+                      <span className="block text-xs font-normal text-admin-muted">{category.description}</span>
+                    </span>
                   </button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+                }
+                action={
+                  <div className="flex items-center gap-2">
+                    <AdminChip tone={configured ? 'success' : 'warning'}>
+                      {configured ? 'Configured' : 'Not configured'}
+                    </AdminChip>
+                    {category.docsHref && (
+                      <a
+                        href={category.docsHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs font-semibold text-himalayan hover:underline"
+                      >
+                        Docs <ExternalLink size={12} />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(category.id)}
+                      className="rounded-lg p-1.5 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+                      aria-label={open ? 'Collapse' : 'Expand'}
+                    >
+                      {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                  </div>
+                }
+              >
+                {open && (
+                  <div className="space-y-4">
+                    {category.fields.map((field) => {
+                      const src = sources[category.id]?.[field.key] ?? 'unset';
+                      const currentVal = localEdits[category.id]?.[field.key] ?? '';
+                      const revealed = showValues[`${category.id}:${field.key}`];
+
+                      return (
+                        <AdminField
+                          key={field.key}
+                          label={field.label}
+                          hint={field.hint}
+                          htmlFor={`${category.id}-${field.key}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="relative flex-1">
+                              <AdminInput
+                                id={`${category.id}-${field.key}`}
+                                type={
+                                  field.type === 'password'
+                                    ? revealed ? 'text' : 'password'
+                                    : field.type === 'email' ? 'email' : 'text'
+                                }
+                                value={currentVal}
+                                onChange={(event) => handleChange(category.id, field.key, event.target.value)}
+                                placeholder={src === 'env' ? `${field.placeholder} (using env var)` : field.placeholder}
+                                autoComplete="off"
+                                className={field.type === 'password' ? 'pr-10' : ''}
+                              />
+                              {field.type === 'password' && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setShowValues((prev) => ({
+                                      ...prev,
+                                      [`${category.id}:${field.key}`]: !prev[`${category.id}:${field.key}`],
+                                    }))
+                                  }
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-admin-muted transition-colors hover:text-admin-ink"
+                                  aria-label={revealed ? 'Hide value' : 'Show value'}
+                                >
+                                  {revealed ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                              )}
+                            </div>
+                            <SourceBadge source={src} />
+                          </div>
+                        </AdminField>
+                      );
+                    })}
+
+                    <div className="flex items-center justify-between border-t border-admin-line pt-4">
+                      <span className="text-xs text-admin-muted">
+                        Leave a field blank to remove its database override — the environment variable takes over.
+                      </span>
+                      <AdminButton
+                        variant="primary"
+                        onClick={() => handleSave(category.id)}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Save {category.label.split('—')[0].trim()}
+                      </AdminButton>
+                    </div>
+                  </div>
+                )}
+              </AdminPanel>
+            );
+          })}
+        </>
+      )}
+    </>
   );
 }

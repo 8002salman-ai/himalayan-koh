@@ -1,21 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LogOut,
-  Menu,
-  X,
   Bell,
-  Plus,
   ChevronDown,
+  ExternalLink,
   Home,
-  ShoppingCart,
+  LogOut,
   Package,
+  Search,
+  ShoppingCart,
   Users,
 } from 'lucide-react';
-import { ADMIN_MOBILE_NAV_ITEMS, getVisibleAdminNavItems } from '../../lib/adminNav';
+import { ADMIN_NAV_GROUPS, findAdminNavItem } from '../../lib/adminNav';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured, supabase, clearSupabaseSession } from '../../lib/supabase/client';
+import {
+  ADMIN_CANVAS_MIN_WIDTH,
+  ICON_TILE,
+  ICON_TILE_TONES,
+  RAIL_LINK_ACTIVE,
+  RAIL_LINK_BASE,
+  RAIL_LINK_IDLE,
+  RAIL_WIDTH,
+  SURFACE,
+} from './adminTheme';
+import { AdminChip } from './AdminUI';
 import AIChatWidget from '../AIChatWidget';
 
 interface AdminAlert {
@@ -31,17 +41,31 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-
+/**
+ * The admin console shell.
+ *
+ * Two decisions worth keeping:
+ *
+ * 1. It is a desktop application frame, not a responsive page. The canvas has a
+ *    fixed minimum width, the rail is always a rail and the content pane is the
+ *    only thing that scrolls. Narrowing the viewport therefore produces
+ *    horizontal scrolling of a desktop console — it never converts the admin
+ *    into mobile cards, a hamburger drawer or a bottom bar. The public
+ *    storefront keeps its own responsive behaviour; this file does not touch it.
+ * 2. All scrolling happens inside the frame (`h-screen` + per-pane overflow), so
+ *    the rail and header cannot scroll out of view and the page background never
+ *    shows through behind them.
+ */
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile, user } = useAuthContext();
   const unreadCount = alerts.filter((alert) => !alert.read).length;
-  const navItems = getVisibleAdminNavItems();
+  const activeItem = findAdminNavItem(location.pathname);
 
   const handleSignOut = () => {
     // Sign out entirely client-side: wipe the persisted session synchronously
@@ -53,6 +77,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     // token is gone, so the user is signed out.
     clearSupabaseSession();
     window.location.assign('/login');
+  };
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const term = searchTerm.trim();
+    if (!term) return;
+    // The console search is the product search: it hands the term to the catalog
+    // page, which owns querying. Nothing here filters a second, parallel list.
+    navigate(`/admin/products?search=${encodeURIComponent(term)}`);
+    setSearchTerm('');
   };
 
   useEffect(() => {
@@ -129,358 +163,267 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [user?.id]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Desktop Sidebar */}
-      <aside
-        className={`hidden lg:flex flex-col bg-charcoal text-white transition-all duration-300 ${
-          sidebarOpen ? 'w-64' : 'w-20'
-        }`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-          {sidebarOpen && (
-            <Link to="/admin" className="flex items-center gap-2">
-              <img
-                src="/logo.svg"
-                alt="Himalayan Koh"
-                className="h-8 brightness-0 invert"
-              />
-            </Link>
-          )}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
+    <div className="h-screen overflow-hidden bg-admin-canvas text-admin-ink">
+      {/* The desktop canvas: below its minimum width the console scrolls
+          sideways instead of restacking into a mobile layout. */}
+      <div className="h-full w-full overflow-x-auto">
+        <div className="flex h-full" style={{ minWidth: ADMIN_CANVAS_MIN_WIDTH }}>
+          <aside className={`flex h-full ${RAIL_WIDTH} shrink-0 flex-col bg-admin-rail`}>
+            {/* The mark sits on its own light chip. Inverting the artwork to white
+                filled the rail with an unreadable blob, so the brand keeps its
+                real colours on a small tile instead. */}
+            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5">
+              <span className="flex h-9 w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                <img src="/logo.svg" alt="Himalayan Koh" className="h-7 w-auto" />
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-admin-rail-text">
+                Admin
+              </span>
+            </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path ||
-              (item.path !== '/admin' && location.pathname.startsWith(item.path));
-            
-            return (
+            <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+              {ADMIN_NAV_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const isActive =
+                        location.pathname === item.path ||
+                        (item.path !== '/admin' && location.pathname.startsWith(`${item.path}/`));
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`${RAIL_LINK_BASE} ${isActive ? RAIL_LINK_ACTIVE : RAIL_LINK_IDLE}`}
+                        >
+                          <item.icon size={17} className="shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.pending && (
+                            <span
+                              className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                              title="Built, backend integration pending"
+                            />
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            <div className="shrink-0 border-t border-white/10 p-3">
               <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-himalayan text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`}
+                to="/"
+                className={`${RAIL_LINK_BASE} ${RAIL_LINK_IDLE}`}
               >
-                <item.icon size={20} />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                <ExternalLink size={17} className="shrink-0" />
+                <span>View storefront</span>
               </Link>
-            );
-          })}
-        </nav>
+            </div>
+          </aside>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-white/10">
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all"
-          >
-            <LogOut size={20} />
-            {sidebarOpen && <span className="font-medium">Back to Site</span>}
-          </Link>
-        </div>
-      </aside>
-
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              className="fixed left-0 top-0 bottom-0 w-[300px] max-w-[90vw] bg-charcoal text-white z-50 lg:hidden flex flex-col"
-            >
-              <div className="h-14 flex items-center justify-between px-3 border-b border-white/10">
-                <Link to="/admin" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                  <img
-                    src="/logo.svg"
-                    alt="Himalayan Koh"
-                    className="h-7 brightness-0 invert"
-                  />
-                </Link>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <nav className="flex-1 py-3 px-3 overflow-y-auto scrollbar-thin">
-                <div className="grid grid-cols-3 gap-2">
-                  {navItems.map((item) => {
-                    const isActive = location.pathname === item.path ||
-                      (item.path !== '/admin' && location.pathname.startsWith(item.path));
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl transition-all ${
-                          isActive
-                            ? 'bg-himalayan text-white'
-                            : 'text-white/60 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
-                        <item.icon size={20} />
-                        <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </nav>
-              <div className="px-3 py-3 border-t border-white/10">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex h-16 shrink-0 items-center justify-between gap-6 border-b border-admin-line bg-admin-surface px-6">
+              <div className="flex min-w-0 items-center gap-3">
                 <Link
-                  to="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-white/60 hover:bg-white/10 hover:text-white transition-all text-sm"
+                  to="/admin"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
                 >
-                  <Home size={18} />
-                  <span className="font-medium">Back to Site</span>
+                  <Home size={15} />
+                  Admin
                 </Link>
+                {activeItem && (
+                  <>
+                    <span className="text-admin-line-strong">/</span>
+                    <span className="flex items-center gap-2 text-sm font-semibold text-admin-ink">
+                      {activeItem.label}
+                      {activeItem.pending && <AdminChip tone="warning">Pending</AdminChip>}
+                    </span>
+                  </>
+                )}
               </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header */}
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 lg:px-6 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <Menu size={20} />
-            </button>
-            <h1 className="text-lg font-semibold text-charcoal hidden sm:block">
-              Admin Panel
-            </h1>
-          </div>
+              <div className="flex items-center gap-3">
+                <form onSubmit={handleSearch} className="relative">
+                  <Search
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted"
+                  />
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search products…"
+                    aria-label="Search products"
+                    className="w-[260px] rounded-xl border border-admin-line bg-admin-canvas py-2 pl-9 pr-3 text-sm text-admin-ink placeholder:text-admin-muted/70 focus:border-himalayan focus:outline-none focus:ring-2 focus:ring-himalayan/25"
+                  />
+                </form>
 
-          <div className="flex items-center gap-3">
-            <Link
-              to="/admin/products?action=new"
-              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 bg-himalayan text-white rounded-xl text-sm font-semibold hover:bg-himalayan-dark transition-colors"
-            >
-              <Plus size={16} />
-              Quick Add
-            </Link>
-
-            {/* Notifications */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setNotificationOpen(!notificationOpen);
-                  setAlerts((current) => current.map((alert) => ({ ...alert, read: true })));
-                }}
-                className="relative p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <Bell size={20} className="text-charcoal-light" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <AnimatePresence>
-                {notificationOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label="Notifications"
+                    onClick={() => {
+                      setNotificationOpen((open) => !open);
+                      setAlerts((current) => current.map((alert) => ({ ...alert, read: true })));
+                    }}
+                    className="relative rounded-xl border border-admin-line p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
                   >
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <h3 className="font-semibold text-charcoal">Notifications</h3>
-                      <p className="text-xs text-charcoal-light">Realtime admin alerts</p>
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {alerts.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-sm text-charcoal-light">
-                          No alerts yet
+                    <Bell size={17} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-himalayan px-1 text-[10px] font-semibold text-white">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {notificationOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className={`absolute right-0 z-dropdown mt-2 w-80 ${SURFACE}`}
+                      >
+                        <div className="border-b border-admin-line px-4 py-3">
+                          <p className="text-sm font-semibold text-admin-ink">Notifications</p>
+                          <p className="text-xs text-admin-muted">Realtime order and customer alerts</p>
                         </div>
-                      ) : (
-                        alerts.map((alert) => (
-                          <div key={alert.id} className="px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                            <div className="flex items-start gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${alertColor(alert.type)}`}>
-                                {alert.type === 'order' ? <ShoppingCart size={14} /> : alert.type === 'customer' ? <Users size={14} /> : <Package size={14} />}
+                        <div className="max-h-80 overflow-y-auto">
+                          {alerts.length === 0 ? (
+                            <p className="px-4 py-10 text-center text-sm text-admin-muted">
+                              No alerts yet
+                            </p>
+                          ) : (
+                            alerts.map((alert) => (
+                              <div
+                                key={alert.id}
+                                className="flex items-start gap-3 border-b border-admin-line px-4 py-3 last:border-0"
+                              >
+                                <span
+                                  className={`${ICON_TILE} ${
+                                    alert.type === 'order'
+                                      ? ICON_TILE_TONES.green
+                                      : alert.type === 'customer'
+                                        ? ICON_TILE_TONES.violet
+                                        : ICON_TILE_TONES.amber
+                                  }`}
+                                >
+                                  {alert.type === 'order' ? (
+                                    <ShoppingCart size={14} />
+                                  ) : alert.type === 'customer' ? (
+                                    <Users size={14} />
+                                  ) : (
+                                    <Package size={14} />
+                                  )}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-admin-ink">{alert.title}</p>
+                                  <p className="text-xs text-admin-muted">{alert.message}</p>
+                                  <p className="mt-1 text-[11px] text-admin-muted">
+                                    {new Date(alert.createdAt).toLocaleTimeString()}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-charcoal">{alert.title}</p>
-                                <p className="text-xs text-charcoal-light line-clamp-2">{alert.message}</p>
-                                <p className="text-[11px] text-charcoal-light mt-1">
-                                  {new Date(alert.createdAt).toLocaleTimeString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <Link
-                      to="/admin"
-                      onClick={() => setNotificationOpen(false)}
-                      className="block px-4 py-3 text-sm font-semibold text-himalayan hover:bg-gray-50 border-t border-gray-100"
-                    >
-                      View Dashboard
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* User Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <div className="w-8 h-8 bg-himalayan-lighter rounded-full flex items-center justify-center">
-                  <span className="text-himalayan font-semibold text-sm">
-                    {profile?.full_name?.[0] || 'A'}
-                  </span>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <span className="hidden sm:block text-sm font-medium text-charcoal">
-                  {profile?.full_name || 'Admin'}
-                </span>
-                <ChevronDown size={16} className="text-charcoal-light" />
-              </button>
 
-              <AnimatePresence>
-                {userMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen((open) => !open)}
+                    className="flex items-center gap-2.5 rounded-xl border border-admin-line py-1.5 pl-1.5 pr-3 transition-colors hover:bg-admin-canvas"
                   >
-                    <Link
-                      to="/account"
-                      className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      My Profile
-                    </Link>
-                    <Link
-                      to="/admin/settings"
-                      className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <hr className="my-2" />
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      Sign Out
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </header>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-himalayan to-himalayan-dark text-sm font-semibold text-white">
+                      {(profile?.full_name || profile?.email || 'A').slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="max-w-[160px] truncate text-sm font-semibold text-admin-ink">
+                      {profile?.full_name || 'Admin'}
+                    </span>
+                    <ChevronDown size={15} className="text-admin-muted" />
+                  </button>
 
-        {/* Page Content */}
-        <main className="flex-1 p-3 pb-24 lg:p-6 overflow-auto">
-          {children}
-        </main>
+                  <AnimatePresence>
+                    {userMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className={`absolute right-0 z-dropdown mt-2 w-60 ${SURFACE}`}
+                      >
+                        <div className="border-b border-admin-line px-4 py-3">
+                          <p className="truncate text-sm font-semibold text-admin-ink">
+                            {profile?.full_name || 'Admin'}
+                          </p>
+                          <p className="truncate text-xs text-admin-muted">
+                            {profile?.email || user?.email || ''}
+                          </p>
+                          <div className="mt-2">
+                            <AdminChip tone={profile?.role === 'admin' ? 'brand' : 'neutral'}>
+                              {profile?.role === 'admin' ? 'Super Admin' : (profile?.role ?? 'user')}
+                            </AdminChip>
+                          </div>
+                        </div>
+                        <Link
+                          to="/account"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
+                        >
+                          My profile
+                        </Link>
+                        <Link
+                          to="/admin/users"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
+                        >
+                          Users &amp; Roles
+                        </Link>
+                        <Link
+                          to="/admin/settings"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
+                        >
+                          Settings
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={handleSignOut}
+                          className="flex w-full items-center gap-2 border-t border-admin-line px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut size={15} />
+                          Sign out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="mx-auto w-full max-w-[1600px] space-y-5">{children}</div>
+            </main>
+          </div>
+        </div>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.07)]">
-        <div className="grid grid-cols-4 gap-0.5">
-          {ADMIN_MOBILE_NAV_ITEMS.map((item) => {
-            const isMenu = item.path === 'menu';
-            const isActive = !isMenu && (
-              location.pathname === item.path ||
-              (item.path !== '/admin' && location.pathname.startsWith(item.path))
-            );
-            const content = (
-              <>
-                <item.icon size={20} />
-                <span className="text-[10px] font-semibold">{item.label}</span>
-              </>
-            );
-
-            if (isMenu) {
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="min-h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-charcoal-light hover:bg-gray-50"
-                >
-                  {content}
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`min-h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 ${
-                  isActive ? 'bg-himalayan text-white' : 'text-charcoal-light hover:bg-gray-50'
-                }`}
-              >
-                {content}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-
-      <Link
-        to="/admin/products?action=new"
-        className="lg:hidden fixed right-3 bottom-[4.5rem] z-50 w-12 h-12 rounded-full bg-himalayan text-white shadow-xl flex items-center justify-center"
-        aria-label="Quick add product"
-      >
-        <Plus size={20} />
-      </Link>
-
-      {/* Click outside to close user menu */}
       {userMenuOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setUserMenuOpen(false)}
-        />
+        <div className="fixed inset-0 z-nav-overlay" onClick={() => setUserMenuOpen(false)} />
       )}
       {notificationOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setNotificationOpen(false)}
-        />
+        <div className="fixed inset-0 z-nav-overlay" onClick={() => setNotificationOpen(false)} />
       )}
 
       <AIChatWidget />
     </div>
   );
-}
-
-function alertColor(type: AdminAlert['type']) {
-  if (type === 'order') return 'text-green-600 bg-green-50';
-  if (type === 'customer') return 'text-purple-600 bg-purple-50';
-  return 'text-amber-600 bg-amber-50';
 }

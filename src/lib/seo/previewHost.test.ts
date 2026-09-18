@@ -12,6 +12,11 @@ describe('isPreviewHost', () => {
     expect(isPreviewHost('  preview.himalayankoh.com  ')).toBe(true);
   });
 
+  it('matches the temporary verification alias while it exists', () => {
+    // Added with the alias and removed with it — see PREVIEW_HOSTS.
+    expect(isPreviewHost('himalayan-koh-admin-verify.vercel.app')).toBe(true);
+  });
+
   it('never matches a host that carries the storefront in production', () => {
     for (const host of [
       'himalayankoh.com',
@@ -32,6 +37,13 @@ describe('isPreviewHost', () => {
   });
 
   it('lists only non-production hosts', () => {
-    expect(PREVIEW_HOSTS).toEqual(['preview.himalayankoh.com']);
+    // The Vercel project's own domain is deliberately absent: it is a host that
+    // can serve the published storefront, so a suffix rule on `.vercel.app`
+    // would risk noindexing production. Only the two hosts here are guarded.
+    expect(PREVIEW_HOSTS).toEqual([
+      'preview.himalayankoh.com',
+      'himalayan-koh-admin-verify.vercel.app',
+    ]);
+    expect(isPreviewHost('himalayan-koh.vercel.app')).toBe(false);
   });
 });

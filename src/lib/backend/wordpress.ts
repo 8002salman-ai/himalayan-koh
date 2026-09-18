@@ -48,6 +48,14 @@ export class WordPressApiError extends Error {
 
 export type QueryValue = string | number | boolean | undefined | null | Array<string | number>;
 
+/**
+ * The most rows the WordPress REST API returns in one request (`per_page`
+ * ceiling, enforced by WordPress itself). Callers that need a whole collection
+ * read at this width and must say so when they hit it, rather than presenting a
+ * truncated collection as the complete one.
+ */
+export const WORDPRESS_MAX_PER_PAGE = 100;
+
 export interface WordPressRequestOptions {
   /** Query string params. Arrays become repeated keys. Undefined/null are dropped. */
   params?: Record<string, QueryValue>;

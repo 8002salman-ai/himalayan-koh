@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Award } from 'lucide-react';
 import { legacyImage } from '@/lib/images/legacyAssets';
-import { products as fallbackProducts, Product } from '@/data/products';
+import { storefrontProducts, Product } from '@/data/products';
 import ProductCard from '@/components/ProductCard';
 import { SkeletonProductCard } from '@/components/ui/Skeleton';
 import { getFeaturedCatalogProducts, isSupabaseDataSource } from '@/lib/backend';
@@ -12,31 +12,41 @@ import { isSupabaseConfigured } from '@/lib/supabase/client';
 /** Module scope so it stays out of the effect's dependency array. */
 const USES_SUPABASE_SOURCE = isSupabaseDataSource();
 
-const livestockBenefits = [
-  'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
-  'Livestock need sodium and chloride to maintain appetite, weight, milk production, and healthy growth.',
-  'Pure Himalayan pink salt provides natural magnesium and mineral support that helps animals stay stronger and healthier.',
-  'Our Himalayan salt licks and rock salt are a natural improvement over livestock salts with added mineral supplements.',
+/**
+ * The storefront's opening pitch.
+ *
+ * Every claim here is about the salt itself — where it comes from and how it is
+ * used — because the shop sells pink salt and nothing else. What is actually for
+ * sale, at what price and in what stock, is read from the catalog below and
+ * never stated in this copy.
+ */
+const saltBenefits = [
+  'Unrefined rock salt, mined from the Himalayan range and packed without anti-caking agents or bleaching.',
+  'The pink colour is iron the rock already held — a sign the salt was not washed into pure white sodium chloride.',
+  'Fine, medium and coarse grains for baking, brining, grinders and finishing.',
+  'Blocks, lamps and bulk bags from the same seam, for cooking, the table and the home.',
 ];
 
 const healthCards = [
   {
-    title: 'Better Livestock Health',
-    text: 'Quality sodium and chloride support appetite, body weight, hydration, and daily herd performance.',
+    title: 'Unrefined by Design',
+    text: 'Nothing is added and nothing is stripped out. What the rock contained is what reaches the kitchen.',
   },
   {
-    title: 'Milk Production Support',
-    text: 'Good salt intake helps mothers maintain the mineral balance needed for stronger milk production.',
+    title: 'Grain for the Job',
+    text: 'Fine dissolves into baking and brines, medium fills a grinder, coarse finishes a plate and seasons a block.',
   },
   {
-    title: 'Magnesium & Nutrition',
-    text: 'Natural Himalayan minerals support recovery, strength, and overall wellness for working animals.',
+    title: 'Packed to Stay Dry',
+    text: 'Resealable pouches, jars and bags — salt keeps indefinitely as long as it is sealed and away from steam.',
   },
 ];
 
 export default function HomePage() {
+  // The bundled catalog is scoped to the storefront niche, so the first paint
+  // before the source answers cannot show a product the store does not sell.
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>(() =>
-    fallbackProducts.filter((product) => product.isFeatured).slice(0, 4)
+    storefrontProducts.filter((product) => product.isFeatured).slice(0, 4)
   );
   const [featuredLoading, setFeaturedLoading] = useState(isSupabaseConfigured());
 
@@ -71,7 +81,7 @@ export default function HomePage() {
   return (
     <div className="min-h-[calc(100vh-140px)] flex flex-col bg-warm-white">
 
-      {/* Livestock Salt Story */}
+      {/* Pink Salt Story */}
       <section className="py-16 md:py-28 bg-white">
         <div className="max-w-[88rem] mx-auto px-4 sm:px-8 lg:px-6">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
@@ -82,24 +92,24 @@ export default function HomePage() {
             >
               <div className="flex justify-center mb-6">
                 <span className="inline-block px-5 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full text-center">
-                  World&apos;s Best for Livestock
+                  Pure Himalayan Pink Salt
                 </span>
               </div>
               {/* h1, not h2: this is the homepage's main heading — the page had
                   no h1 at all, so search engines had no primary topic signal.
                   Styling lives in the className, so the visual size is unchanged. */}
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-charcoal mb-6 leading-tight">
-                Rich All Natural Himalayan Pink Salt
+                Unrefined Himalayan Pink Salt
               </h1>
               <div className="space-y-5 text-charcoal-light leading-relaxed text-base md:text-lg mb-8">
                 <p>
-                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But livestock can also recognize and benefit from a better quality product.
+                  Pink Himalayan crystal salt has long been the standard for cooking — a natural rock salt that keeps the trace minerals and iron the seam gave it instead of being washed into pure white sodium chloride.
                 </p>
                 <p>
-                  Himalayan pink rock salt not only tastes its salty best, but gives cattle, horses, deer, and other animals the quality NaCl they need to stay healthy and be more productive.
+                  We carry it the way a kitchen actually uses it: fine grain for baking and brines, coarse for the grinder and for finishing, thick blocks for the grill and the table, and lamps and décor carved from the same rock.
                 </p>
                 <p>
-                  Ensure your herd is healthy and happy. Shop our convenient premium Himalayan Pink Salt products and enjoy friendly customer service from Himalayan Koh.
+                  Shop the salt, read how to use it, or ask us about bulk and wholesale orders.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 mb-8">
@@ -112,7 +122,7 @@ export default function HomePage() {
                 </Link>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                {livestockBenefits.map((benefit) => (
+                {saltBenefits.map((benefit) => (
                   <div key={benefit} className="p-4 bg-warm-white rounded-2xl text-sm text-charcoal-light border border-himalayan/10">
                     <Star size={16} className="text-himalayan mb-2.5" />
                     <p className="leading-relaxed">{benefit}</p>
@@ -128,18 +138,18 @@ export default function HomePage() {
               className="grid grid-cols-2 gap-5"
             >
               <img
-                src={legacyImage('horseLicking')}
-                alt="Horse licking Himalayan salt"
+                src={legacyImage('pinkSaltJar16oz')}
+                alt="Jar of unrefined pink Himalayan cooking salt"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
               />
               <img
                 src={legacyImage('bowlOfSalt')}
-                alt="Bowls of Himalayan salt"
+                alt="Bowl of coarse unrefined pink salt crystals"
                 className="rounded-2xl shadow-lg object-cover w-full aspect-square"
                 loading="lazy"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
               />
             </motion.div>
           </div>

@@ -1,455 +1,689 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-  Package,
-  FolderTree,
-  ShoppingCart,
-  DollarSign,
-  AlertTriangle,
-  TrendingUp,
-  ArrowUpRight,
-  Users,
-  BarChart3,
-  Plus,
-  FileText,
-} from 'lucide-react';
-import { SkeletonDashboard } from '../../components/ui/Skeleton';
-import { adminApi, AdminDashboardAnalytics } from '../../lib/supabase/api/admin';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import { getErrorMessage } from '../../lib/errors';
+'use client';
 
-interface DashboardStats {
-  totalProducts: number;
-  activeProducts: number;
-  lowStockCount: number;
-  totalCategories: number;
-  recentOrders: number;
-  totalRevenue: number;
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  DollarSign,
+  Eye,
+  FileText,
+  Gift,
+  Layers,
+  Loader2,
+  Megaphone,
+  Package,
+  Plus,
+  Receipt,
+  ShoppingCart,
+  Sparkle,
+  TrendingUp,
+  Users,
+  Wand as MagicWand,
+  Zap as Lightning,
+} from 'lucide-react';
+import {
+  adminApi,
+  type AdminDashboardAnalytics,
+  type AdminOrder,
+  type AdminOrderAnalytics,
+} from '../../lib/supabase/api/admin';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { readAdminCatalogStats, type AdminCatalogStats } from '../../lib/backend';
+import { getErrorMessage } from '../../lib/errors';
+import {
+  ADMIN_TD,
+  AdminCapabilityPanel,
+  AdminChip,
+  AdminKpiCard,
+  AdminLivePill,
+  AdminNotice,
+  AdminPanel,
+  AdminSegmentedBar,
+  AdminTable,
+  AdminTableSkeleton,
+} from '../../components/admin/AdminUI';
+
+/**
+ * The store overview.
+ *
+ * Layout mirrors the Luxedge console's dashboard one-for-one — header with a live
+ * badge, a six-figure KPI row, revenue/orders performance with a range selector,
+ * recent orders, and an operations column (order status, low stock, gift drop,
+ * publishing queue), then the quick-action grid. What differs is where the
+ * numbers come from and what happens when a source cannot answer.
+ *
+ * Three facts govern this file:
+ *
+ * 1. **Orders, revenue and customers live in Supabase**; the catalog does not. So
+ *    the sales half reads the order API and the catalog half reads the backend
+ *    adapter, and neither derives the other.
+ * 2. **A figure without a source is not zero.** Supabase not configured, or a
+ *    catalog that reports no stock counts, produces an explicit "Not connected"
+ *    in the number slot instead of a 0 that reads as a real measurement.
+ * 3. **The range selector is real.** 7/30/90-day buckets are built from the order
+ *    rows that were actually fetched, and the panel says how many of the store's
+ *    orders that sample covered, so a small sample cannot masquerade as history.
+ */
+
+/** Order statuses that count as money taken, mirroring the reference console. */
+const PAID_STATUSES = ['paid', 'processing', 'shipped', 'delivered', 'partially_refunded'];
+
+const ORDER_SAMPLE_LIMIT = 200;
+
+interface DayBucket {
+  label: string;
+  total: number;
+  orders: number;
+}
+
+function isPaid(order: AdminOrder): boolean {
+  return PAID_STATUSES.includes(String(order.status || ''));
+}
+
+/** Daily revenue and order counts for the last `days` days, paid orders only. */
+function buildSeries(orders: AdminOrder[], days: number): DayBucket[] {
+  const buckets: DayBucket[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - i);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const dayOrders = orders.filter((order) => {
+      const created = new Date(order.created_at);
+      return created >= start && created < end;
+    });
+    const paid = dayOrders.filter(isPaid);
+
+    buckets.push({
+      label: start.toLocaleDateString(undefined, days <= 7 ? { weekday: 'narrow' } : { month: 'short', day: 'numeric' }),
+      total: paid.reduce((sum, order) => sum + Number(order.total || 0), 0),
+      orders: paid.length,
+    });
+  }
+  return buckets;
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [orderCount, setOrderCount] = useState(0);
+  const [orderAnalytics, setOrderAnalytics] = useState<AdminOrderAnalytics | null>(null);
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics | null>(null);
+  const [catalogStats, setCatalogStats] = useState<AdminCatalogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [realtimeNotice, setRealtimeNotice] = useState('');
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
+  const [range, setRange] = useState<7 | 30 | 90>(7);
 
-  const fetchDashboard = useCallback(async () => {
-      if (!isSupabaseConfigured()) {
-        setStats(null);
-        setAnalytics(null);
-        setLoading(false);
-        return;
-      }
+  const ordersConnected = isSupabaseConfigured();
 
-      try {
-        setFetchError(null);
-        const [data, analyticsData] = await Promise.all([
-          adminApi.getDashboardStats(),
-          adminApi.getDashboardAnalytics(),
-        ]);
-        setStats(data);
-        setAnalytics(analyticsData);
-      } catch (err) {
-        setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setFetchError(null);
+    try {
+      const [orderPage, analyticsData, catalogData] = await Promise.all([
+        ordersConnected
+          ? adminApi.getOrders({ limit: ORDER_SAMPLE_LIMIT, page: 1 })
+          : Promise.resolve(null),
+        ordersConnected ? adminApi.getDashboardAnalytics() : Promise.resolve(null),
+        readAdminCatalogStats(),
+      ]);
+
+      setOrders(orderPage?.orders ?? []);
+      setOrderCount(orderPage?.count ?? 0);
+      setAnalytics(analyticsData);
+      setCatalogStats(catalogData);
+
+      if (ordersConnected) {
+        setOrderAnalytics(await adminApi.getOrderAnalytics());
       }
-    }, []);
+    } catch (err) {
+      setFetchError(getErrorMessage(err, 'Failed to load dashboard data.'));
+    } finally {
+      setLoading(false);
+      setLoadedAt(new Date());
+    }
+  }, [ordersConnected]);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    void load();
+  }, [load]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!ordersConnected) return;
 
     const channel = supabase
       .channel('admin-dashboard-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
         setRealtimeNotice('New order received');
-        fetchDashboard();
+        void load();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
         setRealtimeNotice('New customer activity');
-        fetchDashboard();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory' }, () => {
-        setRealtimeNotice('Inventory updated');
-        fetchDashboard();
+        void load();
       })
       .subscribe();
 
     return () => {
       channel.unsubscribe();
     };
-  }, [fetchDashboard]);
+  }, [ordersConnected, load]);
 
-  const statCards = [
+  /* ---------------- figures ---------------- */
+
+  const series = useMemo(() => buildSeries(orders, range), [orders, range]);
+  const rangeRevenue = series.reduce((sum, day) => sum + day.total, 0);
+  const rangeOrders = series.reduce((sum, day) => sum + day.orders, 0);
+  const maxDay = Math.max(...series.map((day) => day.total), 1);
+
+  const weekSeries = useMemo(() => buildSeries(orders, 7), [orders]);
+  const priorWeekSeries = useMemo(() => buildSeries(orders, 14).slice(0, 7), [orders]);
+  const weekRevenue = weekSeries.reduce((sum, day) => sum + day.total, 0);
+  const priorWeekRevenue = priorWeekSeries.reduce((sum, day) => sum + day.total, 0);
+  const revenueTrend = priorWeekRevenue > 0 ? ((weekRevenue - priorWeekRevenue) / priorWeekRevenue) * 100 : null;
+
+  const paidOrders = orderAnalytics?.totalOrders ?? 0;
+  const allTimeRevenue = orderAnalytics?.totalRevenue ?? 0;
+  const averageOrderValue = paidOrders > 0 ? allTimeRevenue / paidOrders : 0;
+
+  const isWooCatalog = catalogStats?.source === 'woocommerce';
+  const activeProducts = catalogStats ? (isWooCatalog ? catalogStats.total : catalogStats.active) : null;
+  const totalProducts = catalogStats?.total ?? null;
+
+  const sampleNote =
+    orderCount > orders.length
+      ? `based on the most recent ${orders.length} of ${orderCount} orders`
+      : `${orders.length} order${orders.length === 1 ? '' : 's'} on record`;
+
+  /* ---------------- order status breakdown ---------------- */
+
+  const statusSegments = [
+    { label: 'Pending', count: orderAnalytics?.pendingOrders ?? 0, className: 'bg-slate-400' },
+    { label: 'Processing', count: orderAnalytics?.processingOrders ?? 0, className: 'bg-blue-500' },
+    { label: 'Shipped', count: orderAnalytics?.shippedOrders ?? 0, className: 'bg-sky-500' },
+    { label: 'Delivered', count: orderAnalytics?.deliveredOrders ?? 0, className: 'bg-teal-500' },
+    { label: 'Cancelled', count: orderAnalytics?.cancelledOrders ?? 0, className: 'bg-rose-400' },
+    { label: 'Refund requests', count: orderAnalytics?.refundRequests ?? 0, className: 'bg-amber-500' },
+  ];
+  const statusTotal = statusSegments.reduce((sum, segment) => sum + segment.count, 0);
+
+  /* ---------------- low stock ---------------- */
+
+  const lowStockAlerts = analytics?.inventoryAlerts ?? [];
+  const lowStockCount = catalogStats && !isWooCatalog ? catalogStats.lowStock : null;
+
+  const quickActions = [
     {
-      label: 'Total Products',
-      value: stats?.totalProducts || 0,
-      icon: Package,
-      color: 'bg-blue-500',
-      link: '/admin/products',
+      to: '/admin/ai-import',
+      icon: MagicWand,
+      label: 'Import Product',
+      desc: 'Paste a product URL — research and draft the listing',
     },
     {
-      label: 'Categories',
-      value: stats?.totalCategories || 0,
-      icon: FolderTree,
-      color: 'bg-purple-500',
-      link: '/admin/categories',
+      to: '/admin/products?action=new',
+      icon: Plus,
+      label: 'Add Product Manually',
+      desc: 'Full editor — images, variants, SEO and pricing',
     },
     {
-      label: 'Recent Orders',
-      value: stats?.recentOrders || 0,
-      icon: ShoppingCart,
-      color: 'bg-green-500',
-      link: '/admin/orders',
+      to: '/admin/marketing',
+      icon: Megaphone,
+      label: 'Generate Product Content',
+      desc: 'AI copy, SEO and descriptions · model key required',
     },
     {
-      label: 'Total Revenue',
-      value: `$${(stats?.totalRevenue || 0).toLocaleString()}`,
-      icon: DollarSign,
-      color: 'bg-himalayan',
-      link: '/admin/analytics',
+      to: '/admin/variant-gen',
+      icon: Layers,
+      label: 'Create Variants',
+      desc: 'Generate weight and size combinations in one pass',
     },
     {
-      label: 'Customers',
-      value: analytics?.totalCustomers || 0,
-      icon: Users,
-      color: 'bg-indigo-500',
-      link: '/admin/customers',
-    },
-    {
-      label: 'New Customers',
-      value: analytics?.newCustomers || 0,
+      to: '/admin/seo',
       icon: TrendingUp,
-      color: 'bg-emerald-500',
-      link: '/admin/customers',
+      label: 'SEO Optimize',
+      desc: 'Meta, schema and keyword suggestions for pages',
     },
     {
-      label: 'Repeat Customers',
-      value: analytics?.repeatCustomers || 0,
-      icon: Users,
-      color: 'bg-purple-500',
-      link: '/admin/customers',
-    },
-    {
-      label: 'Inventory Alerts',
-      value: analytics?.inventoryAlerts.length || stats?.lowStockCount || 0,
-      icon: AlertTriangle,
-      color: 'bg-amber-500',
-      link: '/admin/products?filter=low_stock',
+      to: '/admin/ai-intelligence',
+      icon: Sparkle,
+      label: 'Open AI Intelligence',
+      desc: 'Insights across catalog, media and traffic · model key required',
     },
   ];
-
-  const maxRevenue = Math.max(...(analytics?.revenueSeries.map((point) => point.revenue) || [1]), 1);
-  const maxProductRevenue = Math.max(...(analytics?.topProducts.map((product) => product.revenue) || [1]), 1);
-  const mobileActions = [
-    // Creating a product is the Products page's own Add Product button now, so
-    // this leads there rather than to a second, more restrictive form.
-    { label: 'Add Product', path: '/admin/products', icon: Plus, color: 'bg-himalayan text-white' },
-    { label: 'Products', path: '/admin/products', icon: Package, color: 'bg-white text-charcoal' },
-    { label: 'Orders', path: '/admin/orders', icon: ShoppingCart, color: 'bg-white text-charcoal' },
-    { label: 'Blog', path: '/admin/blog', icon: FileText, color: 'bg-white text-charcoal' },
-    { label: 'Customers', path: '/admin/customers', icon: Users, color: 'bg-white text-charcoal' },
-    { label: 'Analytics', path: '/admin/analytics', icon: BarChart3, color: 'bg-white text-charcoal' },
-  ];
-
-  if (loading) {
-    return <SkeletonDashboard />;
-  }
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-charcoal">Dashboard</h1>
-            <p className="text-charcoal-light">Welcome back! Here&apos;s what&apos;s happening.</p>
-          </div>
-          {realtimeNotice && (
-            <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium">
-              {realtimeNotice}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {!isSupabaseConfigured() && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-semibold">Supabase not connected</p>
-          <p className="mt-1">Add Supabase environment variables to view live orders, revenue, and inventory.</p>
-        </div>
-      )}
-
       {fetchError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <p className="font-semibold">Dashboard failed to load</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchDashboard}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      <div className="lg:hidden grid grid-cols-2 gap-3">
-        {mobileActions.map((action) => (
-          <Link
-            key={action.label}
-            to={action.path}
-            className={`min-h-[72px] rounded-2xl shadow-sm p-4 flex items-center gap-3 ${action.color}`}
-          >
-            <action.icon size={20} />
-            <span className="font-semibold text-sm">{action.label}</span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Link
-              to={stat.link}
-              className="block bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+        <AdminNotice
+          tone="danger"
+          title="Dashboard failed to load"
+          action={
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center`}>
-                  <stat.icon size={20} className="text-white" />
-                </div>
-                <ArrowUpRight size={18} className="text-gray-300" />
-              </div>
-              <p className="text-2xl font-bold text-charcoal">{stat.value}</p>
-              <p className="text-sm text-charcoal-light">{stat.label}</p>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Analytics Charts */}
-      {analytics && (
-        <div className="grid xl:grid-cols-3 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-charcoal">Revenue Analytics</h3>
-                <p className="text-sm text-charcoal-light">Last 7 days revenue and order volume</p>
-              </div>
-              <BarChart3 size={20} className="text-himalayan" />
-            </div>
-            <div className="h-64 flex items-end gap-3">
-              {analytics.revenueSeries.map((point) => (
-                <div key={point.label} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full flex items-end justify-center h-48 bg-gray-50 rounded-xl overflow-hidden">
-                    <div
-                      className="w-full bg-himalayan rounded-t-xl min-h-2 transition-all"
-                      style={{ height: `${Math.max(6, (point.revenue / maxRevenue) * 100)}%` }}
-                      title={`$${point.revenue.toFixed(2)} · ${point.orders} orders`}
-                    />
-                  </div>
-                  <span className="text-xs text-charcoal-light">{point.label}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <h3 className="font-semibold text-charcoal mb-4">Orders Analytics</h3>
-            <div className="space-y-3">
-              {Object.entries(analytics.orderStatusCounts).map(([status, count]) => (
-                <div key={status}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-charcoal capitalize">{status}</span>
-                    <span className="font-semibold text-charcoal">{count}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-himalayan rounded-full"
-                      style={{ width: `${stats?.recentOrders ? Math.min(100, (count / stats.recentOrders) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="xl:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <h3 className="font-semibold text-charcoal mb-4">Product Analytics</h3>
-            <div className="space-y-4">
-              {analytics.topProducts.length === 0 ? (
-                <p className="text-sm text-charcoal-light">No product sales yet.</p>
-              ) : analytics.topProducts.map((product) => (
-                <div key={product.productName}>
-                  <div className="flex justify-between gap-4 text-sm mb-1">
-                    <span className="font-medium text-charcoal truncate">{product.productName}</span>
-                    <span className="text-charcoal-light">${product.revenue.toFixed(2)}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 rounded-full"
-                      style={{ width: `${Math.max(5, (product.revenue / maxProductRevenue) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-charcoal-light mt-1">{product.quantity} units sold</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-          >
-            <h3 className="font-semibold text-charcoal mb-4">Inventory Alerts</h3>
-            <div className="space-y-3">
-              {analytics.inventoryAlerts.length === 0 ? (
-                <p className="text-sm text-charcoal-light">No low-stock alerts.</p>
-              ) : analytics.inventoryAlerts.map((alert) => (
-                <Link
-                  key={alert.productId}
-                  to="/admin/products?filter=low_stock"
-                  className="block p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
-                >
-                  <p className="text-sm font-medium text-amber-800 line-clamp-1">{alert.productName}</p>
-                  <p className="text-xs text-amber-700">Qty {alert.quantity} · threshold {alert.threshold}</p>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Alerts & Quick Actions */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Low Stock Alert */}
-        {(stats?.lowStockCount || 0) > 0 && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <AlertTriangle size={20} className="text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-amber-800">Low Stock Alert</h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  {stats?.lowStockCount} products are running low on stock and need attention.
-                </p>
-                <Link
-                  to="/admin/products?filter=low_stock"
-                  className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-amber-800 hover:underline"
-                >
-                  View Products
-                  <ArrowUpRight size={14} />
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl p-5 shadow-sm"
+              Retry
+            </button>
+          }
         >
-          <h3 className="font-semibold text-charcoal mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              to="/admin/products?action=new"
-              className="flex items-center gap-3 p-3 bg-himalayan/5 rounded-xl hover:bg-himalayan/10 transition-colors"
-            >
-              <Package size={18} className="text-himalayan" />
-              <span className="text-sm font-medium text-charcoal">Add Product</span>
-            </Link>
-            <Link
-              to="/admin/categories"
-              className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
-            >
-              <FolderTree size={18} className="text-purple-600" />
-              <span className="text-sm font-medium text-charcoal">Add Category</span>
-            </Link>
-            <Link
-              to="/admin/orders"
-              className="flex items-center gap-3 p-3 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
-            >
-              <ShoppingCart size={18} className="text-green-600" />
-              <span className="text-sm font-medium text-charcoal">View Orders</span>
-            </Link>
-            <Link
-              to="/admin/analytics"
-              className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
-            >
-              <TrendingUp size={18} className="text-blue-600" />
-              <span className="text-sm font-medium text-charcoal">Analytics</span>
-            </Link>
+          {fetchError}
+        </AdminNotice>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-admin-ink">Dashboard</h1>
+            {ordersConnected ? <AdminLivePill /> : <AdminChip tone="warning">Not connected</AdminChip>}
+            {realtimeNotice && <AdminChip tone="success">{realtimeNotice}</AdminChip>}
           </div>
-        </motion.div>
+          <p className="mt-0.5 text-xs text-admin-muted">
+            Store performance and catalog overview.
+            {loading && <Loader2 size={11} className="ml-1.5 inline animate-spin" />}
+            {loadedAt && (
+              <span className="text-admin-muted/80">
+                {' '}
+                · Updated{' '}
+                {loadedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-admin-line bg-admin-surface px-3.5 py-2 text-xs font-semibold text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+          >
+            <Eye size={13} /> View store
+          </Link>
+          <Link
+            to="/admin/ai-import"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-admin-line bg-admin-surface px-3.5 py-2 text-xs font-semibold text-admin-ink transition-colors hover:bg-admin-canvas"
+          >
+            <MagicWand size={13} /> AI Import
+          </Link>
+          <Link
+            to="/admin/products?action=new"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-admin-ink px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90"
+          >
+            <Plus size={13} /> Add to Catalog
+          </Link>
+        </div>
       </div>
 
-      {/* Recent Activity */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm"
-      >
-        <h3 className="font-semibold text-charcoal mb-4">Recent Activity</h3>
+      {/* KPI row — six figures, each linkable */}
+      <div className="grid grid-cols-6 gap-2.5">
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={DollarSign}
+          label="Revenue (7 days)"
+          tone="amber"
+          value={loading ? '—' : `$${weekRevenue.toFixed(2)}`}
+          sub={
+            loading
+              ? 'reading orders'
+              : weekRevenue > 0
+                ? revenueTrend === null
+                  ? '— vs prior week'
+                  : `${revenueTrend >= 0 ? '▲' : '▼'} ${Math.abs(revenueTrend).toFixed(0)}% vs prior week`
+                : 'No paid orders yet'
+          }
+        />
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={ShoppingCart}
+          label="Orders"
+          tone="amber"
+          value={loading ? '—' : paidOrders}
+          sub={
+            loading
+              ? 'reading orders'
+              : paidOrders
+                ? `$${allTimeRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} all-time`
+                : 'No paid orders yet'
+          }
+        />
+        <AdminKpiCard
+          to="/admin/orders"
+          icon={TrendingUp}
+          label="Avg order value"
+          tone="amber"
+          value={loading ? '—' : paidOrders ? `$${averageOrderValue.toFixed(2)}` : '—'}
+          sub={loading ? 'reading orders' : paidOrders ? 'per paid order' : 'No paid orders yet'}
+        />
+        <AdminKpiCard
+          to="/admin/customers"
+          icon={Users}
+          label="Customers"
+          tone="amber"
+          value={loading ? '—' : (analytics?.totalCustomers ?? 'Not connected')}
+          sub={
+            loading
+              ? 'reading customers'
+              : analytics
+                ? `${analytics.newCustomers} new · ${analytics.repeatCustomers} repeat`
+                : 'No customer source configured'
+          }
+        />
+        <AdminKpiCard
+          to="/admin/products"
+          icon={Package}
+          label="Active products"
+          tone="amber"
+          value={catalogStats === null ? 'Reading…' : (activeProducts ?? '—')}
+          sub={`${totalProducts ?? '—'} total · ${isWooCatalog ? 'WooCommerce' : 'Supabase'}`}
+        />
+        <AdminKpiCard
+          to="/admin/inventory"
+          icon={AlertTriangle}
+          label="Low-stock products"
+          tone="amber"
+          value={lowStockCount === null ? (isWooCatalog ? 'Not reported' : '—') : lowStockCount}
+          sub={
+            isWooCatalog
+              ? 'this source reports no counts'
+              : lowStockCount
+                ? 'need restock'
+                : 'All stocked'
+          }
+        />
+      </div>
+
+      {/* Main grid — left: performance and orders, right: operations */}
+      <div className="grid grid-cols-3 items-start gap-4">
+        <div className="col-span-2 space-y-4">
+          {/* Revenue & orders */}
+          <AdminPanel
+            bodyClassName=""
+            title={
+              <span className="flex items-center gap-2.5">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-himalayan-lighter">
+                  <TrendingUp size={14} className="text-himalayan-dark" />
+                </span>
+                <span>
+                  Revenue &amp; Orders
+                  <span className="mt-0.5 block text-[10px] font-normal text-admin-muted">
+                    {rangeOrders} order{rangeOrders === 1 ? '' : 's'} · ${rangeRevenue.toFixed(2)} in
+                    range · {sampleNote}
+                  </span>
+                </span>
+              </span>
+            }
+            action={
+              <div className="flex items-center gap-0.5 rounded-lg border border-admin-line p-0.5">
+                {([7, 30, 90] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setRange(option)}
+                    className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                      range === option
+                        ? 'bg-admin-ink text-white'
+                        : 'text-admin-muted hover:text-admin-ink'
+                    }`}
+                  >
+                    {option}D
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            {rangeOrders === 0 ? (
+              <div className="py-12 text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-admin-canvas">
+                  <TrendingUp size={16} className="text-admin-muted/60" />
+                </div>
+                <p className="text-xs text-admin-muted">
+                  {loading
+                    ? 'Reading orders…'
+                    : ordersConnected
+                      ? 'No paid orders in this range yet — share the store or run a campaign.'
+                      : 'No order source is configured, so there is nothing to chart.'}
+                </p>
+              </div>
+            ) : (
+              <div className="px-5 pb-4">
+                <div className="flex h-24 items-end gap-1">
+                  {series.map((day, index) => {
+                    const step = range === 7 ? 1 : range === 30 ? 5 : 15;
+                    return (
+                      <div
+                        key={`${day.label}-${index}`}
+                        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        title={`${day.label}: $${day.total.toFixed(2)} (${day.orders} order${day.orders === 1 ? '' : 's'})`}
+                      >
+                        <div
+                          className="w-full rounded-t bg-gradient-to-t from-himalayan-dark to-himalayan transition-all"
+                          style={{
+                            height: `${Math.max((day.total / maxDay) * 80, day.total > 0 ? 6 : 2)}px`,
+                            opacity: day.total > 0 ? 1 : 0.25,
+                          }}
+                        />
+                        <span className="text-[8px] font-medium uppercase text-admin-muted">
+                          {index % step === 0 || index === series.length - 1 ? day.label : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </AdminPanel>
+
+          {/* Recent orders */}
+          <AdminPanel
+            title="Recent Orders"
+            action={
+              <Link to="/admin/orders" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                View all orders →
+              </Link>
+            }
+          >
+            <AdminTable
+              columns={[
+                { key: 'order', label: 'Order' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'date', label: 'Date' },
+                { key: 'total', label: 'Total', align: 'right' },
+                { key: 'status', label: 'Status', align: 'right' },
+              ]}
+              minWidth="820px"
+            >
+              {loading ? (
+                <AdminTableSkeleton rows={5} columns={5} />
+              ) : (
+                orders.slice(0, 5).map((order) => (
+                  <tr key={order.id} className="transition-colors hover:bg-admin-canvas/60">
+                    <td className={ADMIN_TD}>
+                      <span className="font-mono text-[11px] font-semibold text-admin-ink">
+                        {order.order_number}
+                      </span>
+                    </td>
+                    <td className={`${ADMIN_TD} text-[11px] text-admin-muted`}>
+                      {order.profile?.full_name || order.email || '—'}
+                    </td>
+                    <td className={`${ADMIN_TD} text-[11px] text-admin-muted`}>
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className={`${ADMIN_TD} text-right text-[11px] font-bold text-admin-ink`}>
+                      ${Number(order.total || 0).toFixed(2)}
+                    </td>
+                    <td className={`${ADMIN_TD} text-right`}>
+                      <AdminChip
+                        tone={
+                          String(order.status) === 'paid'
+                            ? 'success'
+                            : String(order.status).includes('refund')
+                              ? 'warning'
+                              : 'muted'
+                        }
+                      >
+                        {String(order.status || '').replace('_', ' ')}
+                      </AdminChip>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </AdminTable>
+            {!loading && orders.length === 0 && (
+              <p className="px-5 py-6 text-center text-[11px] text-admin-muted">
+                {ordersConnected
+                  ? 'No orders yet — share the store or run a campaign.'
+                  : 'No order source is configured for this deployment.'}
+              </p>
+            )}
+          </AdminPanel>
+        </div>
+
+        {/* Operations column */}
         <div className="space-y-4">
-          {(analytics?.recentActivity || []).length === 0 ? (
-            <p className="text-sm text-charcoal-light">No recent activity yet.</p>
-          ) : analytics?.recentActivity.map((item) => (
-            <div key={`${item.type}-${item.id}`} className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${activityColor(item.type)}`}>
-                {item.type === 'order' ? <ShoppingCart size={18} /> : item.type === 'inventory' ? <Package size={18} /> : <Users size={18} />}
+          <AdminPanel title={<span className="flex items-center gap-1.5"><Receipt size={11} className="text-himalayan-dark" />Order Status</span>}>
+            {statusTotal === 0 ? (
+              <p className="py-4 text-center text-[11px] text-admin-muted">
+                {loading ? 'Reading orders…' : 'No order-status data yet.'}
+              </p>
+            ) : (
+              <>
+                <AdminSegmentedBar segments={statusSegments} />
+                <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+                  {statusSegments.map((segment) => (
+                    <span key={segment.label} className="flex items-center gap-1.5 text-[10px] text-admin-muted">
+                      <span className={`h-2 w-2 rounded-full ${segment.className}`} />
+                      {segment.label} · <b className="text-admin-ink">{segment.count}</b>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><AlertTriangle size={11} className="text-amber-500" />Low Stock</span>}
+            action={
+              <Link to="/admin/inventory" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                View inventory →
+              </Link>
+            }
+          >
+            {isWooCatalog ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                This catalog source reports no unit counts, so nothing can be ranked by stock.
+              </p>
+            ) : lowStockAlerts.length === 0 ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                {loading ? 'Reading inventory…' : 'No low-stock alerts.'}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {lowStockAlerts.slice(0, 4).map((alert) => (
+                  <li key={alert.productId} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[11px] text-admin-ink">{alert.productName}</span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        alert.quantity <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {alert.quantity} left
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><Gift size={11} className="text-himalayan-dark" />Gift Drop</span>}
+          >
+            <p className="py-3 text-center text-[11px] text-admin-muted">
+              No claim ledger is connected, so there are no claims or remaining gifts to report.
+            </p>
+            <Link
+              to="/admin/gift-drop"
+              className="mt-2.5 block rounded-lg border border-admin-line py-1.5 text-center text-[10px] font-semibold text-himalayan-dark transition-colors hover:bg-himalayan-lighter"
+            >
+              Open Gift Drop admin →
+            </Link>
+          </AdminPanel>
+
+          <AdminPanel
+            title={<span className="flex items-center gap-1.5"><FileText size={11} className="text-himalayan-dark" />Publishing Queue</span>}
+            action={
+              <Link to="/admin/products" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+                Manage →
+              </Link>
+            }
+          >
+            {isWooCatalog || !catalogStats || catalogStats.source !== 'supabase' ? (
+              <p className="py-3 text-center text-[11px] text-admin-muted">
+                Product status is not reported by this catalog source, so a draft count would be a
+                guess. The Listing Task queue is the working list.
+              </p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-himalayan-lighter">
+                  <FileText size={16} className="text-himalayan-dark" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-none text-admin-ink">
+                    {catalogStats.inactive} not listed
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-admin-muted">
+                    {catalogStats.active} active · {catalogStats.total} total in the catalog
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-charcoal">{item.action}</p>
-                <p className="text-xs text-charcoal-light">{new Date(item.time).toLocaleString()}</p>
-              </div>
-            </div>
+            )}
+          </AdminPanel>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <AdminPanel
+        title={<span className="flex items-center gap-1.5"><Lightning size={12} className="text-himalayan-dark" />Quick Actions</span>}
+        action={
+          <Link to="/admin/ai-import" className="text-[10px] font-semibold text-himalayan-dark hover:underline">
+            AI Import →
+          </Link>
+        }
+      >
+        <div className="grid grid-cols-3 gap-2">
+          {quickActions.map((action) => (
+            <Link
+              key={action.to}
+              to={action.to}
+              className="group flex items-start gap-2.5 rounded-lg border border-admin-line p-3 transition-colors hover:border-himalayan/40 hover:bg-himalayan-lighter"
+            >
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-himalayan-lighter text-himalayan-dark transition-colors group-hover:bg-himalayan/15">
+                <action.icon size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[12px] font-semibold leading-tight text-admin-ink">
+                  {action.label}
+                </span>
+                <span className="mt-0.5 block text-[10px] leading-snug text-admin-muted">
+                  {action.desc}
+                </span>
+              </span>
+            </Link>
           ))}
         </div>
-      </motion.div>
+      </AdminPanel>
+
+      {!ordersConnected && (
+        <AdminCapabilityPanel
+          title="Orders, revenue and customers"
+          summary="Where the sales half of this dashboard will read from."
+          capabilities={['woo-rest-read']}
+          available={[
+            'The catalog half is live: products and categories come from the same adapter the storefront serves.',
+            'No figure above is estimated — each one is either measured or labelled as unavailable.',
+          ]}
+        />
+      )}
     </div>
   );
-}
-
-function activityColor(type: 'order' | 'customer' | 'inventory') {
-  if (type === 'order') return 'text-green-600 bg-green-50';
-  if (type === 'customer') return 'text-purple-600 bg-purple-50';
-  return 'text-amber-600 bg-amber-50';
 }

@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,6 +18,20 @@ import { adminApi, AdminBlogFilters, BlogPostFormData } from '../../lib/supabase
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import type { BlogPost } from '../../lib/supabase/database.types';
+import {
+  ADMIN_TD,
+  AdminButton,
+  AdminChip,
+  AdminInput,
+  AdminModal,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTable,
+  AdminTableSkeleton,
+  type AdminColumn,
+} from '../../components/admin/AdminUI';
+import { BUTTON, ICON_TILE, ICON_TILE_TONES, INPUT, MICRO_LABEL, SELECT, TEXTAREA } from '../../components/admin/adminTheme';
 
 const emptyForm: BlogPostFormData = {
   title: '',
@@ -34,6 +48,15 @@ const emptyForm: BlogPostFormData = {
   read_time: 5,
 };
 
+const COLUMNS: AdminColumn[] = [
+  { key: 'post', label: 'Post', width: '40%' },
+  { key: 'category', label: 'Category' },
+  { key: 'status', label: 'Status' },
+  { key: 'views', label: 'Views', align: 'right' },
+  { key: 'actions', label: 'Actions', align: 'right', width: '120px' },
+];
+
+/** Blog posts — list, editor and delete confirmation on the console's system. */
 export default function AdminBlog() {
   const { user } = useAuthContext();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -53,6 +76,8 @@ export default function AdminBlog() {
   const [totalCount, setTotalCount] = useState(0);
   const [formData, setFormData] = useState<BlogPostFormData>(emptyForm);
   const [tagInput, setTagInput] = useState('');
+
+  const connected = isSupabaseConfigured();
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -200,245 +225,327 @@ export default function AdminBlog() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-charcoal">Blog Posts</h1>
-          <p className="text-charcoal-light">Create and manage CMS articles.</p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-        >
-          <Plus size={18} />
-          Create Blog
-        </button>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Content"
+        title="Blog posts"
+        description="Create and manage the articles the storefront publishes."
+        actions={
+          <AdminButton variant="primary" icon={Plus} onClick={openCreate}>
+            Create post
+          </AdminButton>
+        }
+      />
 
-      <div className="bg-white rounded-2xl shadow-sm p-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+      {!connected && (
+        <AdminNotice tone="warning" title="Blog storage is not connected">
+          Articles live in Supabase and this deployment has no configuration for it, so the list is empty
+          and saving is unavailable.
+        </AdminNotice>
+      )}
+
+      {fetchError && (
+        <AdminNotice
+          tone="danger"
+          title="Blog posts could not be loaded"
+          action={<AdminButton onClick={fetchPosts}>Retry</AdminButton>}
+        >
+          {fetchError}
+        </AdminNotice>
+      )}
+
+      {saveError && (
+        <AdminNotice
+          tone="danger"
+          title="That change was not saved"
+          action={<AdminButton icon={X} onClick={() => setSaveError(null)}>Dismiss</AdminButton>}
+        >
+          {saveError}
+        </AdminNotice>
+      )}
+
+      <AdminPanel bodyClassName="px-0 py-0">
+        <div className="flex items-center gap-3 border-b border-admin-line px-5 py-4">
+          <div className="relative min-w-[280px] flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search blog posts..."
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+              placeholder="Search blog posts…"
+              aria-label="Search blog posts"
+              className={`${INPUT} w-full pl-10`}
             />
           </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+            aria-label="Filter by status"
+            className={SELECT}
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             <option value="published">Published</option>
             <option value="draft">Drafts</option>
           </select>
+          <span className={`ml-auto ${MICRO_LABEL}`}>
+            {loading ? 'Reading…' : `${totalCount} post${totalCount === 1 ? '' : 's'}`}
+          </span>
         </div>
-      </div>
 
-      {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Blog posts could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchPosts}
-            className="mt-2 px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
-      )}
+        <AdminTable columns={COLUMNS}>
+          {loading ? (
+            <AdminTableSkeleton rows={5} columns={COLUMNS.length} />
+          ) : posts.length === 0 ? (
+            <tr>
+              <td className={ADMIN_TD} colSpan={COLUMNS.length}>
+                <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+                    <Edit size={20} />
+                  </span>
+                  <p className="text-sm font-semibold text-admin-ink">No blog posts yet</p>
+                  <p className="text-sm text-admin-muted">
+                    {connected
+                      ? 'Create the first article to get started.'
+                      : 'Connect the content source to manage articles.'}
+                  </p>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            posts.map((post) => (
+              <tr key={post.id}>
+                <td className={ADMIN_TD}>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={post.featured_image || '/images/placeholder-product.svg'}
+                      alt=""
+                      className="h-12 w-12 rounded-lg bg-admin-canvas object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-admin-ink">{post.title}</p>
+                      <p className="truncate text-[11px] text-admin-muted">/{post.slug}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`${ADMIN_TD} text-admin-muted`}>{post.category || 'Uncategorized'}</td>
+                <td className={ADMIN_TD}>
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePublished(post)}
+                    title={post.is_published ? 'Click to unpublish' : 'Click to publish'}
+                  >
+                    <AdminChip tone={post.is_published ? 'success' : 'muted'} icon={post.is_published ? Eye : EyeOff}>
+                      {post.is_published ? 'Published' : 'Draft'}
+                    </AdminChip>
+                  </button>
+                </td>
+                <td className={`${ADMIN_TD} text-right`}>{post.view_count}</td>
+                <td className={`${ADMIN_TD} text-right`}>
+                  <div className="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(post)}
+                      className="rounded-lg p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
+                      aria-label={`Edit ${post.title}`}
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(post.id)}
+                      className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                      aria-label={`Delete ${post.title}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </AdminTable>
 
-      {saveError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start justify-between gap-3">
-          <p>{saveError}</p>
-          <button
-            type="button"
-            onClick={() => setSaveError(null)}
-            className="shrink-0 text-red-500 hover:text-red-700"
-            aria-label="Dismiss"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 size={32} className="animate-spin text-himalayan" />
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-16 text-charcoal-light">
-            No blog posts found.
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Post</th>
-                    <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Category</th>
-                    <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Status</th>
-                    <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Views</th>
-                    <th className="px-5 py-4 text-right text-xs font-semibold text-charcoal-light uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {posts.map((post) => (
-                    <tr key={post.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={post.featured_image || ''} alt={post.title} className="w-14 h-14 rounded-lg object-cover bg-gray-100" />
-                          <div>
-                            <p className="font-semibold text-charcoal line-clamp-1">{post.title}</p>
-                            <p className="text-xs text-charcoal-light">/{post.slug}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-charcoal">{post.category || 'Uncategorized'}</td>
-                      <td className="px-5 py-4">
-                        <button
-                          onClick={() => handleTogglePublished(post)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                            post.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {post.is_published ? <Eye size={14} /> : <EyeOff size={14} />}
-                          {post.is_published ? 'Published' : 'Draft'}
-                        </button>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-charcoal">{post.view_count}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => openEdit(post)} className="p-2 rounded-lg hover:bg-gray-100 text-charcoal">
-                            <Edit size={16} />
-                          </button>
-                          <button onClick={() => setDeleteConfirm(post.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-600">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-admin-line px-5 py-3">
+            <p className="text-sm text-admin-muted">
+              Showing {posts.length} of {totalCount} posts
+            </p>
+            <div className="flex items-center gap-2">
+              <AdminButton
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft size={15} />
+                Previous
+              </AdminButton>
+              <span className="text-sm text-admin-muted">Page {page} of {totalPages}</span>
+              <AdminButton
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+                <ChevronRight size={15} />
+              </AdminButton>
             </div>
-
-            <div className="flex items-center justify-between p-4 border-t border-gray-100">
-              <p className="text-sm text-charcoal-light">Showing {posts.length} of {totalCount} posts</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50">
-                  <ChevronLeft size={18} />
-                </button>
-                <span className="text-sm text-charcoal-light">Page {page} of {totalPages}</span>
-                <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50">
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-          </>
+          </div>
         )}
-      </div>
+      </AdminPanel>
 
       <AnimatePresence>
         {editorOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-40" onClick={() => setEditorOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-8 bottom-8 mx-auto max-w-5xl bg-white rounded-2xl shadow-2xl z-50 overflow-y-auto"
-            >
+          <AdminModal
+            size="wide"
+            title={editingPost ? 'Edit post' : 'Create post'}
+            description="Content, featured image and SEO metadata."
+            onClose={() => setEditorOpen(false)}
+            bodyClassName="px-0 py-0"
+          >
               <form onSubmit={handleSave} className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="font-serif text-xl font-bold text-charcoal">{editingPost ? 'Edit Blog' : 'Create Blog'}</h2>
-                    <p className="text-sm text-charcoal-light">Manage content, image, and SEO metadata.</p>
-                  </div>
-                  <button type="button" onClick={() => setEditorOpen(false)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center">
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="grid lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 space-y-4">
-                    <input required value={formData.title} onChange={(event) => updateTitle(event.target.value)} placeholder="Blog title" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <input required value={formData.slug} onChange={(event) => setFormData({ ...formData, slug: slugify(event.target.value) })} placeholder="blog-slug" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <textarea value={formData.excerpt} onChange={(event) => setFormData({ ...formData, excerpt: event.target.value })} placeholder="Excerpt" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm min-h-24 resize-none focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <textarea value={formData.content} onChange={(event) => setFormData({ ...formData, content: event.target.value })} placeholder="Article content. HTML is supported." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm min-h-72 resize-y focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="col-span-2 space-y-4">
+                    <AdminInput
+                      required
+                      value={formData.title}
+                      onChange={(event) => updateTitle(event.target.value)}
+                      placeholder="Post title"
+                      aria-label="Post title"
+                    />
+                    <AdminInput
+                      required
+                      value={formData.slug}
+                      onChange={(event) => setFormData({ ...formData, slug: slugify(event.target.value) })}
+                      placeholder="post-slug"
+                      aria-label="Post slug"
+                    />
+                    <textarea
+                      value={formData.excerpt}
+                      onChange={(event) => setFormData({ ...formData, excerpt: event.target.value })}
+                      placeholder="Excerpt"
+                      aria-label="Excerpt"
+                      className={`${TEXTAREA} min-h-24`}
+                    />
+                    <textarea
+                      value={formData.content}
+                      onChange={(event) => setFormData({ ...formData, content: event.target.value })}
+                      placeholder="Article content. HTML is supported."
+                      aria-label="Article content"
+                      className={`${TEXTAREA} min-h-72`}
+                    />
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-2">Featured Image</label>
-                      {formData.featured_image && <img src={formData.featured_image} alt="Featured" className="w-full aspect-video object-cover rounded-xl mb-3 bg-gray-100" />}
-                      <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-himalayan transition-colors">
-                        {uploadingImage ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-                        <span className="text-sm font-medium text-charcoal">Upload Image</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && handleImageUpload(event.target.files[0])} />
-                      </label>
-                      {uploadError && (
-                        <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                      <p className={MICRO_LABEL}>Featured image</p>
+                      {formData.featured_image && (
+                        <img
+                          src={formData.featured_image}
+                          alt=""
+                          className="mt-2 mb-3 aspect-video w-full rounded-xl bg-admin-canvas object-cover"
+                        />
                       )}
+                      <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-admin-line px-4 py-3 transition-colors hover:border-himalayan">
+                        {uploadingImage ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                        <span className="text-sm font-medium text-admin-ink">Upload image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => event.target.files?.[0] && handleImageUpload(event.target.files[0])}
+                        />
+                      </label>
+                      {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
                     </div>
-                    <input value={formData.category} onChange={(event) => setFormData({ ...formData, category: event.target.value })} placeholder="Category" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Tags, comma separated" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <input type="number" min={1} value={formData.read_time} onChange={(event) => setFormData({ ...formData, read_time: Number(event.target.value) })} placeholder="Read time" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                    <label className="flex items-center gap-2 text-sm font-medium text-charcoal">
-                      <input type="checkbox" checked={formData.is_published} onChange={(event) => setFormData({ ...formData, is_published: event.target.checked })} className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan" />
+
+                    <AdminInput
+                      value={formData.category}
+                      onChange={(event) => setFormData({ ...formData, category: event.target.value })}
+                      placeholder="Category"
+                      aria-label="Category"
+                    />
+                    <AdminInput
+                      value={tagInput}
+                      onChange={(event) => setTagInput(event.target.value)}
+                      placeholder="Tags, comma separated"
+                      aria-label="Tags"
+                    />
+                    <AdminInput
+                      type="number"
+                      min={1}
+                      value={formData.read_time}
+                      onChange={(event) => setFormData({ ...formData, read_time: Number(event.target.value) })}
+                      placeholder="Read time"
+                      aria-label="Read time"
+                    />
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-admin-ink">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_published}
+                        onChange={(event) => setFormData({ ...formData, is_published: event.target.checked })}
+                        className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
+                      />
                       Published
                     </label>
 
-                    <div className="pt-4 border-t border-gray-100 space-y-3">
-                      <h3 className="font-semibold text-charcoal">SEO Metadata</h3>
-                      <input value={formData.meta_title} onChange={(event) => setFormData({ ...formData, meta_title: event.target.value })} placeholder="SEO title" maxLength={60} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
-                      <textarea value={formData.meta_description} onChange={(event) => setFormData({ ...formData, meta_description: event.target.value })} placeholder="SEO description" maxLength={160} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm min-h-24 resize-none focus:outline-none focus:ring-2 focus:ring-himalayan/30" />
+                    <div className="space-y-3 border-t border-admin-line pt-4">
+                      <h3 className={MICRO_LABEL}>SEO metadata</h3>
+                      <AdminInput
+                        value={formData.meta_title}
+                        onChange={(event) => setFormData({ ...formData, meta_title: event.target.value })}
+                        placeholder="SEO title"
+                        maxLength={60}
+                        aria-label="SEO title"
+                      />
+                      <textarea
+                        value={formData.meta_description}
+                        onChange={(event) => setFormData({ ...formData, meta_description: event.target.value })}
+                        placeholder="SEO description"
+                        maxLength={160}
+                        aria-label="SEO description"
+                        className={`${TEXTAREA} min-h-24`}
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                <div className="mt-6 space-y-3 border-t border-admin-line pt-5">
                   {saveError && (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <AdminNotice tone="danger" title="Save failed">
                       {saveError}
-                    </div>
+                    </AdminNotice>
                   )}
-                  <div className="flex justify-end gap-3">
-                    <button type="button" onClick={() => setEditorOpen(false)} className="px-5 py-3 border border-gray-200 rounded-xl font-semibold text-charcoal hover:bg-gray-50 transition-colors">
-                      Cancel
-                    </button>
-                    <button disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors disabled:opacity-70">
-                      {saving && <Loader2 size={18} className="animate-spin" />}
-                      Save Blog
+                  <div className="flex justify-end gap-2">
+                    <AdminButton onClick={() => setEditorOpen(false)}>Cancel</AdminButton>
+                    <button type="submit" disabled={saving} className={BUTTON.primary}>
+                      {saving && <Loader2 size={16} className="animate-spin" />}
+                      Save post
                     </button>
                   </div>
                 </div>
               </form>
-            </motion.div>
-          </>
+          </AdminModal>
         )}
 
         {deleteConfirm && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-40" onClick={() => setDeleteConfirm(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-x-4 top-32 mx-auto max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6">
-              <h2 className="font-serif text-xl font-bold text-charcoal mb-2">Delete Blog Post?</h2>
-              <p className="text-charcoal-light mb-6">This cannot be undone.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 border border-gray-200 rounded-xl font-semibold text-charcoal hover:bg-gray-50">Cancel</button>
-                <button onClick={() => handleDelete(deleteConfirm)} disabled={saving} className="px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-70">Delete</button>
-              </div>
-            </motion.div>
-          </>
+          <AdminModal
+            size="sm"
+            title="Delete this post?"
+            description="This cannot be undone."
+            onClose={() => setDeleteConfirm(null)}
+            footer={
+              <>
+                <AdminButton onClick={() => setDeleteConfirm(null)}>Cancel</AdminButton>
+                <AdminButton variant="danger" onClick={() => handleDelete(deleteConfirm)} disabled={saving}>
+                  Delete
+                </AdminButton>
+              </>
+            }
+          >
+            <p className="text-sm text-admin-ink">
+              The post and its SEO metadata are removed. Drafts are not recoverable.
+            </p>
+          </AdminModal>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 

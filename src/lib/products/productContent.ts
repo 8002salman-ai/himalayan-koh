@@ -1,4 +1,5 @@
 import type { Product } from '../../data/products';
+import { nicheSectionKeyFor, type NicheSectionKey } from '../catalog/niche';
 
 export interface ProductFaq {
   question: string;
@@ -24,7 +25,7 @@ export interface ProductContent {
 const SHARED_TRUST: TrustIndicator[] = [
   { label: '100% natural', detail: 'Unrefined salt with no anti-caking agents or additives.' },
   { label: '84+ trace minerals', detail: 'Naturally occurring minerals from ancient sea deposits.' },
-  { label: 'Family-owned quality', detail: 'Trusted by ranchers and home cooks across the U.S.' },
+  { label: 'Family-owned quality', detail: 'Trusted by home cooks, kitchens and shops across the U.S.' },
 ];
 
 const SHARED_SHIPPING: string[] = [
@@ -33,8 +34,17 @@ const SHARED_SHIPPING: string[] = [
   'Bulk orders welcome — contact us for quantity pricing.',
 ];
 
-const CATEGORY_DEFAULTS: Record<string, Omit<ProductContent, 'displayName' | 'metaTitle' | 'metaDescription'>> = {
-  'Edible Cooking Salt': {
+/**
+ * Content per shelf, keyed by the shelf taxonomy in `lib/catalog/niche.ts`.
+ *
+ * Keying on the shelf rather than on a raw `product.category` string means one
+ * vocabulary for both sources: WooCommerce reports its own category names and
+ * the bundled demo catalog reports the old labels, and both resolve to the same
+ * shelf, so a product cannot pick up a different block depending on where it was
+ * read from. A product that places on no shelf gets `GENERIC_DEFAULTS`.
+ */
+const SHELF_DEFAULTS: Record<NicheSectionKey, Omit<ProductContent, 'displayName' | 'metaTitle' | 'metaDescription'>> = {
+  'edible-pink-salt': {
     useCases: [
       'Everyday cooking, grilling, and finishing dishes',
       'Brining poultry, pork, and vegetables',
@@ -67,74 +77,114 @@ const CATEGORY_DEFAULTS: Record<string, Omit<ProductContent, 'displayName' | 'me
       },
     ],
   },
-  'Salt for Cattle': {
+  'cooking-serving': {
     useCases: [
-      'Free-choice mineral supplementation in pasture',
-      'Supporting hydration and electrolyte balance',
-      'Herd health programs for beef and dairy cattle',
+      'Cooking and searing on a heated salt block',
+      'Chilling and serving cold plates, charcuterie and desserts',
+      'Presenting food at the table on a natural salt surface',
     ],
     mineralHighlights: [
-      'Encourages natural licking behavior vs. processed blocks',
-      'Delivers calcium, magnesium, potassium, and trace elements',
-      'Weather-resistant rock salt suitable for outdoor feeders',
+      'Solid unrefined salt, cut from the same rock as the edible grades',
+      'Seasons the food that rests on it, gently and gradually',
+      'Holds heat from the oven or grill and cold from the freezer',
     ],
     shippingInfo: [
       ...SHARED_SHIPPING,
-      'Heavy bags ship via freight-friendly carriers — tracking provided at dispatch.',
+      'Blocks and plates ship boxed and padded — the edges are the fragile part.',
     ],
     trustIndicators: [
       ...SHARED_TRUST,
-      { label: 'Ranch-tested', detail: 'Sized for commercial herds and small farms alike.' },
+      { label: 'Handle with care', detail: 'Wipe clean, never soak. A salt block is not a dishwasher item.' },
     ],
     faqs: [
       {
-        question: 'How much salt do cattle need?',
+        question: 'How hot can a salt block get?',
         answer:
-          'Needs vary by herd size, forage, and climate. Provide free-choice access and monitor consumption — consult your nutritionist for large operations.',
+          'They are used in ovens and on grills, but they must be warmed gradually. Going from a cold block straight onto high heat is what cracks them.',
       },
       {
-        question: 'Can I use this for horses too?',
+        question: 'How do I clean it?',
         answer:
-          'Yes, many customers use Himalayan salt for mixed livestock. For equine-specific licks, see our horse salt lick products.',
+          'Let it cool, then wipe with a damp cloth and scrape the surface clean. Never submerge a block in water or put it in a dishwasher.',
       },
       {
-        question: 'Is it safe in rain?',
+        question: 'Does the food become very salty?',
         answer:
-          'Rock salt holds up outdoors better than pressed blocks, but shelter feeders from standing water when possible.',
+          'It picks up a gentle salt edge, most on moist food left in contact longest. Move the food off the block when the seasoning tastes right.',
       },
     ],
   },
-  'Salt Lick for Horses': {
+  'lamps-decor': {
     useCases: [
-      'Stall and paddock mineral access',
-      'Trail and training barn supplementation',
-      'Reducing boredom with natural licking behavior',
+      'Warm amber light for a living room, bedroom or hallway',
+      'A natural mineral piece on a shelf, console or bedside table',
+      'Candle holders and carved décor',
     ],
     mineralHighlights: [
-      'Supports electrolyte balance during work and heat',
-      'Hard, long-lasting licks compared to pressed alternatives',
-      'Naturally appealing taste horses seek out',
+      'Hand-carved from pink salt — every piece keeps its own grain and colour',
+      'No two lamps share the same veins or depth of shade',
+      'Fitted with a dimmable cord where the product includes one',
     ],
-    shippingInfo: SHARED_SHIPPING,
+    shippingInfo: [
+      ...SHARED_SHIPPING,
+      'Lamps ship in protective packing with the cord separately coiled.',
+    ],
     trustIndicators: [
       ...SHARED_TRUST,
-      { label: 'Stable-ready', detail: 'Mount in holders or hang with rope (not included).' },
+      { label: 'Dry rooms only', detail: 'Salt attracts moisture in humid air — leave the lamp lit and it dries itself.' },
     ],
     faqs: [
       {
-        question: 'How do I mount a salt lick?',
+        question: 'Why does my lamp feel damp?',
         answer:
-          'Use a licensed salt lick holder or secure with heavy-duty rope in a dry, shaded area away from excessive moisture.',
+          'Salt draws moisture from the air. Leave it lit for a few hours and the warmth drives it off; if the room stays humid, move the lamp somewhere drier.',
       },
       {
-        question: 'How long will one lick last?',
+        question: 'How do I clean a salt lamp?',
         answer:
-          'Lifespan depends on herd size and licking frequency — typically several weeks to months per horse with moderate use.',
+          'Wipe with a dry or barely damp cloth. Never wash it, and keep it away from running water and open windows in wet weather.',
       },
       {
-        question: 'Can foals use Himalayan salt licks?',
+        question: 'What bulb or cord does it take?',
         answer:
-          'Provide access only when foals are eating solid feed and always ensure fresh water is available.',
+          'The fitting and cord are listed on the product; replacements for a failed bulb or cord usually come from any hardware store.',
+      },
+    ],
+  },
+  bulk: {
+    useCases: [
+      'Kitchens and bakeries that get through salt quickly',
+      'Refilling retail jars and grinders from one bulk bag',
+      'Shops and wholesale buyers ordering repeat quantities',
+    ],
+    mineralHighlights: [
+      'The same unrefined salt as the retail jars, in larger packaging',
+      'Keeps indefinitely while sealed and stored dry',
+      'Available in fine and coarse grain',
+    ],
+    shippingInfo: [
+      ...SHARED_SHIPPING,
+      'Large bags ship via freight-friendly carriers — tracking provided at dispatch.',
+    ],
+    trustIndicators: [
+      ...SHARED_TRUST,
+      { label: 'Wholesale on request', detail: 'Recurring volumes and larger quantities are quoted on enquiry.' },
+    ],
+    faqs: [
+      {
+        question: 'How should I store a bulk bag?',
+        answer:
+          'Keep it closed, off a concrete floor and away from anything strongly scented. Decant into a small jar rather than leaving the bag open.',
+      },
+      {
+        question: 'Does bulk salt go off?',
+        answer:
+          'No. Salt is a preservative — it does not spoil. It only takes on moisture or odours if it is left open in a damp or smelly place.',
+      },
+      {
+        question: 'Do you offer wholesale pricing?',
+        answer:
+          'Yes — tell us the volume, the grain size and how often you need it, and we will quote the order.',
       },
     ],
   },
@@ -164,28 +214,22 @@ const SLUG_OVERRIDES: Record<string, Partial<ProductContent>> = {
     metaDescription:
       '6 lb pouch of Himalayan rock salt in fine or coarse grain. Ideal for kitchens and grinders. $17.95 with fast U.S. shipping.',
   },
-  'himalayan-livestock-salt-45lbs': {
-    displayName: 'Livestock Pink Salt, 45 lb',
-    metaTitle: 'Livestock Salt 45 lb Bag | Himalayan Koh',
+  'himalayan-rock-salt-bag': {
+    displayName: 'Himalayan Rock Salt, Bulk Bag',
+    metaTitle: 'Bulk Himalayan Rock Salt | Himalayan Koh',
     metaDescription:
-      '45 lb Himalayan salt for cattle and horses. Natural minerals for herd health and hydration. $99.95 — ranch-ready bulk bag.',
+      'Bulk bag of unrefined Himalayan rock salt for kitchens and shops. Fine or coarse grain, packed to store dry. Order online from Himalayan Koh.',
     useCases: [
-      'Pasture free-choice for cattle and mixed herds',
-      'Dairy and beef operations needing bulk mineral salt',
-      'Seasonal supplementation in hot or dry climates',
+      'Refilling retail jars and grinders from one bag',
+      'High-volume kitchens, bakeries and brining',
+      'Wholesale and repeat orders',
     ],
   },
-  'himalayan-salt-licks-horses': {
-    displayName: 'Pink Salt Lick for Horses',
-    metaTitle: 'Horse Salt Lick | Himalayan Koh',
+  'himalayan-salt-pouches': {
+    displayName: 'Himalayan Pink Salt Pouches',
+    metaTitle: 'Himalayan Pink Salt Pouches | Himalayan Koh',
     metaDescription:
-      'Natural Himalayan salt licks for horses. Long-lasting, mineral-rich, and stall-friendly. From $9.95 — choose the size for your barn.',
-  },
-  'himalayan-salt-cattle-18lbs': {
-    displayName: 'Cattle Rock Salt, 18 lb',
-    metaTitle: 'Cattle Salt 18 lb Bag | Himalayan Koh',
-    metaDescription:
-      '18 lb bag of Himalayan rock salt for cattle. Unprocessed minerals for pasture herds. $49.95 — dependable ranch supply.',
+      'Resealable pouches of unrefined Himalayan pink salt in fine and coarse grain. Keeps salt dry between refills. Shop from Himalayan Koh.',
   },
 };
 
@@ -248,7 +292,10 @@ export function getProductDisplayName(product: Product): string {
 
 export function getProductContent(product: Product): ProductContent {
   const slugOverride = SLUG_OVERRIDES[product.slug];
-  const categoryBase = CATEGORY_DEFAULTS[product.category] ?? GENERIC_DEFAULTS;
+  // The shelf decides which block applies, so the copy follows the same
+  // placement the shop grid and the hub pages use.
+  const shelf = nicheSectionKeyFor(product);
+  const categoryBase = (shelf ? SHELF_DEFAULTS[shelf] : null) ?? GENERIC_DEFAULTS;
   const merged = mergeContent(categoryBase, slugOverride);
 
   return {

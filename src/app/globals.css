@@ -59,6 +59,20 @@
   --color-warm-white: #faf7f1;          /* Page background       */
   --color-cream: #fffdf8;               /* Card / panel surface  */
 
+  /* ── Admin console ──────────────────────────────────── */
+  /* The admin is its own application surface: a light console
+     with a dark rail, hairline borders and its own text scale.
+     These names are additive so no storefront utility changes. */
+  --color-admin-canvas: #f2f3f5;        /* Console page background */
+  --color-admin-surface: #ffffff;       /* Panels, cards, tables   */
+  --color-admin-line: #e6e8ec;          /* Hairline borders        */
+  --color-admin-line-strong: #d5d9e0;   /* Emphasised dividers     */
+  --color-admin-ink: #1c1f23;           /* Console primary text    */
+  --color-admin-muted: #6b7280;         /* Console secondary text  */
+  --color-admin-rail: #16181c;          /* Sidebar rail            */
+  --color-admin-rail-hover: #24272e;    /* Rail hover row          */
+  --color-admin-rail-text: #a4abb6;     /* Rail inactive label     */
+
   /* ── Z-Index Scale ──────────────────────────────────── */
   /* Tailwind v4 generates z-* utilities from the --z-index-* namespace only.
      (These were named --z-* before, which produced NO utilities at all, so

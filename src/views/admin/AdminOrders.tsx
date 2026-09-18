@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -14,8 +14,8 @@ import {
   Package,
   Search,
   Truck,
-  X,
   XCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '../../lib/supabase/api/admin';
 import { FREE_SHIPPING_THRESHOLD } from '../../lib/supabase/api/orders';
@@ -23,8 +23,29 @@ import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { SkeletonTable } from '../../components/ui/Skeleton';
-import EmptyState from '../../components/ui/EmptyState';
+import {
+  ADMIN_TD,
+  AdminButton,
+  AdminChip,
+  AdminModal,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatTile,
+  AdminTable,
+  AdminTableSkeleton,
+  type AdminColumn,
+} from '../../components/admin/AdminUI';
+import {
+  BUTTON,
+  ICON_TILE,
+  ICON_TILE_TONES,
+  INPUT,
+  MICRO_LABEL,
+  SELECT,
+  SURFACE,
+  type ChipTone,
+} from '../../components/admin/adminTheme';
 import { createShippoLabel } from '../../lib/shippo/client';
 import { getShippoClientConfig } from '../../lib/shippo/clientConfig';
 import ShippingLabelPanel from '../../components/admin/ShippingLabelPanel';
@@ -47,22 +68,39 @@ function escapeHtml(str: string | null | undefined): string {
 const orderStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 const paymentStatuses: Order['payment_status'][] = ['pending', 'paid', 'failed', 'refunded'];
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  processing: 'bg-purple-100 text-purple-700',
-  shipped: 'bg-indigo-100 text-indigo-700',
-  delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
-  refunded: 'bg-red-100 text-red-700',
+/**
+ * Order and payment status → the console's chip tone and icon.
+ *
+ * One owner for the mapping: the table row, the detail panel and any later
+ * screen read the same table, so a status cannot look different in two places.
+ */
+const statusTones: Record<string, ChipTone> = {
+  pending: 'warning',
+  processing: 'info',
+  shipped: 'brand',
+  delivered: 'success',
+  cancelled: 'danger',
+  refunded: 'danger',
+  paid: 'success',
+  failed: 'danger',
 };
 
-const statusIcons: Record<string, React.ReactNode> = {
-  pending: <Clock size={14} />,
-  processing: <Package size={14} />,
-  shipped: <Truck size={14} />,
-  delivered: <Check size={14} />,
-  cancelled: <XCircle size={14} />,
+const statusIcons: Record<string, LucideIcon> = {
+  pending: Clock,
+  processing: Package,
+  shipped: Truck,
+  delivered: Check,
+  cancelled: XCircle,
 };
+
+const ORDER_COLUMNS: AdminColumn[] = [
+  { key: 'order', label: 'Order', width: '18%' },
+  { key: 'customer', label: 'Customer' },
+  { key: 'status', label: 'Status' },
+  { key: 'payment', label: 'Payment' },
+  { key: 'total', label: 'Total', align: 'right' },
+  { key: 'actions', label: 'Actions', align: 'right', width: '170px' },
+];
 
 interface ShippingAddress {
   fullName?: string;
@@ -166,15 +204,23 @@ export default function AdminOrders() {
     }
   }, [deepLinkOrderId, orders]);
 
+  /**
+   * Order figures, or the reason there is none.
+   *
+   * Every tile is bound to the order source: with no analytics response they say
+   * "Not connected" rather than zero, because zero orders and an unread order
+   * count are different claims.
+   */
+  const ordersUnavailable = analytics === null ? 'Not connected' : undefined;
   const statCards = [
-    { label: 'Total Orders', value: analytics?.totalOrders || 0, icon: Package, color: 'bg-blue-500' },
-    { label: 'Pending', value: analytics?.pendingOrders || 0, icon: Clock, color: 'bg-yellow-500' },
-    { label: 'Processing', value: analytics?.processingOrders || 0, icon: Package, color: 'bg-purple-500' },
-    { label: 'Shipped', value: analytics?.shippedOrders || 0, icon: Truck, color: 'bg-indigo-500' },
-    { label: 'Delivered', value: analytics?.deliveredOrders || 0, icon: Check, color: 'bg-green-500' },
-    { label: 'Cancelled', value: analytics?.cancelledOrders || 0, icon: XCircle, color: 'bg-red-500' },
-    { label: 'Refund Requests', value: analytics?.refundRequests || 0, icon: AlertTriangle, color: 'bg-orange-500' },
-    { label: 'Revenue', value: `$${(analytics?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'bg-himalayan' },
+    { label: 'Total orders', value: analytics?.totalOrders, icon: Package, tone: 'sky' as const },
+    { label: 'Pending', value: analytics?.pendingOrders, icon: Clock, tone: 'amber' as const },
+    { label: 'Processing', value: analytics?.processingOrders, icon: Package, tone: 'violet' as const },
+    { label: 'Shipped', value: analytics?.shippedOrders, icon: Truck, tone: 'slate' as const },
+    { label: 'Delivered', value: analytics?.deliveredOrders, icon: Check, tone: 'green' as const },
+    { label: 'Cancelled', value: analytics?.cancelledOrders, icon: XCircle, tone: 'amber' as const },
+    { label: 'Refund requests', value: analytics?.refundRequests, icon: AlertTriangle, tone: 'amber' as const },
+    { label: 'Revenue', value: analytics ? `$${analytics.totalRevenue.toLocaleString()}` : undefined, icon: DollarSign, tone: 'brand' as const },
   ];
 
   const openStatusModal = (order: AdminOrder) => {
@@ -305,60 +351,58 @@ export default function AdminOrders() {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-charcoal">Manage store orders</h1>
-          <p className="text-charcoal-light">
-            All customer orders — update payment, create Shippo labels, print invoices, and ship.
-          </p>
-        </div>
-        <Link
-          to="/admin/labels"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-        >
-          <Truck size={16} />
-          Shipping Labels
-        </Link>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Commerce"
+        title="Orders"
+        description="Customer orders — update payment, create Shippo labels, print invoices and ship."
+        actions={
+          <Link to="/admin/labels" className={BUTTON.secondary}>
+            <Truck size={16} />
+            Shipping labels
+          </Link>
+        }
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => (
-          <motion.div
+      {!isSupabaseConfigured() && (
+        <AdminNotice tone="warning" title="Orders are not connected">
+          Supabase holds orders and this deployment has no configuration for it, so the figures below read
+          <strong> Not connected</strong> and the list stays empty.
+        </AdminNotice>
+      )}
+
+      <div className="grid grid-cols-4 gap-4">
+        {statCards.map((stat) => (
+          <AdminStatTile
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.04 }}
-            className="bg-white rounded-2xl p-5 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center`}>
-                <stat.icon size={20} className="text-white" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-charcoal">{stat.value}</p>
-            <p className="text-sm text-charcoal-light">{stat.label}</p>
-          </motion.div>
+            label={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            tone={stat.tone}
+            unavailable={stat.value === undefined ? ordersUnavailable : undefined}
+          />
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-4">
-        <div className="flex flex-col lg:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+      <AdminPanel bodyClassName="px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="relative min-w-[280px] flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search order number, email, or phone..."
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+              placeholder="Search order number, email, or phone…"
+              aria-label="Search orders"
+              className={`${SELECT} w-full pl-10`}
             />
           </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+            aria-label="Filter by order status"
+            className={SELECT}
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             {orderStatuses.map((status) => (
               <option key={status} value={status}>{capitalize(status)}</option>
             ))}
@@ -366,84 +410,83 @@ export default function AdminOrders() {
           <select
             value={paymentFilter}
             onChange={(event) => setPaymentFilter(event.target.value)}
-            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+            aria-label="Filter by payment status"
+            className={SELECT}
           >
-            <option value="">All Payments</option>
+            <option value="">All payments</option>
             {paymentStatuses.map((status) => (
               <option key={status} value={status}>{capitalize(status)}</option>
             ))}
           </select>
-          <button
-            onClick={() => setPaymentFilter('refunded')}
-            className="px-4 py-3 bg-orange-50 text-orange-700 rounded-xl text-sm font-semibold hover:bg-orange-100 transition-colors"
-          >
-            Refund Requests
-          </button>
+          <AdminButton onClick={() => setPaymentFilter('refunded')}>
+            Refund requests
+          </AdminButton>
+          <span className={`ml-auto ${MICRO_LABEL}`}>
+            {loading ? 'Reading…' : `${totalCount} order${totalCount === 1 ? '' : 's'}`}
+          </span>
         </div>
-      </div>
+      </AdminPanel>
 
-      <div className="grid xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="grid grid-cols-3 gap-5">
+        <div className={`col-span-2 ${SURFACE} overflow-hidden`}>
           {loading ? (
-            <table className="w-full"><SkeletonTable rows={5} /></table>
+            <AdminTable columns={ORDER_COLUMNS}>
+              <AdminTableSkeleton rows={5} columns={ORDER_COLUMNS.length} />
+            </AdminTable>
           ) : orders.length === 0 ? (
-            <EmptyState
-              icon={<Package size={40} />}
-              title="No orders found"
-              description="Orders will appear here once customers start placing them."
-              size="compact"
-              className="border-0 shadow-none rounded-none py-16"
-            />
+            <div className="flex flex-col items-center gap-3 py-20 text-center">
+              <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+                <Package size={20} />
+              </span>
+              <p className="text-sm font-semibold text-admin-ink">No orders found</p>
+              <p className="text-sm text-admin-muted">
+                {isSupabaseConfigured()
+                  ? 'Orders appear here as soon as customers place them.'
+                  : 'No order source is connected, so there is nothing to list.'}
+              </p>
+            </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Order</th>
-                      <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Customer</th>
-                      <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Status</th>
-                      <th className="px-5 py-4 text-left text-xs font-semibold text-charcoal-light uppercase">Payment</th>
-                      <th className="px-5 py-4 text-right text-xs font-semibold text-charcoal-light uppercase">Total</th>
-                      <th className="px-5 py-4 text-right text-xs font-semibold text-charcoal-light uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
+              <AdminTable columns={ORDER_COLUMNS}>
                     {orders.map((order) => (
                       <tr
                         key={order.id}
                         onClick={() => setSelectedOrder(order)}
-                        className={`hover:bg-gray-50 cursor-pointer ${selectedOrder?.id === order.id ? 'bg-himalayan/5' : ''}`}
+                        className={`cursor-pointer transition-colors ${selectedOrder?.id === order.id ? 'bg-himalayan-lighter' : 'hover:bg-admin-canvas/60'}`}
                       >
-                        <td className="px-5 py-4">
-                          <p className="font-semibold text-charcoal">{order.order_number}</p>
-                          <p className="text-xs text-charcoal-light">{new Date(order.created_at).toLocaleDateString()}</p>
+                        <td className={ADMIN_TD}>
+                          <p className="font-semibold text-admin-ink">{order.order_number}</p>
+                          <p className="text-[11px] text-admin-muted">{new Date(order.created_at).toLocaleDateString()}</p>
                         </td>
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-medium text-charcoal">{order.profile?.full_name || order.email}</p>
-                          <p className="text-xs text-charcoal-light">{order.email}</p>
+                        <td className={ADMIN_TD}>
+                          <p className="text-sm font-medium text-admin-ink">{order.profile?.full_name || order.email}</p>
+                          <p className="text-[11px] text-admin-muted">{order.email}</p>
                         </td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
-                            {statusIcons[order.status]}
+                        <td className={ADMIN_TD}>
+                          <AdminChip
+                            tone={statusTones[order.status] ?? 'neutral'}
+                            icon={statusIcons[order.status]}
+                          >
                             {formatAdminOrderStatus(order.status, order.payment_status)}
+                          </AdminChip>
+                        </td>
+                        <td className={ADMIN_TD}>
+                          <p className="text-xs font-medium text-admin-ink">{formatPaymentMethod(order.payment_method)}</p>
+                          <span className="mt-1 inline-flex">
+                            <AdminChip tone={statusTones[order.payment_status] ?? 'neutral'}>
+                              {formatPaymentStatus(order.payment_status)}
+                            </AdminChip>
                           </span>
                         </td>
-                        <td className="px-5 py-4">
-                          <p className="text-xs font-medium text-charcoal">{formatPaymentMethod(order.payment_method)}</p>
-                          <span className={`inline-flex mt-1 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.payment_status] || 'bg-gray-100 text-gray-700'}`}>
-                            {formatPaymentStatus(order.payment_status)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-right font-semibold text-charcoal">${order.total.toFixed(2)}</td>
-                        <td className="px-5 py-4">
+                        <td className={`${ADMIN_TD} text-right font-semibold`}>${order.total.toFixed(2)}</td>
+                        <td className={`${ADMIN_TD} text-right`}>
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={(event) => {
                                 event.stopPropagation();
                                 openStatusModal(order);
                               }}
-                              className="px-3 py-1.5 bg-himalayan text-white rounded-lg text-xs font-semibold hover:bg-himalayan-dark transition-colors"
+                              className="rounded-lg bg-himalayan px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-himalayan-dark"
                             >
                               Update
                             </button>
@@ -452,7 +495,7 @@ export default function AdminOrders() {
                                 event.stopPropagation();
                                 handlePrintInvoice(order);
                               }}
-                              className="px-3 py-1.5 bg-gray-100 text-charcoal rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors"
+                              className="rounded-lg border border-admin-line px-2.5 py-1.5 text-xs font-semibold text-admin-ink transition-colors hover:bg-admin-canvas"
                             >
                               Invoice
                             </button>
@@ -460,29 +503,31 @@ export default function AdminOrders() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+              </AdminTable>
 
-              <div className="flex items-center justify-between p-4 border-t border-gray-100">
-                <p className="text-sm text-charcoal-light">
+              <div className="flex items-center justify-between border-t border-admin-line px-5 py-3">
+                <p className="text-sm text-admin-muted">
                   Showing {orders.length} of {totalCount} orders
                 </p>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
+                    aria-label="Previous page"
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={page === 1}
-                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-lg border border-admin-line p-2 text-admin-muted transition-colors hover:bg-admin-canvas disabled:opacity-45"
                   >
-                    <ChevronLeft size={18} />
+                    <ChevronLeft size={16} />
                   </button>
-                  <span className="text-sm text-charcoal-light">Page {page} of {totalPages}</span>
+                  <span className="text-sm text-admin-muted">Page {page} of {totalPages}</span>
                   <button
+                    type="button"
+                    aria-label="Next page"
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={page === totalPages}
-                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-lg border border-admin-line p-2 text-admin-muted transition-colors hover:bg-admin-canvas disabled:opacity-45"
                   >
-                    <ChevronRight size={18} />
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
@@ -505,40 +550,19 @@ export default function AdminOrders() {
 
       <AnimatePresence>
         {editingOrder && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40"
-              onClick={() => setEditingOrder(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-20 mx-auto max-w-lg bg-white rounded-2xl shadow-2xl z-50 p-6"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="font-serif text-xl font-bold text-charcoal">Update Order</h2>
-                  <p className="text-sm text-charcoal-light">{editingOrder.order_number}</p>
-                </div>
-                <button
-                  onClick={() => setEditingOrder(null)}
-                  className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
+          <AdminModal
+            title="Update order"
+            description={`${editingOrder.order_number} — status, payment and tracking`}
+            onClose={() => setEditingOrder(null)}
+          >
               <form onSubmit={handleStatusSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-charcoal mb-1.5">Order Status</label>
+                  <label htmlFor="order-status" className={MICRO_LABEL}>Order status</label>
                   <select
+                    id="order-status"
                     value={statusForm.status}
                     onChange={(event) => setStatusForm({ ...statusForm, status: event.target.value as Order['status'] })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+                    className={`${SELECT} mt-1.5 w-full`}
                   >
                     <option value="pending">Awaiting fulfillment</option>
                     <option value="processing">Processing &amp; packing</option>
@@ -546,17 +570,18 @@ export default function AdminOrders() {
                     <option value="delivered">Delivered</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                  <p className="text-xs text-charcoal-light mt-1">
+                  <p className="mt-1 text-xs text-admin-muted">
                     Use Processing when payment is confirmed and you are packing. Shippo label auto-sets Shipped.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-charcoal mb-1.5">Payment Status</label>
+                  <label htmlFor="payment-status" className={MICRO_LABEL}>Payment status</label>
                   <select
+                    id="payment-status"
                     value={statusForm.paymentStatus}
                     onChange={(event) => setStatusForm({ ...statusForm, paymentStatus: event.target.value as Order['payment_status'] })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+                    className={`${SELECT} mt-1.5 w-full`}
                   >
                     {paymentStatuses.map((status) => (
                       <option key={status} value={status}>{capitalize(status)}</option>
@@ -565,30 +590,26 @@ export default function AdminOrders() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-charcoal mb-1.5">Tracking Number</label>
+                  <label htmlFor="tracking-number" className={MICRO_LABEL}>Tracking number</label>
                   <input
+                    id="tracking-number"
                     value={statusForm.trackingNumber}
                     onChange={(event) => setStatusForm({ ...statusForm, trackingNumber: event.target.value })}
                     placeholder="Carrier tracking number"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+                    className={`${INPUT} mt-1.5 w-full`}
                   />
-                  <p className="text-xs text-charcoal-light mt-1">Used for shipped order tracking.</p>
+                  <p className="mt-1 text-xs text-admin-muted">Used for shipped order tracking.</p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors disabled:opacity-70"
-                >
-                  {saving && <Loader2 size={18} className="animate-spin" />}
-                  Save Updates
+                <button type="submit" disabled={saving} className={`${BUTTON.primary} w-full`}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}
+                  Save updates
                 </button>
               </form>
-            </motion.div>
-          </>
+          </AdminModal>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
@@ -615,34 +636,36 @@ function OrderDetailPanel({
 }) {
   if (!order) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
-        <Package size={48} className="mx-auto mb-4 text-gray-200" />
-        <p className="text-charcoal-light">Select an order to view details</p>
+      <div className={`${SURFACE} flex flex-col items-center gap-3 p-10 text-center`}>
+        <span className={`${ICON_TILE} ${ICON_TILE_TONES.slate} h-11 w-11`}>
+          <Package size={20} />
+        </span>
+        <p className="text-sm font-semibold text-admin-ink">No order selected</p>
+        <p className="text-sm text-admin-muted">Pick an order from the list to see its detail.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 h-fit">
-      <div className="flex items-start justify-between gap-4 mb-5">
+    <div className={`${SURFACE} h-fit p-6`}>
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-serif text-lg font-bold text-charcoal">Order Detail</h3>
-          <p className="text-sm text-charcoal-light">{order.order_number}</p>
+          <h3 className="text-lg font-bold text-admin-ink">Order detail</h3>
+          <p className="text-sm text-admin-muted">{order.order_number}</p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
-          {statusIcons[order.status]}
+        <AdminChip tone={statusTones[order.status] ?? 'neutral'} icon={statusIcons[order.status]}>
           {formatAdminOrderStatus(order.status, order.payment_status)}
-        </span>
+        </AdminChip>
       </div>
 
       {getAdminWorkflowHint(order) && (
-        <div className="mb-5 rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
-          <p className="font-semibold text-himalayan">Admin next step</p>
-          <p className="mt-1 text-charcoal-light">{getAdminWorkflowHint(order)}</p>
+        <div className="mb-5 rounded-xl border border-himalayan/25 bg-himalayan-lighter px-4 py-3 text-sm">
+          <p className="font-semibold text-himalayan-dark">Admin next step</p>
+          <p className="mt-1 text-admin-muted">{getAdminWorkflowHint(order)}</p>
         </div>
       )}
 
-      <div className="space-y-3 mb-5">
+      <div className="mb-5 space-y-2.5">
         <InfoRow label="Customer" value={order.profile?.full_name || order.email} />
         <InfoRow label="Email" value={order.email} />
         <InfoRow label="Phone" value={order.phone || 'Not provided'} />
@@ -650,8 +673,8 @@ function OrderDetailPanel({
         <InfoRow label="Payment status" value={formatPaymentStatus(order.payment_status)} />
       </div>
 
-      <div className="border-t border-gray-100 pt-4 mb-5">
-        <h4 className="font-semibold text-charcoal mb-3 flex items-center gap-2">
+      <div className="mb-5 border-t border-admin-line pt-4">
+        <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-admin-ink">
           <Truck size={16} className="text-himalayan" />
           Shipping
         </h4>
@@ -674,16 +697,16 @@ function OrderDetailPanel({
       </div>
 
       {order.notes && (
-        <div className="border-t border-gray-100 pt-4 mb-5">
-          <h4 className="font-semibold text-charcoal mb-2">Order Notes</h4>
-          <p className="text-xs text-charcoal-light whitespace-pre-line leading-5">{order.notes}</p>
+        <div className="mb-5 border-t border-admin-line pt-4">
+          <h4 className="mb-2 text-sm font-semibold text-admin-ink">Order notes</h4>
+          <p className="whitespace-pre-line text-xs leading-5 text-admin-muted">{order.notes}</p>
         </div>
       )}
 
-      <div className="border-t border-gray-100 pt-4 mb-5">
-        <h4 className="font-semibold text-charcoal mb-3">Shipping Address</h4>
-        <div className="text-sm text-charcoal-light leading-6">
-          <p className="font-medium text-charcoal">{address.fullName}</p>
+      <div className="mb-5 border-t border-admin-line pt-4">
+        <h4 className="mb-3 text-sm font-semibold text-admin-ink">Shipping address</h4>
+        <div className="text-sm leading-6 text-admin-muted">
+          <p className="font-medium text-admin-ink">{address.fullName}</p>
           <p>{address.addressLine1}</p>
           {address.addressLine2 && <p>{address.addressLine2}</p>}
           <p>{[address.city, address.state, address.postalCode].filter(Boolean).join(', ')}</p>
@@ -691,28 +714,28 @@ function OrderDetailPanel({
         </div>
       </div>
 
-      <div className="border-t border-gray-100 pt-4 mb-5">
-        <h4 className="font-semibold text-charcoal mb-3">Items</h4>
+      <div className="mb-5 border-t border-admin-line pt-4">
+        <h4 className="mb-3 text-sm font-semibold text-admin-ink">Items</h4>
         <div className="space-y-3">
           {order.order_items.map((item) => (
             <div key={item.id} className="flex gap-3">
-              <img src={item.product_image || '/images/placeholder-product.svg'} alt={item.product_name} className="w-11 h-11 rounded-lg object-cover bg-gray-100" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-charcoal truncate">{item.product_name}</p>
-                <p className="text-xs text-charcoal-light">Qty {item.quantity} x ${item.unit_price.toFixed(2)}</p>
+              <img src={item.product_image || '/images/placeholder-product.svg'} alt={item.product_name} className="h-11 w-11 rounded-lg bg-admin-canvas object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-admin-ink">{item.product_name}</p>
+                <p className="text-xs text-admin-muted">Qty {item.quantity} × ${item.unit_price.toFixed(2)}</p>
               </div>
-              <p className="text-sm font-semibold text-charcoal">${item.total_price.toFixed(2)}</p>
+              <p className="text-sm font-semibold text-admin-ink">${item.total_price.toFixed(2)}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="border-t border-gray-100 pt-4 space-y-2">
+      <div className="space-y-2 border-t border-admin-line pt-4">
         <InfoRow label="Subtotal" value={`$${order.subtotal.toFixed(2)}`} />
         <InfoRow label="Shipping" value={`$${order.shipping_cost.toFixed(2)}`} />
         <InfoRow label="Tax" value={`$${order.tax_amount.toFixed(2)}`} />
-        <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-100">
-          <span className="text-charcoal">Total</span>
+        <div className="flex justify-between border-t border-admin-line pt-2 text-lg font-bold">
+          <span className="text-admin-ink">Total</span>
           <span className="text-himalayan">${order.total.toFixed(2)}</span>
         </div>
       </div>
@@ -730,30 +753,23 @@ function OrderDetailPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => onUpdate(order)}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-himalayan text-white rounded-xl font-semibold hover:bg-himalayan-dark transition-colors"
-        >
-          <CreditCard size={16} />
+        <AdminButton variant="primary" icon={CreditCard} onClick={() => onUpdate(order)}>
           Update
-        </button>
-        <button
-          onClick={() => onInvoice(order)}
-          className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-charcoal rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-        >
-          <FileText size={16} />
+        </AdminButton>
+        <AdminButton icon={FileText} onClick={() => onInvoice(order)}>
           Invoice
-        </button>
+        </AdminButton>
       </div>
     </div>
   );
 }
 
+/** Detail rows share the console's label/value rhythm from the token layer. */
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 text-sm">
-      <span className="text-charcoal-light">{label}</span>
-      <span className="font-medium text-charcoal text-right">{value}</span>
+      <span className={MICRO_LABEL}>{label}</span>
+      <span className="text-right font-medium text-admin-ink">{value}</span>
     </div>
   );
 }

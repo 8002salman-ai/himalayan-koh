@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
   X,
   Loader2,
@@ -10,6 +10,7 @@ import {
   Truck,
   Tag,
   Search as SearchIcon,
+  type LucideIcon,
 } from 'lucide-react';
 import { adminApi, ProductFormData } from '../../lib/supabase/api/admin';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
@@ -37,6 +38,8 @@ import type { Product, Category, Inventory } from '../../lib/supabase/database.t
 import RichTextEditor from './RichTextEditor';
 import ImageDropzone from './ImageDropzone';
 import ProductImageEditor from './ProductImageEditor';
+import { AdminField, AdminModal, AdminTabs } from './AdminUI';
+import { BUTTON, INPUT, MICRO_LABEL, SELECT, TEXTAREA } from './adminTheme';
 import {
   adminImagesToUrls,
   createAdminProductImage,
@@ -603,21 +606,23 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }));
   };
 
+  /** One measurement field: number input plus its unit, on the console's field style. */
   const shippingNumberField = (label: string, key: ShippingNumberField, suffix: string, min = 0, step = '0.01') => (
-    <label className="block text-sm font-medium text-charcoal">
-      <span>{label} <span className="text-red-600" aria-label="required">*</span></span>
-      <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-himalayan/30">
+    <AdminField label={`${label} *`}>
+      <div className="flex overflow-hidden rounded-xl border border-admin-line bg-admin-surface focus-within:border-himalayan focus-within:ring-2 focus-within:ring-himalayan/25">
         <input
           type="number"
           min={min}
           step={step}
           value={shippingProfile[key] || ''}
           onChange={(event) => updateShippingNumber(key, event.target.value)}
-          className="min-w-0 flex-1 px-3 py-2.5 outline-none"
+          className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-admin-ink outline-none"
         />
-        <span className="flex items-center border-l border-gray-100 px-3 text-xs text-charcoal-light">{suffix}</span>
+        <span className="flex items-center border-l border-admin-line px-3 text-xs text-admin-muted">
+          {suffix}
+        </span>
       </div>
-    </label>
+    </AdminField>
   );
 
   const reorderImages = (images: AdminProductImage[]) => {
@@ -894,112 +899,106 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
     }
   };
 
-  const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'basic', label: 'Basic Info', icon: <Package size={16} /> },
-    { id: 'pricing', label: 'Pricing', icon: <DollarSign size={16} /> },
-    { id: 'shipping', label: 'Shippo Required', icon: <Truck size={16} /> },
-    { id: 'inventory', label: 'Inventory', icon: <Tag size={16} /> },
-    { id: 'images', label: 'Images', icon: <ImageIcon size={16} /> },
-    { id: 'seo', label: 'SEO', icon: <SearchIcon size={16} /> },
+  const tabs: { id: TabType; label: string; icon: LucideIcon }[] = [
+    { id: 'basic', label: 'Basic info', icon: Package },
+    { id: 'pricing', label: 'Pricing', icon: DollarSign },
+    { id: 'shipping', label: 'Shippo required', icon: Truck },
+    { id: 'inventory', label: 'Inventory', icon: Tag },
+    { id: 'images', label: 'Images', icon: ImageIcon },
+    { id: 'seo', label: 'SEO', icon: SearchIcon },
   ];
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h2 className="text-xl font-bold text-charcoal">
-                  {product ? 'Edit Product' : 'Add New Product'}
-                </h2>
-                <p className="mt-1 text-xs text-charcoal-light">Shippo-ready details marked <span className="font-semibold text-red-600">*</span> are required before saving.</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100 px-5 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-himalayan text-himalayan'
-                      : 'border-transparent text-charcoal-light hover:text-charcoal'
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
+        <>
+          <AdminModal
+            size="xl"
+            title={product ? 'Edit product' : 'Add new product'}
+            description={
+              <>
+                Shippo-ready details marked <span className="font-semibold text-red-600">*</span>{' '}
+                are required before saving.
+              </>
+            }
+            onClose={onClose}
+            bodyClassName="px-0 py-0"
+            footer={
+              <>
+                {error && (
+                  <p
+                    role="alert"
+                    aria-live="assertive"
+                    className="mr-auto max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  >
+                    {error}
+                  </p>
+                )}
+                <button type="button" onClick={onClose} className={BUTTON.secondary}>
+                  Cancel
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className={BUTTON.primary}
+                >
+                  {loading && <Loader2 size={18} className="animate-spin" />}
+                  {product ? 'Save changes' : 'Create product'}
+                </button>
+              </>
+            }
+          >
+            <div className="px-5">
+              <AdminTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="space-y-5 p-5">
               {/* Basic Info Tab */}
               {activeTab === 'basic' && (
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Product Name *
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleNameChange(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                      className={`${INPUT} w-full`}
                       placeholder="Himalayan Pink Salt..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       URL Slug
                     </label>
                     <input
                       type="text"
                       value={formData.slug}
                       onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                      className={`${INPUT} w-full`}
                       placeholder="himalayan-pink-salt"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Short Description
                     </label>
                     <textarea
                       value={formData.short_description}
                       onChange={(e) => setFormData(prev => ({ ...prev, short_description: e.target.value }))}
                       rows={2}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan resize-none"
+                      className={`${TEXTAREA} w-full`}
                       placeholder="Brief product description..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Full Description
                     </label>
                     <RichTextEditor
@@ -1010,37 +1009,37 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     />
                   </div>
 
-                  <section className="rounded-2xl border border-himalayan/20 bg-himalayan/5 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <section className="rounded-2xl border border-himalayan/25 bg-himalayan-lighter p-5">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="font-semibold text-himalayan">Required shipping measurements <span className="text-red-600">*</span></h3>
-                        <p className="mt-1 text-sm text-charcoal-light">
+                        <h3 className="font-semibold text-himalayan-dark">Required shipping measurements <span className="text-red-600">*</span></h3>
+                        <p className="mt-1 text-sm text-admin-muted">
                           Enter the actual size and weight of one retail unit. Box, packaging, and multi-parcel settings are also required in Shippo Required.
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setActiveTab('shipping')}
-                        className="shrink-0 rounded-lg border border-himalayan/30 bg-white px-3 py-2 text-sm font-semibold text-himalayan hover:bg-himalayan/10 transition-colors"
+                        className="shrink-0 rounded-lg border border-himalayan/30 bg-admin-surface px-3 py-2 text-sm font-semibold text-himalayan hover:bg-himalayan/10 transition-colors"
                       >
                         Open Shippo Packing
                       </button>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
-                      <label className="block text-sm font-medium text-charcoal">
+                    <div className="mt-4 grid grid-cols-4 gap-4">
+                      <label className="block text-sm font-medium text-admin-ink">
                         <span>Unit weight</span>
-                        <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-himalayan/30">
+                        <div className="mt-1 flex overflow-hidden rounded-xl border border-admin-line bg-admin-surface focus-within:border-himalayan focus-within:ring-2 focus-within:ring-himalayan/25">
                           <input
                             type="number"
                             min="0.01"
                             step="0.01"
                             value={formData.weight || ''}
                             onChange={(event) => setFormData((current) => ({ ...current, weight: Number(event.target.value) || undefined }))}
-                            className="min-w-0 flex-1 px-3 py-2.5 outline-none"
+                            className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-admin-ink outline-none"
                             placeholder="e.g. 2"
                           />
-                          <span className="flex items-center border-l border-gray-100 px-3 text-xs text-charcoal-light">{formData.weight_unit || 'lbs'}</span>
+                          <span className="flex items-center border-l border-admin-line px-3 text-xs text-admin-muted">{formData.weight_unit || 'lbs'}</span>
                         </div>
                       </label>
                       {shippingNumberField('Length', 'productLengthIn', 'in')}
@@ -1048,22 +1047,22 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {shippingNumberField('Height', 'productHeightIn', 'in')}
                     </div>
 
-                    <p className={`mt-3 text-xs ${formData.weight && hasCompleteShippingProfile(shippingProfile) ? 'text-charcoal-light' : 'font-semibold text-red-600'}`}>
+                    <p className={`mt-3 text-xs ${formData.weight && hasCompleteShippingProfile(shippingProfile) ? 'text-admin-muted' : 'font-semibold text-red-600'}`}>
                       {formData.weight && hasCompleteShippingProfile(shippingProfile)
                         ? 'Shipping profile complete — Shippo can use the saved box rules.'
                         : 'This product will NOT appear on the public site until these are complete. Fill in box dimensions, packaging weight, units per box, and maximum packed weight in Shippo Required, then save.'}
                     </p>
                   </section>
 
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Category
                       </label>
                       <select
                         value={formData.category_id}
                         onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
+                        className={`${SELECT} w-full`}
                       >
                         <option value="">Select category</option>
                         {categories.map((cat) => (
@@ -1078,40 +1077,40 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                           type="checkbox"
                           checked={formData.is_active}
                           onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                          className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                          className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                         />
-                        <span className="text-sm text-charcoal">Active</span>
+                        <span className="text-sm text-admin-ink">Active</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formData.is_featured}
                           onChange={(e) => setFormData(prev => ({ ...prev, is_featured: e.target.checked }))}
-                          className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                          className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                         />
-                        <span className="text-sm text-charcoal">Featured</span>
+                        <span className="text-sm text-admin-ink">Featured</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Grain Sizes */}
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Grain Sizes / Variants
                     </label>
-                    <div className="flex gap-2 mb-2">
+                    <div className="mb-2 flex gap-2">
                       <input
                         type="text"
                         value={newGrainSize}
                         onChange={(e) => setNewGrainSize(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGrainSize())}
-                        className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                        className={`${INPUT} flex-1`}
                         placeholder="e.g., Fine (0.5mm-1mm)"
                       />
                       <button
                         type="button"
                         onClick={addGrainSize}
-                        className="px-4 py-2 bg-himalayan text-white rounded-xl hover:bg-himalayan-dark transition-colors"
+                        className={`${BUTTON.primary} px-3 py-2`}
                       >
                         <Plus size={18} />
                       </button>
@@ -1120,13 +1119,13 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {formData.grain_sizes.map((size) => (
                         <span
                           key={size}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
+                          className="inline-flex items-center gap-1 rounded-full border border-admin-line bg-admin-canvas px-3 py-1 text-sm text-admin-ink"
                         >
                           {size}
                           <button
                             type="button"
                             onClick={() => removeGrainSize(size)}
-                            className="p-0.5 hover:bg-gray-200 rounded-full"
+                            className="rounded-full p-0.5 text-admin-muted transition-colors hover:bg-admin-line/60 hover:text-admin-ink"
                           >
                             <X size={12} />
                           </button>
@@ -1137,22 +1136,22 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
 
                   {/* Tags */}
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Tags
                     </label>
-                    <div className="flex gap-2 mb-2">
+                    <div className="mb-2 flex gap-2">
                       <input
                         type="text"
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                        className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                        className={`${INPUT} flex-1`}
                         placeholder="Add tag..."
                       />
                       <button
                         type="button"
                         onClick={addTag}
-                        className="px-4 py-2 bg-himalayan text-white rounded-xl hover:bg-himalayan-dark transition-colors"
+                        className={`${BUTTON.primary} px-3 py-2`}
                       >
                         <Plus size={18} />
                       </button>
@@ -1161,13 +1160,13 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {formData.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-himalayan/10 text-himalayan rounded-full text-sm"
+                          className="inline-flex items-center gap-1 rounded-full border border-himalayan/25 bg-himalayan-lighter px-3 py-1 text-sm text-himalayan-dark"
                         >
                           {tag}
                           <button
                             type="button"
                             onClick={() => removeTag(tag)}
-                            className="p-0.5 hover:bg-himalayan/20 rounded-full"
+                            className="rounded-full p-0.5 text-himalayan-dark transition-colors hover:bg-himalayan-light"
                           >
                             <X size={12} />
                           </button>
@@ -1181,9 +1180,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {/* Pricing Tab */}
               {activeTab === 'pricing' && (
                 <div className="space-y-5">
-                  <div className="rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
-                    <p className="font-semibold text-himalayan">Shipping weight {!product ? '(required)' : ''}</p>
-                    <p className="mt-1 text-charcoal-light">
+                  <div className="rounded-xl border border-himalayan/25 bg-himalayan-lighter px-4 py-3 text-sm text-admin-ink">
+                    <p className="font-semibold text-himalayan-dark">Shipping weight {!product ? '(required)' : ''}</p>
+                    <p className="mt-1 text-admin-muted">
                       Used for live Shippo carrier rates and box packing. New listings must include weight. Common values: 2, 4, 6 lb licks · 3 or 6 lb pouches · 1 lb jar · 18 or 45 lb bags.
                     </p>
                   </div>
@@ -1197,9 +1196,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     </div>
                   )}
 
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Shipping weight {!product ? '*' : ''}
                       </label>
                       <input
@@ -1212,25 +1211,25 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                         className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan ${
                           !product && productMissingShippingWeight(formData.weight)
                             ? 'border-amber-300 bg-amber-50/50'
-                            : 'border-gray-200'
+                            : 'border-admin-line'
                         }`}
                         placeholder="e.g. 2"
                       />
                       {formData.weight && formData.weight > 0 && (
-                        <p className="text-xs text-green-700 mt-1">
+                        <p className="text-xs text-emerald-700 mt-1">
                           Saved as {formatShippingWeightLabel(formData.weight, formData.weight_unit)}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Weight unit
                       </label>
                       <select
                         value={formData.weight_unit}
                         onChange={(e) => setFormData(prev => ({ ...prev, weight_unit: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan bg-white"
+                        className={`${SELECT} w-full`}
                       >
                         <option value="lbs">Pounds (lbs)</option>
                         <option value="oz">Ounces (oz)</option>
@@ -1240,84 +1239,84 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-3 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Price *
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted">$</span>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={formData.price}
                           onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                          className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                          className={`${INPUT} w-full pl-8`}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Compare at Price
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted">$</span>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={formData.compare_at_price || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, compare_at_price: parseFloat(e.target.value) || undefined }))}
-                          className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                          className={`${INPUT} w-full pl-8`}
                           placeholder="Original price"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Cost Price
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted">$</span>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={formData.cost_price || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, cost_price: parseFloat(e.target.value) || undefined }))}
-                          className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                          className={`${INPUT} w-full pl-8`}
                           placeholder="Your cost"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         SKU
                       </label>
                       <input
                         type="text"
                         value={formData.sku}
                         onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                        className={`${INPUT} w-full`}
                         placeholder="HK-SALT-001"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-charcoal mb-1.5">
+                      <label className={`${MICRO_LABEL} mb-1.5 block`}>
                         Barcode
                       </label>
                       <input
                         type="text"
                         value={formData.barcode}
                         onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                        className={`${INPUT} w-full`}
                         placeholder="123456789012"
                       />
                     </div>
@@ -1328,9 +1327,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {/* Shippo Packing Tab */}
               {activeTab === 'shipping' && (
                 <div className="space-y-6">
-                  <div className="rounded-xl border border-himalayan/20 bg-himalayan/5 px-4 py-3 text-sm text-charcoal">
-                    <p className="font-semibold text-himalayan">Required Shippo packing profile</p>
-                    <p className="mt-1 text-charcoal-light">
+                  <div className="rounded-xl border border-himalayan/25 bg-himalayan-lighter px-4 py-3 text-sm text-admin-ink">
+                    <p className="font-semibold text-himalayan-dark">Required Shippo packing profile</p>
+                    <p className="mt-1 text-admin-muted">
                       Save the real product and shipping-box measurements. Shippo uses these values to split multi-item orders into accurate parcels and calculate carrier rates.
                     </p>
                   </div>
@@ -1383,24 +1382,24 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                   })()}
 
                   <section>
-                    <h3 className="font-semibold text-charcoal">Product measurements <span className="text-red-600">*</span></h3>
-                    <p className="mt-1 text-sm text-charcoal-light">Measure one unpacked retail unit.</p>
-                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    <h3 className="font-semibold text-admin-ink">Product measurements <span className="text-red-600">*</span></h3>
+                    <p className="mt-1 text-sm text-admin-muted">Measure one unpacked retail unit.</p>
+                    <div className="mt-3 grid grid-cols-4 gap-4">
                       {shippingNumberField('Length', 'productLengthIn', 'in')}
                       {shippingNumberField('Width', 'productWidthIn', 'in')}
                       {shippingNumberField('Height', 'productHeightIn', 'in')}
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-charcoal">
+                      <div className="rounded-xl border border-admin-line bg-admin-canvas px-3 py-2.5 text-sm text-admin-ink">
                         <p className="font-medium">Unit weight</p>
-                        <p className="mt-1 text-charcoal-light">{formData.weight ? formatShippingWeightLabel(formData.weight, formData.weight_unit) : 'Set in Pricing tab'}</p>
+                        <p className="mt-1 text-admin-muted">{formData.weight ? formatShippingWeightLabel(formData.weight, formData.weight_unit) : 'Set in Pricing tab'}</p>
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-charcoal-light">Unit weight is set in the Pricing tab.</p>
+                    <p className="mt-2 text-xs text-admin-muted">Unit weight is set in the Pricing tab.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-semibold text-charcoal">Approved shipping box <span className="text-red-600">*</span></h3>
-                    <p className="mt-1 text-sm text-charcoal-light">Use the actual outside dimensions of the box handed to the carrier.</p>
-                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <h3 className="font-semibold text-admin-ink">Approved shipping box <span className="text-red-600">*</span></h3>
+                    <p className="mt-1 text-sm text-admin-muted">Use the actual outside dimensions of the box handed to the carrier.</p>
+                    <div className="mt-3 grid grid-cols-3 gap-4">
                       {shippingNumberField('Box length', 'boxLengthIn', 'in')}
                       {shippingNumberField('Box width', 'boxWidthIn', 'in')}
                       {shippingNumberField('Box height', 'boxHeightIn', 'in')}
@@ -1408,7 +1407,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       {shippingNumberField('Units per box', 'unitsPerBox', 'units', 1, '1')}
                       {shippingNumberField('Maximum packed weight', 'maxPackedWeightLbs', 'lb')}
                     </div>
-                    <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-sm text-charcoal">
+                    <div className="mt-4 rounded-xl bg-admin-canvas px-4 py-3 text-sm text-admin-ink">
                       {(() => {
                         // The same function checkout packs with, so this preview
                         // cannot drift from what actually ships. It previously
@@ -1458,10 +1457,10 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     })()}
 
                     {product?.id && hasCompleteShippingProfile(shippingProfile) && previewUnitWeight > 0 && (
-                      <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-3 text-sm text-charcoal">
-                        <p className="font-semibold text-indigo-800">Live shipping cost preview</p>
+                      <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-admin-ink">
+                        <p className="font-semibold text-sky-900">Live shipping cost preview</p>
                         {costPreview.loading ? (
-                          <p className="mt-1 flex items-center gap-2 text-charcoal-light">
+                          <p className="mt-1 flex items-center gap-2 text-admin-muted">
                             <Loader2 size={14} className="animate-spin" />
                             Quoting USPS/UPS for a 6-unit order…
                           </p>
@@ -1483,19 +1482,19 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                     )}
                   </section>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {([
                       ['shipsSeparately', 'Ships separately'],
                       ['canMix', 'May mix with compatible products'],
                       ['fragile', 'Fragile'],
                       ['stackable', 'Stackable'],
                     ] as const).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm font-medium text-charcoal">
+                      <label key={key} className="flex items-center gap-3 rounded-xl border border-admin-line p-3 text-sm font-medium text-admin-ink">
                         <input
                           type="checkbox"
                           checked={shippingProfile[key]}
                           onChange={(event) => setShippingProfile((current) => ({ ...current, [key]: event.target.checked }))}
-                          className="h-4 w-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                          className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                         />
                         {label}
                       </label>
@@ -1512,16 +1511,16 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                       type="checkbox"
                       checked={formData.track_inventory}
                       onChange={(e) => setFormData(prev => ({ ...prev, track_inventory: e.target.checked }))}
-                      className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                      className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                     />
-                    <span className="text-sm text-charcoal">Track inventory for this product</span>
+                    <span className="text-sm text-admin-ink">Track inventory for this product</span>
                   </label>
 
                   {formData.track_inventory && (
                     <>
-                      <div className="grid md:grid-cols-2 gap-5">
+                      <div className="grid grid-cols-2 gap-5">
                         <div>
-                          <label className="block text-sm font-medium text-charcoal mb-1.5">
+                          <label className={`${MICRO_LABEL} mb-1.5 block`}>
                             Quantity in Stock
                           </label>
                           <input
@@ -1529,12 +1528,12 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                             min="0"
                             value={formData.quantity}
                             onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                            className={`${INPUT} w-full`}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-charcoal mb-1.5">
+                          <label className={`${MICRO_LABEL} mb-1.5 block`}>
                             Low Stock Threshold
                           </label>
                           <input
@@ -1542,9 +1541,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                             min="0"
                             value={formData.low_stock_threshold}
                             onChange={(e) => setFormData(prev => ({ ...prev, low_stock_threshold: parseInt(e.target.value) || 10 }))}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                            className={`${INPUT} w-full`}
                           />
-                          <p className="text-xs text-charcoal-light mt-1">
+                          <p className="text-xs text-admin-muted mt-1">
                             Alert when stock falls below this number
                           </p>
                         </div>
@@ -1555,9 +1554,9 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                           type="checkbox"
                           checked={formData.allow_backorder}
                           onChange={(e) => setFormData(prev => ({ ...prev, allow_backorder: e.target.checked }))}
-                          className="w-4 h-4 rounded border-gray-300 text-himalayan focus:ring-himalayan"
+                          className="h-4 w-4 rounded border-admin-line-strong text-himalayan focus:ring-himalayan"
                         />
-                        <span className="text-sm text-charcoal">Allow customers to purchase when out of stock</span>
+                        <span className="text-sm text-admin-ink">Allow customers to purchase when out of stock</span>
                       </label>
                     </>
                   )}
@@ -1586,48 +1585,48 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               {activeTab === 'seo' && (
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Meta Title
                     </label>
                     <input
                       type="text"
                       value={formData.meta_title}
                       onChange={(e) => setFormData(prev => ({ ...prev, meta_title: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+                      className={`${INPUT} w-full`}
                       placeholder={formData.name || 'Product title for search engines'}
                     />
-                    <p className="text-xs text-charcoal-light mt-1">
+                    <p className="text-xs text-admin-muted mt-1">
                       {formData.meta_title?.length || 0}/60 characters
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-charcoal mb-1.5">
+                    <label className={`${MICRO_LABEL} mb-1.5 block`}>
                       Meta Description
                     </label>
                     <textarea
                       value={formData.meta_description}
                       onChange={(e) => setFormData(prev => ({ ...prev, meta_description: e.target.value }))}
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan resize-none"
+                      className={`${TEXTAREA} w-full`}
                       placeholder="Description for search engine results..."
                     />
-                    <p className="text-xs text-charcoal-light mt-1">
+                    <p className="text-xs text-admin-muted mt-1">
                       {formData.meta_description?.length || 0}/160 characters
                     </p>
                   </div>
 
                   {/* Preview */}
                   <div className="mt-6">
-                    <p className="text-sm font-medium text-charcoal mb-3">Search Engine Preview</p>
-                    <div className="border border-gray-200 rounded-xl p-4">
-                      <p className="text-blue-600 text-lg hover:underline cursor-pointer">
+                    <p className="text-sm font-medium text-admin-ink mb-3">Search Engine Preview</p>
+                    <div className="rounded-xl border border-admin-line bg-admin-canvas p-4">
+                      <p className="cursor-pointer text-base font-semibold text-sky-700 hover:underline">
                         {formData.meta_title || formData.name || 'Product Title'}
                       </p>
-                      <p className="text-green-700 text-sm">
+                      <p className="text-emerald-700 text-sm">
                         himalayankoh.com/products/{formData.slug || 'product-slug'}
                       </p>
-                      <p className="text-charcoal-light text-sm mt-1">
+                      <p className="text-admin-muted text-sm mt-1">
                         {formData.meta_description || formData.short_description || 'Product description will appear here...'}
                       </p>
                     </div>
@@ -1643,35 +1642,11 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
                 scrolled to the bottom — where a banner pinned to the top of that
                 panel is off-screen. Every refusal then looked identical to a
                 dead button: nothing moved, nothing was said, and the product
-                appeared to simply not save. */}
-            <div className="border-t border-gray-100 bg-gray-50">
-              {error && (
-                <div
-                  role="alert"
-                  aria-live="assertive"
-                  className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
-                >
-                  {error}
-                </div>
-              )}
-              <div className="flex items-center justify-end gap-3 p-5">
-                <button
-                  onClick={onClose}
-                  className="px-6 py-2.5 text-charcoal hover:bg-gray-200 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors disabled:opacity-70"
-                >
-                  {loading && <Loader2 size={18} className="animate-spin" />}
-                  {product ? 'Save Changes' : 'Create Product'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
+                appeared to simply not save. It now lives in the dialog footer, beside
+                the button that produces it. */}
+          </AdminModal>
+
+          {/* The image editor is its own dialog, above the product editor. */}
           <ProductImageEditor
             image={editingImage}
             onClose={() => setEditingImage(null)}
@@ -1680,7 +1655,7 @@ export default function ProductEditorModal({ isOpen, onClose, product, categorie
               await replaceImage(editingImage.id, file);
             }}
           />
-        </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

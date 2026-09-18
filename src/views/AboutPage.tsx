@@ -1,44 +1,53 @@
 import { motion } from 'framer-motion';
-import { Check, Gem, Heart, Droplets, Leaf, Timer, Milk } from 'lucide-react';
+import { Check, Gem, Heart, Droplets, Leaf, Timer, Utensils } from 'lucide-react';
 import { legacyImage } from '@/lib/images/legacyAssets';
 
+/**
+ * The about page tells the story the business actually has: one rock, one
+ * mineral profile, and a shelf of ways to use it. The livestock framing that
+ * used to be here went with the products it advertised.
+ *
+ * Health claims are deliberately soft. "84+ trace minerals" is a statement about
+ * the rock, which is true of unrefined salt; nothing here promises a health
+ * outcome, because the store sells salt, not a supplement.
+ */
 const bulletPoints = [
-  'Up to 84 nutritious minerals and trace elements',
-  'Higher quality NaCl for livestock health',
-  'Maintains appetite and healthy weight',
-  'Provides essential Magnesium for natural healing',
+  'Up to 84 minerals and trace elements, as the rock holds them',
+  'Unrefined — no anti-caking agents, bleaching or additives',
+  'Fine, medium and coarse grain, plus blocks, lamps and bulk bags',
+  'Packed to stay dry in jars, resealable pouches and bags',
 ];
 
 const benefits = [
   {
     title: '84 Trace Minerals',
-    description: 'Contains up to 84 essential minerals and trace elements for optimal animal health.',
+    description: 'The seam carries up to 84 minerals and trace elements; unrefined salt keeps them.',
     icon: Gem,
   },
   {
-    title: 'Better Animal Health',
-    description: 'Improves overall health, immunity, and vitality in livestock and horses.',
+    title: 'The Pink Is Iron',
+    description: 'Colour and vein vary through the rock. A washed white salt has had that character removed.',
     icon: Heart,
   },
   {
-    title: 'Improved Hydration',
-    description: 'Encourages proper water intake and electrolyte balance in animals.',
+    title: 'Every Grain Size',
+    description: 'Fine for baking and brines, medium for the grinder, coarse for finishing and slow cooks.',
     icon: Droplets,
   },
   {
-    title: 'Natural & Unprocessed',
-    description: '100% pure, no additives, anti-caking agents, or added chemicals.',
+    title: 'Nothing Added',
+    description: 'No anti-caking agents, no bleaching, no iodine. Salt, and what the rock already contained.',
     icon: Leaf,
   },
   {
-    title: 'Longer Lasting Salt Licks',
-    description: 'Dense mineral composition means salt licks last longer than conventional options.',
+    title: 'Built to Last',
+    description: 'Sealed and kept dry, salt does not spoil — a bulk bag is pantry stock, not a race against a date.',
     icon: Timer,
   },
   {
-    title: 'Better Milk Production',
-    description: 'Essential minerals support increased and higher quality milk production in dairy cattle.',
-    icon: Milk,
+    title: 'Beyond the Kitchen',
+    description: 'Blocks and plates for grilling and serving, and lamps and décor carved from the same salt.',
+    icon: Utensils,
   },
 ];
 
@@ -61,7 +70,7 @@ export default function AboutPage() {
             transition={{ delay: 0.1 }}
             className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
-            World&apos;s Best for Livestock
+            One Rock, Many Kitchens
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -69,7 +78,7 @@ export default function AboutPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
           >
-            Premium Himalayan pink salt trusted by ranchers across America
+            Unrefined Himalayan pink salt, packed and shipped from our Texas facility
           </motion.p>
         </div>
       </div>
@@ -87,12 +96,12 @@ export default function AboutPage() {
               <div className="relative">
                 <div className="rounded-3xl overflow-hidden shadow-2xl shadow-himalayan/10 aspect-[4/3]">
                   <img
-                    src={legacyImage('horseLicking')}
-                    alt="Horse licking Himalayan salt"
+                    src={legacyImage('bowlOfSalt')}
+                    alt="Coarse unrefined pink Himalayan salt crystals"
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-livestock.svg'; }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                   />
                 </div>
                 {/* Floating badge */}
@@ -120,18 +129,24 @@ export default function AboutPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal mb-6 leading-tight">
-                Premium Himalayan Salt for{' '}
-                <span className="text-himalayan">Healthier Livestock</span>
+                Premium Himalayan Salt for the{' '}
+                <span className="text-himalayan">Kitchen and the Home</span>
               </h2>
               <div className="space-y-4 text-charcoal-light leading-relaxed text-base md:text-lg">
                 <p>
-                  Pristine pink Himalayan crystal salt has long been the premium standard for cooking. It&apos;s a favorite with top chefs and countless gourmet cooks. But this is an area where livestock can definitely recognize and benefit from a better quality product.
+                  Himalayan pink salt is rock salt: it was laid down as an ancient sea dried, then
+                  pushed up into the mountains and cut out of the seam. Washing it into pure white
+                  sodium chloride is what removes the trace minerals and the colour.
                 </p>
                 <p>
-                  Himalayan pink rock salt has up to 84 nutritious minerals and trace elements. It not only tastes its salty best, but gives cattle, horses, deer, and other animals the higher quality NaCl (Sodium Chloride) they need to stay healthy and be more productive.
+                  We do not wash it. What the rock holds — up to 84 minerals and trace elements, and
+                  the iron that makes it pink — is what reaches the jar, and the flavour is why cooks
+                  reach for it.
                 </p>
                 <p>
-                  Livestock need sodium and chloride to maintain appetite and weight. Pure Himalayan pink salt provides Magnesium necessary for bodies to naturally heal, stay well, and become stronger.
+                  We stock it the way a kitchen and a home actually use it: fine grain for baking and
+                  brines, coarse for finishing, blocks for the grill and the table, and lamps and
+                  décor cut from the same piece of rock.
                 </p>
               </div>
 
@@ -169,10 +184,10 @@ export default function AboutPage() {
               Why Choose Us
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-charcoal mb-4">
-              Benefits of Himalayan Salt
+              What Unrefined Salt Keeps
             </h2>
             <p className="text-charcoal-light text-lg max-w-2xl mx-auto">
-              Nature&apos;s perfect mineral supplement for your livestock
+              The same rock, in the format each job needs
             </p>
           </motion.div>
 
@@ -214,10 +229,14 @@ export default function AboutPage() {
               Our Commitment to Quality
             </h2>
             <p className="text-white/70 text-lg leading-relaxed mb-6">
-              At Himalayan Koh, we source our salt directly from the ancient salt mines of the Himalayan mountains. Each product undergoes rigorous quality testing to ensure it meets our premium standards.
+              At Himalayan Koh, we source our salt from the Himalayan salt range and check every
+              batch for grain consistency and cleanliness before it is packed. If a batch does not
+              meet the standard, it does not go out.
             </p>
             <p className="text-white/70 text-lg leading-relaxed">
-              Our mission is simple: provide the highest quality Himalayan pink salt to farmers, ranchers, and families across America. We believe that healthier livestock leads to healthier food and a healthier planet.
+              Our mission is simple: bring the same unrefined pink salt to home cooks, restaurants
+              and shops — in jars for the counter, blocks for the grill, and bulk bags for kitchens
+              that go through salt quickly.
             </p>
           </motion.div>
         </div>

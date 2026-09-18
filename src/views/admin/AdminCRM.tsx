@@ -13,11 +13,7 @@ import {
   Search,
   Table as TableIcon,
   UserCircle2,
-  X,
 } from 'lucide-react';
-import { Button } from '../../components/ui';
-import { SkeletonTable } from '../../components/ui/Skeleton';
-import EmptyState from '../../components/ui/EmptyState';
 import {
   crmApi,
   CrmLeadStatus,
@@ -33,22 +29,68 @@ import {
 import { getErrorMessage } from '../../lib/errors';
 import { useToast } from '../../context/ToastContext';
 import type { CrmLeadWithAssignee, CrmActivity, Order } from '../../lib/supabase/database.types';
+import {
+  ADMIN_TD,
+  AdminButton,
+  AdminChip,
+  AdminField,
+  AdminInput,
+  AdminModal,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTable,
+  AdminTableSkeleton,
+} from '../../components/admin/AdminUI';
+import {
+  BUTTON,
+  CHIP,
+  INPUT,
+  MICRO_LABEL,
+  ROW,
+  SELECT,
+  SURFACE,
+  type ChipTone,
+} from '../../components/admin/adminTheme';
 
-const STATUS_META: Record<CrmLeadStatus, { label: string; color: string; dot: string }> = {
-  new: { label: 'New', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
-  contacted: { label: 'Contacted', color: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
-  qualified: { label: 'Qualified', color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-  won: { label: 'Won', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
-  lost: { label: 'Lost', color: 'bg-gray-200 text-gray-600', dot: 'bg-gray-400' },
+/**
+ * Lead pipeline.
+ *
+ * One status vocabulary drives the pills, the table, the board columns and the
+ * lead drawer, and one place owns each piece of state: this component owns the
+ * query (search/filter/page) and the selected lead; `TableView` and `BoardView`
+ * are pure renderings of what it fetched, and the drawer/modal only report the
+ * actions they took. That is what keeps the counts in the pills, the board
+ * columns and the table from disagreeing with each other.
+ */
+
+const STATUS_META: Record<CrmLeadStatus, { label: string; tone: ChipTone; dot: string }> = {
+  new: { label: 'New', tone: 'info', dot: 'bg-blue-500' },
+  contacted: { label: 'Contacted', tone: 'warning', dot: 'bg-amber-500' },
+  qualified: { label: 'Qualified', tone: 'brand', dot: 'bg-violet-500' },
+  won: { label: 'Won', tone: 'success', dot: 'bg-emerald-500' },
+  lost: { label: 'Lost', tone: 'muted', dot: 'bg-slate-400' },
 };
 
 const STATUS_ORDER: CrmLeadStatus[] = ['new', 'contacted', 'qualified', 'won', 'lost'];
 
 const SOURCE_LABELS: Record<string, string> = {
-  contact_form: 'Contact Form',
+  contact_form: 'Contact form',
   manual: 'Manual',
   other: 'Other',
 };
+
+/** The status pill / filter vocabulary, so pills and selects cannot drift apart. */
+const STATUS_SELECT = `${SELECT} w-full`;
+const STATUS_CHIP_CONTROL =
+  'cursor-pointer rounded-full border px-2.5 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-himalayan/25';
+
+const filterPill = (active: boolean) =>
+  `rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+    active
+      ? 'border-himalayan bg-himalayan text-white'
+      : 'border-admin-line bg-admin-surface text-admin-muted hover:border-himalayan hover:text-admin-ink'
+  }`;
 
 function staffName(staff: CrmStaffMember[], id: string | null): string {
   if (!id) return 'Unassigned';
@@ -141,7 +183,9 @@ export default function AdminCRM() {
       setStaff(s);
       setFollowUps(f);
     } catch {
-      // Non-critical decorative data.
+      // Counts, staff and follow-ups are supporting context for the pipeline
+      // itself; a failure here leaves the previous values rather than
+      // blanking them or inventing zeroes.
     }
   }, []);
 
@@ -222,56 +266,69 @@ export default function AdminCRM() {
 
   const dueFollowUps = useMemo(() => {
     const now = Date.now();
-    return followUps.filter((f) => f.due_at && new Date(f.due_at).getTime() <= now + 24 * 60 * 60 * 1000);
+    return followUps.filter(
+      (f) => f.due_at && new Date(f.due_at).getTime() <= now + 24 * 60 * 60 * 1000,
+    );
   }, [followUps]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-charcoal">CRM</h1>
-          <p className="text-charcoal-light">Track leads, follow-ups, and your pipeline in one place</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-gray-200 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setView('table')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${view === 'table' ? 'bg-himalayan text-white' : 'bg-white text-charcoal-light hover:bg-gray-50'}`}
-            >
-              <TableIcon size={15} /> Table
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('board')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${view === 'board' ? 'bg-himalayan text-white' : 'bg-white text-charcoal-light hover:bg-gray-50'}`}
-            >
-              <KanbanSquare size={15} /> Board
-            </button>
-          </div>
-          <Button onClick={() => setShowNewLead(true)} className="gap-1.5">
-            <Plus size={16} /> New Lead
-          </Button>
-          {hubspotEnabled && (
-            <Button
-              variant="secondary"
-              onClick={handleImportHubspot}
-              disabled={importing}
-              className="gap-1.5"
-            >
-              <DownloadCloud size={16} /> {importing ? 'Importing…' : 'Import from HubSpot'}
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-5">
+      <AdminPageHeader
+        eyebrow="Growth"
+        title="CRM"
+        description="Leads, follow-ups and pipeline in one place. Status changes and assignments are written to the CRM store; HubSpot is synced best-effort."
+        actions={
+          <>
+            <div className="flex overflow-hidden rounded-xl border border-admin-line">
+              <button
+                type="button"
+                onClick={() => setView('table')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-colors ${
+                  view === 'table'
+                    ? 'bg-himalayan text-white'
+                    : 'bg-admin-surface text-admin-muted hover:bg-admin-canvas'
+                }`}
+              >
+                <TableIcon size={15} /> Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('board')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-colors ${
+                  view === 'board'
+                    ? 'bg-himalayan text-white'
+                    : 'bg-admin-surface text-admin-muted hover:bg-admin-canvas'
+                }`}
+              >
+                <KanbanSquare size={15} /> Board
+              </button>
+            </div>
+            {hubspotEnabled && (
+              <AdminButton icon={DownloadCloud} onClick={handleImportHubspot} disabled={importing}>
+                {importing ? 'Importing…' : 'Import from HubSpot'}
+              </AdminButton>
+            )}
+            <AdminButton variant="primary" icon={Plus} onClick={() => setShowNewLead(true)}>
+              New lead
+            </AdminButton>
+          </>
+        }
+      />
 
-      {/* Follow-up widget */}
+      {!isSupabaseConfigured() && (
+        <AdminNotice tone="warning" title="The CRM store is not configured">
+          This deployment has no CRM database, so the pipeline below stays empty. Nothing is invented
+          in its place.
+        </AdminNotice>
+      )}
+
       {dueFollowUps.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="flex items-center gap-2 font-semibold text-amber-800 text-sm">
-            <CalendarClock size={16} /> {dueFollowUps.length} follow-up{dueFollowUps.length > 1 ? 's' : ''} due
-          </p>
-          <ul className="mt-2 space-y-1.5">
+        <AdminPanel
+          title={`${dueFollowUps.length} follow-up${dueFollowUps.length === 1 ? '' : 's'} due`}
+          description="Due today or already overdue"
+          action={<AdminChip tone="warning" icon={CalendarClock}>Needs attention</AdminChip>}
+        >
+          <ul className="space-y-2.5">
             {dueFollowUps.slice(0, 5).map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-3 text-sm">
                 <button
@@ -281,11 +338,15 @@ export default function AdminCRM() {
                     const lead = await crmApi.getLead(f.lead.id);
                     if (lead) setSelectedLead(lead);
                   }}
-                  className="text-left text-amber-900 hover:underline truncate"
+                  className="truncate text-left text-admin-ink hover:underline"
                 >
-                  <span className="font-medium">{f.lead?.name || 'Lead'}</span>
-                  {' — '}{f.body}
-                  <span className="text-amber-700"> ({f.due_at ? new Date(f.due_at).toLocaleDateString() : ''})</span>
+                  <span className="font-semibold">{f.lead?.name || 'Lead'}</span>
+                  {' — '}
+                  {f.body}
+                  <span className="text-admin-muted">
+                    {' '}
+                    ({f.due_at ? new Date(f.due_at).toLocaleDateString() : ''})
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -294,14 +355,14 @@ export default function AdminCRM() {
                     toast.success('Follow-up completed');
                     fetchMeta();
                   }}
-                  className="flex items-center gap-1 text-xs font-medium text-green-700 hover:text-green-800 flex-shrink-0"
+                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                 >
                   <CheckCircle2 size={14} /> Done
                 </button>
               </li>
             ))}
           </ul>
-        </div>
+        </AdminPanel>
       )}
 
       {view === 'table' ? (
@@ -311,9 +372,15 @@ export default function AdminCRM() {
           fetchError={fetchError}
           onRetry={fetchLeads}
           search={search}
-          setSearch={(v) => { setSearch(v); setPage(1); }}
+          setSearch={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           statusFilter={statusFilter}
-          setStatusFilter={(v) => { setStatusFilter(v); setPage(1); }}
+          setStatusFilter={(v) => {
+            setStatusFilter(v);
+            setPage(1);
+          }}
           counts={counts}
           page={page}
           setPage={setPage}
@@ -358,7 +425,7 @@ export default function AdminCRM() {
   );
 }
 
-// ==================== Table View ====================
+/* ==================== Table view ==================== */
 
 function TableView({
   leads,
@@ -395,19 +462,17 @@ function TableView({
   onSelect: (lead: CrmLeadWithAssignee) => void;
   onStatusChange: (lead: CrmLeadWithAssignee, status: CrmLeadStatus) => void;
 }) {
+  const columns = [
+    { key: 'lead', label: 'Lead', width: '34%' },
+    { key: 'assignee', label: 'Assignee', width: '20%' },
+    { key: 'source', label: 'Source', width: '26%' },
+    { key: 'status', label: 'Status', width: '20%' },
+  ];
+
   return (
     <>
-      {/* Status filter pills */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setStatusFilter('all')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-            statusFilter === 'all'
-              ? 'bg-himalayan text-white border-himalayan'
-              : 'bg-white text-charcoal-light border-gray-200 hover:border-himalayan'
-          }`}
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setStatusFilter('all')} className={filterPill(statusFilter === 'all')}>
           All{counts ? ` (${Object.values(counts).reduce((a, b) => a + b, 0)})` : ''}
         </button>
         {STATUS_ORDER.map((status) => (
@@ -415,133 +480,117 @@ function TableView({
             key={status}
             type="button"
             onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-              statusFilter === status
-                ? 'bg-himalayan text-white border-himalayan'
-                : 'bg-white text-charcoal-light border-gray-200 hover:border-himalayan'
-            }`}
+            className={filterPill(statusFilter === status)}
           >
-            {STATUS_META[status].label}{counts ? ` (${counts[status]})` : ''}
+            {STATUS_META[status].label}
+            {counts ? ` (${counts[status]})` : ''}
           </button>
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-4">
+      <AdminPanel bodyClassName="px-5 py-4">
         <div className="relative max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or company..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-himalayan/30 focus:border-himalayan"
+            placeholder="Search by name, email or company…"
+            aria-label="Search leads"
+            className={`${INPUT} w-full pl-10`}
           />
         </div>
-      </div>
+      </AdminPanel>
 
       {fetchError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">Leads could not be loaded.</p>
-          <p className="mt-1">{fetchError}</p>
-          <Button variant="destructive" size="sm" onClick={onRetry} className="mt-2">
-            Retry
-          </Button>
-        </div>
+        <AdminNotice
+          tone="danger"
+          title="Leads could not be loaded"
+          action={<AdminButton onClick={onRetry}>Retry</AdminButton>}
+        >
+          {fetchError}
+        </AdminNotice>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Lead</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden md:table-cell">Assignee</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Status</th>
-                </tr>
-              </thead>
-              <SkeletonTable rows={6} />
-            </table>
-          </div>
-        ) : leads.length === 0 ? (
-          <EmptyState
-            icon={<Contact size={40} />}
-            title="No leads found"
-            description={search || statusFilter !== 'all' ? 'No leads match your filters' : 'Leads from the contact form and manual entries will appear here'}
-            size="compact"
-            className="border-0 shadow-none rounded-none py-16"
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Lead</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden md:table-cell">Assignee</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide hidden sm:table-cell">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-charcoal-light uppercase tracking-wide">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {leads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => onSelect(lead)}
+      <AdminPanel bodyClassName="px-0 py-0">
+        <AdminTable columns={columns}>
+          {loading ? (
+            <AdminTableSkeleton rows={6} columns={4} />
+          ) : leads.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="px-5 py-16 text-center">
+                <Contact size={36} className="mx-auto text-admin-muted/60" />
+                <p className="mt-3 text-sm font-semibold text-admin-ink">No leads found</p>
+                <p className="mt-1 text-sm text-admin-muted">
+                  {search || statusFilter !== 'all'
+                    ? 'No leads match the current search and filter.'
+                    : 'Leads from the contact form and manual entries appear here.'}
+                </p>
+              </td>
+            </tr>
+          ) : (
+            leads.map((lead) => (
+              <tr key={lead.id} className={`${ROW} cursor-pointer`} onClick={() => onSelect(lead)}>
+                <td className={ADMIN_TD}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-himalayan-lighter">
+                      <Contact size={16} className="text-himalayan" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-admin-ink">{lead.name}</p>
+                      <p className="truncate text-xs text-admin-muted">{lead.email}</p>
+                      {lead.company && (
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-admin-muted">
+                          <Building2 size={12} /> {lead.company}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className={`${ADMIN_TD} text-admin-muted`}>
+                  <span className="flex items-center gap-1.5">
+                    <UserCircle2 size={15} className={lead.assigned_to ? 'text-himalayan' : 'text-admin-muted/50'} />
+                    {staffName(staff, lead.assigned_to)}
+                  </span>
+                </td>
+                <td className={`${ADMIN_TD} text-admin-muted`}>
+                  {SOURCE_LABELS[lead.source]}
+                  <p className="mt-0.5 text-xs text-admin-muted">
+                    {new Date(lead.created_at).toLocaleDateString()}
+                  </p>
+                </td>
+                <td className={ADMIN_TD} onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={lead.status}
+                    onChange={(e) => onStatusChange(lead, e.target.value as CrmLeadStatus)}
+                    aria-label={`Status for ${lead.name}`}
+                    className={`${STATUS_CHIP_CONTROL} ${CHIP[STATUS_META[lead.status].tone]}`}
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-himalayan/10 flex items-center justify-center flex-shrink-0">
-                          <Contact size={18} className="text-himalayan" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-charcoal">{lead.name}</p>
-                          <p className="text-xs text-charcoal-light truncate">{lead.email}</p>
-                          {lead.company && (
-                            <p className="text-xs text-charcoal-light mt-0.5 flex items-center gap-1">
-                              <Building2 size={12} /> {lead.company}
-                            </p>
-                          )}
-                          <p className="text-xs text-charcoal-light mt-0.5 sm:hidden">{SOURCE_LABELS[lead.source]}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light hidden md:table-cell">
-                      <span className="flex items-center gap-1.5">
-                        <UserCircle2 size={15} className={lead.assigned_to ? 'text-himalayan' : 'text-gray-300'} />
-                        {staffName(staff, lead.assigned_to)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-light hidden sm:table-cell">
-                      {SOURCE_LABELS[lead.source]}
-                      <p className="text-xs text-charcoal-light mt-0.5">{new Date(lead.created_at).toLocaleDateString()}</p>
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={lead.status}
-                        onChange={(e) => onStatusChange(lead, e.target.value as CrmLeadStatus)}
-                        className={`text-xs font-semibold rounded-full px-2.5 py-1 border-0 focus:ring-2 focus:ring-himalayan/30 cursor-pointer ${STATUS_META[lead.status].color}`}
-                      >
-                        {STATUS_ORDER.map((s) => (
-                          <option key={s} value={s}>{STATUS_META[s].label}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    {STATUS_ORDER.map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_META[s].label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))
+          )}
+        </AdminTable>
+      </AdminPanel>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-charcoal-light">
-          <span>Showing page {page} of {totalPages} ({totalCount} leads)</span>
+        <div className="flex items-center justify-between text-sm text-admin-muted">
+          <span>
+            Page {page} of {totalPages} · {totalCount} lead{totalCount === 1 ? '' : 's'}
+          </span>
           <div className="flex gap-2">
-            <button type="button" disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-50">Previous</button>
-            <button type="button" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-50">Next</button>
+            <AdminButton disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+              Previous
+            </AdminButton>
+            <AdminButton disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+              Next
+            </AdminButton>
           </div>
         </div>
       )}
@@ -549,7 +598,7 @@ function TableView({
   );
 }
 
-// ==================== Board View ====================
+/* ==================== Board view ==================== */
 
 function BoardView({
   board,
@@ -564,45 +613,48 @@ function BoardView({
   staff: CrmStaffMember[];
   onSelect: (lead: CrmLeadWithAssignee) => void;
 }) {
+  /* Five fixed columns — the pipeline reads as a board at every viewport. */
   if (loading || !board) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         {STATUS_ORDER.map((s) => (
-          <div key={s} className="bg-gray-50 rounded-2xl h-64 animate-pulse" />
+          <div key={s} className={`${SURFACE} h-64 animate-pulse`} />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-5 gap-3">
       {STATUS_ORDER.map((status) => (
-        <div key={status} className="bg-gray-50 rounded-2xl p-2 min-h-[16rem]">
-          <div className="flex items-center gap-2 px-2 py-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${STATUS_META[status].dot}`} />
-            <span className="text-sm font-semibold text-charcoal">{STATUS_META[status].label}</span>
-            <span className="text-xs text-charcoal-light ml-auto">{counts ? counts[status] : board[status].length}</span>
+        <div key={status} className={`${SURFACE} min-h-[16rem] p-3`}>
+          <div className="flex items-center gap-2 px-1 pb-3">
+            <span className={`h-2.5 w-2.5 rounded-full ${STATUS_META[status].dot}`} />
+            <span className="text-sm font-semibold text-admin-ink">{STATUS_META[status].label}</span>
+            <span className="ml-auto text-xs font-semibold text-admin-muted">
+              {counts ? counts[status] : board[status].length}
+            </span>
           </div>
           <div className="space-y-2">
             {board[status].length === 0 ? (
-              <p className="text-xs text-charcoal-light px-2 py-4 text-center">No leads</p>
+              <p className="px-2 py-6 text-center text-xs text-admin-muted">No leads</p>
             ) : (
               board[status].map((lead) => (
                 <button
                   key={lead.id}
                   type="button"
                   onClick={() => onSelect(lead)}
-                  className="w-full text-left bg-white rounded-xl p-3 shadow-sm hover:shadow transition"
+                  className="w-full rounded-xl border border-admin-line bg-admin-surface p-3 text-left transition-shadow hover:shadow-[0_2px_4px_rgba(16,24,40,0.05),0_18px_40px_-24px_rgba(16,24,40,0.3)]"
                 >
-                  <p className="font-medium text-charcoal text-sm truncate">{lead.name}</p>
-                  <p className="text-xs text-charcoal-light truncate">{lead.email}</p>
+                  <p className="truncate text-sm font-semibold text-admin-ink">{lead.name}</p>
+                  <p className="truncate text-xs text-admin-muted">{lead.email}</p>
                   {lead.company && (
-                    <p className="text-xs text-charcoal-light mt-1 flex items-center gap-1 truncate">
+                    <p className="mt-1 flex items-center gap-1 truncate text-xs text-admin-muted">
                       <Building2 size={11} /> {lead.company}
                     </p>
                   )}
-                  <div className="flex items-center gap-1 mt-2 text-xs text-charcoal-light">
-                    <UserCircle2 size={12} className={lead.assigned_to ? 'text-himalayan' : 'text-gray-300'} />
+                  <div className="mt-2 flex items-center gap-1 text-xs text-admin-muted">
+                    <UserCircle2 size={12} className={lead.assigned_to ? 'text-himalayan' : 'text-admin-muted/50'} />
                     <span className="truncate">{staffName(staff, lead.assigned_to)}</span>
                   </div>
                 </button>
@@ -615,7 +667,7 @@ function BoardView({
   );
 }
 
-// ==================== Lead Detail Drawer ====================
+/* ==================== Lead detail drawer ==================== */
 
 function LeadDetailDrawer({
   lead,
@@ -636,6 +688,7 @@ function LeadDetailDrawer({
   const [activities, setActivities] = useState<CrmActivity[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [activityType, setActivityType] = useState<CrmActivity['activity_type']>('note');
   const [dueAt, setDueAt] = useState('');
@@ -644,6 +697,7 @@ function LeadDetailDrawer({
   const loadDetail = useCallback(async () => {
     setLoading(true);
     try {
+      setLoadError(null);
       const [acts, ords] = await Promise.all([
         crmApi.getActivities(lead.id),
         crmApi.getLinkedOrders(lead.email),
@@ -651,7 +705,9 @@ function LeadDetailDrawer({
       setActivities(acts);
       setOrders(ords);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not load lead details.'));
+      const message = getErrorMessage(err, 'Could not load lead details.');
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -685,182 +741,190 @@ function LeadDetailDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white h-full shadow-xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-start justify-between z-10">
-          <div>
-            <h2 className="text-lg font-bold text-charcoal">{lead.name}</h2>
-            <p className="text-sm text-charcoal-light">{SOURCE_LABELS[lead.source]}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-charcoal">
-            <X size={20} />
-          </button>
+    <AdminModal
+      variant="drawer"
+      title={lead.name}
+      description={`${SOURCE_LABELS[lead.source]} · added ${new Date(lead.created_at).toLocaleDateString()}`}
+      onClose={onClose}
+    >
+      <div className="space-y-5">
+        {/* Contact */}
+        <div className="space-y-2 text-sm">
+          <p className="flex items-center gap-2 text-admin-muted">
+            <Mail size={15} />
+            <a href={`mailto:${lead.email}`} className="text-himalayan hover:underline">
+              {lead.email}
+            </a>
+          </p>
+          {lead.phone && (
+            <p className="flex items-center gap-2 text-admin-muted">
+              <Phone size={15} />
+              <a href={`tel:${lead.phone}`} className="text-himalayan hover:underline">
+                {lead.phone}
+              </a>
+            </p>
+          )}
+          {lead.company && (
+            <p className="flex items-center gap-2 text-admin-muted">
+              <Building2 size={15} /> {lead.company}
+            </p>
+          )}
         </div>
 
-        <div className="p-5 space-y-5">
-          {/* Contact info */}
-          <div className="space-y-2 text-sm">
-            <p className="flex items-center gap-2 text-charcoal-light">
-              <Mail size={15} /> <a href={`mailto:${lead.email}`} className="text-himalayan hover:underline">{lead.email}</a>
-            </p>
-            {lead.phone && (
-              <p className="flex items-center gap-2 text-charcoal-light">
-                <Phone size={15} /> <a href={`tel:${lead.phone}`} className="text-himalayan hover:underline">{lead.phone}</a>
-              </p>
-            )}
-            {lead.company && (
-              <p className="flex items-center gap-2 text-charcoal-light">
-                <Building2 size={15} /> {lead.company}
-              </p>
-            )}
-          </div>
-
-          {/* Status + Assignee */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1.5">Status</label>
-              <select
-                value={lead.status}
-                onChange={(e) => onStatusChange(e.target.value as CrmLeadStatus)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
-              >
-                {STATUS_ORDER.map((s) => (
-                  <option key={s} value={s}>{STATUS_META[s].label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1.5">Assignee</label>
-              <select
-                value={lead.assigned_to || ''}
-                onChange={(e) => onAssign(e.target.value || null)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
-              >
-                <option value="">Unassigned</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>{s.full_name || s.email}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {lead.subject && (
-            <div>
-              <p className="text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1">Subject</p>
-              <p className="text-sm text-charcoal">{lead.subject}</p>
-            </div>
-          )}
-
-          {lead.notes && (
-            <div>
-              <p className="text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1">Original Message</p>
-              <p className="text-sm text-charcoal whitespace-pre-wrap bg-gray-50 rounded-xl p-3">{lead.notes}</p>
-            </div>
-          )}
-
-          {/* Linked orders */}
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-2">Order History</p>
-            {loading ? (
-              <p className="text-sm text-charcoal-light">Loading...</p>
-            ) : orders.length === 0 ? (
-              <p className="text-sm text-charcoal-light">No orders found for this email.</p>
-            ) : (
-              <ul className="space-y-2">
-                {orders.map((o) => (
-                  <li key={o.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-xl px-3 py-2">
-                    <div>
-                      <span className="font-medium text-charcoal">#{o.order_number}</span>
-                      <span className="text-xs text-charcoal-light ml-2 capitalize">{o.status}</span>
-                    </div>
-                    <span className="font-medium text-charcoal">
-                      {o.currency?.toUpperCase() || 'USD'} {Number(o.total).toFixed(2)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Add activity */}
-          <form onSubmit={handleAddActivity} className="space-y-2 border-t border-gray-100 pt-4">
-            <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide">Log Activity</label>
+        {/* Status + assignee */}
+        <div className="grid grid-cols-2 gap-3">
+          <AdminField label="Status">
             <select
-              value={activityType}
-              onChange={(e) => setActivityType(e.target.value as CrmActivity['activity_type'])}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+              value={lead.status}
+              onChange={(e) => onStatusChange(e.target.value as CrmLeadStatus)}
+              className={STATUS_SELECT}
             >
-              <option value="note">Note</option>
-              <option value="call">Call</option>
-              <option value="email">Email</option>
-              <option value="meeting">Meeting</option>
-              <option value="follow_up">Follow-up</option>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_META[s].label}
+                </option>
+              ))}
             </select>
-            {activityType === 'follow_up' && (
-              <input
-                type="datetime-local"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
-              />
-            )}
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={3}
-              placeholder="What happened?"
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
-            />
-            <Button type="submit" size="sm" disabled={saving || !body.trim()} className="gap-1.5 w-full">
-              <MessageSquarePlus size={15} /> {saving ? 'Saving...' : 'Add Activity'}
-            </Button>
-          </form>
+          </AdminField>
+          <AdminField label="Assignee">
+            <select
+              value={lead.assigned_to || ''}
+              onChange={(e) => onAssign(e.target.value || null)}
+              className={STATUS_SELECT}
+            >
+              <option value="">Unassigned</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name || s.email}
+                </option>
+              ))}
+            </select>
+          </AdminField>
+        </div>
 
-          {/* Activity timeline */}
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-3">Activity Timeline</p>
-            {loading ? (
-              <p className="text-sm text-charcoal-light">Loading...</p>
-            ) : activities.length === 0 ? (
-              <p className="text-sm text-charcoal-light">No activity yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {activities.map((a) => (
-                  <li key={a.id} className="text-sm">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 text-charcoal-light text-xs capitalize">
-                        {a.activity_type.replace('_', ' ')}
-                      </span>
-                      {a.activity_type === 'follow_up' && a.due_at && (
-                        <span className={`inline-flex items-center gap-1 text-xs ${a.completed ? 'text-green-600' : 'text-amber-600'}`}>
-                          <CalendarClock size={12} /> {new Date(a.due_at).toLocaleDateString()}
-                          {a.completed ? ' (done)' : ''}
-                        </span>
-                      )}
-                      <span className="text-xs text-charcoal-light">{new Date(a.created_at).toLocaleString()}</span>
-                    </div>
-                    <p className="text-charcoal mt-1 whitespace-pre-wrap">{a.body}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {lead.subject && (
+          <div>
+            <p className={MICRO_LABEL}>Subject</p>
+            <p className="mt-1 text-sm text-admin-ink">{lead.subject}</p>
           </div>
+        )}
+
+        {lead.notes && (
+          <div>
+            <p className={MICRO_LABEL}>Original message</p>
+            <p className="mt-1 whitespace-pre-wrap rounded-xl border border-admin-line bg-admin-canvas p-3 text-sm text-admin-ink">
+              {lead.notes}
+            </p>
+          </div>
+        )}
+
+        {/* Linked orders */}
+        <div className="border-t border-admin-line pt-4">
+          <p className={MICRO_LABEL}>Order history</p>
+          {loading ? (
+            <p className="mt-2 text-sm text-admin-muted">Reading orders…</p>
+          ) : loadError ? (
+            <p className="mt-2 text-sm text-admin-muted">{loadError}</p>
+          ) : orders.length === 0 ? (
+            <p className="mt-2 text-sm text-admin-muted">No orders found for this email.</p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {orders.map((o) => (
+                <li
+                  key={o.id}
+                  className="flex items-center justify-between rounded-xl border border-admin-line bg-admin-canvas px-3 py-2 text-sm"
+                >
+                  <div>
+                    <span className="font-semibold text-admin-ink">#{o.order_number}</span>
+                    <span className="ml-2 text-xs capitalize text-admin-muted">{o.status}</span>
+                  </div>
+                  <span className="font-semibold text-admin-ink">
+                    {o.currency?.toUpperCase() || 'USD'} {Number(o.total).toFixed(2)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Log activity */}
+        <form onSubmit={handleAddActivity} className="space-y-3 border-t border-admin-line pt-4">
+          <p className={MICRO_LABEL}>Log activity</p>
+          <select
+            value={activityType}
+            onChange={(e) => setActivityType(e.target.value as CrmActivity['activity_type'])}
+            aria-label="Activity type"
+            className={STATUS_SELECT}
+          >
+            <option value="note">Note</option>
+            <option value="call">Call</option>
+            <option value="email">Email</option>
+            <option value="meeting">Meeting</option>
+            <option value="follow_up">Follow-up</option>
+          </select>
+          {activityType === 'follow_up' && (
+            <input
+              type="datetime-local"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+              aria-label="Follow-up due date"
+              className={STATUS_SELECT}
+            />
+          )}
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={3}
+            placeholder="What happened?"
+            className={`${INPUT} w-full`}
+          />
+          <button type="submit" disabled={saving || !body.trim()} className={`${BUTTON.primary} w-full`}>
+            <MessageSquarePlus size={15} />
+            {saving ? 'Saving…' : 'Add activity'}
+          </button>
+        </form>
+
+        {/* Timeline */}
+        <div className="border-t border-admin-line pt-4">
+          <p className={MICRO_LABEL}>Activity timeline</p>
+          {loading ? (
+            <p className="mt-2 text-sm text-admin-muted">Reading activity…</p>
+          ) : activities.length === 0 ? (
+            <p className="mt-2 text-sm text-admin-muted">No activity yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {activities.map((a) => (
+                <li key={a.id} className="text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AdminChip tone="muted">{a.activity_type.replace('_', ' ')}</AdminChip>
+                    {a.activity_type === 'follow_up' && a.due_at && (
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs ${
+                          a.completed ? 'text-emerald-600' : 'text-amber-600'
+                        }`}
+                      >
+                        <CalendarClock size={12} /> {new Date(a.due_at).toLocaleDateString()}
+                        {a.completed ? ' (done)' : ''}
+                      </span>
+                    )}
+                    <span className="text-xs text-admin-muted">
+                      {new Date(a.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-admin-ink">{a.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
-// ==================== New Lead Modal ====================
+/* ==================== New lead modal ==================== */
 
-function NewLeadModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: () => void;
-}) {
+function NewLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const toast = useToast();
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', subject: '', notes: '' });
   const [saving, setSaving] = useState(false);
@@ -903,50 +967,48 @@ function NewLeadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-charcoal">New Lead</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-charcoal">
-            <X size={20} />
+    <AdminModal
+      title="New lead"
+      description="Added to the CRM pipeline and pushed to HubSpot when that integration is configured."
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={BUTTON.secondary}>
+            Cancel
           </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          {([
-            { key: 'name', label: 'Name *', type: 'text' },
-            { key: 'email', label: 'Email *', type: 'email' },
-            { key: 'phone', label: 'Phone', type: 'tel' },
-            { key: 'company', label: 'Company', type: 'text' },
-            { key: 'subject', label: 'Subject', type: 'text' },
-          ] as const).map((field) => (
-            <div key={field.key}>
-              <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1">{field.label}</label>
-              <input
-                type={field.type}
-                value={form[field.key]}
-                onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
-              />
-            </div>
-          ))}
-          <div>
-            <label className="block text-xs font-semibold text-charcoal-light uppercase tracking-wide mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-himalayan/30"
+          <button type="submit" form="crm-new-lead" disabled={saving || !canSubmit} className={BUTTON.primary}>
+            {saving ? 'Saving…' : 'Create lead'}
+          </button>
+        </>
+      }
+    >
+      <form id="crm-new-lead" onSubmit={handleSubmit} className="space-y-4">
+        {(
+          [
+            { key: 'name', label: 'Name', type: 'text', required: true },
+            { key: 'email', label: 'Email', type: 'email', required: true },
+            { key: 'phone', label: 'Phone', type: 'tel', required: false },
+            { key: 'company', label: 'Company', type: 'text', required: false },
+            { key: 'subject', label: 'Subject', type: 'text', required: false },
+          ] as const
+        ).map((field) => (
+          <AdminField key={field.key} label={field.required ? `${field.label} *` : field.label}>
+            <AdminInput
+              type={field.type}
+              value={form[field.key]}
+              onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
             />
-          </div>
-          <div className="flex gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button type="submit" disabled={saving || !canSubmit} className="flex-1">
-              {saving ? 'Saving...' : 'Create Lead'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+          </AdminField>
+        ))}
+        <AdminField label="Notes">
+          <textarea
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            rows={3}
+            className={`${INPUT} w-full`}
+          />
+        </AdminField>
+      </form>
+    </AdminModal>
   );
 }

@@ -709,32 +709,18 @@ export const adminApi = {
 
   // ==================== DASHBOARD STATS ====================
 
+  /**
+   * Order-source summary for the dashboard.
+   *
+   * Product and category facts are deliberately absent: they belong to the
+   * catalog, and `lib/backend/adminCatalog` is their single owner. Two owners is
+   * exactly what let the dashboard count one catalog while the storefront served
+   * another.
+   */
   async getDashboardStats(): Promise<{
-    totalProducts: number;
-    activeProducts: number;
-    lowStockCount: number;
-    totalCategories: number;
     recentOrders: number;
     totalRevenue: number;
   }> {
-    // Get product counts
-    const { count: totalProducts } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: activeProducts } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true);
-
-    // Get low stock count
-    const lowStockProducts = await this.getLowStockProducts();
-
-    // Get category count
-    const { count: totalCategories } = await supabase
-      .from('categories')
-      .select('*', { count: 'exact', head: true });
-
     // Get recent orders (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -753,10 +739,6 @@ export const adminApi = {
     const totalRevenue = (revenueData as { total: number }[] || []).reduce((sum, o) => sum + (o.total || 0), 0);
 
     return {
-      totalProducts: totalProducts || 0,
-      activeProducts: activeProducts || 0,
-      lowStockCount: lowStockProducts.length,
-      totalCategories: totalCategories || 0,
       recentOrders: recentOrders || 0,
       totalRevenue,
     };

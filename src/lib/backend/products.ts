@@ -27,12 +27,13 @@
  */
 
 import type { Product } from '../../data/products';
-import { products as demoProducts } from '../../data/products';
+import { storefrontProducts as demoProducts } from '../../data/products';
 import { isSupabaseConfigured } from '../supabase/client';
 import { productsApi } from '../supabase/api';
 import { isHiddenActiveProduct } from '../supabase/api/products';
 import { getFallbackProductBySlug, mapSupabaseProduct } from '../products/mapProduct';
 import { normalizeProductSlug, productSlugFromName, slugsMatch } from '../products/slug';
+import { countOffNicheProducts, filterNicheProducts, isNicheProduct } from '../catalog/niche';
 import { isWooCommerceDataSource } from './config';
 import { fetchAdminProductBySlug, fetchAdminProducts, fetchStoreProductsSafe, fetchWpCoreProducts } from './woocommerce';
 import type { ProductQuery } from './woocommerce';
@@ -71,27 +72,52 @@ export interface CatalogLookup {
 /* Supabase source                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The Supabase catalog read, reported rather than thrown.
+ *
+ * Both sources honour the same contract: a catalog that cannot be read returns
+ * nothing *and says so*, instead of throwing through a page render. Supabase is
+ * optional here and is pointed at a sentinel host in environments that run
+ * without it, where the query rejects with a DNS failure — which used to fail the
+ * sitemap's prerender and take a whole deployment build down with it.
+ *
+ * The fallback is an empty catalog, never the bundled demo list: substituting
+ * someone else's inventory for a failed read is how a storefront ends up
+ * advertising products it cannot sell.
+ */
 async function supabaseList(query: CatalogQuery): Promise<CatalogResult> {
   const perPage = query.perPage;
   const offset = query.page && query.page > 1 ? (query.page - 1) * (perPage ?? 24) : undefined;
 
-  const { products, count } = await productsApi.getProducts(
-    {
-      limit: perPage,
-      offset,
-      search: query.search,
-      categorySlug: query.categorySlug,
-      isFeatured: query.isFeatured,
-    },
-    { signal: query.signal }
-  );
+  try {
+    const { products, count } = await productsApi.getProducts(
+      {
+        limit: perPage,
+        offset,
+        search: query.search,
+        categorySlug: query.categorySlug,
+        isFeatured: query.isFeatured,
+      },
+      { signal: query.signal }
+    );
 
-  return {
-    products: products.map(mapSupabaseProduct),
-    count,
-    degraded: false,
-    warnings: [],
-  };
+    return {
+      products: products.map(mapSupabaseProduct),
+      count,
+      degraded: false,
+      warnings: [],
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return {
+      products: [],
+      count: 0,
+      degraded: true,
+      warnings: [
+        `The Supabase catalog could not be read (${reason}). No products are shown, because the bundled demo catalog is not this store's inventory.`,
+      ],
+    };
+  }
 }
 
 async function supabaseLookup(slug: string, signal?: AbortSignal): Promise<CatalogLookup> {
@@ -160,6 +186,12 @@ function matchesSlug(rowSlug: string, rowName: string, slug: string): boolean {
   return slugsMatch(rowSlug, slug) || slugsMatch(productSlugFromName(rowName, rowSlug), slug);
 }
 
+/**
+ * Related products from the bundled catalog.
+ *
+ * Reads the storefront-scoped list, so a recommendation can never surface a
+ * product the catalog itself would not serve.
+ */
 function relatedFromDemo(product: Product | null, slug: string): Product[] {
   if (!product) return [];
   return demoProducts.filter((entry) => !slugsMatch(entry.slug, slug)).slice(0, 3);
@@ -239,22 +271,83 @@ async function wooLookup(slug: string, signal?: AbortSignal): Promise<CatalogLoo
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Reads the product catalog through the configured source. */
-export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
+/**
+ * Storefront reads are scoped to the store's niche.
+ *
+ * `lib/catalog/niche.ts` is the single judgement about what belongs on the
+ * public site (Himalayan pink salt, no livestock or pet products). Applying it
+ * here — at the one seam every public surface already goes through — is what
+ * keeps the homepage, search, related products, category pages, sitemap and
+ * structured data from each filtering differently, or forgetting to.
+ *
+ * The admin console reads the same source through `readCatalogProducts` below,
+ * which deliberately skips this filter: the owner has to *see* an off-niche
+ * product in the console in order to archive it, so hiding it there would hide it
+ * from the only person who can fix it.
+ */
+function scopeToNiche(result: CatalogResult): CatalogResult {
+  const excluded = countOffNicheProducts(result.products);
+  if (excluded === 0) return result;
+
+  const products = filterNicheProducts(result.products);
+  return {
+    products,
+    count: Math.max(0, result.count - excluded),
+    degraded: result.degraded,
+    warnings: [
+      ...result.warnings,
+      `${excluded} product${excluded === 1 ? '' : 's'} outside the Himalayan pink salt niche ${excluded === 1 ? 'was' : 'were'} withheld from the storefront. Archive them in WooCommerce to remove this notice — see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md.`,
+    ],
+  };
+}
+
+/**
+ * The catalog exactly as the source reports it, with nothing withheld.
+ *
+ * This is the admin's read: a product that is off-niche is still a product the
+ * owner has to archive, so it must arrive. Storefront reads go through
+ * `getCatalogProducts` instead.
+ */
+export async function readCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
   return isWooCommerceDataSource() ? wooList(query) : supabaseList(query);
 }
 
-/** Resolves one product by slug, preserving the Supabase fallback semantics. */
+/** The storefront's catalog: the source's catalog, scoped to the store's niche. */
+export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
+  return scopeToNiche(await readCatalogProducts(query));
+}
+
+/**
+ * Resolves one product by slug, preserving the Supabase fallback semantics.
+ *
+ * An off-niche product resolves to *nothing* rather than to itself: a direct hit
+ * is how a link, a search result or a shared URL would otherwise reach a product
+ * the storefront is not allowed to serve.
+ */
 export async function lookupCatalogProduct(slug: string, signal?: AbortSignal): Promise<CatalogLookup> {
-  return isWooCommerceDataSource() ? wooLookup(slug, signal) : supabaseLookup(slug, signal);
+  const lookup = isWooCommerceDataSource()
+    ? await wooLookup(slug, signal)
+    : await supabaseLookup(slug, signal);
+
+  if (lookup.product && !isNicheProduct({ name: lookup.product.name, category: lookup.product.category })) {
+    return { product: null, related: [], provenance: null, error: lookup.error };
+  }
+  return lookup;
 }
 
 /** Featured products for the homepage. */
 export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
   if (!isWooCommerceDataSource()) {
-    const rows = await productsApi.getFeaturedProducts(limit);
-    return rows.map(mapSupabaseProduct);
+    // A failed featured read costs the homepage its row; it must not cost it the
+    // page. The same rule as the list read: report, never throw.
+    try {
+      const rows = await productsApi.getFeaturedProducts(limit);
+      return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
+    } catch (error) {
+      console.error('Featured products could not be read from Supabase.', error);
+      return [];
+    }
   }
   const { products } = await wooList({ perPage: limit, isFeatured: true });
-  return products.slice(0, limit);
+  return filterNicheProducts(products).slice(0, limit);
 }

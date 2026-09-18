@@ -67,6 +67,15 @@ export interface StoreApiProduct {
   is_on_backorder?: boolean;
   on_sale?: boolean;
   is_featured?: boolean;
+  /**
+   * WooCommerce's own stock block. `remaining` is present only when the product
+   * has tracked stock, so its absence is "not tracked", never zero.
+   */
+  stock_availability?: {
+    text?: string;
+    class?: string;
+    remaining?: number | null;
+  };
 }
 
 /** WooCommerce REST v3 product (authenticated; carries price and stock). */
@@ -103,6 +112,15 @@ export interface WpCoreProduct {
   product_cat?: number[];
   _embedded?: Record<string, Array<{ source_url?: string; alt_text?: string }>>;
 }
+
+/**
+ * Category name the catalog model carries when a source reported none.
+ *
+ * The storefront needs a non-empty string in `Product.category`, so the model has
+ * a placeholder. Consumers that must not invent taxonomy — the admin catalog read
+ * model counts categories — treat this value as "not reported" instead.
+ */
+export const UNCATEGORIZED_CATEGORY = 'Uncategorized';
 
 /* ------------------------------------------------------------------ */
 /* Pure helpers — unit tested                                          */
@@ -185,6 +203,8 @@ function buildProduct(input: {
   images: string[];
   category: string;
   stockStatus: StockStatus;
+  /** Units the source reports, or null when it reports no count. */
+  stockQuantity?: number | null;
   sku: string | null;
   isFeatured: boolean;
   updatedAt: string | null;
@@ -200,12 +220,13 @@ function buildProduct(input: {
     priceMax: input.priceMax,
     image: input.images[0] ?? '',
     images: input.images,
-    category: input.category || 'Uncategorized',
+    category: input.category || UNCATEGORIZED_CATEGORY,
     description: input.description || undefined,
     inStock: isPurchasable(input.stockStatus),
     isFeatured: input.isFeatured,
     sku: input.sku,
     stockStatus: input.stockStatus,
+    stockQuantity: input.stockQuantity ?? null,
     updatedAt: input.updatedAt,
     missing: collectMissingCatalogFields({
       priceMin: input.priceMin,
@@ -214,6 +235,17 @@ function buildProduct(input: {
       images: input.images,
     }),
   };
+}
+
+/**
+ * A reported unit count, or null when the source reported none.
+ *
+ * Guarded rather than coerced: `undefined`, `null`, `NaN` and a negative number
+ * all mean "no count I can stand behind", and none of them becomes a zero that
+ * the storefront would then render as "out of stock".
+ */
+function finiteCount(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 function imageUrls(images: Array<{ src?: string; thumbnail?: string }> | undefined): string[] {
@@ -243,6 +275,7 @@ export function mapStoreProduct(raw: StoreApiProduct): Product {
     images: imageUrls(raw.images),
     category: htmlToText(raw.categories?.[0]?.name),
     stockStatus,
+    stockQuantity: finiteCount(raw.stock_availability?.remaining),
     sku: raw.sku?.trim() ? raw.sku.trim() : null,
     isFeatured: raw.is_featured === true,
     updatedAt: null,
@@ -265,6 +298,9 @@ export function mapRestV3Product(raw: RestV3Product): Product {
     images: imageUrls(raw.images),
     category: htmlToText(raw.categories?.[0]?.name),
     stockStatus: normalizeStockStatus(raw.stock_status),
+    // REST v3 sends null for a product that does not manage stock, which stays
+    // null here: "not tracked" and "none left" are different answers.
+    stockQuantity: finiteCount(raw.stock_quantity),
     sku: raw.sku?.trim() ? raw.sku.trim() : null,
     isFeatured: raw.featured === true,
     updatedAt: raw.date_modified_gmt ?? null,
