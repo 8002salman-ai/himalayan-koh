@@ -72,16 +72,38 @@ legacy database. WooCommerce is authoritative for products, prices, stock,
 categories and coupon/order *reads*; it is **not** yet the order write target. That
 is a dual source of truth and is recorded here rather than quietly left.
 
-## Owner decisions outstanding
+## Owner decisions resolved (2026-09-18)
 
-1. **Legacy products still published beside the authorised SKUs.** Five records
-   remain in the public catalog that the price list supersedes, at *different
-   prices*: `2446` (16 oz jar, $9.95), `2321` (pouches, $17.95), `2461`
-   ($9.95–$17.95), `2372` ($34.57, out of stock), `2352` / `SALT LICKS`
-   ($4.52–$7.75, out of stock). Archiving them is a one-line change to the
-   provisioning script, but nothing was deleted or drafted without approval.
-2. **`HK-LFH-6lbs` price conflict** — the workbook disagrees with itself. Created
-   as `draft`, flagged `OWNER PRICE CONFIRMATION REQUIRED`, not published.
+1. **The five legacy records are hidden.** `2321`, `2352`, `2372`, `2446`, `2461`
+   left the public catalog. They were set to `draft` in WooCommerce — **not**
+   deleted or trashed, so their ids, slugs and history survive — and they were
+   added to `OWNER_REJECTED_PRODUCT_IDS` so the exclusion also holds if one is ever
+   republished. They were hidden rather than renamed because the decision was about
+   the records: all five are pink-salt products in substance, and `2446`/`2321`
+   closely resemble authorised SKUs at different prices. The authorised SKUs are the
+   catalog that replaces them.
+2. **Stripe stays unverified.** The owner has ruled out live credentials for
+   staging, and no test keys exist. Order: test keys arrive → staging-only
+   end-to-end. Until then checkout's payment leg is **NOT VERIFIED**, not "passing".
+3. **Shippo stays unexercised.** The only key is live (`shippo_live_…`), so the
+   owner's instruction is to wait for a test token rather than buy a label.
+4. **Server credentials no longer reach the build artifact.** The Cloudflare Vite
+   plugin stages the project's `.dev.vars` beside its generated Worker config, so
+   `dist/server/.dev.vars` held the WooCommerce key/secret and the Shippo key — never
+   served, never uploaded, but live credentials inside a build artifact are one
+   stray upload from publication. Every build now deletes env files from the output
+   and searches what remains for this machine's server-only values, failing on a hit
+   (`scripts/check-build-secrets.mjs`). It compares real values instead of guessing
+   at patterns, never prints one, and treats `NEXT_PUBLIC_*` and `SHIPPO_FROM_*` as
+   public by intent — the shipping-from address is advertised on Contact and in the
+   policies.
+
+## Still outstanding
+
+- **`HK-LFH-6lbs` price conflict** — the workbook disagrees with itself (Sheet1
+  $12.75/$19.95 vs Sheet2 $10.75/$17.95). Created as `draft`, flagged `OWNER PRICE
+  CONFIRMATION REQUIRED`, not published, so it is the one authorised SKU that is not
+  publicly visible.
 
 ## Rollback state (captured before any cutover)
 

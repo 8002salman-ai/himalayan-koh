@@ -161,6 +161,13 @@ export function isOffNicheText(text: string | null | undefined): boolean {
  * all; this guard is what makes the exclusion hold if one is ever republished —
  * and it covers production-sourced records (271, 281, 286, 291), which are
  * livestock and are already caught by the term guard.
+ *
+ * The decision was about particular *records*, not about their wording. Every one
+ * of the five legacy records added below is a pink-salt product in substance, and
+ * two (`2446`, `2321`) closely resemble authorised SKUs — renaming them would not
+ * have made them wanted, because what retires them is the owner's price list
+ * covering the same goods. Hiding them in WooCommerce removes them from the store
+ * today; this list is what keeps them out if one is ever republished.
  */
 export const OWNER_REJECTED_PRODUCT_IDS: readonly number[] = [
   // Himalayan Chef Himalayan Pink Salt Fine Grain, Jar-1 lbs
@@ -171,6 +178,21 @@ export const OWNER_REJECTED_PRODUCT_IDS: readonly number[] = [
   2292,
   2294,
   2295,
+
+  // Legacy carry-over records the owner hid on 2026-09-18. All five were public on
+  // the temporary build; the authorised SKUs above are the catalog that replaced
+  // them. They stay in WooCommerce (draft, ids and history intact) — only their
+  // storefront visibility is refused.
+  // Himalayan Rock Salt Pouches in Fine and Coarse Grain Sizes - 6 lbs
+  2321,
+  // SALT LICKS
+  2352,
+  // HIMALAYAN ROCK SALT BAG 18 LBS
+  2372,
+  // Himalayan Edible Pink Salt - 16 oz Jar | Fine Grain
+  2446,
+  // Himalayan Koh Authentic Pure Natural Halal Unprocessed ... Edible Pink Cooking Salt
+  2461,
 ];
 
 /**

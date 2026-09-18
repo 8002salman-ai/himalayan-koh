@@ -6,6 +6,7 @@ import {
   isNicheProduct,
   isOffNicheText,
   isOwnerApprovedSku,
+  isOwnerRejectedProduct,
   OWNER_APPROVED_SKUS,
   OWNER_REJECTED_PRODUCT_IDS,
   sectionsWithProducts,
@@ -21,6 +22,10 @@ import { nicheSectionKeyFor } from './nicheSections';
  * pouch whose copy opens "Elevate Livestock Well-being ... your animals". It is the
  * reason the guard judges copy at all — it passed on name and category alone, and
  * its description was reaching the catalogue payload of every visitor.
+ *
+ * These rows deliberately carry no `id`: they exercise the *term* guard, which is
+ * the net under the owner's positive list. The ids the owner has decided about are
+ * a separate case, asserted below against `OWNER_REJECTED_PRODUCT_IDS`.
  */
 const STAGING_CATALOG = [
   { name: 'Himalayan Koh Edible Pink Salt', category: 'Uncategorized' },
@@ -154,6 +159,46 @@ describe('owner catalog policy', () => {
     // must not be undone by a SKU that happens to be authorised.
     const rejected = OWNER_REJECTED_PRODUCT_IDS[0];
     expect(isNicheProduct({ id: rejected, sku: 'HK-ESF-16oz', name: 'Himalayan Pink Salt' })).toBe(false);
+  });
+
+  it('refuses every record the owner has rejected, by id and not by wording', () => {
+    // Two owner decisions live in one list: the products they refused outright
+    // (Himalayan Chef jars, the salt lamp) and the legacy carry-overs they hid on
+    // 2026-09-18. Both are refused however they are named, because the decision
+    // was about the record — several of these are pink-salt products in substance
+    // and two closely resemble authorised SKUs.
+    const HIDDEN_LEGACY = [2321, 2352, 2372, 2446, 2461];
+    for (const id of HIDDEN_LEGACY) {
+      expect(OWNER_REJECTED_PRODUCT_IDS, `id ${id}`).toContain(id);
+      expect(isNicheProduct({ id, name: 'Himalayan Pink Salt', category: 'Edible Pink Salt' })).toBe(
+        false
+      );
+    }
+
+    // A rename plus an authorised SKU is not enough to bring one back: that is
+    // the case this list exists for, since any of them could be retitled in the
+    // console, and 2446/2321 look like SKUs the price list covers.
+    expect(
+      isNicheProduct({
+        id: 2446,
+        sku: 'HK-ESF-16oz',
+        name: 'Himalayan Pink Salt Fine Grain',
+        category: 'Edible Pink Salt',
+      })
+    ).toBe(false);
+  });
+
+  it('keeps the id on the record, so the guard survives in both directions', () => {
+    // The guard reads ids as numbers or strings — WooCommerce supplies numbers
+    // through REST and strings through the admin routes.
+    expect(isOwnerRejectedProduct('2352')).toBe(true);
+    expect(isOwnerRejectedProduct(2352)).toBe(true);
+    expect(isOwnerRejectedProduct('')).toBe(false);
+    expect(isOwnerRejectedProduct(null)).toBe(false);
+    // An authorised product is not refused merely because it has an id.
+    expect(isNicheProduct({ id: 3001, sku: 'HK-LFH-30lbs', name: 'Himalayan Salt Lick — 30 lbs' })).toBe(
+      true
+    );
   });
 
   it('still refuses the animal-feed records the owner never approved', () => {
