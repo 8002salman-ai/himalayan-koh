@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import {
   endNavigationProgress,
   isNavigating,
@@ -18,10 +18,20 @@ import {
  * It creeps toward 90% rather than tracking real progress, which is not
  * knowable, then completes when the route actually changes. The point is to
  * confirm the click landed, not to predict a duration.
+ *
+ * `useLocation` is the app's own shim, which reads the query string from
+ * `window.location`, not `useSearchParams` from `next/navigation`. That hook may
+ * only be called inside a Suspense boundary, and this component sat in one with a
+ * `null` fallback: the boundary therefore had to hydrate before it could resolve
+ * the query string, and the update that resolved it arrived mid-hydration. React
+ * answers exactly that with error #419 — "this Suspense boundary received an
+ * update before it finished hydrating" — which aborts the boundary and surfaces
+ * as the generic "error occurred in the Server Components render" page on every
+ * admin route. Reading the browser removes the boundary requirement, so nothing
+ * above a route suspends any more.
  */
 export default function NavigationProgress() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { pathname, search } = useLocation();
   const active = useSyncExternalStore(
     subscribeNavigationProgress,
     isNavigating,
@@ -33,7 +43,7 @@ export default function NavigationProgress() {
   // A new route rendered — whatever was in flight has arrived.
   useEffect(() => {
     endNavigationProgress();
-  }, [pathname, searchParams]);
+  }, [pathname, search]);
 
   useEffect(() => {
     if (active) {

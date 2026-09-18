@@ -1,41 +1,79 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The router shim must not call `useSearchParams` from `next/navigation`.
+ * No file may call `useSearchParams` from `next/navigation`.
  *
  * That hook may only be called during a render that sits inside a Suspense
- * boundary. The shim is consumed by components that render at the top of a route
- * — `AdminRoute`, `ProtectedRoute`, the account sidebar, `LoginPage` — so each of
- * those routes needed a boundary of its own. When the app's root boundary was
- * removed so a retired product URL could answer a real `404` (a boundary above
- * the product route swallows the status), every admin route answered `200` with
- * React's "An error occurred in the Server Components render" boundary and React
- * error #419 on the console — the console was unusable, and `/account`,
- * `/checkout/success` and `/track` were exposed to the same failure.
+ * boundary, and a boundary above a route is expensive in two ways that both
+ * showed up here:
  *
- * The shim now reads `window.location.search` through `useSyncExternalStore`,
- * which is empty on the server and filled in on the client. This test is the
- * guard: re-introducing the hook restores the boundary requirement silently.
+ *  1. React error #419 — "this Suspense boundary received an update before it
+ *     finished hydrating". The boundary had to resolve before it could know the
+ *     query string, the update that resolved it landed mid-hydration, and the
+ *     failure surfaced as the generic "an error occurred in the Server Components
+ *     render" page. Every admin route answered `200` with that page.
+ *  2. It swallowed HTTP status. A boundary above a route commits a `200` shell
+ *     before the page can call `notFound()`, so retired product URLs answered
+ *     `200` with "Product not found" — which is why the root boundary and then
+ *     `app/loading.tsx` were removed (see
+ *     `app/(main)/products/[slug]/page.status.test.ts`).
+ *
+ * Both are the same root cause, and the fix is the same one: read the query string
+ * from `window.location` through this shim, which is empty on the server and filled
+ * in on the client. This test scans every source file rather than just the shim,
+ * because the failure is invisible until a route is rendered — re-introducing the
+ * hook anywhere restores the boundary requirement silently.
  */
-const SHIM = fileURLToPath(new URL('./router-compat.tsx', import.meta.url));
+const SRC = fileURLToPath(new URL('..', import.meta.url));
+
+function sourceFiles(dir: string, found: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) {
+      sourceFiles(path, found);
+    } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
+      found.push(path);
+    }
+  }
+  return found;
+}
+
+/** The names a file imports from `next/navigation`, however they are aliased. */
+function navigationImports(source: string): string[] {
+  return [...source.matchAll(/import\s*\{([^}]+)\}\s*from\s*'next\/navigation'/g)]
+    .flatMap((match) => match[1].split(','))
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
 
 describe('router shim SSR safety', () => {
-  const source = readFileSync(SHIM, 'utf8');
+  const files = sourceFiles(SRC);
 
-  it('does not import useSearchParams from next/navigation', () => {
-    const navigationImports = [...source.matchAll(/import\s*\{([^}]+)\}\s*from\s*'next\/navigation'/g)]
-      .flatMap((match) => match[1].split(','))
-      .map((name) => name.trim())
-      .filter(Boolean);
-
-    expect(navigationImports).not.toContain('useSearchParams');
-    expect(navigationImports).not.toContain('useSearchParams as useNextSearchParams');
+  it('finds the source tree', () => {
+    expect(files.length).toBeGreaterThan(50);
   });
 
-  it('reads the query string from the browser instead', () => {
-    expect(source).toMatch(/useSyncExternalStore/);
-    expect(source).toMatch(/window\.location\.search/);
+  it('imports useSearchParams from next/navigation nowhere in src', () => {
+    const offenders = files.filter((file) =>
+      navigationImports(readFileSync(file, 'utf8')).some((name) => name.startsWith('useSearchParams'))
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps the shim reading the query string from the browser', () => {
+    const shim = readFileSync(fileURLToPath(new URL('./router-compat.tsx', import.meta.url)), 'utf8');
+    expect(shim).toMatch(/useSyncExternalStore/);
+    expect(shim).toMatch(/window\.location\.search/);
+    expect(navigationImports(shim)).not.toContain('useSearchParams');
+  });
+
+  it('keeps the app free of a Suspense boundary above the route tree', () => {
+    // providers.tsx is the only place a boundary could sit above every route; the
+    // components it mounts read from window and therefore do not suspend.
+    const providers = readFileSync(fileURLToPath(new URL('../app/providers.tsx', import.meta.url)), 'utf8');
+    expect(providers).not.toMatch(/<Suspense/);
   });
 });
