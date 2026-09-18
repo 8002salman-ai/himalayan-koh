@@ -3,7 +3,7 @@ import { loadCategoryArticles } from '../lib/categoryContent/blogArticles';
 import type { CategoryArticleCard } from '../lib/categoryContent';
 import type { CategoryContentKey } from '../lib/categoryContent';
 
-export type CategoryArticleSource = 'blog' | 'demo' | 'placeholder' | 'idle';
+export type CategoryArticleSource = 'blog' | 'placeholder' | 'idle';
 
 export function useCategoryBlogArticles(
   categoryKey: CategoryContentKey | null,

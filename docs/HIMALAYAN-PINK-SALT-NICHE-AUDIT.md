@@ -214,14 +214,145 @@ rendered DOM is correctly scoped in both modes.
 
 ## 7. Structure this pass leaves behind
 
-- `src/lib/catalog/niche.ts` — **one owner** of the niche: admission
-  (`isNicheProduct`, `isOffNicheText`, `isNicheCategory`) and the shelf taxonomy
-  (`NICHE_SECTIONS`, `nicheSectionKeyFor`, `sectionsWithProducts`).
+- `src/lib/catalog/nicheSections.ts` — the **taxonomy**: the shelves, their
+  labels, and the rule that places a product on one. No denylist, so it is safe
+  in a browser bundle (and is used by one).
+- `src/lib/catalog/niche.ts` — the **guard**: admission (`isNicheProduct`,
+  `isOffNicheText`, `isNicheCategory`) and `sectionsWithProducts`. Judged on
+  name, category **and copy** (§8). Imported only by the data seam and the console.
 - `src/lib/categoryContent/keys.ts` — a routing adapter over that taxonomy:
-  filter pills, `?category=` values, retired values, title → path. It holds no
-  taxonomy of its own and declares no labels that `niche.ts` does not own.
-- `src/lib/backend/products.ts` — one seam, two reads: `getCatalogProducts`
-  (storefront, scoped) and `readCatalogProducts` (admin, complete).
+  filter pills, `?category=` values, title → path. It holds no taxonomy of its
+  own, and no list of retired values (an unknown value resolves to All by the same
+  rule as a typo).
+- `src/lib/backend/products.ts` — the **source adapters** (`readCatalogProducts`,
+  `readCatalogProductBySlug`, raw, admin-readable) plus the **browser catalog
+  client** (`getCatalogProducts` and friends, which read `/api/catalog`).
+- `src/lib/backend/serverCatalog.ts` — the **sealed read**: wraps the adapters and
+  is the only thing that decides what the public may see. Server renders, the
+  sitemap and `/api/catalog` use it.
+- `src/app/api/catalog/route.ts`, `src/app/api/blog/route.ts` — the two public
+  reads the browser is allowed to make.
+- `src/middleware.ts` — `?category=` normalisation, before anything renders.
 - `src/lib/categoryContent/registry.ts`, `blogMapping.ts`,
   `src/lib/products/productContent.ts` — content keyed by shelf, so a page, a
   meta description and a content block cannot be filed on different shelves.
+
+## 8. The niche moved into the data seam (this pass)
+
+The previous state was honest but *late*: the guard ran at the catalog seam, but
+the seam had a browser branch, so a client component could read the source and drop
+off-niche rows after they arrived. "Filtered before render" and "never sent" are
+not the same claim, and the request was the stronger one.
+
+### What the raw source showed
+
+| Route | Before this pass | Now |
+| --- | --- | --- |
+| `/` | clean | clean |
+| `/products` | **5 × "livestock", 5 × "animals", 1 × "feed"** | clean |
+| 7 served product pages | clean | clean |
+| `/sitemap.xml` | clean | clean |
+| `/products?category=salt-lick-horses` | **2 × "lick", 2 × "horses"** | 308, 9-byte body, nothing rendered |
+| withheld slugs (`salt-licks`, `salt-licks-for-horses`, …) | canonical to itself, `index, follow`, 8 × slug | 404 UI + `noindex, nofollow`, no canonical, no product data, 3 × slug (framework path echo) |
+
+The `/products` leak was **product 2321 (`pouches`)**: a neutrally named,
+neutrally filed pink-salt pouch whose *description* opened "Elevate Livestock
+Well-being … your animals" and mentioned mixing with feed. Name and category were
+both clean, so the guard kept it and its copy shipped in the catalogue payload of
+every visitor. The guard now judges copy too — a rendered field is a field to judge
+— which withholds exactly that one row (measured: 8 → 7 served, 3 → 4 withheld),
+with no false positives across the other seven products' copy (checked
+programmatically against the live staging text).
+
+### Fixed along the way
+
+1. **The browser never reads a source.** `getCatalogProducts`,
+   `getFeaturedCatalogProducts` and `lookupCatalogProduct` in the browser now read
+   `/api/catalog` — the sealed read over HTTP. Credentials stay server-side, and an
+   off-niche record cannot cross the wire even as a request is edited. Verified in
+   the browser: a client-side product navigation issues
+   `GET /api/catalog?slug=…` and resolves it server-side.
+2. **The guard left the public bundle.** It was in a 33 kB chunk shared by `/`,
+   `/products` and `/products/[slug]`, because the storefront views imported the
+   admin barrel. Public views now import their modules directly; measured across
+   all 61 public page manifests, no public page loads a chunk containing any
+   denylisted term (the console still does, deliberately).
+3. **The blog follows the same rule.** The listing used to read the blog store from
+   the browser and filter afterwards; it now reads `/api/blog`, which is the sealed
+   server read the blog page and sitemap already used.
+4. **A retired shelf is a redirect, not a page.** `middleware.ts` answers
+   `/products?category=<not a live shelf>` with a 308 to the plain catalogue. The
+   page-level attempt could only produce a meta-refresh inside a 200, because the
+   root `app/loading.tsx` skeleton flushes the response before a page or
+   `generateMetadata` can decide anything.
+5. **An unresolvable product slug is not a page either.** `/products/<slug>` for a
+   withheld or unknown product answers with the 404 UI, `noindex, nofollow`, and no
+   canonical to itself (it used to advertise `index, follow` and a canonical
+   pointing at the withheld URL).
+6. **The bundled catalog is pink salt only.** Twelve of its fifteen products were
+   livestock feed, its `categories` array was three animal shelves, its six blog
+   posts were ranch-industry articles, and each product carried invented
+   testimonials ("Dr. … Nutritionist"). All of it is gone, along with the
+   livestock PDP content system (`lib/products/pdpContent/*`: "Benefits for
+   Horses", cattle paddock galleries, feeding guides), the five livestock image
+   asset records, the `placeholder-livestock.svg` fallback, and the retired-alias
+   list whose whole job was to name shelves that no longer exist.
+7. **The blog no longer falls back to livestock posts.** A hub with no published
+   article falls back to its own registry guides, and says so, instead of answering
+   with "How to Choose the Right Salt Lick for Your Horses".
+
+### Left deliberately, and why
+
+- **`lib/shippo/packing/rules.ts`** still carries livestock-era slugs and parcel
+  rules (`himalayan-salt-licks-horses`, `bag-45lb`). It is server/admin-only
+  (imported by the shipping API routes and the product editor, never by a public
+  page or bundle) and the admin is frozen for this phase; touching it would change
+  parcel math for the owner's live shipping flow.
+- **`src/lib/seo/legacyRedirects.ts`** keeps the old *source paths*
+  (`/product/salt-licks-for-horses`, `/services/salt-lumps-for-cattle`) so those
+  indexed URLs 308 into a live shelf instead of dead-ending. Source paths are
+  redirect keys, not content: they appear in `next.config.ts`, never in a response
+  body.
+- **Comments that name the old niche**, in the modules that exist because of it
+  ("the livestock feeds that used to sit here…"). They explain why the code is
+  shaped this way and are stripped by the compiler. Only the *guard* keeps the word
+  list as data, because that is what it is for.
+
+### The one remaining echo
+
+On the four withheld-slug URLs (`salt-licks`, `salt-licks-for-horses`,
+`himalayan-salt-licks-horses`, `bag-of-salt-for-livestock-45-lbs`) the response
+contains **3 occurrences of the slug and nothing else**: two in Next's own record
+of the requested path/segment tree (`"c":["","products","salt-licks"]`,
+`["slug","salt-licks","d"]`) and one in the equivalent payload entry — the
+visitor's own URL, echoed by the framework. There is no product name, no
+description, no price, no JSON-LD, no canonical and no `index` directive
+(`grep -ci "salt licks|for horses|livestock"` on that page: **0**).
+
+Two known limits, both recorded rather than hidden:
+
+- **Status code.** Those responses are `200` carrying the 404 UI and
+  `noindex, nofollow`, not a `404`, because the root loading skeleton streams the
+  shell before `notFound()` resolves. A real 404 needs the decision to happen
+  before that boundary — a data-aware middleware, or a loading boundary that does
+  not wrap the product segment. Neither was worth changing inside this pass; the
+  indexing signal (`noindex`) is already correct.
+- **Canonicals in this local build** resolve to `NEXT_PUBLIC_SITE_URL` from
+  `.env.local` (`http://localhost:3001`). Deployment environments set their own;
+  nothing in this pass changed that.
+
+### Verification run
+
+- `npx tsc --noEmit`, `npm run lint` — clean.
+- `npm test` — 148 passed, 8 skipped.
+- `BACKEND_INTEGRATION=1 … vitest run src/lib/backend/wordpress.integration.test.ts`
+  against staging — **9 passed**, including "serves only the pink salt slice"
+  (7 of 11), "still hands the admin the whole staging catalog" (11 of 11), and a new
+  case proving a copy-only offender is withheld while a clean product of the same
+  shape is served.
+- Production build in WooCommerce mode, served on `127.0.0.1:3033`, then the sweep
+  in `.freebuff/niche-verify/sweep.sh`: 34 routes, 0 matches on every one except the
+  four withheld-slug echoes above; preview host still answers
+  `X-Robots-Tag: noindex, nofollow` and `robots.txt: Disallow: /`; sitemap holds 20
+  entries (10 static, 3 occupied shelves, 7 products) with no withheld or livestock
+  URL.

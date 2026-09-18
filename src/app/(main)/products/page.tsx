@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd, aggregateOfferJsonLd } from '@/lib/seo/jsonLd';
-import { getCatalogProducts } from '@/lib/backend';
+import { getCatalogProducts } from '@/lib/backend/serverCatalog';
 import {
   buildProductsCategoryPath,
   filterLabelFromKey,
@@ -35,6 +35,11 @@ export async function generateMetadata({
   const params = await searchParams;
   const categoryKey = normalizeCategoryQueryValue(firstValue(params[CATEGORY_QUERY_PARAM]));
   const category = getCategoryContent(categoryKey);
+
+  // A value that is not a live shelf never reaches this render: `middleware.ts`
+  // answers `/products?category=<anything else>` with a 308 to the plain
+  // catalogue, which is also what keeps the retired shelf names out of the
+  // serialised page payload. The normalisation below is the rendering rule.
 
   // Each category hub is its own landing page — give it server-rendered title,
   // description and canonical instead of inheriting the generic /products ones.

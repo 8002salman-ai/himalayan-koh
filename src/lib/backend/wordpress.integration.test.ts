@@ -32,7 +32,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { getCatalogProducts, lookupCatalogProduct, readCatalogProducts } from './products';
+import { readCatalogProducts } from './products';
+import { getCatalogProducts, lookupCatalogProduct } from './serverCatalog';
 import { fetchStoreProductsSafe } from './woocommerce';
 import { wordpressRequestSafe } from './wordpress';
 import { backendConfig, isWooCommerceDataSource } from './config';
@@ -49,13 +50,25 @@ const OBSERVED_SLUG = 'himalayan-koh-edible-salt-grain';
 
 /**
  * The staging catalog as counted live on 2026-09-17: 11 published products, of
- * which 3 are livestock feed (see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md).
+ * which 3 are livestock feed and 1 more is a pink-salt pouch whose *description*
+ * sells it for livestock (see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md).
  */
 const STAGING_PRODUCT_COUNT = 11;
-const STAGING_SALT_PRODUCT_COUNT = 8;
+const STAGING_SALT_PRODUCT_COUNT = 7;
 
-/** Slugs of the three products the storefront must never serve. */
+/** Slugs of the three products whose name or category is off-niche. */
 const OFF_NICHE_SLUGS = ['salt-licks', 'salt-licks-for-horses', 'block-of-salt'];
+
+/**
+ * The fourth withheld product, and the reason it is withheld.
+ *
+ * Its name, its category and its slug are all in-niche — it was served for as
+ * long as the guard judged name and category alone. Its description opens
+ * "Elevate Livestock Well-being ... your animals", and a description is rendered,
+ * so it is judged too. This is the case that keeps the guard honest about *what a
+ * visitor actually sees* rather than about how a product is filed.
+ */
+const OFF_NICHE_BY_COPY_SLUG = 'pouches';
 
 function expectNothingInvented(product: Product) {
   // The contract, asserted for every product rather than behind a condition:
@@ -104,7 +117,8 @@ describe.skipIf(!enabled || !isWooCommerceDataSource())('live WooCommerce backen
   it('serves only the pink salt slice of the staging catalog', async () => {
     const { products, count, degraded, warnings } = await getCatalogProducts({ perPage: 100 });
 
-    // 11 published products, minus the 3 livestock-feed ones.
+    // 11 published products, minus the 3 livestock-feed ones and the pouch whose
+    // copy addresses the feed trade.
     expect(products.length).toBe(STAGING_SALT_PRODUCT_COUNT);
     expect(count).toBe(STAGING_SALT_PRODUCT_COUNT);
 
@@ -130,8 +144,12 @@ describe.skipIf(!enabled || !isWooCommerceDataSource())('live WooCommerce backen
     for (const offNiche of OFF_NICHE_SLUGS) {
       expect(slugs).not.toContain(offNiche);
     }
+    expect(slugs).not.toContain(OFF_NICHE_BY_COPY_SLUG);
+
+    // Nothing a visitor would see names the animal trade — and that includes the
+    // copy, because the copy is what the payload ships.
     for (const product of products) {
-      expect(`${product.name} ${product.category}`).not.toMatch(
+      expect(`${product.name} ${product.category} ${product.description ?? ''}`).not.toMatch(
         /livestock|herd|horse|cattle|deer|animal feed|\blicks?\b/i
       );
     }
@@ -144,12 +162,26 @@ describe.skipIf(!enabled || !isWooCommerceDataSource())('live WooCommerce backen
   it('still hands the admin the whole staging catalog, off-niche products included', async () => {
     const { products } = await readCatalogProducts({ perPage: 100 });
 
-    // The console is where the owner archives these three, so it must see them.
+    // The console is where the owner archives or rewrites these, so it must see
+    // them — including the one whose only fault is its copy, which the owner
+    // fixes with a single field edit.
     expect(products.length).toBe(STAGING_PRODUCT_COUNT);
     const slugs = products.map((p) => p.slug);
-    for (const offNiche of OFF_NICHE_SLUGS) {
+    for (const offNiche of [...OFF_NICHE_SLUGS, OFF_NICHE_BY_COPY_SLUG]) {
       expect(slugs).toContain(offNiche);
     }
+  });
+
+  it('withholds a product whose copy alone is off-niche, and not one whose copy is clean', async () => {
+    // The copy-only case: an in-niche name, category and slug, and a description
+    // written for farmers.
+    const withheld = await lookupCatalogProduct(OFF_NICHE_BY_COPY_SLUG);
+    expect(withheld.product).toBeNull();
+
+    // And the control: the same shape of product with clean copy is served, so the
+    // rule is about the copy and not about the product being a pouch.
+    const served = await lookupCatalogProduct(OBSERVED_SLUG);
+    expect(served.product).not.toBeNull();
   });
 
   it('resolves a withheld slug to nothing rather than to an animal-feed page', async () => {

@@ -1,10 +1,10 @@
 import { FileText } from 'lucide-react';
-import type { PdpPdfResource } from '../../lib/products/pdpContent';
+import type { ContentPdfResource } from '../../lib/content/types';
 import ProductPdfLibrary from '../product/ProductPdfLibrary';
 import PdpEmptyState from '../product/PdpEmptyState';
 
 interface Props {
-  resources: PdpPdfResource[];
+  resources: ContentPdfResource[];
   categoryLabel: string;
   emptyMessage?: string;
 }

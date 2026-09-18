@@ -11,7 +11,8 @@ import CategoryFilterNav from '../components/category/CategoryFilterNav';
 import CategoryHubLayout from '../components/category/CategoryHubLayout';
 import CategoryShopPanel from '../components/category/CategoryShopPanel';
 import { productMatchesCategoryFilter } from '../lib/categoryContent';
-import { getCatalogProducts, invalidateCatalogReads, isSupabaseDataSource } from '../lib/backend';
+import { getCatalogProducts, invalidateCatalogReads } from '../lib/backend/products';
+import { isSupabaseDataSource } from '../lib/backend/config';
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 
 /**

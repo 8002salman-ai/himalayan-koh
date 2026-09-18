@@ -5,11 +5,9 @@ import { getProductContent } from '../../lib/products/productContent';
 
 interface Props {
   product: Product;
-  /** When true, FAQs are shown in ProductAccordionArticles instead. */
-  hideFaqSection?: boolean;
 }
 
-export default function ProductDetailSections({ product, hideFaqSection = false }: Props) {
+export default function ProductDetailSections({ product }: Props) {
   const content = getProductContent(product);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -78,7 +76,7 @@ export default function ProductDetailSections({ product, hideFaqSection = false 
         </section>
       </div>
 
-      {!hideFaqSection && content.faqs.length > 0 && (
+      {content.faqs.length > 0 && (
         <section className="bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8">
           <div className="flex items-center gap-2 mb-5">
             <HelpCircle size={20} className="text-himalayan" />

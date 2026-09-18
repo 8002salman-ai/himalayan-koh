@@ -14,7 +14,7 @@ export function useCategoryHubContent(categoryKey: CategoryContentKey | null) {
   const [content, setContent] = useState<CategoryContentBundle | null>(staticContent);
   const [loading, setLoading] = useState(Boolean(categoryKey && isSupabaseConfigured()));
 
-  /** Show registry content immediately when switching categories (no stale horse/cattle bleed). */
+  /** Show the new shelf's registry content immediately when switching categories (no stale shelf content). */
   useEffect(() => {
     setContent(staticContent);
   }, [staticContent]);

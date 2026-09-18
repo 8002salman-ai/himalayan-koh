@@ -4,7 +4,7 @@ import {
   nicheSectionKeyFor,
   type NicheCheckInput,
   type NicheSectionKey,
-} from '../catalog/niche';
+} from '../catalog/nicheSections';
 
 /**
  * The shop's public taxonomy: which shelves exist, what they are called, and
@@ -18,12 +18,12 @@ import {
  * pills, the hub pages, the sitemap and the PDP from each listing a different
  * set of shelves.
  *
- * The livestock shelves that used to live here (`salt-lick-horses`,
- * `salt-cattle`, `salt-blocks-deer`) are gone rather than renamed: the store no
- * longer sells those products, so the hubs, their copy and their filter pills
- * were retired together with the SKUs. Links to them now fall back to All
- * instead of landing on a shelf nothing can fill — see
- * `RETIRED_CATEGORY_QUERY_VALUES`.
+ * The livestock shelves that used to live here are gone rather than renamed: the
+ * store no longer sells those products, so the hubs, their copy and their filter
+ * pills were retired together with the SKUs. A link that still carries one of the
+ * old values is not special-cased anywhere — `normalizeCategoryQueryValue` treats
+ * every value that is not a live shelf key as All, so a retired shelf and a
+ * misspelled one behave identically and neither can render an empty hub.
  */
 
 /** Display label for "no shelf selected". */
@@ -85,35 +85,6 @@ export function productMatchesCategoryFilter(
 
 export const CATEGORY_QUERY_PARAM = 'category';
 
-/**
- * `?category=` values that used to resolve to a hub and now resolve to nothing.
- *
- * Kept as a named list so the retirement is visible: a shared or indexed link
- * like `/products?category=horses` lands on the full catalogue rather than on a
- * livestock hub that no longer exists and can no longer be filled.
- */
-export const RETIRED_CATEGORY_QUERY_VALUES: readonly string[] = [
-  'horses',
-  'horse',
-  'horse-salt',
-  'salt-lick-horses',
-  'cattle',
-  'cattle-salt',
-  'livestock',
-  'salt-cattle',
-  'deer',
-  'deer-salt',
-  'wildlife',
-  'salt-blocks-deer',
-  // The shelf was renamed when the niche narrowed to pink salt.
-  'edible',
-  'cooking',
-  'edible-salt',
-  'edible-cooking-salt',
-  'himalayan-edible-salt',
-];
-
-const RETIRED_VALUES = new Set(RETIRED_CATEGORY_QUERY_VALUES);
 const VALID_KEYS = new Set<string>(NICHE_SECTIONS.map((section) => section.key));
 
 export function isCategoryContentKey(value: string): value is CategoryContentKey {
@@ -123,16 +94,16 @@ export function isCategoryContentKey(value: string): value is CategoryContentKey
 /**
  * Resolves a `?category=` value.
  *
- * Returns `null` for All, for a retired value and for an unknown one alike —
+ * Returns `null` for All and for anything that is not a live shelf key alike —
  * `useProductsCategoryFilter` strips the parameter in that case, which is the
  * honest outcome: the shopper sees the whole catalogue rather than an empty grid
- * under a shelf that does not exist.
+ * under a shelf that does not exist. A retired shelf key, a typo and an invented
+ * one therefore need no list of their own.
  */
 export function normalizeCategoryQueryValue(raw: string | null | undefined): CategoryContentKey | null {
   if (!raw) return null;
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return null;
-  if (RETIRED_VALUES.has(normalized)) return null;
   return isCategoryContentKey(normalized) ? normalized : null;
 }
 

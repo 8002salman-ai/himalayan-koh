@@ -11,8 +11,12 @@ import {
 const ALL_LABEL = 'All';
 
 /**
- * URL is the source of truth: /products?category=salt-lick-horses
- * Supports aliases (?category=horses). Browser back/forward restores filters.
+ * URL is the source of truth: /products?category=edible-pink-salt
+ *
+ * A `?category=` value that is not a live shelf resolves to All and the parameter
+ * is dropped, so an old link — from the livestock shelves the store used to have,
+ * or a typo — lands on the whole catalogue instead of an empty grid. Browser
+ * back/forward restores filters.
  */
 export function useProductsCategoryFilter() {
   const [searchParams, setSearchParams] = useSearchParams();

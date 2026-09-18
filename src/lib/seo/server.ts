@@ -6,7 +6,7 @@ import type {
   Profile,
 } from '@/lib/supabase/database.types';
 import type { Product } from '@/data/products';
-import { lookupCatalogProduct } from '@/lib/backend';
+import { lookupCatalogProduct } from '@/lib/backend/serverCatalog';
 import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 import { filterNicheBlogPosts } from '@/lib/catalog/nicheBlog';
 import { publicEnv } from '@/lib/env';

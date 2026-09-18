@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, Clock, Loader2, Search, Tag, User } from 'lucide-react';
-import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
-import { isSupabaseConfigured } from '../lib/supabase/client';
-import { filterNicheBlogPosts } from '../lib/catalog/nicheBlog';
+import type { BlogPostWithAuthor } from '../lib/supabase/api';
 
 interface BlogPageProps {
   /**
@@ -22,20 +20,16 @@ export default function BlogPage({ initialPosts = [] }: BlogPageProps) {
 
   useEffect(() => {
     const fetchPosts = async () => {
-      if (!isSupabaseConfigured()) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const { posts: fetched } = await blogApi.getPosts();
-        // Filtered the same way the server filters, so the listing cannot change
-        // its niche after hydration: the storefront is Himalayan pink salt, and
-        // the livestock articles in the blog store are not part of it.
-        const niche = filterNicheBlogPosts(fetched);
+        // The server's listing, already scoped to the store's niche: the browser
+        // never reads the blog store itself, so a post written for the livestock
+        // trade is not merely dropped after it arrives.
+        const response = await fetch('/api/blog', { headers: { accept: 'application/json' } });
+        if (!response.ok) throw new Error(`The blog endpoint answered ${response.status}.`);
+        const { posts: fetched } = (await response.json()) as { posts: BlogPostWithAuthor[] };
         // Keep the server-rendered list if the refetch returns nothing.
-        if (niche.length || !initialPosts.length) {
-          setPosts(niche);
+        if (fetched.length || !initialPosts.length) {
+          setPosts(fetched);
         }
       } catch (err) {
         console.error('Failed to fetch blog posts:', err);

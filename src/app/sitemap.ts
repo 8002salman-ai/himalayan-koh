@@ -1,9 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { siteOrigin, fetchSeoBlogPosts } from '@/lib/seo/server';
 import { buildProductsCategoryPath, productShelfKey } from '@/lib/categoryContent';
-import { NICHE_SECTIONS } from '@/lib/catalog/niche';
+import { NICHE_SECTIONS } from '@/lib/catalog/nicheSections';
 import type { CategoryContentKey } from '@/lib/categoryContent';
-import { getCatalogProducts } from '@/lib/backend';
+import { getCatalogProducts } from '@/lib/backend/serverCatalog';
 
 type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 

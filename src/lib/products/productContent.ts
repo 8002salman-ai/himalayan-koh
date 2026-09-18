@@ -1,5 +1,5 @@
 import type { Product } from '../../data/products';
-import { nicheSectionKeyFor, type NicheSectionKey } from '../catalog/niche';
+import { nicheSectionKeyFor, type NicheSectionKey } from '../catalog/nicheSections';
 
 export interface ProductFaq {
   question: string;
@@ -47,7 +47,7 @@ const SHELF_DEFAULTS: Record<NicheSectionKey, Omit<ProductContent, 'displayName'
   'edible-pink-salt': {
     useCases: [
       'Everyday cooking, grilling, and finishing dishes',
-      'Brining poultry, pork, and vegetables',
+      'Brining meat and vegetables',
       'Salt grinders and table seasoning',
     ],
     mineralHighlights: [

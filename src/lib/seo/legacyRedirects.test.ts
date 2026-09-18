@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LEGACY_REDIRECTS } from './legacyRedirects';
-import { NICHE_SECTIONS } from '../catalog/niche';
+import { NICHE_SECTIONS } from '../catalog/nicheSections';
 
 /**
  * Routes this app actually serves. Kept explicit so a redirect can never point at

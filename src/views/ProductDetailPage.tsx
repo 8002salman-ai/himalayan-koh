@@ -1,18 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import ProductDetailView from '../components/ProductDetailView';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../data/products';
-import { lookupCatalogProduct } from '../lib/backend';
+import { lookupCatalogProduct } from '../lib/backend/products';
 import ProductDetailSections from '../components/product/ProductDetailSections';
-import ProductLifestyleGallery from '../components/product/ProductLifestyleGallery';
-import PdpEmptyState from '../components/product/PdpEmptyState';
-import ProductPdpEnrichedSections, {
-  pdpHidesDetailFaqs,
-} from '../components/product/ProductPdpEnrichedSections';
-import { getPdpContent } from '../lib/products/pdpContent';
-import { getProductDisplayName } from '../lib/products/productSeo';
 
 interface ProductDetailPageProps {
   /**
@@ -74,14 +67,6 @@ export default function ProductDetailPage({ initialProduct = null }: ProductDeta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeSlug]);
 
-  const pdpContent = useMemo(
-    () => (product ? getPdpContent(product) : null),
-    [product]
-  );
-
-  const showGalleryColumn =
-    pdpContent?.availability.gallery || Boolean(pdpContent?.emptyStates.gallery);
-
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center bg-warm-white">
@@ -120,43 +105,10 @@ export default function ProductDetailPage({ initialProduct = null }: ProductDeta
     <div className="min-h-screen bg-warm-white py-8 md:py-12">
       {/* Product/FAQ/WebPage JSON-LD is server-rendered by app/(main)/products/[slug]/page.tsx
           — injecting a second copy here would duplicate the graph for crawlers. */}
-      <div
-        className={
-          showGalleryColumn ? 'max-w-7xl mx-auto px-4 sm:px-6' : 'max-w-5xl mx-auto px-4 sm:px-6'
-        }
-      >
-        <div
-          className={
-            showGalleryColumn
-              ? 'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-8 lg:items-start'
-              : undefined
-          }
-        >
-          <ProductDetailView product={product} variant="page" />
-          {pdpContent && showGalleryColumn && (
-            pdpContent.availability.gallery ? (
-              <ProductLifestyleGallery
-                images={pdpContent.gallery}
-                productName={getProductDisplayName(product)}
-              />
-            ) : (
-              <aside className="w-full lg:w-auto" aria-label="Lifestyle gallery">
-                <PdpEmptyState
-                  title="In the field"
-                  message={pdpContent.emptyStates.gallery!}
-                  compact
-                />
-              </aside>
-            )
-          )}
-        </div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <ProductDetailView product={product} variant="page" />
 
-        {pdpContent && <ProductPdpEnrichedSections content={pdpContent} />}
-
-        <ProductDetailSections
-          product={product}
-          hideFaqSection={pdpContent ? pdpHidesDetailFaqs(pdpContent) : false}
-        />
+        <ProductDetailSections product={product} />
 
         {related.length > 0 && (
           <section className="mt-14">

@@ -1,17 +1,16 @@
 /**
- * Catalog adapter — the single entry point for catalog data.
+ * Catalog adapters and the browser's catalog client.
  *
- * Every catalog read in the app goes through this module, so switching from
- * Supabase to WordPress/WooCommerce is a flag change rather than a rewrite.
- * Both sources emit `Product` (`src/data/products.ts`); there is no second view
- * model.
+ * This module owns the *source reads*: switching from Supabase to
+ * WordPress/WooCommerce is a flag change rather than a rewrite, and both sources
+ * emit `Product` (`src/data/products.ts`) — there is no second view model.
  *
  * ## Supabase source
  * Behaviour is intentionally identical to the pre-migration code paths, because
  * 'supabase' stays the default until WooCommerce parity is verified:
  *   - `productsApi` remains the query layer (it owns the `packing_profile:` gate
  *     that keeps half-configured products off the storefront);
- *   - `lookupCatalogProduct` preserves the direct -> list-scan ->
+ *   - `readCatalogProductBySlug` preserves the direct -> list-scan ->
  *     hidden-active-guard -> demo-catalog order, so an admin's in-progress
  *     product is never republished from stale bundled demo data.
  *
@@ -24,9 +23,22 @@
  * Step 3 is a *degradation*: prices stay `null` and stock stays `'unknown'`, and
  * the reason lands in `warnings`. The bundled demo catalog is never used here,
  * so nothing invented can reach a WooCommerce-powered page.
+ *
+ * ## Two readers, on purpose
+ * - **Raw** — `readCatalogProducts` / `readCatalogProductBySlug`. Everything the
+ *   source reports, nothing withheld. The admin console reads this way, because
+ *   the owner has to *see* an off-niche product in order to archive it.
+ * - **Sealed** — `lib/backend/serverCatalog.ts`, which wraps these reads and drops
+ *   what the storefront may not serve. Server renders and `/api/catalog` use it.
+ *
+ * ## The browser never reads a source
+ * The client-facing functions at the bottom of this file hit `/api/catalog`, which
+ * is the sealed read served over HTTP. A component that read the source itself
+ * would put withheld products — names, categories, descriptions — on the wire and
+ * only drop them afterwards, which is not the same as never sending them; and it
+ * would need the source's credentials in the bundle.
  */
 
-import { cache } from 'react';
 import type { Product } from '../../data/products';
 import { storefrontProducts as demoProducts } from '../../data/products';
 import { invalidateSharedReads, readShared } from '../catalog/readCache';
@@ -35,9 +47,13 @@ import { productsApi } from '../supabase/api';
 import { isHiddenActiveProduct } from '../supabase/api/products';
 import { getFallbackProductBySlug, mapSupabaseProduct } from '../products/mapProduct';
 import { normalizeProductSlug, productSlugFromName, slugsMatch } from '../products/slug';
-import { countOffNicheProducts, filterNicheProducts, isNicheProduct } from '../catalog/niche';
 import { isWooCommerceDataSource } from './config';
-import { fetchAdminProductBySlug, fetchAdminProducts, fetchStoreProductsSafe, fetchWpCoreProducts } from './woocommerce';
+import {
+  fetchAdminProductBySlug,
+  fetchAdminProducts,
+  fetchStoreProductsSafe,
+  fetchWpCoreProducts,
+} from './woocommerce';
 import type { ProductQuery } from './woocommerce';
 
 export interface CatalogQuery {
@@ -270,105 +286,139 @@ async function wooLookup(slug: string, signal?: AbortSignal): Promise<CatalogLoo
 }
 
 /* ------------------------------------------------------------------ */
-/* Public API                                                          */
+/* Raw reads (admin, and the sealed server read)                        */
 /* ------------------------------------------------------------------ */
-
-/**
- * Storefront reads are scoped to the store's niche.
- *
- * `lib/catalog/niche.ts` is the single judgement about what belongs on the
- * public site (Himalayan pink salt, no livestock or pet products). Applying it
- * here — at the one seam every public surface already goes through — is what
- * keeps the homepage, search, related products, category pages, sitemap and
- * structured data from each filtering differently, or forgetting to.
- *
- * The admin console reads the same source through `readCatalogProducts` below,
- * which deliberately skips this filter: the owner has to *see* an off-niche
- * product in the console in order to archive it, so hiding it there would hide it
- * from the only person who can fix it.
- */
-function scopeToNiche(result: CatalogResult): CatalogResult {
-  const excluded = countOffNicheProducts(result.products);
-  if (excluded === 0) return result;
-
-  const products = filterNicheProducts(result.products);
-  return {
-    products,
-    count: Math.max(0, result.count - excluded),
-    degraded: result.degraded,
-    warnings: [
-      ...result.warnings,
-      `${excluded} product${excluded === 1 ? '' : 's'} outside the Himalayan pink salt niche ${excluded === 1 ? 'was' : 'were'} withheld from the storefront. Archive them in WooCommerce to remove this notice — see docs/HIMALAYAN-PINK-SALT-NICHE-AUDIT.md.`,
-    ],
-  };
-}
 
 /**
  * The catalog exactly as the source reports it, with nothing withheld.
  *
  * This is the admin's read: a product that is off-niche is still a product the
- * owner has to archive, so it must arrive. Storefront reads go through
- * `getCatalogProducts` instead.
+ * owner has to archive, so it must arrive. Storefront reads go through the sealed
+ * wrapper in `./serverCatalog` instead.
  */
 export async function readCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
   return isWooCommerceDataSource() ? wooList(query) : supabaseList(query);
 }
 
+/** The catalog's answer for one slug, straight from the source. */
+export async function readCatalogProductBySlug(
+  slug: string,
+  signal?: AbortSignal
+): Promise<CatalogLookup> {
+  return isWooCommerceDataSource() ? wooLookup(slug, signal) : supabaseLookup(slug, signal);
+}
+
+/* ------------------------------------------------------------------ */
+/* Browser client                                                      */
+/* ------------------------------------------------------------------ */
+
 /**
- * A stable cache key for a catalog query.
+ * Where the browser gets its catalog.
  *
- * Only the fields that change the answer are included, so two callers asking for
- * the same page of the same catalogue share one read, and a caller that passes an
- * equivalent query in a different object shape still hits it.
+ * A component that runs in the browser must not read the source itself: the
+ * source carries products the storefront withholds, and reading it directly would
+ * put those records — names, categories, descriptions — on the wire before any
+ * filter ran. The browser therefore reads the server's answer (`/api/catalog`),
+ * which is already scoped, and cannot re-scope it by editing a request.
  */
-function catalogQueryKey(query: CatalogQuery): string {
-  return JSON.stringify({
+const CATALOG_ENDPOINT = '/api/catalog';
+
+/** Called on the server, these would silently read nothing. Say so instead. */
+function assertBrowser(): void {
+  if (typeof window === 'undefined') {
+    throw new Error(
+      'The storefront catalog client is browser-only. Server code reads through lib/backend/serverCatalog (sealed) or readCatalogProducts (raw, admin).'
+    );
+  }
+}
+
+function catalogEndpointUrl(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `${CATALOG_ENDPOINT}?${query}` : CATALOG_ENDPOINT;
+}
+
+async function fetchCatalogJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url, {
+    signal,
+    headers: { accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`The catalog endpoint answered ${response.status}.`);
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * The storefront's catalog, in the browser: one shared read of the server's
+ * answer.
+ *
+ * `readShared` shares an in-flight request between components and reuses the
+ * answer for a short window, so navigating between catalogue surfaces does not
+ * re-read the catalogue on every mount.
+ */
+export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
+  assertBrowser();
+
+  const key = JSON.stringify({
     perPage: query.perPage ?? null,
     page: query.page ?? null,
-    slug: query.slug ?? null,
     search: query.search ?? null,
     categorySlug: query.categorySlug ?? null,
     isFeatured: query.isFeatured ?? null,
   });
-}
-
-/**
- * Per-request memo for the server read.
- *
- * `/products` reads the catalogue twice in one request — once for the metadata
- * (the category noindex decision, the AggregateOffer price range) and once for
- * the page — and the sitemap reads it too. Without this memo each of those issued
- * its own upstream request chain. React's `cache` scopes the result to the current
- * request, so two renders in the same request share a read while a later request
- * always re-reads: stock stays fresh, and nothing is cached across visitors.
- */
-const readCatalogForRequest = cache(async (key: string): Promise<CatalogResult> =>
-  readCatalogProducts(JSON.parse(key) as CatalogQuery)
-);
-
-/**
- * The storefront's catalog: the source's catalog, scoped to the store's niche.
- *
- * Server renders share one read per request (above). In the browser the same read
- * goes through `readShared`, which shares an in-flight request between components
- * and reuses the answer for a short window instead of every catalogue surface
- * re-reading the whole catalogue on mount.
- */
-export async function getCatalogProducts(query: CatalogQuery = {}): Promise<CatalogResult> {
-  const key = catalogQueryKey(query);
-
-  if (typeof window === 'undefined') {
-    return scopeToNiche(await readCatalogForRequest(key));
-  }
 
   // A caller that can abort expects its own request; a cache would hand it a
   // promise it cannot cancel and keep the result afterwards.
-  const result = await readShared(
+  return readShared(
     `catalog:${key}`,
-    () => readCatalogProducts(query),
+    () =>
+      fetchCatalogJson<CatalogResult>(
+        catalogEndpointUrl({
+          perPage: query.perPage,
+          page: query.page,
+          search: query.search,
+          category: query.categorySlug,
+          featured: query.isFeatured,
+        }),
+        query.signal
+      ),
     { noStore: Boolean(query.signal) }
   );
-  return scopeToNiche(result);
+}
+
+/** One product by slug, in the browser. */
+export async function lookupCatalogProduct(
+  slug: string,
+  signal?: AbortSignal
+): Promise<CatalogLookup> {
+  assertBrowser();
+
+  try {
+    return await fetchCatalogJson<CatalogLookup>(catalogEndpointUrl({ slug }), signal);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { product: null, related: [], provenance: null, error: reason };
+  }
+}
+
+/** Featured products for the homepage, in the browser. */
+export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
+  assertBrowser();
+
+  try {
+    const { products } = await readShared(`catalog:featured:${limit}`, () =>
+      fetchCatalogJson<{ products: Product[] }>(catalogEndpointUrl({ featured: 1, limit }))
+    );
+    return products.slice(0, limit);
+  } catch (error) {
+    console.error('Featured products could not be read from the catalog endpoint.', error);
+    return [];
+  }
 }
 
 /**
@@ -379,58 +429,4 @@ export async function getCatalogProducts(query: CatalogQuery = {}): Promise<Cata
  */
 export function invalidateCatalogReads(): void {
   invalidateSharedReads();
-}
-
-/**
- * Resolves one product by slug, preserving the Supabase fallback semantics.
- *
- * An off-niche product resolves to *nothing* rather than to itself: a direct hit
- * is how a link, a search result or a shared URL would otherwise reach a product
- * the storefront is not allowed to serve.
- */
-export async function lookupCatalogProduct(slug: string, signal?: AbortSignal): Promise<CatalogLookup> {
-  const lookup = isWooCommerceDataSource()
-    ? await wooLookup(slug, signal)
-    : await supabaseLookup(slug, signal);
-
-  if (lookup.product && !isNicheProduct({ name: lookup.product.name, category: lookup.product.category })) {
-    return { product: null, related: [], provenance: null, error: lookup.error };
-  }
-  return lookup;
-}
-
-/**
- * Featured products for the homepage.
- *
- * The WooCommerce branch goes through the same sharing rules as the main list
- * read: memoized per request on the server, and served from the browser's shared
- * read cache so a homepage visit does not re-read the catalogue on every mount.
- * The Supabase branch keeps its own behaviour — a failed featured read costs the
- * homepage its row, never the page.
- */
-const readFeaturedForRequest = cache(async (limit: number): Promise<Product[]> => {
-  const { products } = await wooList({ perPage: limit, isFeatured: true });
-  return products;
-});
-
-export async function getFeaturedCatalogProducts(limit = 4): Promise<Product[]> {
-  if (!isWooCommerceDataSource()) {
-    try {
-      const rows = await productsApi.getFeaturedProducts(limit);
-      return filterNicheProducts(rows.map(mapSupabaseProduct)).slice(0, limit);
-    } catch (error) {
-      console.error('Featured products could not be read from Supabase.', error);
-      return [];
-    }
-  }
-
-  const products =
-    typeof window === 'undefined'
-      ? await readFeaturedForRequest(limit)
-      : await readShared(`catalog:featured:${limit}`, async () => {
-          const { products: featured } = await wooList({ perPage: limit, isFeatured: true });
-          return featured;
-        });
-
-  return filterNicheProducts(products).slice(0, limit);
 }

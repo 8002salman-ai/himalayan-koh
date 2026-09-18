@@ -4,7 +4,7 @@
  * under public/images/legacy/ and served from our own domain, so the site has
  * no runtime dependency on WordPress and the old host can be shut down.
  *
- * Every reference to these nine files goes through this module. To move them
+ * Every reference to these four files goes through this module. To move them
  * somewhere else later (Supabase Storage, a CDN), change the paths here — the
  * rest of the codebase does not name them.
  *
@@ -14,12 +14,16 @@
  * that script's only remaining purpose is documenting where they came from.
  */
 
+/**
+ * The pink salt photographs the storefront uses.
+ *
+ * The five livestock-era images that used to be registered here (paddock and
+ * cattle shots, a horse banner) are gone with the products they illustrated. An
+ * asset record is not harmless: its `alt` text and file name are what a gallery
+ * renders, so leaving them registered would leave livestock copy one import away
+ * from the page.
+ */
 export type LegacyImageKey =
-  | 'horseLickPaddock'
-  | 'horseLicking'
-  | 'horsesBanner'
-  | 'cattleGrazing'
-  | 'cattleSaltBag'
   | 'bowlOfSalt'
   | 'saltPouch6lb'
   | 'pinkSaltJar16oz'
@@ -38,36 +42,6 @@ const LEGACY_DIR = '/images/legacy';
 const WP_BASE = 'https://himalayankoh.com/wp-content/uploads';
 
 export const LEGACY_IMAGES: Record<LegacyImageKey, LegacyImage> = {
-  horseLickPaddock: {
-    src: `${LEGACY_DIR}/horse-salt-lick-paddock.jpg`,
-    width: 600,
-    height: 450,
-    wordpress: `${WP_BASE}/2021/03/horse-lick-himalayan-salt5-600x450.jpg`,
-  },
-  horseLicking: {
-    src: `${LEGACY_DIR}/horse-licking-salt.jpg`,
-    width: 600,
-    height: 450,
-    wordpress: `${WP_BASE}/2017/10/slat-licking-horse.jpg`,
-  },
-  horsesBanner: {
-    src: `${LEGACY_DIR}/horses-grazing-banner.jpg`,
-    width: 1300,
-    height: 200,
-    wordpress: `${WP_BASE}/2019/08/horses-1300x200.jpg`,
-  },
-  cattleGrazing: {
-    src: `${LEGACY_DIR}/cattle-grazing.jpg`,
-    width: 600,
-    height: 450,
-    wordpress: `${WP_BASE}/2017/10/blog9.jpg`,
-  },
-  cattleSaltBag: {
-    src: `${LEGACY_DIR}/cattle-salt-bag.jpg`,
-    width: 600,
-    height: 450,
-    wordpress: `${WP_BASE}/2020/10/1-600x450.jpeg`,
-  },
   bowlOfSalt: {
     src: `${LEGACY_DIR}/bowl-of-salt.jpg`,
     width: 600,

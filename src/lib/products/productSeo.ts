@@ -1,6 +1,6 @@
 import type { Product } from '../../data/products';
 import { SITE_NAME } from '../seo/constants';
-import { nicheSectionKeyFor } from '../catalog/niche';
+import { nicheSectionKeyFor } from '../catalog/nicheSections';
 import { getProductContent, getProductDisplayName } from './productContent';
 
 const BRAND_SUFFIX = ` | ${SITE_NAME}`;

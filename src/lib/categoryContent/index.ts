@@ -2,7 +2,6 @@ export {
   ALL_LABEL,
   CATEGORY_FILTER_TABS,
   CATEGORY_QUERY_PARAM,
-  RETIRED_CATEGORY_QUERY_VALUES,
   buildProductsCategoryPath,
   buildProductsCategorySearch,
   categoryKeyFromFilterLabel,

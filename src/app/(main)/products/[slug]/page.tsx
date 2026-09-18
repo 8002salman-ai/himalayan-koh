@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/seo/jsonLd';
 import { fetchSeoProductModel } from '@/lib/seo/server';
@@ -17,13 +18,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await fetchSeoProductModel(slug).catch(() => null);
 
+  // No canonical, no OpenGraph URL and an explicit noindex for a slug that
+  // resolves no product. Emitting `canonical: /products/<slug>` here is how a
+  // withheld or non-existent product announced itself to a crawler, and the copy
+  // of a withheld product (staging still carries animal-feed listings) must not be
+  // advertised under any URL. The page itself answers 404 — see `Page` below.
   if (!product) {
-    return buildMetadata({
-      title: 'Product - Himalayan Koh',
-      description:
-        'Unrefined Himalayan pink salt for cooking and the home — edible grades, blocks, lamps and bulk bags.',
-      path: `/products/${slug}`,
-    });
+    return {
+      title: 'Product not found — Himalayan Koh',
+      robots: { index: false, follow: false },
+    } satisfies Metadata;
   }
 
   // Same helper the client view uses, so the server HTML title/description
@@ -71,30 +75,39 @@ const PRODUCT_FAQs = faqJsonLd([
   },
 ]);
 
+/**
+ * A slug that resolves no product is a real 404, not a page that says so.
+ *
+ * It used to answer 200 with the generic title "Product - Himalayan Koh", a
+ * canonical pointing at itself and `robots: index, follow` — a soft 404 that
+ * invited indexing of a URL whose whole content was the words "Product Not
+ * Found". Staging's off-niche products (animal-feed listings, whose own copy is
+ * withheld from the storefront) each had such a page. The not-found response
+ * carries the shop's 404 page instead, and `generateMetadata` above emits no
+ * canonical for it.
+ */
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
   const product = await fetchSeoProductModel(slug).catch(() => null);
 
+  if (!product) notFound();
+
   return (
     <>
-      {product && (
-        <>
-          {/* Full Product + Offer + FAQPage + WebPage graph, server-rendered so
-              crawlers get it without executing the client bundle. */}
-          <JsonLd data={buildProductStructuredData(product)} />
-          <JsonLd
-            data={breadcrumbJsonLd([
-              { name: 'Home', path: '/' },
-              { name: 'Products', path: '/products' },
-              { name: getProductDisplayName(product), path: `/products/${product.slug}` },
-            ])}
-          />
-          <JsonLd data={PRODUCT_FAQs} />
-        </>
-      )}
+      {/* Full Product + Offer + FAQPage + WebPage graph, server-rendered so
+          crawlers get it without executing the client bundle. */}
+      <JsonLd data={buildProductStructuredData(product)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Products', path: '/products' },
+          { name: getProductDisplayName(product), path: `/products/${product.slug}` },
+        ])}
+      />
+      <JsonLd data={PRODUCT_FAQs} />
       {/* key remounts the view when navigating product-to-product, so the
           seeded server data is picked up instead of the previous product's. */}
-      <ProductDetailClient key={product?.slug ?? slug} initialProduct={product} />
+      <ProductDetailClient key={product.slug} initialProduct={product} />
     </>
   );
 }
