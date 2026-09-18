@@ -134,6 +134,89 @@ is a dual source of truth and is recorded here rather than quietly left.
   CONFIRMATION REQUIRED`, not published, so it is the one authorised SKU that is not
   publicly visible.
 
+## Cutover performed (2026-09-18): preview.himalayankoh.com → Cloudflare
+
+| | |
+| --- | --- |
+| PREVIEW DNS BEFORE | CNAME `preview.himalayankoh.com` → `cname.vercel-dns.com`, **DNS-only**, id `2d8c5d2efab86a18e0331b096e25ccfa` |
+| PREVIEW DNS AFTER | Cloudflare-managed Worker custom domain: `AAAA preview → 100::` proxied, plus the edge A records; `Server: cloudflare`, `CF-RAY` present |
+| SERVED BY | **Cloudflare Worker**, not Vercel |
+| WORKER (staging) | `himalayan-koh-ecommerce` in `Himalayankoh.pk@gmail.com`'s account (`fd383fa3284298b20cd3ca9ba8b1dffa`), custom domain id `1e237b316fa58c02c308b08ed0327eb31ad5ff81` |
+| KV namespace | `VINEXT_KV_CACHE` `7e62970fbe5049dfb678409d6f28d064` (created in that account for this move) |
+| Deployed SHA | `02a42a12afcc9cadb681cfaa2b812719724df63b`, equal to git `HEAD` at deploy time (`/api/version`) |
+
+### Why the Worker moved accounts
+
+A Worker custom domain requires the zone and the Worker to be in the **same** Cloudflare
+account. `himalayankoh.com` lives in `Himalayankoh.pk@gmail.com`'s account; the staging
+Worker was first deployed into `8002salman@gmail.com`'s account
+(`f542683e97458480452b0b8ef37a898a`), which cannot see that zone at all (it sees only
+`luxedge.us`). The Worker was therefore deployed into the zone's account and the custom
+domain attached there. The earlier deployment is **untouched and still serving** on
+`https://himalayan-koh-ecommerce.8002salman.workers.dev` as rollback.
+
+### Which token does what (probed, not assumed)
+
+The three supplied tokens each hold about half of what a cutover needs:
+
+| Capability | token 1 | token 2 | token 3 |
+| --- | --- | --- | --- |
+| Workers scripts / KV **read** | ✅ | ✅ | partial |
+| Deploy (assets upload session) | ❌ 403 | ✅ | ❌ 403 |
+| KV namespace create/delete | ❌ 401 | ✅ | ❌ |
+| Worker **custom domain attach** (`PUT`) | ❌ 403 | ✅ | ❌ |
+| Zone **DNS write** | ❌ 403 | ❌ 403 | ✅ |
+| Zone DNS read | ✅ | ❌ 403 | ✅ |
+| Worker routes write | ❌ | ✅ | ❌ |
+
+So the cutover used **token 3 to remove the Vercel CNAME** and **token 2 to attach the
+custom domain**. Two details worth keeping: the attach endpoint is `PUT` (a `POST`
+answers `405 Method not allowed for this authentication scheme`, which reads like a
+permission problem and is not), and the attach refuses while any externally managed
+DNS record holds the name (`409 100117`), so the record must be removed first.
+
+### Verified after the cutover
+
+Against `https://preview.himalayankoh.com` itself (pinned resolver while this machine's
+cache still held the pre-cutover answer — the authoritative and public answers already
+returned Cloudflare): `server: cloudflare`, no `X-Vercel-*`, `/api/version` = git HEAD,
+all of `/ /products /about /contact /faqs /blog /checkout /login /account /admin
+/sitemap.xml /robots.txt` = 200, 120 unique internal links all 200, approved homepage
+copy present ("World's Best for Livestock", "Rich All Natural Himalayan Pink Salt",
+"horses, cattle and deer"), 18 published SKUs each rendering their own price and SKU,
+the five retired records absent from sitemap and listing, `HK-LFH-6lbs` still draft,
+canonical and sitemap origin = `preview.himalayankoh.com`, `noindex, nofollow` +
+`Disallow: /`, no permitting robots meta, no credential shapes in HTML.
+
+DNS integrity: comparing the zone against the pre-cutover snapshot shows **exactly one**
+record changed — the preview hostname. Apex `A`, `www` CNAME, `mail`/`webmail` `A`, all
+three `MX`, the SPF `TXT` and the DKIM `TXT` are byte-identical to before.
+
+### Rollback
+
+```
+1. delete the custom domain      PUT-less: DELETE /accounts/<fd383fa…>/workers/domains/1e237b316fa58c02c308b08ed0327eb31ad5ff81
+                                 (token 2; see .freebuff/cf-cutover.mjs)
+2. recreate the CNAME record     CNAME preview.himalayankoh.com -> cname.vercel-dns.com,
+                                 proxied=false, ttl=1 (token 3)
+```
+
+The exact record is in `.freebuff/preview-cutover-snapshot.json`
+(`removedRecord`) and `.freebuff/preview-rollback-state.json`. Vercel was not modified:
+the old deployment and the `himalayan-koh.vercel.app` alias still serve, so the rollback
+restores a working preview rather than needing a rebuild. A fuller rollback also means
+reverting the `kv_namespaces` id in `wrangler.jsonc` and deploying back into
+`8002salman`'s account, whose Worker still holds its own binding and secrets.
+
+### Deploy recipe now
+
+```
+cd himalayan-koh
+eval "$(node ../.freebuff/cf-env.mjs)"   # token 2 + the zone account, no OAuth needed
+npm run build:deploy
+npx vinext-cloudflare deploy --config dist/server/wrangler.json
+```
+
 ## Rollback state (captured before any cutover)
 
 `preview.himalayankoh.com` is a **DNS-only (unproxied) CNAME**:
