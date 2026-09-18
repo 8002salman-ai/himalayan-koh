@@ -39,7 +39,25 @@ export default function Layout({ children }: LayoutProps) {
   // some readers, and the transition is decoration, not information.
   const reduceMotion = useReducedMotion();
   const { totalItems } = useCart();
-  const { isAuthenticated, profile, user } = useAuthContext();
+  const { isAuthenticated, profile, user, isAdmin } = useAuthContext();
+
+  /**
+   * The signed-in menu, which is not the same menu for both roles.
+   *
+   * An administrator's account lives in the console, so offering them "My
+   * Account → /account" sent them into the customer portal and made them choose
+   * a second identity to get back. One destination per role, decided here and
+   * mirrored by the guards (`lib/auth/roleRouting`).
+   */
+  const accountMenuItems = isAdmin
+    ? [
+        { label: 'Admin Dashboard', to: '/admin' },
+        { label: 'Store Settings', to: '/admin/settings' },
+      ]
+    : [
+        { label: 'My Account', to: '/account' },
+        { label: 'My Orders', to: '/account?tab=orders' },
+      ];
 
   useEffect(() => {
     const el = headerRef.current;
@@ -196,20 +214,16 @@ export default function Layout({ children }: LayoutProps) {
                               {user?.email}
                             </p>
                           </div>
-                          <Link
-                            to="/account"
-                            className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
-                            onClick={() => setUserMenuOpen(false)}
-                          >
-                            My Account
-                          </Link>
-                          <Link
-                            to="/orders"
-                            className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
-                            onClick={() => setUserMenuOpen(false)}
-                          >
-                            My Orders
-                          </Link>
+                          {accountMenuItems.map((item) => (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              className="block px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              {item.label}
+                            </Link>
+                          ))}
                           <button
                             onClick={handleSignOut}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"

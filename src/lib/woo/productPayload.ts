@@ -43,10 +43,14 @@ export interface AdminProductPatch {
   description?: string;
   shortDescription?: string;
   sku?: string;
-  /** The price the customer pays. */
-  price?: number | null;
-  /** The struck-through "was" price. */
-  compareAtPrice?: number | null;
+  /**
+   * The price the customer pays. A numeric string is accepted and coerced —
+   * see `toPriceNumber` — because a form field produces one and silently
+   * dropping it would leave the store unchanged while reporting success.
+   */
+  price?: number | string | null;
+  /** The struck-through "was" price. Accepts a numeric string, as `price` does. */
+  compareAtPrice?: number | string | null;
   categoryIds?: number[];
   tags?: string[];
   /** Public image URLs. Woo resolves an existing media item or sideloads. */
@@ -110,23 +114,54 @@ export function parseWooDecimal(value: unknown): number | null {
  * decides the pair on its own; `price` alone is just the list price, and a null
  * price clears both fields rather than leaving a stale sale behind.
  */
+/**
+ * A price as a number, accepting the numeric string a form field produces.
+ *
+ * `toWooDecimal` is deliberately strict — it takes a number and returns
+ * `undefined` for anything else — and this is the one place that relaxes it.
+ * The admin editor sends numbers, but a price arriving as `"2.50"` (a form
+ * value, a hand-written API call) used to fall through that strictness into
+ * `regular_price: undefined`, which JSON drops: the response said 200, the
+ * store was unchanged, and nothing reported a problem. A silent no-op on the
+ * price is the worst outcome available here, so a supplied price is coerced
+ * when it is numeric and rejected when it is not.
+ */
+export function toPriceNumber(value: number | string | null | undefined): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  const raw = value.trim();
+  if (raw === '') return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/** True when a price was supplied but cannot be read as a number. */
+export function isUnusablePrice(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  return toPriceNumber(value as number | string) === undefined;
+}
+
 export function priceFields(
   patch: Pick<AdminProductPatch, 'price' | 'compareAtPrice'>
 ): { regular_price?: string; sale_price?: string } {
+  const price = toPriceNumber(patch.price);
+  const compareAt = toPriceNumber(patch.compareAtPrice);
+
   if (patch.compareAtPrice !== undefined) {
-    if (patch.compareAtPrice === null) {
-      return { regular_price: toWooDecimal(patch.price ?? null), sale_price: '' };
+    if (compareAt === null || compareAt === undefined) {
+      return { regular_price: toWooDecimal(price ?? null), sale_price: '' };
     }
     return {
-      regular_price: toWooDecimal(patch.compareAtPrice),
-      sale_price: toWooDecimal(patch.price ?? null),
+      regular_price: toWooDecimal(compareAt),
+      sale_price: toWooDecimal(price ?? null),
     };
   }
 
   if (patch.price !== undefined) {
-    return patch.price === null
+    return price === null || price === undefined
       ? { regular_price: '', sale_price: '' }
-      : { regular_price: toWooDecimal(patch.price) };
+      : { regular_price: toWooDecimal(price) };
   }
 
   return {};

@@ -1,13 +1,14 @@
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { CUSTOMER_HOME } from '../../lib/auth/roleRouting';
 
 interface AdminRouteProps {
   children: React.ReactNode;
 }
 
 export default function AdminRoute({ children }: AdminRouteProps) {
-  const { isAuthenticated, loading, isAdmin, profileLoading, profileError, refreshProfile } = useAuthContext();
+  const { isAuthenticated, loading, isAdmin, profileLoading, profileError } = useAuthContext();
   const location = useLocation();
 
   // `loading` clears as soon as the session itself is known — before the
@@ -32,39 +33,18 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     return <Navigate to={`/login?from=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
+  // A confirmed-customer, or anyone whose profile could not be read, is sent to
+  // their own account page rather than shown an admin-themed dead end: the
+  // console is not a place a customer can be, and telling them so in the
+  // console's own visual language was the confusion this replaces. When the
+  // profile request itself failed (rather than reporting a non-admin role), the
+  // verdict is not trustworthy, so it is surfaced on the account page instead
+  // of a redirect loop against a role that was never really read.
   if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-charcoal p-4">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">🛡️</div>
-          <h1 className="font-serif text-2xl font-bold text-white mb-2">
-            Admin Access Required
-          </h1>
-          <p className="text-white/70 mb-6">
-            {profileError
-              ? "We couldn't confirm your admin access — your profile failed to load. This is usually temporary."
-              : 'This area is restricted to administrators only. Please contact support if you believe this is an error.'}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            {profileError && (
-              <button
-                type="button"
-                onClick={() => void refreshProfile()}
-                className="inline-flex items-center justify-center px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-colors"
-              >
-                Try again
-              </button>
-            )}
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-colors"
-            >
-              Go to Homepage
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    const retry = profileError
+      ? `?notice=${encodeURIComponent('admin-role-unconfirmed')}`
+      : '';
+    return <Navigate to={`${CUSTOMER_HOME}${retry}`} replace />;
   }
 
   return <>{children}</>;

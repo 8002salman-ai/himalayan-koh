@@ -21,7 +21,7 @@ import {
   updateWooVariation,
   WooWriteError,
 } from '@/lib/woo/productWrite';
-import { fromWooProduct, type AdminVariationPatch } from '@/lib/woo/productPayload';
+import { fromWooProduct, isUnusablePrice, type AdminVariationPatch } from '@/lib/woo/productPayload';
 
 const PATCH_FIELDS = [
   'name',
@@ -132,6 +132,15 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: 'Expected a JSON body.' }, { status: 400 });
+  }
+
+  // A price that cannot be read as a number is refused here rather than
+  // dropped by the mapper: a silent no-op on the price would answer 200 while
+  // leaving the store unchanged. See `isUnusablePrice`.
+  for (const field of ['price', 'compareAtPrice'] as const) {
+    if (isUnusablePrice(body[field])) {
+      return NextResponse.json({ error: `${field} must be a number.` }, { status: 400 });
+    }
   }
 
   try {

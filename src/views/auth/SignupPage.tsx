@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, User, Check } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
+import { CUSTOMER_HOME } from '../../lib/auth/roleRouting';
 
 const passwordRequirements = [
   { regex: /.{8,}/, label: 'At least 8 characters' },
@@ -28,7 +29,9 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true });
+      // A new account is a customer account, and the customer's home is the
+      // account portal (which opens on My Orders) — not the storefront.
+      navigate(CUSTOMER_HOME, { replace: true });
     }
   }, [isAuthenticated, navigate]);
 

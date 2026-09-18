@@ -57,7 +57,12 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   { source: '/return-policy', destination: '/return', permanent: true },
   { source: '/refund-policy', destination: '/return', permanent: true },
   { source: '/faq', destination: '/faqs', permanent: true },
-  { source: '/my-account', destination: '/login', permanent: true },
+  // `/my-account` used to send everyone to /login, which was right for a guest
+  // and wrong for a signed-in customer. It now routes to the account portal
+  // (`LEGACY_ACCOUNT_REDIRECTS` in lib/auth/roleRouting.ts), whose own guard
+  // sends an unauthenticated visitor to /login with a `from` that comes back
+  // here — the same destination for a guest, and the right one for everyone
+  // else. Duplicate sources are ambiguous, so the rule lives in one place.
   { source: '/cart', destination: '/products', permanent: false },
   { source: '/checkout', destination: '/products', permanent: false },
 

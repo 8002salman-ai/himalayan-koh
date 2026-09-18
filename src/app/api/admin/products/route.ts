@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { hasWooCommerceCredentials } from '@/lib/backend/credentials';
 import { createWooProduct, listWooProducts, WooWriteError } from '@/lib/woo/productWrite';
-import { fromWooProduct } from '@/lib/woo/productPayload';
+import { fromWooProduct, isUnusablePrice } from '@/lib/woo/productPayload';
 
 /** Maps the request body onto a patch, dropping keys the caller did not send. */
 function readPatch(body: Record<string, unknown>): Record<string, unknown> {
@@ -87,6 +87,12 @@ export async function POST(request: Request) {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: 'Expected a JSON body.' }, { status: 400 });
+  }
+
+  for (const field of ['price', 'compareAtPrice'] as const) {
+    if (isUnusablePrice(body[field])) {
+      return NextResponse.json({ error: `${field} must be a number.` }, { status: 400 });
+    }
   }
 
   try {

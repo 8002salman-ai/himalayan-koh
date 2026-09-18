@@ -1,25 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Loader2, Shield, Bell, Package, Heart, MapPin, Clock } from 'lucide-react';
+import { User, Mail, Phone, Loader2, Shield, Bell, Package, Heart, MapPin, Clock, FileText } from 'lucide-react';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import { useToast } from '../context/ToastContext';
 import DashboardSidebar from '../components/account/DashboardSidebar';
+import OrdersSection from '../components/account/OrdersSection';
 import { useAuthContext } from '../context/AuthContext';
 import { addressesApi, notificationsApi, ordersApi, wishlistApi } from '../lib/supabase/api';
 import { supabase, isSupabaseConfigured, clearSupabaseSession } from '../lib/supabase/client';
 import type { Address, Notification, OrderWithItems } from '../lib/supabase/database.types';
 
-type TabType = 'dashboard' | 'profile' | 'security' | 'notifications' | 'addresses';
+// The account portal is the only customer account screen. `/orders` was a
+// second one with its own layout and its own copy of the orders list; it is now
+// this portal's first tab and redirects here (see `LEGACY_ACCOUNT_REDIRECTS`).
+type TabType = 'orders' | 'dashboard' | 'profile' | 'security' | 'notifications' | 'addresses';
 
-const validTabs: TabType[] = ['dashboard', 'profile', 'security', 'notifications', 'addresses'];
+const validTabs: TabType[] = ['orders', 'dashboard', 'profile', 'security', 'notifications', 'addresses'];
+
+/** The tab the portal opens on: the customer's orders, which is why they came. */
+const DEFAULT_TAB: TabType = 'orders';
 
 export default function AccountPage() {
   const { profile, updateProfile, user, loading: authLoading, isAdmin } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tab = searchParams.get('tab') as TabType | null;
-    return tab && validTabs.includes(tab) ? tab : 'dashboard';
+    return tab && validTabs.includes(tab) ? tab : DEFAULT_TAB;
   });
   const toast = useToast();
   const [saving, setSaving] = useState(false);
@@ -55,9 +62,18 @@ export default function AccountPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * The URL is the tab's source of truth, so a link into the portal opens the
+   * section it names.
+   *
+   * Both this and the initial state above read `DEFAULT_TAB` — they used to
+   * each spell out `'dashboard'`, which is why the portal still opened on the
+   * summary after the default moved to My Orders: the effect runs on mount and
+   * immediately overwrote the state that had just been set correctly.
+   */
   useEffect(() => {
     const tab = searchParams.get('tab') as TabType | null;
-    setActiveTab(tab && validTabs.includes(tab) ? tab : 'dashboard');
+    setActiveTab(tab && validTabs.includes(tab) ? tab : DEFAULT_TAB);
   }, [searchParams]);
 
   useEffect(() => {
@@ -118,11 +134,9 @@ export default function AccountPage() {
 
   const setTab = (tab: TabType) => {
     setActiveTab(tab);
-    if (tab === 'dashboard') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ tab });
-    }
+    // The default tab has no query string, so `/account` stays the canonical
+    // URL for it rather than growing a `?tab=orders` that means the same thing.
+    setSearchParams(tab === DEFAULT_TAB ? ({} as Record<string, string>) : { tab });
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -283,11 +297,12 @@ export default function AccountPage() {
   };
 
   const tabs = [
-    { id: 'dashboard' as TabType, label: 'Dashboard', icon: Package },
-    { id: 'profile' as TabType, label: 'Profile', icon: User },
-    { id: 'security' as TabType, label: 'Security', icon: Shield },
-    { id: 'notifications' as TabType, label: 'Notifications', icon: Bell },
+    { id: 'orders' as TabType, label: 'My Orders', icon: Package },
+    { id: 'profile' as TabType, label: 'Account Details', icon: User },
     { id: 'addresses' as TabType, label: 'Addresses', icon: MapPin },
+    { id: 'security' as TabType, label: 'Password', icon: Shield },
+    { id: 'dashboard' as TabType, label: 'Dashboard', icon: FileText },
+    { id: 'notifications' as TabType, label: 'Notifications', icon: Bell },
   ];
 
   return (
@@ -300,7 +315,7 @@ export default function AccountPage() {
             animate={{ opacity: 1, y: 0 }}
             className="font-serif text-3xl md:text-4xl font-bold text-white"
           >
-            Account Settings
+            My Account
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -308,7 +323,7 @@ export default function AccountPage() {
             transition={{ delay: 0.1 }}
             className="text-white/70 mt-2"
           >
-            Manage your profile and preferences
+            Your orders, account details, addresses and password
           </motion.p>
         </div>
       </div>
@@ -340,6 +355,9 @@ export default function AccountPage() {
                   </button>
                 ))}
               </div>
+
+              {/* My Orders Tab — the default, and the reason most customers come. */}
+              {activeTab === 'orders' && <OrdersSection />}
 
               {/* Dashboard Tab */}
               {activeTab === 'dashboard' && (

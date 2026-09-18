@@ -15,6 +15,16 @@
 
 /** The fields placement is judged on: a product's name, and its category label. */
 export interface NicheCheckInput {
+  /**
+   * The catalog record's own id, when the source reports one.
+   *
+   * The guard judges text, but the owner also rejects specific *records* —
+   * carry-over products that are perfectly pink-salt-shaped and simply are not
+   * wanted (see `OWNER_REJECTED_PRODUCT_IDS` in `./niche.ts`). An id is the only
+   * thing about those that is stable: they can be renamed, and a rename must not
+   * bring one back.
+   */
+  id?: number | string | null;
   name: string;
   /** The product's category label, when the source reports one. */
   category?: string | null;

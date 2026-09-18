@@ -114,6 +114,64 @@ export function isOffNicheText(text: string | null | undefined): boolean {
 }
 
 /**
+ * Catalog records the owner has refused, whatever they happen to be called.
+ *
+ * The term guard above judges *text* — "is this copy about livestock". These are
+ * a different question with a different answer: the owner looked at the current
+ * live catalogue and named products that are not what Himalayan Koh sells now,
+ * even though every one of them is genuine pink salt and passes the term guard
+ * cleanly. They are Himalayan Chef jars (a different brand) and a salt lamp /
+ * ionizer air purifier.
+ *
+ * Two reasons this is a list of ids rather than more denylist terms:
+ *
+ * 1. **A rename must not bring a rejected product back.** These are carry-over
+ *    WooCommerce records, and the owner can retitle one in the console at any
+ *    time. The id is the only stable thing about it.
+ * 2. **The rule the owner gave is not derivable from the copy.** "Published in
+ *    WooCommerce" is not evidence that a product belongs on this storefront —
+ *    that assumption is exactly what put these five on the temporary build. A
+ *    curated list is the honest encoding of an owner decision, and it is
+ *    reported in `docs/` so the decision is reviewable rather than implicit.
+ *
+ * They are also set to `draft` on staging, so the store stops returning them at
+ * all; this guard is what makes the exclusion hold if one is ever republished —
+ * and it covers production-sourced records (271, 281, 286, 291), which are
+ * livestock and are already caught by the term guard.
+ */
+export const OWNER_REJECTED_PRODUCT_IDS: readonly number[] = [
+  // Himalayan Chef Himalayan Pink Salt Fine Grain, Jar-1 lbs
+  2185,
+  // Himalayan Chef Himalayan Pink Salt Coarse Grain, Jar-1 lbs
+  2192,
+  // HIMALAYAN CRYSTAL ROCK SALT LAMP IONIZER AIR PURIFIER (publish + draft copies)
+  2292,
+  2294,
+  2295,
+];
+
+/** Ids awaiting an owner decision about the human/salt-lick question. */
+export const OWNER_REVIEW_PRODUCT_IDS: readonly number[] = [
+  // SALT LICKS — genuine pink salt, but the owner has not confirmed whether it
+  // is sold for human use; withheld until they say so.
+  2352,
+];
+
+/** True when a catalog record is one the owner has refused. */
+export function isOwnerRejectedProduct(id: number | string | null | undefined): boolean {
+  if (id === null || id === undefined || id === '') return false;
+  const numeric = typeof id === 'number' ? id : Number(String(id));
+  return Number.isFinite(numeric) && OWNER_REJECTED_PRODUCT_IDS.includes(numeric);
+}
+
+/** True when a catalog record is withheld pending an owner decision. */
+export function isOwnerReviewProduct(id: number | string | null | undefined): boolean {
+  if (id === null || id === undefined || id === '') return false;
+  const numeric = typeof id === 'number' ? id : Number(String(id));
+  return Number.isFinite(numeric) && OWNER_REVIEW_PRODUCT_IDS.includes(numeric);
+}
+
+/**
  * True when a product belongs on the Himalayan Koh storefront.
  *
  * A product is judged on everything about it that a visitor would see: its name,
@@ -130,6 +188,10 @@ export function isOffNicheText(text: string | null | undefined): boolean {
  * its own description sells it for a feed lot.
  */
 export function isNicheProduct(input: NicheCheckInput): boolean {
+  // An owner decision outranks the text guard: these pass it and are still not
+  // for sale here.
+  if (isOwnerRejectedProduct(input.id) || isOwnerReviewProduct(input.id)) return false;
+
   return (
     !isOffNicheText(input.name) &&
     !isOffNicheText(input.category ?? '') &&

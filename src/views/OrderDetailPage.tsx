@@ -72,7 +72,7 @@ export default function OrderDetailPage() {
     <div className="min-h-screen bg-warm-white">
       <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <Link to="/orders" className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-4 text-sm">
+          <Link to="/account?tab=orders" className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-4 text-sm">
             <ArrowLeft size={16} />
             Back to Orders
           </Link>

@@ -19,3 +19,13 @@ tsconfig.tsbuildinfo
 supabase/.temp/
 .branches
 .build-marker
+.vinext/
+.wrangler/
+
+# Cloudflare Worker secrets. `wrangler dev` reads these locally; a deployed
+# Worker gets them from `wrangler secret put`. Neither belongs in git.
+.dev.vars
+.dev.vars.*
+
+# Local Worker dev-server output (scripts/run-cloudflare-dev.mjs).
+.cloudflare-dev*.log

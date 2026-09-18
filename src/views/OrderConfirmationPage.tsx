@@ -236,7 +236,7 @@ export default function OrderConfirmationPage() {
 
             <div className="flex flex-col gap-3">
               {user && (
-                <Link to="/orders" className="w-full flex items-center justify-center px-6 py-3 bg-charcoal hover:bg-charcoal-light text-white font-semibold rounded-xl transition-colors">
+                <Link to="/account?tab=orders" className="w-full flex items-center justify-center px-6 py-3 bg-charcoal hover:bg-charcoal-light text-white font-semibold rounded-xl transition-colors">
                   View in My Purchases
                 </Link>
               )}

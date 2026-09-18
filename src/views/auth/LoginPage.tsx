@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, UserRound } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { resolvePostLoginDestination } from '../../lib/auth/roleRouting';
 
-type DemoAccount = { label: string; email: string; password: string; redirectTo: string };
+type DemoAccount = { label: string; email: string; password: string };
 
 // Demo credentials only exist at all in a development build. Checking
 // process.env.NODE_ENV directly (not through the isDev re-export) lets the
@@ -19,13 +20,11 @@ function getDemoAccounts(): { customer: DemoAccount; admin: DemoAccount } | null
       label: 'Use Demo Customer',
       email: 'customer@himalayankoh.com',
       password: 'Customer@123',
-      redirectTo: '/account',
     },
     admin: {
       label: 'Use Demo Admin',
       email: 'admin@himalayankoh.com',
       password: 'Admin@123',
-      redirectTo: '/admin',
     },
   };
 }
@@ -37,10 +36,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState(demoAccounts?.customer.password ?? '');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
-  const [demoRedirect, setDemoRedirect] = useState<string | null>(null);
-  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
-  
-  const { signIn, isAuthenticated } = useAuthContext();
+
+  const { signIn, isAuthenticated, isAdmin, profileLoading } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,28 +65,33 @@ export default function LoginPage() {
     }
   }, [from]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(redirectTarget || from, { replace: true });
-    }
-  }, [isAuthenticated, navigate, from, redirectTarget]);
+  /**
+   * Where this sign-in lands, decided by role — never by the address typed.
+   *
+   * The previous rule compared the email against the *demo* admin address and
+   * otherwise fell back to `from`, so a real administrator signed in and
+   * arrived at the storefront, while a demo admin only worked in a development
+   * build. The role is the only thing that decides it (lib/auth/roleRouting).
+   */
+  const destination = resolvePostLoginDestination({ isAdmin, from });
 
-  const getRedirectForEmail = (loginEmail: string) => {
-    if (demoRedirect) return demoRedirect;
-    if (demoAccounts && loginEmail.trim().toLowerCase() === demoAccounts.admin.email) return '/admin';
-    return from;
-  };
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    // The role arrives with the profile row (or the session's role claim).
+    // Navigating before it does is how an admin ends up in the customer
+    // portal: `isAdmin` is briefly false for everyone.
+    if (profileLoading) return;
+    navigate(destination, { replace: true });
+  }, [isAuthenticated, navigate, destination, profileLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     setIsSubmitting(true);
-    const nextRedirect = getRedirectForEmail(email);
-    setRedirectTarget(nextRedirect);
 
     try {
       await signIn({ email, password });
-      navigate(nextRedirect, { replace: true });
+      // The effect above performs the redirect once the role is known.
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -104,8 +106,6 @@ export default function LoginPage() {
     const account = demoAccounts[type];
     setEmail(account.email);
     setPassword(account.password);
-    setDemoRedirect(account.redirectTo);
-    setRedirectTarget(account.redirectTo);
     setFormError('');
   };
 

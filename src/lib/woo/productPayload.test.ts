@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   fromWooProduct,
+  isUnusablePrice,
   priceFields,
   sellingPrice,
+  toPriceNumber,
   toWooProductBody,
   toWooVariationBody,
   variationLabel,
@@ -37,6 +39,50 @@ describe('priceFields', () => {
 
   it('says nothing when the caller said nothing', () => {
     expect(priceFields({})).toEqual({});
+  });
+
+  it('accepts a numeric string, which is what a form field produces', () => {
+    // Dropping this used to answer 200 with the store unchanged: `toWooDecimal`
+    // is number-only, so a string fell through to `undefined` and JSON omitted
+    // the field entirely. A silent no-op on the price is the one outcome the
+    // mapper must not produce.
+    expect(priceFields({ price: '9.95' })).toEqual({ regular_price: '9.95' });
+    expect(priceFields({ price: '9.95', compareAtPrice: '17.95' })).toEqual({
+      regular_price: '17.95',
+      sale_price: '9.95',
+    });
+    expect(priceFields({ price: ' 12 ' })).toEqual({ regular_price: '12.00' });
+  });
+
+  it('treats an empty string as a cleared price, like null', () => {
+    expect(priceFields({ price: '' })).toEqual({ regular_price: '', sale_price: '' });
+  });
+
+  it('never turns an unreadable price into a write', () => {
+    // Refused at the API boundary instead; the mapper must not invent a price.
+    expect(isUnusablePrice('abc')).toBe(true);
+    expect(isUnusablePrice('')).toBe(false);
+    expect(isUnusablePrice(null)).toBe(false);
+    expect(isUnusablePrice(undefined)).toBe(false);
+    expect(isUnusablePrice(0)).toBe(false);
+    expect(isUnusablePrice('2.50')).toBe(false);
+  });
+});
+
+describe('toPriceNumber', () => {
+  it('passes numbers through and leaves absence absent', () => {
+    expect(toPriceNumber(9.95)).toBe(9.95);
+    expect(toPriceNumber(0)).toBe(0);
+    expect(toPriceNumber(undefined)).toBeUndefined();
+    expect(toPriceNumber(null)).toBeNull();
+  });
+
+  it('reads a numeric string and refuses anything else', () => {
+    expect(toPriceNumber('9.95')).toBe(9.95);
+    expect(toPriceNumber(' 9.95 ')).toBe(9.95);
+    expect(toPriceNumber('')).toBeNull();
+    expect(toPriceNumber('free')).toBeUndefined();
+    expect(toPriceNumber(Number.POSITIVE_INFINITY)).toBeUndefined();
   });
 });
 
