@@ -2713,6 +2713,67 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
   const [alt, setAlt] = useState('');
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState<number | null>(null);
+  const [finding, setFinding] = useState(false);
+
+  /**
+   * Find this product's images on the store BY NAME.
+   *
+   * The paste-a-URL flow only works when the editor already knows the exact
+   * page. This asks the server to find it: the resolver matches the name
+   * against the site's sitemap, fetches the best page, extracts its images and
+   * lets the configured AI provider (OpenRouter/Gemini) drop the ones that are
+   * not this product. The browser never holds a key and never needs the URL.
+   */
+  const findByTitle = async () => {
+    const title = (product.name || '').trim();
+    if (!title) { notify('Enter the product name first — the search uses it', 'error'); return; }
+    setFinding(true);
+    try {
+      const token = await getFreshAccessToken();
+      const r = await fetch('/api/admin/product-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ title }),
+      });
+      const j = (await r.json().catch(() => null)) as {
+        error?: string;
+        images?: { url: string }[];
+        pages?: unknown[];
+        ai?: { used: boolean; kept: number; provider: string | null; model: string | null; reason: string };
+      } | null;
+      if (!r.ok) { notify(j?.error || `Image search failed (HTTP ${r.status})`, 'error'); return; }
+
+      const found = (j?.images || []).map((i) => i.url).filter((u) => /^https?:\/\//i.test(u));
+      if (!found.length) {
+        notify(
+          j?.pages?.length
+            ? 'No images found on the pages that matched — check the product name.'
+            : 'No matching product page found on the store for this name.',
+          'error'
+        );
+        return;
+      }
+      const existing = new Set(product.images.map((i) => i.url));
+      const room = Math.max(0, 5 - product.images.length);
+      const fresh = found.filter((u) => !existing.has(u)).slice(0, room);
+      if (!fresh.length) { notify('Everything found for this name is already added (max 5 images).', 'error'); return; }
+
+      const startLen = product.images.length;
+      onProduct({
+        ...product,
+        images: [
+          ...product.images,
+          ...fresh.map((u, i) => ({ id: uid(), productId: product.id, url: u, altText: '', kind: 'product' as const, isPrimary: startLen === 0 && i === 0, sortOrder: startLen + i, variantId: null })),
+        ],
+      });
+      const aiNote = j?.ai?.used ? `AI kept ${j.ai.kept} (${j.ai.provider} ${j.ai.model})` : 'not AI-ranked';
+      notify(`Found ${found.length} image${found.length === 1 ? '' : 's'} for “${title}” — ${aiNote}; added ${fresh.length}.`);
+    } catch (e) {
+      notify(`Image search failed: ${(e as Error).message}`, 'error');
+    } finally {
+      setFinding(false);
+    }
+  };
   const fileRef = useRef<HTMLInputElement>(null);
 
   const addByUrl = () => {
@@ -2852,10 +2913,11 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
           <div className="flex-1 min-w-[140px]"><input value={alt} onChange={(e) => setAlt(e.target.value)} className={I} placeholder="Alt text (optional)" /></div>
           <button onClick={addByUrl} disabled={uploading} className="btn-glow px-3.5 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1.5"><Plus size={15} />Add URL</button>
           <button onClick={importAllFromUrl} disabled={uploading} className="px-3.5 py-2 border border-blue-300 text-blue-700 hover:bg-blue-50 disabled:opacity-50 rounded-lg text-sm flex items-center gap-1.5" title="Fetch every image found on the pasted page URL and add them all (max 5)">
+            <button onClick={findByTitle} disabled={uploading || finding} className="px-3.5 py-2 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 rounded-lg text-sm flex items-center gap-1.5" title="Search the store for this product by its name and pull its images (AI filters out the ones that are not this product)"><Sparkle size={15} />{finding ? 'Searching…' : 'Find by name'}</button>
             <Download size={15} />Fetch all from page
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Up to 5 images. Uploads are stored in Supabase Storage (durable). Paste a product page URL + “Fetch all from page” to pull every image at once, then ✕ the ones you do not want.</p>
+        <p className="text-xs text-gray-400 mt-2">Up to 5 images. Uploads are stored in Supabase Storage (durable). “Find by name” searches the store for this product and pulls its images (AI drops the ones that are not it); paste a product page URL + “Fetch all from page” to pull every image from a page you already know. Then ✕ the ones you do not want.</p>
       </div>
 
       {/* Image grid with thumbnail picker */}
