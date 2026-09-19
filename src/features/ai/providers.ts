@@ -21,7 +21,7 @@ import type { AIProvider } from './types';
 // https://openrouter.ai/api/v1/models. Keep it to ids that endpoint actually
 // returns: OpenRouter retires `:free` ids without notice, and a retired id
 // fails the whole request with HTTP 404 instead of degrading gracefully.
-export const OPENROUTER_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+export const OPENROUTER_DEFAULT_MODEL = 'google/gemini-2.5-flash';
 
 /**
  * Model ids upstream providers have RETIRED, mapped to a live replacement.
@@ -51,7 +51,22 @@ export function liveModelFor(model: string): string {
 }
 
 export const DEFAULT_AI_PROVIDERS: AIProvider[] = [
-  { id: 'openrouter', name: 'OpenRouter (Multi-Model)', models: [OPENROUTER_DEFAULT_MODEL, 'nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-31b-it:free', 'cohere/north-mini-code:free', 'openrouter/free'], defaultModel: OPENROUTER_DEFAULT_MODEL, enabled: true, isDefault: true },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter (Multi-Model)',
+    models: [
+      'google/gemini-2.5-flash',
+      'google/gemini-2.5-flash-lite',
+      'openrouter/free',
+      'nvidia/nemotron-3-super-120b-a12b:free',
+      'nvidia/nemotron-3.5-lightning:free',
+      'google/gemma-4-31b-it:free',
+      'cohere/north-mini-code:free',
+    ],
+    defaultModel: 'google/gemini-2.5-flash',
+    enabled: true,
+    isDefault: true,
+  },
   { id: 'deepseek', name: 'DeepSeek (Fast & Smart)', models: ['deepseek-chat', 'deepseek-reasoner'], defaultModel: 'deepseek-chat', enabled: true, isDefault: false },
   { id: 'gemini', name: 'Google Gemini (Flash)', models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'], defaultModel: 'gemini-2.5-flash', enabled: true, isDefault: false },
   { id: 'openai', name: 'OpenAI', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'], defaultModel: 'gpt-4o-mini', enabled: false, isDefault: false },
