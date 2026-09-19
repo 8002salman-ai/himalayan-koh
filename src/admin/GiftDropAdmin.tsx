@@ -1,9 +1,10 @@
 // ============================================================================
-// LUXEDGE ADMIN — Pet Gift Drop
+// HIMALAYAN KOH ADMIN — Gift Drop
 //
 // Manages the real $0 giveaway: campaign configuration, live inventory, and
-// every claim (same luxedge_orders rows the public flow creates). Actions
-// persist server-side through /api/admin/gift-drop (admin JWT).
+// every claim. Actions persist server-side through /api/admin/gift-drop (admin JWT).
+// Note: ClaimView retains petType/petName/petSize fields for DB compatibility
+// with the legacy gift-drop claim form schema — do not remove these columns.
 // ============================================================================
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { getAccessToken } from '../services/supabase';
@@ -81,7 +82,16 @@ export default function GiftDropAdmin() {
         setClaims(Array.isArray(d.claims) ? d.claims : []);
         setRemaining(typeof d.stats?.remaining === 'number' ? d.stats.remaining : -1);
       })
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Could not load Gift Drop. Please verify admin session.'))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/401|403|JWT|unauthorized|auth/i.test(msg)) {
+          setErr('auth-error');
+        } else if (/404|not found|no campaign/i.test(msg)) {
+          setErr('not-configured');
+        } else {
+          setErr(msg || 'Could not load Gift Drop. Please verify admin session.');
+        }
+      })
       .finally(() => setLoaded(true));
   };
 
@@ -153,7 +163,33 @@ export default function GiftDropAdmin() {
         </div>
       </div>
 
-      {err && (
+      {!loaded && (
+        <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+          Loading Gift Drop…
+        </div>
+      )}
+
+      {loaded && err === 'auth-error' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm">
+          <h3 className="font-semibold text-amber-900 mb-1">Admin session required</h3>
+          <p className="text-amber-800">Gift Drop requires an active admin session. Sign in and return to this page.</p>
+        </div>
+      )}
+
+      {loaded && err === 'not-configured' && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3 text-sm">
+          <h3 className="font-semibold text-gray-900">No Gift Drop campaign configured</h3>
+          <p className="text-gray-600">Create a campaign to start accepting gift claim requests. No campaign row exists in the database yet.</p>
+          <button
+            onClick={initDefaultCampaign}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium"
+          >
+            Create Default Campaign
+          </button>
+        </div>
+      )}
+
+      {loaded && err && err !== 'auth-error' && err !== 'not-configured' && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800 flex items-center justify-between">
           <span>{err}</span>
           <button onClick={() => setErr('')} className="text-red-600 hover:underline">Dismiss</button>

@@ -351,7 +351,7 @@ function mapProductRow(
     images,
     imageAlts,
     isActive: true,
-    brand: p.brand || 'Luxedge',
+    brand: p.brand || 'Himalayan Koh',
     tags: rawTagList(p),
     featured: p.featured === true,
     newArrival: p.new_arrival === true,

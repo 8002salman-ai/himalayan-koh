@@ -1,4 +1,5 @@
 import { SITE_ORIGIN } from '@/lib/site/origin';
+import { SITE_CONFIG } from '@/lib/site/config';
 
 interface SendEmailAttachment {
   filename: string;
@@ -27,7 +28,7 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
 
   const from =
     process.env.RESEND_FROM?.trim() ||
-    'Himalayan Koh <onboarding@resend.dev>';
+    `${SITE_CONFIG.siteName} <${SITE_CONFIG.defaultFromEmail}>`;
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -61,7 +62,7 @@ export function adminNotificationEmails(): string[] {
   const raw =
     process.env.ADMIN_NOTIFICATION_EMAIL ||
     process.env.SHIPPO_FROM_EMAIL ||
-    'sales@himalayankoh.com';
+    SITE_CONFIG.salesEmail;
   return raw
     .split(',')
     .map((entry) => entry.trim())

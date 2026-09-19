@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, isEmailConfigured } from '@/lib/email/sendEmail';
+import { SITE_CONFIG } from '@/lib/site/config';
 
+/**
+ * POST /api/email/send
+ *
+ * Sends a test or transactional email.
+ *
+ * Safety guards — TWO conditions must both be true for real sending:
+ *   1. RESEND_API_KEY must be configured (isEmailConfigured() === true)
+ *   2. EMAIL_SEND_ENABLED must be set to "true" in server environment
+ *
+ * If either is absent, the request is logged and returns a SIMULATION response.
+ * A failed provider response is reported as an error, never as success.
+ * API keys are never exposed to the browser.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const to = String(body.to || '8002salman@gmail.com').trim();
-    const subject = String(body.subject || 'Himalayan Koh test email').trim();
+    const to = String(body.to || SITE_CONFIG.forwardDestination).trim();
+    const subject = String(body.subject || `${SITE_CONFIG.siteName} test email`).trim();
     const text = String(body.text || '').trim();
     const html = String(body.html || `<p>${text}</p>`).trim();
 
@@ -13,19 +27,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Recipient address required' }, { status: 400 });
     }
 
-    if (isEmailConfigured()) {
+    const providerConfigured = isEmailConfigured();
+    const sendEnabled = SITE_CONFIG.emailSendEnabled;
+
+    if (providerConfigured && sendEnabled) {
+      // Real send path — both guards cleared
       const sent = await sendEmail({ to, subject, html, text });
       if (sent) {
-        return NextResponse.json({ ok: true, message: `Email sent to ${to}` });
+        return NextResponse.json({ ok: true, message: `Email sent to ${to} from ${SITE_CONFIG.defaultFromEmail}` });
       }
-      return NextResponse.json({ ok: false, error: 'Failed to send email via provider' }, { status: 500 });
+      // Provider accepted the request but reported failure
+      return NextResponse.json(
+        { ok: false, error: 'Provider reported failure. Check Resend dashboard for details.' },
+        { status: 500 }
+      );
     }
 
-    // Safe simulation mode if RESEND_API_KEY is not configured yet
+    // Simulation mode — determine which guard failed for transparency
+    const reason = !providerConfigured
+      ? 'RESEND_API_KEY is not configured'
+      : 'EMAIL_SEND_ENABLED is not set to "true" in the server environment';
+
+    console.info('[email/send] Simulation mode —', reason);
+
     return NextResponse.json({
       ok: true,
       simulated: true,
-      message: `[SIMULATION] Test email from sales@himalayankoh.com to ${to} verified and logged to audit trail. To send live, configure RESEND_API_KEY.`,
+      reason,
+      message: `[SIMULATION] Would send from ${SITE_CONFIG.defaultFromEmail} → ${to}. No email was sent. ${reason}.`,
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 500 });

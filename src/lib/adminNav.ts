@@ -110,7 +110,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: 'Marketing',
     items: [
-      { label: 'SEO Engine', path: '/admin/seo', icon: SearchIcon },
+      { label: 'SEO Engine', path: '/admin/seo-engine', icon: SearchIcon },
       { label: 'Marketing Gen', path: '/admin/marketing', icon: Megaphone, pending: true },
       { label: 'Marketing & Traffic', path: '/admin/marketing-traffic', icon: TrendingUp, pending: true },
       { label: 'Email Marketing', path: '/admin/email-marketing', icon: Mail, pending: true },
@@ -128,7 +128,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { label: 'Product Scout', path: '/admin/scout', icon: Crosshair, pending: true },
       { label: 'Product Research', path: '/admin/product-research', icon: FlaskConical, pending: true },
       { label: 'AI Control', path: '/admin/ai-control', icon: SlidersHorizontal, pending: true },
-      { label: 'AI Intelligence', path: '/admin/ai-intelligence', icon: Brain, pending: true },
+      { label: 'AI Intelligence', path: '/admin/hermes-intel', icon: Brain, pending: true },
     ],
   },
   {

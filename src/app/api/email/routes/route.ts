@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SITE_CONFIG } from '@/lib/site/config';
 
-const DEFAULT_DESTINATION = process.env.CLOUDFLARE_EMAIL_FORWARD || '8002salman@gmail.com';
-const DOMAIN = 'himalayankoh.com';
+/**
+ * GET /api/email/routes    — list current routing addresses
+ * POST /api/email/routes   — add a new forwarding address
+ * DELETE /api/email/routes — remove a forwarding address
+ *
+ * Preview/staging implementation: routes are stored in-memory for the
+ * current server instance. A production implementation would call the
+ * Cloudflare Email Routing API using SITE_CONFIG.cloudflareToken.
+ *
+ * Routes are always forwarded to SITE_CONFIG.forwardDestination.
+ */
 
-const IN_MEMORY_ROUTES = [
+const DOMAIN = SITE_CONFIG.emailDomain;
+const DEFAULT_DESTINATION = SITE_CONFIG.forwardDestination;
+
+// In-memory route store (stateless preview/staging).
+// Production: replace with Cloudflare Email Routing API calls.
+const IN_MEMORY_ROUTES: Array<{
+  id: string;
+  address: string;
+  local: string;
+  forwardsTo: string;
+  enabled: boolean;
+}> = [
   { id: '1', address: `sales@${DOMAIN}`, local: 'sales', forwardsTo: DEFAULT_DESTINATION, enabled: true },
   { id: '2', address: `contact@${DOMAIN}`, local: 'contact', forwardsTo: DEFAULT_DESTINATION, enabled: true },
   { id: '3', address: `info@${DOMAIN}`, local: 'info', forwardsTo: DEFAULT_DESTINATION, enabled: true },
@@ -11,12 +32,22 @@ const IN_MEMORY_ROUTES = [
 ];
 
 export async function GET() {
+  const hasToken = Boolean(SITE_CONFIG.cloudflareToken);
   return NextResponse.json({
     ok: true,
-    configured: true,
+    configured: hasToken,
     domain: DOMAIN,
     routes: IN_MEMORY_ROUTES,
-    destinations: [{ email: DEFAULT_DESTINATION, verified: true }],
+    destinations: [
+      {
+        email: DEFAULT_DESTINATION,
+        verified: false,
+        note: 'Verification state unknown — check Cloudflare dashboard.',
+      },
+    ],
+    note: hasToken
+      ? 'Cloudflare API token present. Routes shown are in-memory defaults for preview/staging. Live sync with Cloudflare requires CF API integration.'
+      : 'CLOUDFLARE_API_TOKEN not set. Routes shown are preview defaults only — not synced to Cloudflare.',
   });
 }
 
@@ -31,8 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     const fullAddress = `${name}@${DOMAIN}`;
-    const existing = IN_MEMORY_ROUTES.find((r) => r.local === name);
-    if (!existing) {
+    if (!IN_MEMORY_ROUTES.find((r) => r.local === name)) {
       IN_MEMORY_ROUTES.push({
         id: String(Date.now()),
         address: fullAddress,
@@ -44,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: `Address ${fullAddress} created forwarding to ${forwardTo}`,
+      message: `[PREVIEW] Address ${fullAddress} → ${forwardTo} added (in-memory). Persist permanently in the Cloudflare dashboard.`,
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 500 });
@@ -60,12 +90,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   const idx = IN_MEMORY_ROUTES.findIndex((r) => r.local === name);
-  if (idx !== -1) {
-    IN_MEMORY_ROUTES.splice(idx, 1);
-  }
+  if (idx !== -1) IN_MEMORY_ROUTES.splice(idx, 1);
 
   return NextResponse.json({
     ok: true,
-    message: `Address ${name}@${DOMAIN} removed`,
+    message: `[PREVIEW] Address ${name}@${DOMAIN} removed (in-memory only). Remove permanently in the Cloudflare dashboard.`,
   });
 }

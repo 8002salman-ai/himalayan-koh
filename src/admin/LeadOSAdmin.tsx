@@ -1156,7 +1156,10 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                             <span className="font-bold text-slate-500 uppercase tracking-wider">
                               Verified Facts (Observed)
                             </span>
-                            <span className="text-[10px] text-slate-400">OpenStreetMap ID: {lead.osmId}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                              <Globe className="w-3 h-3 text-slate-400" />
+                              Source: {lead.dataSource} · OSM ID: {lead.osmId}
+                            </span>
                           </div>
 
                           <div className="space-y-1 text-slate-700">

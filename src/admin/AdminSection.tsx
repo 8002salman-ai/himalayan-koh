@@ -5340,7 +5340,32 @@ export function AEmailMarketing() {
   const { notify } = useApp();
   const [status, setStatus] = useState<{ configured: boolean; connected: boolean; message?: string; audience?: number; platform?: string } | null>(null);
   const [checking, setChecking] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<{ configured?: boolean; inbound?: { enabled?: boolean; destination?: string; routes?: string[] }; outbound?: { sender?: string; bindingPresent?: boolean; note?: string } } | null>(null);
+  const [emailStatus, setEmailStatus] = useState<{
+    ok?: boolean;
+    domain?: string;
+    forwardDestination?: string;
+    inbound?: {
+      status?: 'CONFIGURED' | 'NOT_CONFIGURED' | 'VERIFIED' | 'NOT_VERIFIED';
+      cloudflareTokenPresent?: boolean;
+      note?: string;
+      // legacy fields from old API shape
+      enabled?: boolean;
+      destination?: string;
+      routes?: string[];
+    };
+    outbound?: {
+      status?: 'CONFIGURED' | 'NOT_CONFIGURED' | 'SIMULATION';
+      sender?: string;
+      resendConfigured?: boolean;
+      sendEnabled?: boolean;
+      note?: string;
+      // legacy fields
+      bindingPresent?: boolean;
+    };
+    spf?: { status?: string; note?: string };
+    dkim?: { status?: string; note?: string };
+    omnisend?: { status?: string; note?: string };
+  } | null>(null);
   const [testMail, setTestMail] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
   const [testMailMsg, setTestMailMsg] = useState('');
   const [mailRoutes, setMailRoutes] = useState<{ configured?: boolean; routes?: { id?: string; address?: string; local?: string; forwardsTo?: string; enabled?: boolean }[]; destinations?: { email?: string; verified?: boolean }[]; message?: string } | null>(null);
@@ -5476,30 +5501,62 @@ export function AEmailMarketing() {
           <div className="bg-white rounded-xl border border-blue-100 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Inbound — Forwarding</p>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <p className="text-sm font-semibold text-gray-800">Email Routing active</p>
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                emailStatus?.inbound?.status === 'VERIFIED' ? 'bg-emerald-500'
+                : emailStatus?.inbound?.status === 'NOT_CONFIGURED' ? 'bg-gray-400'
+                : 'bg-amber-500'
+              }`} />
+              <p className="text-sm font-semibold text-gray-800">
+                {emailStatus?.inbound?.status === 'VERIFIED' ? 'Email Routing verified'
+                  : emailStatus?.inbound?.status === 'NOT_CONFIGURED' ? 'Not configured'
+                  : emailStatus?.inbound?.status === 'NOT_VERIFIED' ? 'NOT_VERIFIED'
+                  : 'Checking…'}
+              </p>
             </div>
             <p className="text-xs text-gray-600">
-              Emails to <b>anything@himalayankoh.com</b> (incl. <b>sales@himalayankoh.com</b>) forward to{' '}
-              <b>{emailStatus?.inbound?.destination || '8002salman@gmail.com'}</b> — set up via the Cloudflare API.
+              {emailStatus?.inbound?.note || 'Checking Cloudflare email routing configuration…'}
             </p>
+            {emailStatus?.inbound?.status === 'NOT_VERIFIED' && (
+              <p className="mt-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                Cannot verify routing rules from the application. Check the Cloudflare dashboard to confirm active routing rules for @{emailStatus?.domain ?? 'himalayankoh.com'}.
+              </p>
+            )}
             <div className="mt-2 space-y-0.5">
-              {(emailStatus?.inbound?.routes || ['sales@himalayankoh.com → 8002salman@gmail.com', 'anything@himalayankoh.com → 8002salman@gmail.com']).map((r, i) => (
-                <p key={i} className="text-[11px] font-mono text-blue-700 bg-blue-50 rounded px-2 py-0.5">{r}</p>
-              ))}
+              <p className="text-[11px] font-mono text-blue-700 bg-blue-50 rounded px-2 py-0.5">
+                sales@himalayankoh.com → {emailStatus?.forwardDestination ?? '8002salman@gmail.com'}
+              </p>
+              <p className="text-[11px] font-mono text-blue-700 bg-blue-50 rounded px-2 py-0.5">
+                anything@himalayankoh.com → {emailStatus?.forwardDestination ?? '8002salman@gmail.com'} (catch-all)
+              </p>
             </div>
           </div>
+
 
           {/* Outbound */}
           <div className="bg-white rounded-xl border border-blue-100 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Outbound — Sender</p>
             <div className="flex items-center gap-2 mb-1">
-              <span className={`w-2.5 h-2.5 rounded-full ${emailStatus?.outbound?.bindingPresent ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              <p className="text-sm font-semibold text-gray-800">sales@himalayankoh.com {emailStatus?.outbound?.bindingPresent ? '· binding ready' : '· binding pending'}</p>
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                emailStatus?.outbound?.status === 'CONFIGURED' ? 'bg-emerald-500'
+                : emailStatus?.outbound?.status === 'NOT_CONFIGURED' ? 'bg-gray-400'
+                : 'bg-blue-400'
+              }`} />
+              <p className="text-sm font-semibold text-gray-800">
+                {emailStatus?.outbound?.sender ?? 'sales@himalayankoh.com'}
+                {emailStatus?.outbound?.status === 'SIMULATION' && (
+                  <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium">SIMULATION</span>
+                )}
+                {emailStatus?.outbound?.status === 'NOT_CONFIGURED' && (
+                  <span className="ml-2 text-[10px] bg-gray-100 text-gray-500 rounded-full px-2 py-0.5 font-medium">NOT_CONFIGURED</span>
+                )}
+                {emailStatus?.outbound?.status === 'CONFIGURED' && (
+                  <span className="ml-2 text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-medium">CONFIGURED</span>
+                )}
+              </p>
             </div>
-            <p className="text-xs text-gray-600">{emailStatus?.outbound?.note || 'Emails are sent from sales@himalayankoh.com via the Cloudflare send_email binding.'}</p>
+            <p className="text-xs text-gray-600">{emailStatus?.outbound?.note || 'Checking outbound email configuration…'}</p>
             <button onClick={sendTestEmail} disabled={testMail === 'sending'} className="btn-glow mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <PaperPlaneRight size={13} /> {testMail === 'sending' ? 'Sending…' : 'Send test email to 8002salman@gmail.com'}
+              <PaperPlaneRight size={13} /> {testMail === 'sending' ? 'Sending…' : `Send test email to ${emailStatus?.forwardDestination ?? '8002salman@gmail.com'}`}
             </button>
             {testMailMsg && <p className={`mt-2 text-[11px] ${testMail === 'sent' ? 'text-emerald-700' : 'text-red-600'}`}>{testMailMsg}</p>}
           </div>
@@ -5547,10 +5604,11 @@ export function AEmailMarketing() {
         <div className="mt-3 bg-white/70 rounded-xl border border-blue-100 p-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">DNS records (deliverability)</p>
           <div className="grid sm:grid-cols-3 gap-2 text-[11px]">
-            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">MX (inbound)</p><p className="text-gray-500 font-mono break-all">route1/2/3.mx.cloudflare.net — already live ✓</p></div>
-            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">SPF (outbound)</p><p className="text-gray-500 font-mono break-all">v=spf1 include:_spf.mx.cloudflare.net ~all</p></div>
-            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">DKIM (outbound)</p><p className="text-gray-500">Add the DKIM key Cloudflare generates under Email → Email Sending (dashboard).</p></div>
+            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">MX (inbound)</p><p className="text-gray-500 font-mono break-all">route1/2/3.mx.cloudflare.net</p><p className="text-amber-600 text-[10px] mt-0.5">NOT_VERIFIED from app — check Cloudflare dashboard</p></div>
+            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">SPF (outbound)</p><p className="text-gray-500 font-mono break-all">v=spf1 include:_spf.mx.cloudflare.net ~all</p><p className="text-amber-600 text-[10px] mt-0.5">NOT_VERIFIED from app — check via MXToolbox</p></div>
+            <div className="bg-blue-50 rounded-lg p-2.5"><p className="font-semibold text-gray-800">DKIM (outbound)</p><p className="text-gray-500">Add the DKIM key from Cloudflare Email → Email Sending dashboard.</p><p className="text-amber-600 text-[10px] mt-0.5">NOT_VERIFIED from app — check via MXToolbox</p></div>
           </div>
+          <p className="text-[10px] text-gray-400 mt-2">DNS records cannot be verified from application code. Use <a href="https://mxtoolbox.com" target="_blank" rel="noreferrer" className="underline">MXToolbox</a> or the Cloudflare dashboard to confirm.</p>
         </div>
       </div>
 
