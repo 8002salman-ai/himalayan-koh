@@ -131,8 +131,12 @@ export function localBusinessJsonLd(): Record<string, unknown> {
     },
     priceRange: '$$',
     image: absoluteImage(),
+    // The store's own positioning, and only what it actually sells. The earlier
+    // wording ("for cooking and the home … lamps") was a leftover from the
+    // cooking-only rewrite: it contradicted the approved storefront copy and
+    // advertised a product line the catalogue does not carry.
     description:
-      'Unrefined Himalayan pink salt for cooking and the home — edible grades, salt blocks, lamps and bulk bags.',
+      'All natural Himalayan pink salt for livestock and the kitchen — edible grades, salt licks and blocks, and bulk bags.',
   };
 }
 
