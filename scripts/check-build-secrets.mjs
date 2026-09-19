@@ -78,7 +78,7 @@ function parseEnvFile(path) {
  *   mode that turns a guard into noise. (It was in fact the only thing this check
  *   flagged the first time it ran.)
  */
-const PUBLIC_BY_INTENT = [/^NEXT_PUBLIC_/, /^SHIPPO_FROM_/];
+const PUBLIC_BY_INTENT = [/^NEXT_PUBLIC_/, /^SHIPPO_FROM_/, /_MODEL$/];
 
 /** Server-only variables whose value must not appear in the build output. */
 function collectSecrets() {
