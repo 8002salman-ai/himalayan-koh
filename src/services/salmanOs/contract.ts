@@ -36,7 +36,7 @@ export const CONTRACT_VERSION = 1;
 export const CONTRACT_DOC_VERSION = '1.0';
 export const CONTRACT_DOC_PATH = 'docs/SALMAN_OS_LUXEDGE_AI_CONTRACT.md';
 
-export const PROJECT_SLUG = 'luxedge';
+export const PROJECT_SLUG = (process.env.SALMAN_OS_PROJECT_SLUG || 'himalayan-koh').trim();
 const DISPLAY_ENV: 'PREVIEW' | 'PRODUCTION' = process.env.VERCEL_ENV === 'production' ? 'PRODUCTION' : 'PREVIEW';
 const REQUEST_ENV = DISPLAY_ENV === 'PRODUCTION' ? 'production' : 'preview';
 
@@ -156,7 +156,7 @@ export async function getProjectStatus(): Promise<SalmanOsStatus> {
     ]);
     if (!statusRes.ok) {
       const reason = statusRes.status === 404
-        ? 'SALMAN OS answered 404 — project "luxedge" is not registered on the backend. No calls are dispatched until it is.'
+        ? `SALMAN OS answered 404 — project "${PROJECT_SLUG}" is not registered on the backend. No calls are dispatched until it is.`
         : `SALMAN OS answered HTTP ${statusRes.status} — not reachable right now.`;
       return { ...base, state: 'OFFLINE', reason };
     }
@@ -166,7 +166,7 @@ export async function getProjectStatus(): Promise<SalmanOsStatus> {
       return {
         ...base,
         state: 'OFFLINE',
-        reason: `CONTRACT MISMATCH — Salman OS reports contract_version ${String(remoteVersion)}, Luxedge adapter targets ${CONTRACT_VERSION}. No calls are dispatched until the versions match.`,
+        reason: `CONTRACT MISMATCH — Salman OS reports contract_version ${String(remoteVersion)}, ${PROJECT_SLUG} adapter targets ${CONTRACT_VERSION}. No calls are dispatched until the versions match.`,
       };
     }
     const live = mapLive(statusRes.data, overviewRes.ok ? overviewRes.data : null);
@@ -174,7 +174,7 @@ export async function getProjectStatus(): Promise<SalmanOsStatus> {
       ...base,
       state: 'CONNECTED',
       live,
-      reason: 'CONNECTED — project "luxedge" registered and contract version matches. Salman OS is authoritative for its model routing.',
+      reason: `CONNECTED — project "${PROJECT_SLUG}" registered and contract version matches. Salman OS is authoritative for its model routing.`,
     };
   } catch {
     return { ...base, state: 'OFFLINE', reason: 'SALMAN OS is unreachable right now. Commerce continues normally.' };

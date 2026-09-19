@@ -22,7 +22,7 @@ export type SalmanOsConnectionState =
 
 /** Stable project metadata Luxedge sends/exposes for Salman OS. */
 export interface SalmanOsProjectInfo {
-  project: 'luxedge';
+  project: string;
   environment: 'PREVIEW' | 'PRODUCTION';
   freeFirst: boolean;
 }

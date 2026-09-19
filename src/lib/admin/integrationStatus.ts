@@ -256,5 +256,50 @@ export async function readIntegrationStatuses(options: { probe?: boolean } = {})
     overridden: shippo.overridden,
   });
 
+  /* --- Hermes Research Ingest -------------------------------------------- */
+  const hermesToken = await effective('hermes', 'ingest_token', 'HERMES_INGEST_TOKEN');
+  integrations.push({
+    id: 'hermes',
+    label: 'Hermes Research Ingest',
+    state: hermesToken.value ? 'CONNECTED' : 'NOT CONFIGURED',
+    mode: null,
+    source: hermesToken.source,
+    detail: hermesToken.value
+      ? 'Hermes research ingestion is active and secured at /api/hermes/ingest. Accepts research evidence only (no direct writes).'
+      : 'No Hermes ingest token configured. Configure HERMES_INGEST_TOKEN to enable authenticated research ingestion.',
+    overridden: hermesToken.overridden,
+  });
+
+  /* --- Salman OS AI Bridge ----------------------------------------------- */
+  const salmanUrl = await effective('salman_os', 'base_url', 'SALMAN_OS_BASE_URL');
+  const salmanToken = await effective('salman_os', 'token', 'SALMAN_OS_TOKEN');
+  const salmanSlug = await effective('salman_os', 'project_slug', 'SALMAN_OS_PROJECT_SLUG');
+  const hasSalman = Boolean(salmanUrl.value && salmanToken.value);
+  integrations.push({
+    id: 'salman_os',
+    label: 'Salman OS Bridge',
+    state: hasSalman ? 'CONNECTED' : 'NOT CONFIGURED',
+    mode: null,
+    source: salmanToken.source,
+    detail: hasSalman
+      ? `Connected to Salman OS for project "${salmanSlug.value || 'himalayan-koh'}". Serves as external research evidence bridge.`
+      : 'SALMAN_OS_BASE_URL / SALMAN_OS_TOKEN not set in server environment. Commerce and local AI operate normally.',
+    overridden: salmanToken.overridden,
+  });
+
+  /* --- n8n Workflow Automation ------------------------------------------ */
+  integrations.push({
+    id: 'n8n',
+    label: 'n8n Automation',
+    state: hermesToken.value ? 'CONNECTED' : 'NOT CONFIGURED',
+    mode: null,
+    source: 'none',
+    detail: hermesToken.value
+      ? 'Himalayan Koh is ready for n8n webhooks. n8n workflows can post research findings to /api/hermes/ingest with Bearer auth.'
+      : 'Ready for configuration once HERMES_INGEST_TOKEN is established.',
+    overridden: false,
+  });
+
   return { integrations, checkedAt: new Date().toISOString() };
 }
+

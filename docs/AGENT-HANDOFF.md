@@ -49,6 +49,21 @@ Every completed task must update this file **BEFORE** final commit.
   Verified live WooCommerce catalog on staging has exactly 18 published products with 0 duplicate SKUs, 0 duplicate slugs, and 1 draft SKU (`HK-LFH-6lbs`).
 * **Comprehensive Regression Suite**:
   Added `src/lib/ai/adminSeoRegression.test.ts`, bringing the test suite to 34 test files, 474 passing tests. Verified clean TypeScript build (`tsc --noEmit`) and production vinext bundle (`npm run build:deploy`).
+* **Hermes Ingest Backend & Evidence Store**:
+  - Implemented authenticated `POST /api/hermes/ingest` accepting research evidence only, protected by `HERMES_INGEST_TOKEN` or `SALMAN_OS_TOKEN` (via `Authorization: Bearer <token>` or `x-hermes-token`).
+  - Strict payload validation against the 12 whitelisted research types, confidence (0-100), ISO observed_at, and required stable dedupe_key.
+  - Dedicated Supabase storage table `public.hermes_evidence` with unique DB-level index on `dedupe_key`. Idempotent response: returns 201 `CREATED` on first submission, 200 `ALREADY_EXISTS` on duplicate submission.
+  - Rate limiting (120 req/min) and payload size limit (100KB) enforced.
+* **Salman OS Himalayan Koh Bridge**:
+  - Corrected project slug from stale `luxedge` to `himalayan-koh` in `src/services/salmanOs/contract.ts` and `types.ts` via dynamic `SALMAN_OS_PROJECT_SLUG`.
+  - Stored target `project_slug = 'himalayan-koh'` in Supabase `site_settings`.
+  - Added safe integration health endpoint at `GET /api/hermes/health`.
+* **Admin AI Intelligence Interface (`src/admin/HermesIntel.tsx`)**:
+  - Connected `/admin/ai-intelligence` to read live stored evidence via protected `GET & PATCH /api/admin/ai-intelligence`.
+  - Added full tab filtering across all 8 tabs: Products, SEO, Free Marketing, Free Listings, Market, Marketing, Ads, and Catalog QA.
+  - Added contextual navigation links (Open in Admin Products, Open SEO Engine, Open Blog) and review qualification status updates (`new`, `reviewed`, `accepted`, `dismissed`).
+* **Integration Documentation**:
+  - Created `docs/HERMES-SALMAN-OS-N8N.md` detailing architecture, security boundary, payload schema, dedupe behavior, and n8n workflow contract.
 
 ---
 

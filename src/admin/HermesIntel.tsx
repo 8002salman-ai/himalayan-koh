@@ -1,728 +1,684 @@
 // ============================================================================
-// LUXEDGE — ADMIN AI INTELLIGENCE (Hermes research feeds)
+// HIMALAYAN KOH — ADMIN AI INTELLIGENCE (Hermes / Salman OS / n8n Feeds)
 //
-// Displays research evidence ingested from Hermes / Salman OS. This is a
-// REVIEW surface, not an execution surface:
-//   - Opportunities, SEO suggestions and marketing intel arrive as research
-//     evidence (status 'new').
-//   - Luxedge's own scoring (score.ts) pre-screens product suggestions; the
-//     real qualification still happens in Product Scout / the product
-//     pipeline with supplier verification and owner authorization.
-//   - Status changes (accepted/rejected/implemented/...) are Luxedge's OWN
-//     review decisions. Nothing here can create or publish a product.
-//   - Ads readiness is computed from Luxedge economics only (adsReadiness.ts);
-//     it never launches a campaign and never spends money.
+// Displays research evidence ingested from Hermes, Salman OS, and n8n.
+// This is a REVIEW & PLANNING surface, not an execution surface:
+//   - Findings arrive as research evidence (status 'new').
+//   - Himalayan Koh validates, reviews, scores, and decides.
+//   - Acceptance changes the review state only — it never automatically modifies
+//     WooCommerce products, pricing, inventory, live blogs, or settings.
 // ============================================================================
-import { useState, useEffect, useCallback, Fragment } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useApp, Modal } from '../App';
 import { getFreshAccessToken } from '../services/supabase';
-import {
-  setDbToken, listRecommendations, listSeoSuggestions, listMarketingIntel, listAdsReadiness,
-  updateRecommendation, updateSeoSuggestion, updateMarketingIntel,
-  deleteRecommendation, deleteSeoSuggestion, deleteMarketingIntel,
-  insertAdsReadiness, RECOMMENDATION_STATUSES, SEO_STATUSES,
-} from '../features/hermes/repository';
-import { scoreHermesRecommendation, recommendationRowToInput, scoreBand } from '../features/hermes/score';
-import { computeAdsReadiness } from '../features/hermes/adsReadiness';
-import { adsReadinessToRow } from '../features/hermes/rows';
-import type { HermesRecommendationRow, HermesSeoSuggestionRow, HermesMarketingIntelRow, AdsReadinessRow } from '../features/hermes/types';
-import { listProducts, createProduct } from '../features/catalog/repository';
+import { listProducts } from '../features/catalog/repository';
 import type { CatalogProduct } from '../features/catalog/types';
+import type { EvidenceRecord, EvidenceStatus } from '../lib/hermes/types';
 import {
   Brain, Target, MagnifyingGlass, Lightbulb, TrendUp, Trash, Megaphone, List, Globe,
-  CaretDown, CaretRight, ShieldCheck, NotePencil, Warning,
+  CaretDown, CaretRight, ShieldCheck, NotePencil, Warning, ArrowSquareOut, CheckCircle,
+  ArrowClockwise, Sparkle, Link as LinkIcon, Info
 } from '@phosphor-icons/react';
 
-const BADGE: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-700',
-  reviewed: 'bg-amber-100 text-amber-700',
-  accepted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-600',
-  imported: 'bg-purple-100 text-purple-700',
-  implemented: 'bg-emerald-100 text-emerald-700',
-  dismissed: 'bg-gray-100 text-gray-600',
+const STATUS_BADGES: Record<EvidenceStatus, { bg: string; text: string; label: string }> = {
+  new: { bg: 'bg-blue-50 text-blue-700 border-blue-200', text: 'text-blue-700', label: 'New Finding' },
+  reviewed: { bg: 'bg-amber-50 text-amber-700 border-amber-200', text: 'text-amber-700', label: 'Reviewed' },
+  accepted: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', text: 'text-emerald-700', label: 'Accepted for Action' },
+  dismissed: { bg: 'bg-gray-100 text-gray-600 border-gray-200', text: 'text-gray-600', label: 'Dismissed' },
 };
 
-function useDbToken() {
-  useEffect(() => {
-    // Refresh first so a long-open admin session never writes with a stale JWT.
-    void getFreshAccessToken().then((t) => setDbToken(t));
-  }, []);
-}
+const PRIORITY_BADGES: Record<string, string> = {
+  critical: 'bg-rose-100 text-rose-800 border-rose-200',
+  high: 'bg-amber-100 text-amber-800 border-amber-200',
+  medium: 'bg-blue-50 text-blue-700 border-blue-200',
+  low: 'bg-gray-100 text-gray-600 border-gray-200',
+};
 
-const money = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `$${Number(v).toFixed(2)}`);
-const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${v}%`);
-const date = (s: string | null | undefined) => (s ? new Date(s).toLocaleString() : '—');
+const SOURCE_COLORS: Record<string, string> = {
+  hermes: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'salman-os': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  n8n: 'bg-orange-50 text-orange-700 border-orange-200',
+};
 
-function StatusSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: readonly string[] }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border-0 cursor-pointer ${BADGE[value] || BADGE.new}`}
-    >
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
-  );
-}
+type TabId =
+  | 'products'
+  | 'seo'
+  | 'free-marketing'
+  | 'free-listings'
+  | 'market'
+  | 'marketing'
+  | 'ads'
+  | 'catalog-qa';
 
-// ============================================================================
-// OPPORTUNITIES (product suggestions)
-// ============================================================================
-function OpportunitiesTab() {
+const TAB_CONFIG: { id: TabId; label: string; icon: React.ElementType; types: string[] }[] = [
+  { id: 'products', label: 'Products', icon: Target, types: ['product', 'pricing_observation', 'competitor'] },
+  { id: 'seo', label: 'SEO', icon: MagnifyingGlass, types: ['seo', 'content_gap', 'blog_topic'] },
+  { id: 'free-marketing', label: 'Free Marketing', icon: Megaphone, types: ['free_marketing'] },
+  { id: 'free-listings', label: 'Free Listings', icon: List, types: ['free_listing'] },
+  { id: 'market', label: 'Market', icon: Globe, types: ['market', 'competitor'] },
+  { id: 'marketing', label: 'Marketing', icon: Lightbulb, types: ['marketing'] },
+  { id: 'ads', label: 'Ads', icon: TrendUp, types: ['ads'] },
+  { id: 'catalog-qa', label: 'Catalog QA', icon: ShieldCheck, types: ['catalog_qa'] },
+];
+
+export default function HermesIntel() {
   const { notify } = useApp();
-  const [rows, setRows] = useState<HermesRecommendationRow[]>([]);
+  const [activeTab, setActiveTab] = useState<TabId>('products');
+  const [items, setItems] = useState<EvidenceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [delId, setDelId] = useState<string | null>(null);
-  const [noteId, setNoteId] = useState<string | null>(null);
-  const [note, setNote] = useState('');
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [countsByType, setCountsByType] = useState<Record<string, number>>({});
+  const [countsByStatus, setCountsByStatus] = useState<Record<string, number>>({});
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reviewNoteModalId, setReviewNoteModalId] = useState<string | null>(null);
+  const [reviewNoteText, setReviewNoteText] = useState('');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // Deterministic Catalog QA Products state
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  // Fetch evidence from server
+  const loadEvidence = useCallback(async () => {
     setLoading(true);
-    setRows(await listRecommendations());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const setStatus = async (id: string, status: string) => {
-    await updateRecommendation(id, { status: status as HermesRecommendationRow['status'] });
-    notify(`Recommendation marked ${status}`);
-    await load();
-  };
-
-  const saveNote = async () => {
-    if (!noteId) return;
-    await updateRecommendation(noteId, { review_note: note.trim() || null });
-    notify('Review note saved');
-    setNoteId(null);
-    setNote('');
-    await load();
-  };
-
-  const scoreRecommendation = async (row: HermesRecommendationRow) => {
-    const s = scoreHermesRecommendation(recommendationRowToInput(row));
-    await updateRecommendation(row.id, { luxedge_score: s.total });
-    notify(`Luxedge Opportunity Score: ${s.total}/100 (${scoreBand(s.total)})`);
-    await load();
-  };
-
-  const assessAds = async (row: HermesRecommendationRow) => {
-    const a = computeAdsReadiness({
-      sellingPrice: row.expected_selling_price,
-      landedCost: row.landed_cost,
-      estimatedVariableCosts: null,
-    });
-    await insertAdsReadiness(adsReadinessToRow({
-      product_id: null, recommendation_id: row.id,
-      selling_price: row.expected_selling_price, landed_cost: row.landed_cost,
-      gross_margin: a.grossMargin, estimated_variable_costs: null,
-      contribution_margin: a.contributionMargin, break_even_cac: a.breakEvenCac,
-      allowable_cac: a.allowableCac, assessment: a.assessment, readiness: a.readiness,
-    }));
-    notify(`Ads readiness: ${a.readiness}`);
-    await load();
-  };
-
-  // Phase K — CREATE DRAFT requires an explicit owner click and creates ONLY
-  // a DRAFT. It never auto-activates and never invents supplier cost,
-  // inventory, shipping or margin (those stay null/UNKNOWN → the commerce
-  // readiness model classifies it SOURCE_PENDING/ECONOMICS_PENDING/DRAFT).
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [drafting, setDrafting] = useState(false);
-  const createDraft = async () => {
-    const row = rows.find((r) => r.id === draftId);
-    if (!row) return;
-    setDrafting(true);
     try {
-      const created = await createProduct({
-        name: row.product_name,
-        shortTitle: row.product_name.slice(0, 60),
-        shortDescription: row.benefits ? row.benefits.slice(0, 160) : undefined,
-        description: row.benefits || row.recommendation || undefined,
-        brand: row.brand || 'Luxedge',
-        categoryId: null,
-        status: 'draft',
-        price: row.expected_selling_price ?? 0,
-        costPrice: row.supplier_price ?? undefined,
-        landedCost: row.landed_cost ?? undefined,
-        supplierSource: row.supplier || 'Hermes / Salman OS research',
-        supplierProductRef: row.source_ref ?? undefined,
-        supplierUrl: row.source_url ?? undefined,
-        tags: [row.category, row.subcategory].filter(Boolean) as string[],
-        riskFlags: row.risks ? ['research risk: ' + row.risks.slice(0, 200)] : [],
-        ownerNotes: `Created as DRAFT from Hermes/Salman OS product suggestion ${row.id} — AI cannot create active products.`, 
-        evidenceNotes: `Research source: ${row.source} (${row.received_via}). Supplier cost, inventory, shipping and margin are UNKNOWN until verified.`,
+      const token = await getFreshAccessToken();
+      const currentTabDef = TAB_CONFIG.find((t) => t.id === activeTab);
+      const typesQuery = currentTabDef ? currentTabDef.types.join(',') : 'all';
+
+      const query = new URLSearchParams({
+        type: typesQuery,
+        status: selectedStatusFilter,
+        limit: '150',
       });
-      notify(`DRAFT created: ${created.name}`);
-      setDraftId(null);
-      await load();
-    } catch (e) {
-      notify(`Could not create draft: ${(e as Error).message}`, 'error');
-    } finally {
-      setDrafting(false);
-    }
-  };
 
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Loading opportunities…</div>;
+      const res = await fetch(`/api/admin/ai-intelligence?${query.toString()}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
-  if (rows.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-        <Brain size={40} className="mx-auto text-gray-200 mb-3" />
-        <p className="font-medium text-gray-600">No Hermes product suggestions yet</p>
-        <p className="text-xs mt-1">Suggestions arrive through /api/hermes/ingest from Salman OS / Hermes. They are research evidence only — Luxedge validates, scores and decides.</p>
-      </div>
-    );
-  }
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400">
-            <tr>
-              <th className="px-4 py-2.5 font-semibold">Product</th>
-              <th className="px-3 py-2.5 font-semibold">Supplier / Price</th>
-              <th className="px-3 py-2.5 font-semibold">Score</th>
-              <th className="px-3 py-2.5 font-semibold">Source</th>
-              <th className="px-3 py-2.5 font-semibold">Status</th>
-              <th className="px-4 py-2.5 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const s = scoreHermesRecommendation(recommendationRowToInput(r));
-              const band = scoreBand(s.total);
-              const bandColor = band === 'strong' ? 'bg-green-100 text-green-700' : band === 'promising' ? 'bg-emerald-100 text-emerald-700' : band === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500';
-              return (
-                <Fragment key={r.id}>
-                  <tr className="border-t hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-3">
-                      <button className="flex items-center gap-2 text-left" onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
-                        {expanded === r.id ? <CaretDown size={13} className="text-gray-400 shrink-0" /> : <CaretRight size={13} className="text-gray-400 shrink-0" />}
-                        <div>
-                          <p className="font-medium text-[13px] text-gray-900">{r.product_name}</p>
-                          <p className="text-[11px] text-gray-400">{[r.category, r.brand].filter(Boolean).join(' · ') || 'uncategorized'}</p>
-                        </div>
-                      </button>
-                      {expanded === r.id && (
-                        <div className="mt-3 pl-7 space-y-2 text-xs text-gray-600">
-                          {r.source_url && <p><span className="text-gray-400">Source:</span> <a href={r.source_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{r.source_url}</a></p>}
-                          {r.benefits && <p><span className="text-gray-400">Benefits:</span> {r.benefits}</p>}
-                          {r.risks && <p><span className="text-gray-400">Risks:</span> {r.risks}</p>}
-                          {r.demand_evidence && <p><span className="text-gray-400">Demand evidence (research claim):</span> {r.demand_evidence}</p>}
-                          {r.recommendation && <p><span className="text-gray-400">Hermes recommendation:</span> {r.recommendation}</p>}
-                          <p className="text-[10px] text-gray-400">
-                            Validation: all fields <span className="font-semibold">unknown</span> at ingest — research claims require Luxedge verification before use. · Confidence: {r.confidence === null ? '—' : `${Math.round(r.confidence * 100)}%`}
-                          </p>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600">
-                      <p>{r.supplier || '—'}</p>
-                      <p className="text-[11px] text-gray-400">
-                        cost {money(r.supplier_price)}{r.landed_cost !== null && r.landed_cost !== undefined ? ` · landed ${money(r.landed_cost)}` : ''} · sell {money(r.expected_selling_price)}
-                      </p>
-                      {s.marginPercent !== null && <p className="text-[11px] font-medium text-emerald-600">margin {pct(s.marginPercent)} ({s.marginSource === 'landed_cost' ? 'landed' : 'supplier+ship'})</p>}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${bandColor}`}>{r.luxedge_score ?? s.total}</span>
-                      <button onClick={() => void scoreRecommendation(r)} className="ml-1.5 text-[10px] text-blue-600 hover:underline align-middle">recompute</button>
-                    </td>
-                    <td className="px-3 py-3 text-[11px] text-gray-500">{r.source}<span className="text-gray-300"> · </span>{r.received_via}</td>
-                    <td className="px-3 py-3">
-                      <StatusSelect value={r.status} onChange={(v) => void setStatus(r.id, v)} options={RECOMMENDATION_STATUSES} />
-                      {r.review_note && <p className="text-[10px] text-gray-400 mt-1 max-w-[160px] truncate" title={r.review_note}>✎ {r.review_note}</p>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setDraftId(r.id)} className="px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600" title="Create a DRAFT product from this research suggestion (never auto-activates)">CREATE DRAFT</button>
-                        {r.expected_selling_price !== null && r.landed_cost !== null && (
-                          <button onClick={() => void assessAds(r)} className="p-1.5 hover:bg-emerald-50 rounded text-emerald-600" title="Compute Luxedge ads readiness"><TrendUp size={14} /></button>
-                        )}
-                        <button onClick={() => { setNoteId(r.id); setNote(r.review_note ?? ''); }} className="p-1.5 hover:bg-blue-50 rounded text-blue-600" title="Review note"><NotePencil size={14} /></button>
-                        <button onClick={() => setDelId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete suggestion"><Trash size={14} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <Modal open={!!delId} onClose={() => setDelId(null)} title="Delete suggestion?">
-        <p className="text-gray-600 mb-6">This removes the research suggestion. It never affects any Luxedge product.</p>
-        <div className="flex gap-3">
-          <button onClick={async () => { if (delId) { await deleteRecommendation(delId); notify('Suggestion deleted'); setDelId(null); await load(); } }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-medium">Delete</button>
-          <button onClick={() => setDelId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button>
-        </div>
-      </Modal>
-
-      <Modal open={!!draftId} onClose={() => setDraftId(null)} title="Create DRAFT product?">
-        <p className="text-gray-600 mb-4">
-          Creates a <b>DRAFT</b> catalog product from this research suggestion. It is NOT visible to customers, NOT auto-activated, and NO supplier cost/inventory/shipping/margin is invented — the Commerce Truth model classifies it until real supplier evidence arrives.
-        </p>
-        <div className="flex gap-3">
-          <button onClick={() => void createDraft()} disabled={drafting} className="flex-1 py-2.5 bg-amber-500 text-white rounded-lg font-medium disabled:opacity-50">{drafting ? 'Creating…' : 'Create DRAFT'}</button>
-          <button onClick={() => setDraftId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button>
-        </div>
-      </Modal>
-
-      <Modal open={!!noteId} onClose={() => setNoteId(null)} title="Review note">
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" placeholder="Luxedge review decision / verification notes…" />
-        <div className="flex gap-3 mt-4">
-          <button onClick={saveNote} className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg font-medium">Save note</button>
-          <button onClick={() => setNoteId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-// ============================================================================
-// SEO SUGGESTIONS
-// ============================================================================
-function SeoTab() {
-  const { notify } = useApp();
-  const [rows, setRows] = useState<HermesSeoSuggestionRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [delId, setDelId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setRows(await listSeoSuggestions());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const setStatus = async (id: string, status: string) => {
-    await updateSeoSuggestion(id, { status: status as HermesSeoSuggestionRow['status'] });
-    notify(`SEO suggestion marked ${status}`);
-    await load();
-  };
-
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Loading SEO suggestions…</div>;
-
-  if (rows.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-        <MagnifyingGlass size={40} className="mx-auto text-gray-200 mb-3" />
-        <p className="font-medium text-gray-600">No Hermes SEO suggestions yet</p>
-        <p className="text-xs mt-1">SEO research arrives here and is NEVER auto-applied — Luxedge's own SEO engine evaluates and implements accepted suggestions.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400">
-            <tr>
-              <th className="px-4 py-2.5 font-semibold">Recommendation</th>
-              <th className="px-3 py-2.5 font-semibold">Type</th>
-              <th className="px-3 py-2.5 font-semibold">Keyword / URL</th>
-              <th className="px-3 py-2.5 font-semibold">Priority</th>
-              <th className="px-3 py-2.5 font-semibold">Status</th>
-              <th className="px-4 py-2.5 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t hover:bg-gray-50/70 transition-colors">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-[13px] text-gray-900">{r.recommendation}</p>
-                  {r.evidence && <p className="text-[11px] text-gray-400 mt-0.5 max-w-[420px] truncate" title={r.evidence}>Evidence: {r.evidence}</p>}
-                  {r.review_note && <p className="text-[10px] text-amber-600 mt-0.5">✎ {r.review_note}</p>}
-                </td>
-                <td className="px-3 py-3"><span className="px-2 py-0.5 bg-gray-100 rounded-full text-[10px] font-semibold text-gray-600">{r.suggestion_type}</span></td>
-                <td className="px-3 py-3 text-[11px] text-gray-500">
-                  {r.keyword && <p><span className="text-gray-400">kw:</span> {r.keyword}{r.intent ? ` · ${r.intent}` : ''}</p>}
-                  {r.url && <p className="max-w-[200px] truncate" title={r.url}>{r.url}</p>}
-                  {!r.keyword && !r.url && '—'}
-                </td>
-                <td className="px-3 py-3">
-                  <span className={`text-[11px] font-semibold ${r.priority === 'high' ? 'text-red-600' : r.priority === 'medium' ? 'text-amber-600' : 'text-gray-400'}`}>{r.priority}</span>
-                </td>
-                <td className="px-3 py-3">
-                  <StatusSelect value={r.status} onChange={(v) => void setStatus(r.id, v)} options={SEO_STATUSES} />
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => setDelId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete suggestion"><Trash size={14} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Modal open={!!delId} onClose={() => setDelId(null)} title="Delete suggestion?">
-        <p className="text-gray-600 mb-6">Removes this SEO research suggestion. Nothing is changed on the live site.</p>
-        <div className="flex gap-3">
-          <button onClick={async () => { if (delId) { await deleteSeoSuggestion(delId); notify('Suggestion deleted'); setDelId(null); await load(); } }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-medium">Delete</button>
-          <button onClick={() => setDelId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-// ============================================================================
-// MARKETING INTEL (optionally filtered by intel_type — Phase J tabs)
-// ============================================================================
-function MarketingTab({ filter }: { filter?: string }) {
-  const { notify } = useApp();
-  const [rows, setRows] = useState<HermesMarketingIntelRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [delId, setDelId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const all = await listMarketingIntel();
-    setRows(filter ? all.filter((r) => r.intel_type === filter) : all);
-    setLoading(false);
-  }, [filter]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const dismiss = async (id: string, status: string) => {
-    await updateMarketingIntel(id, { status: status as HermesMarketingIntelRow['status'] });
-    notify(`Intel marked ${status}`);
-    await load();
-  };
-
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Loading marketing intelligence…</div>;
-
-  if (rows.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-        <Lightbulb size={40} className="mx-auto text-gray-200 mb-3" />
-        <p className="font-medium text-gray-600">No marketing intelligence yet</p>
-        <p className="text-xs mt-1">Market findings, positioning, seasonal and audience research arrive here as planning inputs.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid md:grid-cols-2 gap-3">
-      {rows.map((r) => (
-        <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-4 card-lift">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-semibold">{r.intel_type}</span>
-              {r.confidence !== null && <span className="text-[10px] text-gray-400">confidence {Math.round(r.confidence * 100)}%</span>}
-            </div>
-            <StatusSelect value={r.status} onChange={(v) => void dismiss(r.id, v)} options={['new', 'reviewed', 'dismissed']} />
-          </div>
-          <button className="mt-2 text-left w-full" onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
-            <p className="font-semibold text-[13px] text-gray-900 flex items-center gap-1">
-              {expanded === r.id ? <CaretDown size={13} className="text-gray-400" /> : <CaretRight size={13} className="text-gray-400" />}
-              {r.title}
-            </p>
-            <p className={`text-xs text-gray-500 mt-1 ${expanded === r.id ? '' : 'line-clamp-3'}`}>{r.summary}</p>
-          </button>
-          {expanded === r.id && Object.keys(r.details ?? {}).length > 0 && (
-            <pre className="mt-2 text-[10px] bg-gray-50 rounded-lg p-2 overflow-x-auto text-gray-600">{JSON.stringify(r.details, null, 2)}</pre>
-          )}
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-[10px] text-gray-400">{date(r.created_at)}</span>
-            <button onClick={() => setDelId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash size={13} /></button>
-          </div>
-        </div>
-      ))}
-      <Modal open={!!delId} onClose={() => setDelId(null)} title="Delete intel?">
-        <p className="text-gray-600 mb-6">Removes this research finding.</p>
-        <div className="flex gap-3">
-          <button onClick={async () => { if (delId) { await deleteMarketingIntel(delId); notify('Intel deleted'); setDelId(null); await load(); } }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-medium">Delete</button>
-          <button onClick={() => setDelId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-// ============================================================================
-// ADS READINESS (Luxedge economics only)
-// ============================================================================
-function AdsTab() {
-  const [rows, setRows] = useState<AdsReadinessRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setRows(await listAdsReadiness());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const LEVEL: Record<string, { label: string; cls: string }> = {
-    insufficient_data: { label: 'Insufficient data', cls: 'bg-gray-100 text-gray-500' },
-    possible: { label: 'Possible', cls: 'bg-amber-100 text-amber-700' },
-    promising: { label: 'Promising', cls: 'bg-emerald-100 text-emerald-700' },
-    strong: { label: 'Strong', cls: 'bg-green-100 text-green-700' },
-  };
-
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Loading ads readiness…</div>;
-
-  if (rows.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-        <TrendUp size={40} className="mx-auto text-gray-200 mb-3" />
-        <p className="font-medium text-gray-600">No ads-readiness assessments yet</p>
-        <p className="text-xs mt-1">Use the TrendUp action on an accepted product suggestion to compute Luxedge economics. Assessments never launch campaigns or spend money.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400">
-            <tr>
-              <th className="px-4 py-2.5 font-semibold">Ref</th>
-              <th className="px-3 py-2.5 font-semibold">Economics</th>
-              <th className="px-3 py-2.5 font-semibold">Margin</th>
-              <th className="px-3 py-2.5 font-semibold">Contribution</th>
-              <th className="px-3 py-2.5 font-semibold">Break-even CAC</th>
-              <th className="px-3 py-2.5 font-semibold">Readiness</th>
-              <th className="px-4 py-2.5 font-semibold">Assessment</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t hover:bg-gray-50/70 transition-colors">
-                <td className="px-4 py-3 text-[11px] text-gray-500">#{r.recommendation_id ? r.recommendation_id.slice(0, 8) : r.product_id ? r.product_id.slice(0, 8) : '—'}</td>
-                <td className="px-3 py-3 text-xs text-gray-600">sell {money(r.selling_price)} · landed {money(r.landed_cost)}</td>
-                <td className="px-3 py-3 text-xs font-semibold text-emerald-600">{pct(r.gross_margin)}</td>
-                <td className="px-3 py-3 text-xs text-gray-600">{money(r.contribution_margin)}</td>
-                <td className="px-3 py-3 text-xs text-gray-600">{money(r.break_even_cac)}</td>
-                <td className="px-3 py-3">
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${LEVEL[r.readiness]?.cls || LEVEL.insufficient_data.cls}`}>{LEVEL[r.readiness]?.label || r.readiness}</span>
-                </td>
-                <td className="px-4 py-3 text-[11px] text-gray-500 max-w-[300px]">{r.assessment}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// FREE MARKETING / FREE LISTINGS (Phase M — owner-facing, no posting)
-// ============================================================================
-function FreeMarketingTab({ mode }: { mode: 'marketing' | 'listings' }) {
-  const { notify } = useApp();
-  const [rows, setRows] = useState<HermesMarketingIntelRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const all = await listMarketingIntel();
-    const types = mode === 'listings'
-      ? ['other']
-      : ['content', 'email', 'social', 'promotion', 'audience', 'offer', 'positioning'];
-    setRows(all.filter((r) => types.includes(r.intel_type)));
-    setLoading(false);
-  }, [mode]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Loading {mode === 'listings' ? 'free listings' : 'free marketing'} opportunities…</div>;
-
-  return (
-    <div className="space-y-3">
-      <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <Megaphone size={16} className="text-emerald-500" />
-          <div>
-            <p className="text-[12px] font-bold text-gray-800">{mode === 'listings' ? 'FREE PRODUCT LISTINGS' : 'FREE MARKETING / ORGANIC'}</p>
-            <p className="text-[10px] text-gray-500">Research planning only — no external posting, no account creation, no paid ads. When Salman OS data is available it appears here with platform rules and confidence.</p>
-          </div>
-        </div>
-        <div className="flex gap-1.5">
-          <button onClick={() => notify('Opportunity saved to your review list')} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50">SAVE</button>
-          <button onClick={() => notify('Marked for later')} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50">MARK FOR LATER</button>
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed p-12 text-center text-gray-500">
-          <Megaphone size={40} className="mx-auto text-gray-200 mb-3" />
-          <p className="font-medium text-gray-600">No free {mode === 'listings' ? 'listing' : 'marketing'} opportunities yet</p>
-          <p className="text-xs mt-1">Platforms (Etsy/Pinterest/directories/etc.), content angles, self-promotion rules and effort/risk ratings will appear here once Salman OS research flows in.</p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-3">
-          {rows.map((r) => (
-            <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-4 card-lift">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold">{r.intel_type}</span>
-                {r.confidence !== null && <span className="text-[10px] text-gray-400">confidence {Math.round(r.confidence * 100)}%</span>}
-              </div>
-              <p className="font-semibold text-[13px] text-gray-900 mt-2">{r.title}</p>
-              <p className="text-xs text-gray-500 mt-1 line-clamp-3">{r.summary}</p>
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-[10px] text-gray-400">{date(r.created_at)}</span>
-                <div className="flex gap-1.5">
-                  <button onClick={() => notify('Opportunity saved')} className="text-[10px] font-bold text-blue-600 hover:underline">VIEW</button>
-                  <button onClick={() => notify('Marked for later')} className="text-[10px] font-bold text-gray-500 hover:underline">SAVE</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// CATALOG QA (Phase J — commerce-truth checks, no AI inference)
-// ============================================================================
-function CatalogQaTab() {
-  const [rows, setRows] = useState<CatalogProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setRows(await listProducts());
-    } catch {
-      setRows([]);
+      const data = await res.json();
+      setItems(data.items || []);
+      setCountsByType(data.countsByType || {});
+      setCountsByStatus(data.countsByStatus || {});
+    } catch (err) {
+      console.warn('Could not load AI intelligence evidence:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTab, selectedStatusFilter]);
 
-  useEffect(() => { void load(); }, [load]);
+  // Load deterministic catalog for Catalog QA tab
+  const loadCatalog = useCallback(async () => {
+    if (activeTab !== 'catalog-qa') return;
+    setCatalogLoading(true);
+    try {
+      const prods = await listProducts();
+      setCatalogProducts(prods || []);
+    } catch {
+      setCatalogProducts([]);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [activeTab]);
 
-  if (loading) return <div className="py-16 text-center text-sm text-gray-500">Auditing catalog…</div>;
+  useEffect(() => {
+    void loadEvidence();
+  }, [loadEvidence]);
 
-  const visible = rows.filter((p) => p.status === 'active' && p.commerceReadiness === 'COMMERCE_READY');
-  const activeNotReady = rows.filter((p) => p.status === 'active' && p.commerceReadiness !== 'COMMERCE_READY');
-  const readinessCounts = rows.reduce<Record<string, number>>((acc, p) => {
-    const k = p.commerceReadiness ?? 'UNCLASSIFIED';
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+
+  // Update Status handler
+  const handleUpdateStatus = async (id: string, newStatus: EvidenceStatus, note?: string) => {
+    setUpdatingId(id);
+    try {
+      const token = await getFreshAccessToken();
+      const res = await fetch('/api/admin/ai-intelligence', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          id,
+          status: newStatus,
+          review_note: note !== undefined ? note : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Update failed');
+      }
+
+      notify(`Research finding marked ${newStatus}`);
+      await loadEvidence();
+    } catch (err) {
+      notify(`Could not update finding: ${(err as Error).message}`, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!reviewNoteModalId) return;
+    const item = items.find((i) => i.id === reviewNoteModalId);
+    if (!item) return;
+    await handleUpdateStatus(reviewNoteModalId, item.status, reviewNoteText.trim());
+    setReviewNoteModalId(null);
+    setReviewNoteText('');
+  };
+
+  // Tab Badge count
+  const getTabBadgeCount = (tab: (typeof TAB_CONFIG)[number]) => {
+    return tab.types.reduce((acc, t) => acc + (countsByType[t] || 0), 0);
+  };
+
+  // Contextual link builder
+  const renderContextualLink = (item: EvidenceRecord) => {
+    if (item.type === 'seo' || item.type === 'content_gap') {
+      return (
+        <a
+          href="/admin/seo"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-md transition-colors border border-rose-200"
+        >
+          <Sparkle size={12} weight="bold" />
+          <span>Open SEO Engine</span>
+          <ArrowSquareOut size={11} />
+        </a>
+      );
+    }
+
+    if (item.type === 'blog_topic') {
+      return (
+        <a
+          href="/admin/blog"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-md transition-colors border border-amber-200"
+        >
+          <NotePencil size={12} weight="bold" />
+          <span>Open Admin Blog</span>
+          <ArrowSquareOut size={11} />
+        </a>
+      );
+    }
+
+    if (item.entity?.sku || item.entity?.slug) {
+      const searchTarget = item.entity.sku || item.entity.slug;
+      return (
+        <a
+          href={`/admin/products?search=${encodeURIComponent(searchTarget || '')}`}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-md transition-colors border border-emerald-200"
+        >
+          <Target size={12} weight="bold" />
+          <span>View Product ({item.entity.sku || item.entity.slug})</span>
+          <ArrowSquareOut size={11} />
+        </a>
+      );
+    }
+
+    if (item.entity?.category_slug) {
+      return (
+        <a
+          href="/admin/categories"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors border border-indigo-200"
+        >
+          <List size={12} weight="bold" />
+          <span>View Category</span>
+          <ArrowSquareOut size={11} />
+        </a>
+      );
+    }
+
+    return null;
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Total catalog</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{rows.length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Customer-visible</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{visible.length}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">active + COMMERCE_READY</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Active not commerce-ready</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{activeNotReady.length}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">truth violations to fix</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Readiness mix</p>
-          <div className="mt-1.5 space-y-0.5 text-[10px] text-gray-600">
-            {Object.entries(readinessCounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-              <p key={k}><b>{n}</b> {k.replace(/_/g, ' ')}</p>
-            ))}
+    <div className="space-y-6">
+      {/* Top Header & Readiness Bar */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
+                <Brain size={22} weight="duotone" />
+              </span>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">AI Intelligence & Research Center</h1>
+            </div>
+            <p className="text-xs text-gray-500 mt-1.5 max-w-2xl leading-relaxed">
+              Research evidence and market intelligence ingested from <span className="font-semibold text-gray-700">Hermes</span>, <span className="font-semibold text-gray-700">Salman OS</span>, and <span className="font-semibold text-gray-700">n8n</span>.
+              All items are strictly <span className="font-semibold text-emerald-700">Research Evidence</span> for owner review — AI has no automated write access to live WooCommerce products, orders, blog posts, or settings.
+            </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+              <ShieldCheck size={14} className="text-emerald-600" />
+              <span className="text-gray-600">Ingest: <code className="font-mono text-[11px] text-gray-900 font-semibold">POST /api/hermes/ingest</code></span>
+            </div>
+            <button
+              onClick={() => void loadEvidence()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-medium transition-colors"
+            >
+              <ArrowClockwise size={13} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Integration Status Chips */}
+        <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-3 text-[11px]">
+          <span className="text-gray-400 uppercase tracking-wider font-semibold text-[10px]">Active Adapters:</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+            Hermes Ingest: Ready
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+            Salman OS: himalayan-koh bridge
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 text-orange-700 rounded-full font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            n8n: Webhook-ready
+          </span>
         </div>
       </div>
 
-      {activeNotReady.length > 0 && (
-        <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
-          <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100">
-            <p className="text-[12px] font-bold text-amber-800 flex items-center gap-1.5"><Warning size={13} />ACTIVE but NOT commerce-ready — customer-visible truth violations</p>
+      {/* Tabs Navigation */}
+      <div className="bg-white rounded-xl border border-gray-200 p-1.5 shadow-sm overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
+          {TAB_CONFIG.map((t) => {
+            const Icon = t.icon;
+            const count = getTabBadgeCount(t);
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setActiveTab(t.id);
+                  setExpandedId(null);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <Icon size={15} weight={isActive ? 'bold' : 'regular'} />
+                <span>{t.label}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      isActive ? 'bg-emerald-900 text-emerald-100' : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-gray-200 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 font-medium">Status Filter:</span>
+          <div className="flex gap-1">
+            {(['all', 'new', 'reviewed', 'accepted', 'dismissed'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSelectedStatusFilter(s)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                  selectedStatusFilter === s
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s !== 'all' && countsByStatus[s] !== undefined && ` (${countsByStatus[s]})`}
+              </button>
+            ))}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400">
-                <tr><th className="px-4 py-2 font-semibold">Product</th><th className="px-3 py-2 font-semibold">Readiness</th><th className="px-3 py-2 font-semibold">Source</th><th className="px-4 py-2 font-semibold">Reason</th></tr>
-              </thead>
-              <tbody>
-                {activeNotReady.map((p) => (
-                  <tr key={p.id} className="border-t hover:bg-gray-50/70">
-                    <td className="px-4 py-2.5 text-[12px] font-medium text-gray-800">{p.name}</td>
-                    <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{p.commerceReadiness || 'UNCLASSIFIED'}</span></td>
-                    <td className="px-3 py-2.5 text-[11px] text-gray-500">{p.sourceType || '—'}</td>
-                    <td className="px-4 py-2.5 text-[11px] text-gray-500 max-w-[320px]">{p.evidenceNotes || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </div>
+
+        <div className="text-gray-400 text-[11px]">
+          Showing <span className="font-semibold text-gray-700">{items.length}</span> research records
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
+          <ArrowClockwise size={32} className="animate-spin mx-auto text-emerald-600 mb-3" />
+          <p className="text-sm font-semibold text-gray-700">Loading AI research evidence…</p>
+          <p className="text-xs text-gray-400 mt-1">Connecting to authenticated evidence store</p>
+        </div>
+      ) : activeTab === 'catalog-qa' ? (
+        /* SPECIAL DEDICATED CATALOG QA VIEW (Findings + Deterministic Truth) */
+        <div className="space-y-4">
+          {/* Deterministic Storefront Truth Cards */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Total Catalog</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{catalogProducts.length}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">WooCommerce Staging</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Customer-Visible</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">
+                {catalogProducts.filter((p) => p.status === 'ready' || p.commerceReadiness === 'COMMERCE_READY').length}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Published & Active</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Draft SKUs</p>
+              <p className="text-2xl font-bold text-amber-600 mt-1">
+                {catalogProducts.filter((p) => p.status === 'draft').length}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">HK-LFH-6lbs + Legacy</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">QA Findings</p>
+              <p className="text-2xl font-bold text-indigo-600 mt-1">{items.length}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Research observations</p>
+            </div>
           </div>
+
+          {/* Research Findings for Catalog QA */}
+          {items.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-500">
+              <ShieldCheck size={44} className="mx-auto text-emerald-400 mb-3" />
+              <h3 className="font-semibold text-gray-800 text-sm">No Catalog QA issues detected</h3>
+              <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+                No duplicate SKUs, broken assets, soft 404s, or schema discrepancies have been reported by Hermes or n8n monitors.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item) => (
+                <EvidenceCard
+                  key={item.id}
+                  item={item}
+                  expanded={expandedId === item.id}
+                  onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  onStatusChange={(status) => void handleUpdateStatus(item.id, status)}
+                  onOpenNoteModal={() => {
+                    setReviewNoteModalId(item.id);
+                    setReviewNoteText(item.review_note || '');
+                  }}
+                  contextualLink={renderContextualLink(item)}
+                  updating={updatingId === item.id}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-16 text-center text-gray-500">
+          <Brain size={44} className="mx-auto text-gray-300 mb-3" />
+          <h3 className="font-semibold text-gray-800 text-sm">No research evidence found for this tab</h3>
+          <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+            When research evidence is ingested via <code className="text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded font-mono">POST /api/hermes/ingest</code>, it will appear here for review and qualification.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <EvidenceCard
+              key={item.id}
+              item={item}
+              expanded={expandedId === item.id}
+              onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              onStatusChange={(status) => void handleUpdateStatus(item.id, status)}
+              onOpenNoteModal={() => {
+                setReviewNoteModalId(item.id);
+                setReviewNoteText(item.review_note || '');
+              }}
+              contextualLink={renderContextualLink(item)}
+              updating={updatingId === item.id}
+            />
+          ))}
         </div>
       )}
 
-      <p className="text-[10px] text-gray-400">Catalog QA is deterministic commerce truth (real DB rows) — never AI inference. VERIFIED facts and AI inference are never merged.</p>
+      {/* Review Note Modal */}
+      <Modal open={!!reviewNoteModalId} onClose={() => setReviewNoteModalId(null)} title="Review & Qualification Note">
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Document your evaluation decision for this research finding. Notes are recorded for owner audits and team coordination.
+          </p>
+          <textarea
+            value={reviewNoteText}
+            onChange={(e) => setReviewNoteText(e.target.value)}
+            rows={4}
+            placeholder="Add qualification or action notes here..."
+            className="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => setReviewNoteModalId(null)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => void handleSaveNote()}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold"
+            >
+              Save Note
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-// ============================================================================
-// PAGE
-// ============================================================================
-export default function HermesIntel() {
-  useDbToken();
-  const [tab, setTab] = useState<'products' | 'seo' | 'free-marketing' | 'free-listings' | 'market' | 'marketing' | 'ads' | 'catalog-qa'>('products');
+interface EvidenceCardProps {
+  item: EvidenceRecord;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onStatusChange: (status: EvidenceStatus) => void;
+  onOpenNoteModal: () => void;
+  contextualLink: React.ReactNode;
+  updating: boolean;
+}
 
-  const tabs = [
-    { id: 'products' as const, label: 'Products', icon: Target },
-    { id: 'seo' as const, label: 'SEO', icon: MagnifyingGlass },
-    { id: 'free-marketing' as const, label: 'Free Marketing', icon: Megaphone },
-    { id: 'free-listings' as const, label: 'Free Listings', icon: List },
-    { id: 'market' as const, label: 'Market', icon: Globe },
-    { id: 'marketing' as const, label: 'Marketing', icon: Lightbulb },
-    { id: 'ads' as const, label: 'Ads', icon: TrendUp },
-    { id: 'catalog-qa' as const, label: 'Catalog QA', icon: ShieldCheck },
-  ];
+function EvidenceCard({
+  item,
+  expanded,
+  onToggleExpand,
+  onStatusChange,
+  onOpenNoteModal,
+  contextualLink,
+  updating,
+}: EvidenceCardProps) {
+  const statusBadge = STATUS_BADGES[item.status] || STATUS_BADGES.new;
+  const priorityClass = PRIORITY_BADGES[item.priority] || PRIORITY_BADGES.medium;
+  const sourceClass = SOURCE_COLORS[item.source] || 'bg-gray-50 text-gray-700 border-gray-200';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2"><Brain size={18} className="text-indigo-500" />AI Intelligence</h1>
-          <p className="text-[11px] text-gray-500 mt-0.5">Research evidence from Hermes / Salman OS — Luxedge validates, scores and decides. Hermes has no write access to products, code, or settings.</p>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Source Tag */}
+          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${sourceClass}`}>
+            {item.source}
+          </span>
+          {/* Type Tag */}
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+            {item.type.replace(/_/g, ' ')}
+          </span>
+          {/* Priority Pill */}
+          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border capitalize ${priorityClass}`}>
+            {item.priority} Priority
+          </span>
+          {/* Confidence */}
+          <span className="text-[11px] font-medium text-gray-500">
+            Confidence: <span className="font-bold text-gray-800">{item.confidence}%</span>
+          </span>
         </div>
-        <div className="hidden lg:flex items-center gap-1.5 bg-white rounded-lg border border-gray-100 px-2.5 py-1.5 text-[10px] text-gray-500">
-          <ShieldCheck size={12} className="text-emerald-500" />
-          <span>Research-only ingestion · <span className="font-semibold text-gray-700">POST /api/hermes/ingest</span></span>
-        </div>
-      </div>
 
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 text-[12px] font-semibold border-b-2 transition-colors whitespace-nowrap ${tab === t.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        {/* Status Dropdown & Note Action */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <select
+            value={item.status}
+            disabled={updating}
+            onChange={(e) => onStatusChange(e.target.value as EvidenceStatus)}
+            className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${statusBadge.bg}`}
           >
-            <t.icon size={14} />{t.label}
+            <option value="new">New Finding</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="accepted">Accepted</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+
+          <button
+            onClick={onOpenNoteModal}
+            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-800 transition-colors"
+            title="Add or Edit Review Note"
+          >
+            <NotePencil size={15} />
           </button>
-        ))}
+        </div>
       </div>
 
-      {tab === 'products' && <OpportunitiesTab />}
-      {tab === 'seo' && <SeoTab />}
-      {tab === 'free-marketing' && <FreeMarketingTab mode="marketing" />}
-      {tab === 'free-listings' && <FreeMarketingTab mode="listings" />}
-      {tab === 'market' && <MarketingTab filter="market" />}
-      {tab === 'marketing' && <MarketingTab />}
-      {tab === 'ads' && <AdsTab />}
-      {tab === 'catalog-qa' && <CatalogQaTab />}
+      {/* Card Header & Summary */}
+      <div className="mt-3">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            onClick={onToggleExpand}
+            className="text-left font-bold text-[14px] text-gray-900 hover:text-emerald-700 transition-colors flex items-center gap-1.5"
+          >
+            {expanded ? <CaretDown size={14} className="text-gray-400 shrink-0" /> : <CaretRight size={14} className="text-gray-400 shrink-0" />}
+            <span>{item.title}</span>
+          </button>
+
+          <span className="text-[10px] text-gray-400 shrink-0">
+            {item.observed_at ? new Date(item.observed_at).toLocaleDateString() : '—'}
+          </span>
+        </div>
+
+        <p className={`text-xs text-gray-600 mt-1 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+          {item.summary}
+        </p>
+
+        {/* Note preview if present */}
+        {item.review_note && (
+          <div className="mt-2 bg-amber-50/70 border border-amber-200/60 rounded-lg px-3 py-1.5 text-[11px] text-amber-900 flex items-center gap-1.5">
+            <span className="font-bold">Review Note:</span>
+            <span>{item.review_note}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Details Section */}
+      {expanded && (
+        <div className="mt-4 pt-3 border-t border-gray-100 space-y-3 text-xs">
+          {/* Recommended Action */}
+          {item.recommended_action && (
+            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+              <p className="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                <Sparkle size={13} className="text-emerald-700" />
+                <span>Recommended Research Action (Manual Review):</span>
+              </p>
+              <p className="text-xs text-emerald-800 mt-0.5">{item.recommended_action}</p>
+            </div>
+          )}
+
+          {/* Related Entity Information */}
+          {item.entity && (item.entity.sku || item.entity.slug || item.entity.woo_id || item.entity.category_slug) && (
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-wrap gap-4 text-[11px]">
+              {item.entity.sku && (
+                <div>
+                  <span className="text-gray-400 block font-medium">SKU:</span>
+                  <span className="font-mono font-bold text-gray-800">{item.entity.sku}</span>
+                </div>
+              )}
+              {item.entity.slug && (
+                <div>
+                  <span className="text-gray-400 block font-medium">Product Slug:</span>
+                  <span className="font-mono text-gray-700">{item.entity.slug}</span>
+                </div>
+              )}
+              {item.entity.category_slug && (
+                <div>
+                  <span className="text-gray-400 block font-medium">Category:</span>
+                  <span className="text-gray-700 font-semibold">{item.entity.category_slug}</span>
+                </div>
+              )}
+              {item.entity.woo_id && (
+                <div>
+                  <span className="text-gray-400 block font-medium">Woo ID:</span>
+                  <span className="font-mono text-gray-700">{item.entity.woo_id}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Evidence Items / URLs */}
+          {item.evidence && item.evidence.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-gray-700 mb-1.5 flex items-center gap-1">
+                <LinkIcon size={12} />
+                <span>Source Evidence Links:</span>
+              </p>
+              <ul className="space-y-1">
+                {item.evidence.map((ev, idx) => (
+                  <li key={idx} className="text-[11px] flex items-start gap-1.5 text-gray-600">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <div>
+                      {ev.label && <span className="font-semibold text-gray-800">{ev.label}: </span>}
+                      {ev.url ? (
+                        <a
+                          href={ev.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline break-all"
+                        >
+                          {ev.url}
+                        </a>
+                      ) : (
+                        <span>{ev.observation || '—'}</span>
+                      )}
+                      {ev.observation && ev.url && (
+                        <span className="text-gray-400 ml-1">({ev.observation})</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Technical Dedupe Key */}
+          <div className="text-[10px] text-gray-400 flex items-center gap-2 pt-1">
+            <span>Dedupe Key: <code className="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">{item.dedupe_key}</code></span>
+            <span>•</span>
+            <span>Recorded: {new Date(item.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Card Footer with Contextual Link */}
+      <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+        <button
+          onClick={onToggleExpand}
+          className="text-[11px] font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          {expanded ? 'Show Less' : 'View Full Evidence'}
+        </button>
+
+        <div>{contextualLink}</div>
+      </div>
     </div>
   );
 }
