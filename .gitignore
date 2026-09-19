@@ -36,3 +36,8 @@ supabase/.temp/
 
 # Local Worker dev-server output (scripts/run-cloudflare-dev.mjs).
 .cloudflare-dev*.log
+
+# Scratch and probe workspaces
+.freebuff/
+scratch/
+
