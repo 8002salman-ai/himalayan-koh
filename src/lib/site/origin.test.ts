@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   isLoopbackOrigin,
+  resolveRuntimeSiteOrigin,
   resolveSiteOrigin,
   SITE_ORIGIN_LOCAL,
   SITE_ORIGIN_PRODUCTION,
@@ -107,5 +108,65 @@ describe('resolveSiteOrigin', () => {
   it('publishes the staging origin for the Worker deployment and production for the store', () => {
     expect(SITE_ORIGIN_STAGING).toBe('https://preview.himalayankoh.com');
     expect(SITE_ORIGIN_PRODUCTION).toBe('https://himalayankoh.com');
+  });
+});
+
+/**
+ * The bug these tests exist for: the deployed staging Worker resolved the origin
+ * a server-side feature reads from as `http://localhost:3000` — the development
+ * fallback — because the build carried no usable `NEXT_PUBLIC_SITE_URL`. Every
+ * self-referential read then hit the SSRF guard and was refused, so the product
+ * image finder reported "nothing found" while the catalogue was one hostname
+ * away. The rule under test is that the host actually being served wins.
+ */
+describe('resolveRuntimeSiteOrigin', () => {
+  it('prefers the request host, so a deployed build never searches localhost', () => {
+    expect(
+      resolveRuntimeSiteOrigin('https://preview.himalayankoh.com/api/admin/product-images', {
+        configured: '',
+        nodeEnv: 'development',
+      })
+    ).toBe('https://preview.himalayankoh.com');
+    expect(
+      resolveRuntimeSiteOrigin('https://himalayankoh.com/api/admin/product-images', {
+        configured: 'http://localhost:3001',
+        nodeEnv: 'development',
+      })
+    ).toBe('https://himalayankoh.com');
+  });
+
+  it('uses a real configured origin when the request itself is loopback', () => {
+    expect(
+      resolveRuntimeSiteOrigin('http://127.0.0.1:3102/api/admin/product-images', {
+        configured: 'https://preview.himalayankoh.com',
+        nodeEnv: 'development',
+      })
+    ).toBe('https://preview.himalayankoh.com');
+  });
+
+  it('falls back to staging when both the request and the configuration are loopback', () => {
+    expect(
+      resolveRuntimeSiteOrigin('http://localhost:3102/api/admin/product-images', {
+        configured: 'http://localhost:3001',
+        nodeEnv: 'development',
+      })
+    ).toBe(SITE_ORIGIN_STAGING);
+  });
+
+  it('never returns a loopback origin for a request that is not loopback', () => {
+    for (const url of [
+      'https://preview.himalayankoh.com/api/admin/product-images',
+      'https://himalayan-koh-ecommerce.himalayankoh-pk.workers.dev/api/admin/product-images',
+    ]) {
+      expect(isLoopbackOrigin(resolveRuntimeSiteOrigin(url, { configured: '', nodeEnv: 'development' }))).toBe(
+        false
+      );
+    }
+  });
+
+  it('survives a request URL that is not a URL at all', () => {
+    expect(resolveRuntimeSiteOrigin('not-a-url', { configured: '', nodeEnv: 'development' })).toBe(
+      SITE_ORIGIN_STAGING
+    );
   });
 });

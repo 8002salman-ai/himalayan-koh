@@ -129,6 +129,44 @@ export const SITE_ORIGIN = resolveSiteOrigin({
   nodeEnv: process.env.NODE_ENV,
 });
 
+/**
+ * The origin a *server-side* feature should read this site's own pages from.
+ *
+ * Why the request is consulted first
+ * ---------------------------------
+ * `SITE_ORIGIN` above is a build-time constant, so it is only as good as the
+ * build env. A deployed bundle whose build env carried no `NEXT_PUBLIC_SITE_URL`
+ * falls back to a loopback default (`http://localhost:3000`) — and a loopback
+ * origin makes every self-referential read fail: the SSRF guard refuses it, so a
+ * feature like "find this product's images on our own store" searches
+ * `http://localhost:3000`, refuses every page, and reports "nothing found" while
+ * the catalogue sits one hostname away. Observed on the staging Worker.
+ *
+ * The request's own origin cannot be wrong about which host the deployment is
+ * serving: staging asks staging, production asks production. So: prefer the
+ * request, then a real configured origin, and only fall back to staging when
+ * both are loopback (local development), because staging is where the catalogue
+ * a local build reads actually lives.
+ */
+export function resolveRuntimeSiteOrigin(
+  requestUrl: string,
+  input: SiteOriginInput = {}
+): string {
+  const fromRequest = (() => {
+    try {
+      return normalize(new URL(requestUrl).origin);
+    } catch {
+      return null;
+    }
+  })();
+  if (fromRequest && !isLoopbackOrigin(fromRequest)) return fromRequest;
+
+  const configured = resolveSiteOrigin(input);
+  if (!isLoopbackOrigin(configured)) return configured;
+
+  return SITE_ORIGIN_STAGING;
+}
+
 /** Absolute URL for a site-relative path, for canonical/OG/JSON-LD builders. */
 export function absoluteSiteUrl(path: string): string {
   return `${SITE_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;

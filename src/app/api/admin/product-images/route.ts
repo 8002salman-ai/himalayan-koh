@@ -20,7 +20,7 @@ import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { isAllowedRequestOrigin } from '@/lib/http/originAllowlist';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { resolveSiteOrigin } from '@/lib/site/origin';
+import { resolveRuntimeSiteOrigin } from '@/lib/site/origin';
 import { checkFetchableUrl } from '@/lib/scrape/urlSafety';
 import { fetchImagesForTitle, rankImagesWithAi } from '@/lib/scrape/pageImages';
 
@@ -56,10 +56,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: checkFetchableUrl(explicitUrl).reason }, { status: 400 });
   }
 
-  // The store the admin is working on. Defaults to this deployment's own site
-  // origin (staging) — production is never implied, only used when asked for.
+  // The store the admin is working on. Defaults to the host THIS deployment is
+  // serving (the request's origin) — production is never implied, only used when
+  // asked for. The build-time constant is not used as the primary source: on the
+  // staging Worker it had degraded to `http://localhost:3000`, so the search
+  // refused every page it needed to read and reported "nothing found".
   const requestedOrigin = typeof record.origin === 'string' ? record.origin.trim() : '';
-  let siteOrigin = resolveSiteOrigin();
+  let siteOrigin = resolveRuntimeSiteOrigin(request.url);
   if (requestedOrigin) {
     const safety = checkFetchableUrl(requestedOrigin);
     if (!safety.ok) return NextResponse.json({ error: safety.reason }, { status: 400 });
