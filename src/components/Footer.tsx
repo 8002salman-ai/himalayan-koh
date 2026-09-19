@@ -22,7 +22,7 @@ const aboutLinks = [
   { label: 'Shop Products', to: '/products' },
   { label: 'Contact Us', to: '/contact' },
   { label: 'Shipping & Delivery', to: '/shipping' },
-  { label: 'Return Policy', to: '/return' },
+  { label: 'Return Policy', to: '/returns' },
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
   { label: 'FAQs', to: '/faqs' },
@@ -232,7 +232,7 @@ export default function Footer() {
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
             <Link to="/shipping" className="hover:text-white/60 transition-colors">Shipping Policy</Link>
-            <Link to="/return" className="hover:text-white/60 transition-colors">Return Policy</Link>
+            <Link to="/returns" className="hover:text-white/60 transition-colors">Return Policy</Link>
             <Link to="/faqs" className="hover:text-white/60 transition-colors">FAQs</Link>
             <Link to="/sitemap" className="hover:text-white/60 transition-colors">Sitemap</Link>
           </div>

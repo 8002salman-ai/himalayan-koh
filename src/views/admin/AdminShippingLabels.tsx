@@ -20,7 +20,6 @@ import {
   AdminStatTile,
 } from '../../components/admin/AdminUI';
 import { BUTTON, INPUT } from '../../components/admin/adminTheme';
-import { AppProvider } from '../../App';
 
 export default function AdminShippingLabels() {
   const [activeTab, setActiveTab] = useState<'labels' | 'setup'>('labels');
@@ -148,8 +147,7 @@ export default function AdminShippingLabels() {
   }, [pending, search]);
 
   return (
-    <AppProvider>
-      <div className="w-full space-y-6">
+          <div className="w-full space-y-6">
         <div className="flex items-center justify-between gap-4 border-b border-gray-200 pb-3">
           <div className="flex items-center gap-2">
             <button
@@ -385,6 +383,5 @@ export default function AdminShippingLabels() {
           </>
         )}
       </div>
-    </AppProvider>
-  );
+      );
 }

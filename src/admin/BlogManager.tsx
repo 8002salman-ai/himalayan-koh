@@ -39,7 +39,7 @@ const slugify = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').repla
 
 /** Factual blog SEO prompt shared by the per-post button and the bulk run. */
 function buildBlogSeoPrompt(title: string, excerpt: string, content: string): string {
-  return `Write premium, honest SEO for this blog article on Luxedge (a US pet store).
+  return `Write premium, honest SEO for this blog article for Himalayan Koh (authentic Himalayan pink salt).
 Title: ${title}
 Excerpt: ${excerpt || 'none'}
 Content: ${content || 'none'}
@@ -51,7 +51,7 @@ No other text.`;
 
 const emptyDraft = (): Omit<CmsBlogRow, 'id'> => ({
   slug: '', title: '', excerpt: null, content: '', hero_image_url: null, hero_image_alt: null,
-  tags: [], author_name: 'Luxedge Editorial Team', author_id: null, status: 'draft',
+  tags: [], author_name: 'Himalayan Koh Editorial Team', author_id: null, status: 'draft',
   created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   scheduled_at: null, published_at: null, seo_title: null, meta_description: null,
   target_keyword: null, secondary_keywords: [], search_intent: null, faq: [], internal_links: [],
