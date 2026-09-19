@@ -91,6 +91,19 @@ describe('htmlToText', () => {
     expect(htmlToText('<p>Salt &amp; Pepper</p>')).toBe('Salt & Pepper');
     expect(htmlToText('<div>a</div>\n<div>b</div>')).toBe('a b');
     expect(htmlToText('&nbsp; spaced ')).toBe('spaced');
+  });
+
+  it('reduces a product description to the sentence it carries', () => {
+    // The product page renders the description as text, so WooCommerce's markup must
+    // not survive into it: `<p>` used to appear verbatim in the copy on every PDP that
+    // had one, which is the shape the store's descriptions all have.
+    const fromWoo =
+      '<p>Himalayan pink salt, fine 0.5–1.0 mm grain, 45 lb pack. Unrefined and additive-free.</p>';
+    expect(htmlToText(fromWoo)).toBe(
+      'Himalayan pink salt, fine 0.5–1.0 mm grain, 45 lb pack. Unrefined and additive-free.'
+    );
+    expect(htmlToText(undefined)).toBe('');
+    expect(htmlToText('<ul><li>Fine</li><li>Coarse</li></ul>')).toBe('Fine Coarse');
     expect(htmlToText(undefined)).toBe('');
   });
 });

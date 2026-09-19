@@ -281,7 +281,9 @@ export function mapStoreProduct(raw: StoreApiProduct): Product {
     id: raw.id ?? '',
     slug: raw.slug ?? '',
     name: htmlToText(raw.name),
-    description: raw.short_description || raw.description || '',
+    // WooCommerce sends markup, and the product page renders this value as text, so
+    // `<p>` used to appear verbatim in the middle of a product's copy.
+    description: htmlToText(raw.short_description || raw.description),
     priceMin,
     images: imageUrls(raw.images),
     category: htmlToText(raw.categories?.[0]?.name),
@@ -304,7 +306,9 @@ export function mapRestV3Product(raw: RestV3Product): Product {
     id: raw.id ?? '',
     slug: raw.slug ?? '',
     name: htmlToText(raw.name),
-    description: raw.short_description || raw.description || '',
+    // Same as `mapStoreProduct`: the page renders this as text, so the store's markup
+    // is reduced to the sentence it carries.
+    description: htmlToText(raw.short_description || raw.description),
     priceMin,
     images: imageUrls(raw.images),
     category: htmlToText(raw.categories?.[0]?.name),
