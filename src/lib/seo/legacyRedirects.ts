@@ -54,8 +54,8 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   { source: '/privacy-policy', destination: '/privacy', permanent: true },
   { source: '/terms-conditions', destination: '/terms', permanent: true },
   { source: '/terms-and-conditions', destination: '/terms', permanent: true },
-  { source: '/return-policy', destination: '/return', permanent: true },
-  { source: '/refund-policy', destination: '/return', permanent: true },
+  { source: '/return-policy', destination: '/returns', permanent: true },
+  { source: '/refund-policy', destination: '/returns', permanent: true },
   { source: '/faq', destination: '/faqs', permanent: true },
   // `/my-account` used to send everyone to /login, which was right for a guest
   // and wrong for a signed-in customer. It now routes to the account portal

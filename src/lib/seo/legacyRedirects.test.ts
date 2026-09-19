@@ -20,6 +20,7 @@ const STATIC_ROUTES = new Set([
   '/privacy',
   '/terms',
   '/return',
+  '/returns',
   '/login',
 ]);
 
@@ -68,6 +69,7 @@ const APP_OWNED_PATHS = [
   '/products',
   '/reset-password',
   '/return',
+  '/returns',
   '/shipping',
   '/signup',
   '/terms',
