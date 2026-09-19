@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Clock, Loader2, Tag, User } from 'lucide-react';
 import { blogApi, BlogPostWithAuthor } from '../lib/supabase/api';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { resolveLegacyImageSrc } from '../lib/images/legacyAssets';
 
 interface BlogDetailPageProps {
   /**
@@ -115,7 +116,7 @@ export default function BlogDetailPage({ initialPost = null }: BlogDetailPagePro
         {/* Featured image is the LCP element for an article — eager, high priority. */}
         {post.featured_image && (
           <img
-            src={post.featured_image}
+            src={resolveLegacyImageSrc(post.featured_image).src}
             alt={post.title}
             fetchPriority="high"
             decoding="async"
@@ -146,7 +147,7 @@ export default function BlogDetailPage({ initialPost = null }: BlogDetailPagePro
                   className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
                 >
                   <img
-                    src={related.featured_image || ''}
+                    src={resolveLegacyImageSrc(related.featured_image).src || ''}
                     alt={related.title}
                     loading="lazy"
                     decoding="async"

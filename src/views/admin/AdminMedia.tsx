@@ -11,7 +11,6 @@ import {
   AdminPanel,
   AdminStatTile,
   AdminTable,
-  AdminTableSkeleton,
   AdminTabs,
 } from '../../components/admin/AdminUI';
 import { fetchWordPressContent, type WordPressContent } from '../../lib/admin/consoleApi';
@@ -69,12 +68,17 @@ export default function AdminMedia() {
     void load();
   }, [load]);
 
-  const media = content?.media?.items ?? [];
-  const missingAlt = useMemo(() => media.filter((item) => !item.alt), media);
+  const [onlyMissingAlt, setOnlyMissingAlt] = useState(false);
+
+  const media = useMemo(() => content?.media?.items ?? [], [content?.media?.items]);
+  const missingAlt = useMemo(() => media.filter((item) => !item.alt), [media]);
   const totalBytes = useMemo(
     () => media.reduce((sum, item) => sum + (item.bytes ?? 0), 0),
     [media]
   );
+  const displayedMedia = useMemo(() => {
+    return onlyMissingAlt ? media.filter((item) => !item.alt) : media;
+  }, [media, onlyMissingAlt]);
 
   return (
     <>
@@ -139,7 +143,22 @@ export default function AdminMedia() {
         <AdminPanel
           title="Media library"
           description="Every image WordPress reports, newest first."
-          action={<AdminChip tone="neutral">{media.length} assets</AdminChip>}
+          action={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOnlyMissingAlt((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                  onlyMissingAlt
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                    : 'border-admin-line bg-admin-surface text-admin-ink hover:bg-admin-canvas'
+                }`}
+              >
+                Missing alt only ({missingAlt.length})
+              </button>
+              <AdminChip tone="neutral">{displayedMedia.length} assets</AdminChip>
+            </div>
+          }
         >
           <div className="mb-4">
             <input
@@ -157,13 +176,17 @@ export default function AdminMedia() {
                 <div key={index} className="h-32 animate-pulse rounded-xl bg-admin-canvas" />
               ))}
             </div>
-          ) : media.length === 0 ? (
+          ) : displayedMedia.length === 0 ? (
             <p className="text-sm text-admin-muted">
-              {search ? 'No asset matches that search.' : 'WordPress reported no media.'}
+              {search
+                ? 'No asset matches that search.'
+                : onlyMissingAlt
+                  ? 'All assets have alt text.'
+                  : 'WordPress reported no media.'}
             </p>
           ) : (
             <div className="grid grid-cols-6 gap-4">
-              {media.map((item) => (
+              {displayedMedia.map((item) => (
                 <figure key={item.id} className="overflow-hidden rounded-xl border border-admin-line">
                   <img
                     src={item.thumbnail ?? item.url ?? '/images/placeholder-product.svg'}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, Clock, Loader2, Search, Tag, User } from 'lucide-react';
 import type { BlogPostWithAuthor } from '../lib/supabase/api';
+import { resolveLegacyImageSrc } from '../lib/images/legacyAssets';
 
 interface BlogPageProps {
   /**
@@ -132,7 +133,7 @@ Notes on pink salt: how it is used, how it is stored, and what the labels mean
             <div className="aspect-[16/10] md:aspect-auto overflow-hidden">
               {/* Featured post sits above the fold and is the LCP candidate. */}
               <img
-                src={featuredPost.featured_image || ''}
+                src={resolveLegacyImageSrc(featuredPost.featured_image).src || ''}
                 alt={featuredPost.title}
                 fetchPriority="high"
                 decoding="async"
@@ -185,7 +186,7 @@ Notes on pink salt: how it is used, how it is stored, and what the labels mean
               <Link to={`/blog/${post.slug}`} className="block">
               <div className="aspect-[16/10] overflow-hidden">
                 <img
-                  src={post.featured_image || ''}
+                  src={resolveLegacyImageSrc(post.featured_image).src || ''}
                   alt={post.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   loading="lazy"
