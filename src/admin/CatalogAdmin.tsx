@@ -31,7 +31,6 @@ import { listRecommendations } from '../features/hermes/repository';
 import type { HermesRecommendationRow } from '../features/hermes/types';
 import {
   type CatalogProduct, type CatalogCategory, type CatalogImage, type CatalogVariant, type Coupon, type StoreOffer, type StoreSettings,
-  speciesOf,
 } from '../features/catalog/types';
 import { buildFeedCsv, buildProductJsonLd, buildProductMeta, productPath } from '../features/catalog/seo';
 import { adminPublicVisibility } from '../features/catalog/visibility';
@@ -213,7 +212,6 @@ export function CatalogProductsPage() {
   const [fFlag, setFFlag] = useState('all');
   const [fReady, setFReady] = useState('all');
   const [fSource, setFSource] = useState('all');
-  const [fSpecies, setFSpecies] = useState('all');
   const [fImage, setFImage] = useState('all');
   const [fSeo, setFSeo] = useState('all');
   // Default: newest-first — the products the owner most recently added are the
@@ -462,7 +460,6 @@ export function CatalogProductsPage() {
     if (fFlag === 'sale' && !(p.compareAtPrice > p.price)) return false;
     if (fFlag === 'free-shipping' && !p.freeShipping) return false;
     if (fFlag === 'low-stock' && !(p.inventoryQty <= p.lowStockThreshold)) return false;
-    if (fSpecies !== 'all' && speciesOf(p) !== fSpecies) return false;
     if (fImage === 'no-image' && p.images.length > 0) return false;
     if (fImage === 'has-image' && p.images.length === 0) return false;
     if (fImage === 'single-image' && p.images.length <= 1) return false;
@@ -472,7 +469,7 @@ export function CatalogProductsPage() {
       return [p.name, p.brand, p.sku, p.categoryName, ...p.tags].join(' ').toLowerCase().includes(needle);
     }
     return true;
-  }), [products, fStatus, fCat, fFlag, fReady, fSource, fSpecies, fImage, fSeo, q]);
+  }), [products, fStatus, fCat, fFlag, fReady, fSource, fImage, fSeo, q]);
 
   const sorted = useMemo(() => {
     const rows = [...filtered];
@@ -914,12 +911,6 @@ export function CatalogProductsPage() {
             <option value="low-margin">Low margin (&lt;40%)</option>
             <option value="stock-unknown">Stock unknown</option>
           </select>
-          <select value={fSpecies} onChange={(e) => setFSpecies(e.target.value)} className={FI} aria-label="Filter by species">
-            <option value="all">All species</option>
-            <option value="DOG">Dog</option>
-            <option value="CAT">Cat</option>
-            <option value="BOTH">Both</option>
-          </select>
           <select value={fImage} onChange={(e) => setFImage(e.target.value)} className={FI} aria-label="Filter by image status">
             <option value="all">All images</option>
             <option value="no-image">No images</option>
@@ -1064,7 +1055,6 @@ export function CatalogProductsPage() {
                           <option value="">—</option>
                           {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <span className="text-[10px] text-gray-400">{speciesOf(p) ?? '—'}</span>
                       </div>
                     </td>
                   ),

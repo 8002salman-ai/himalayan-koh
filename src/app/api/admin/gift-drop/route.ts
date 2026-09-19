@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     claims = [];
   }
 
-  const total = campaign?.totalQuantity ?? 100;
+  const total = campaign?.totalQuantity ?? 0;
   const claimed = claims.length;
   const remaining = Math.max(0, total - claimed);
 

@@ -251,9 +251,15 @@ export default function GiftDropAdmin() {
       {/* Inventory + claims */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-sm">
-          <span className="rounded-xl bg-gray-900 px-3 py-1.5 font-black text-white">{campaign ? live.length : 0}<span className="font-medium text-gray-300"> claimed</span></span>
-          <span className="rounded-xl bg-emerald-50 px-3 py-1.5 font-black text-emerald-700">{remaining >= 0 ? remaining : '…'}<span className="font-medium text-emerald-500"> real gifts left</span></span>
-          <span className="text-xs text-gray-400">of {campaign?.totalQuantity ?? 0} total (real inventory, from live claims)</span>
+          {campaign ? (
+            <>
+              <span className="rounded-xl bg-gray-900 px-3 py-1.5 font-black text-white">{live.length}<span className="font-medium text-gray-300"> claimed</span></span>
+              <span className="rounded-xl bg-emerald-50 px-3 py-1.5 font-black text-emerald-700">{remaining >= 0 ? remaining : '…'}<span className="font-medium text-emerald-500"> real gifts left</span></span>
+              <span className="text-xs text-gray-400">of {campaign.totalQuantity ?? 0} total</span>
+            </>
+          ) : (
+            <span className="text-xs text-gray-400">No campaign configured</span>
+          )}
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-gray-500">
           <input type="checkbox" className="h-4 w-4 accent-amber-500" checked={showTests} onChange={(e) => setShowTests(e.target.checked)} />
