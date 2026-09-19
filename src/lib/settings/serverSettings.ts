@@ -84,6 +84,19 @@ export async function upsertSettings(
   }
 }
 
+/**
+ * Removes one stored value.
+ *
+ * Needed by the stores that keep a *collection* in `site_settings` — campaign
+ * drafts are one row per campaign — because clearing a field is not the same as
+ * deleting the record: an empty string is still a campaign that exists.
+ */
+export async function deleteSetting(category: string, key: string): Promise<void> {
+  const supabase: AnyClient = getSupabaseAdmin();
+  await supabase.from('site_settings').delete().eq('category', category).eq('key', key);
+  cache.delete(cacheKey(category, key));
+}
+
 export function invalidateCategory(category: string): void {
   for (const k of cache.keys()) {
     if (k.startsWith(`${category}::`)) cache.delete(k);

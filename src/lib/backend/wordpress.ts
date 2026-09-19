@@ -114,13 +114,35 @@ export function buildWordPressUrl(path: string, base = backendConfig.wordpressAp
 }
 
 /**
- * Performs a JSON read against the WordPress/WooCommerce REST API.
- * Throws WordPressApiError on any non-2xx, timeout, fatal page or bad payload.
+ * The same request, with the response envelope kept.
+ *
+ * Paginated admin reads need WordPress's own row counts (`X-WP-Total` /
+ * `X-WP-TotalPages`) to render "page 2 of 7" honestly. Those live in headers, so
+ * the plain `wordpressRequest` throws them away and every caller that needed a
+ * count would have had to re-implement this client — including its fatal-page
+ * detection and timeout. Callers that only want the body use the wrapper below.
  */
-export async function wordpressRequest<T>(
+export interface WordPressResponse<T> {
+  data: T;
+  status: number;
+  /** `X-WP-Total`: rows matching the query, not rows in this page. Null when absent. */
+  total: number | null;
+  /** `X-WP-TotalPages`. Null when absent. */
+  totalPages: number | null;
+}
+
+function headerCount(headers: Headers, name: string): number | null {
+  const raw = headers.get(name);
+  if (raw === null || raw === '') return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Performs a JSON read against the WordPress/WooCommerce REST API, keeping counts. */
+export async function wordpressRequestWithMeta<T>(
   path: string,
   options: WordPressRequestOptions = {}
-): Promise<T> {
+): Promise<WordPressResponse<T>> {
   const { params, revalidate, signal, headers } = options;
   const method = options.method ?? 'GET';
   const isWrite = method !== 'GET';
@@ -237,7 +259,12 @@ export async function wordpressRequest<T>(
   }
 
   try {
-    return JSON.parse(rawBody) as T;
+    return {
+      data: JSON.parse(rawBody) as T,
+      status: response.status,
+      total: headerCount(response.headers, 'x-wp-total'),
+      totalPages: headerCount(response.headers, 'x-wp-totalpages'),
+    };
   } catch {
     throw new WordPressApiError({
       message: `WordPress returned HTTP ${response.status} for ${path} but the body was not valid JSON.`,
@@ -247,6 +274,17 @@ export async function wordpressRequest<T>(
       isHtmlResponse: isHtml,
     });
   }
+}
+
+/**
+ * Performs a JSON read against the WordPress/WooCommerce REST API.
+ * Throws WordPressApiError on any non-2xx, timeout, fatal page or bad payload.
+ */
+export async function wordpressRequest<T>(
+  path: string,
+  options: WordPressRequestOptions = {}
+): Promise<T> {
+  return (await wordpressRequestWithMeta<T>(path, options)).data;
 }
 
 /**

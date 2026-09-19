@@ -13,6 +13,7 @@ import {
   AdminStatTile,
   AdminTabs,
 } from '../../components/admin/AdminUI';
+import SeoAssistantPanel from '../../components/admin/SeoAssistantPanel';
 
 /**
  * The SEO centre.
@@ -34,7 +35,7 @@ const TABS: Array<{ id: SeoTabId; label: string; badge?: string }> = [
   { id: 'product', label: 'Product & category SEO', badge: 'Pending' },
   { id: 'content', label: 'Content audits', badge: 'Pending' },
   { id: 'technical', label: 'Technical' },
-  { id: 'ai', label: 'Gemini AI', badge: 'Pending' },
+  { id: 'ai', label: 'Gemini AI' },
 ];
 
 interface CrawlerCheck {
@@ -295,63 +296,7 @@ export default function AdminSeo() {
         </>
       )}
 
-      {tab === 'ai' && (
-        <>
-          <AdminNotice tone="warning" title="Gemini API is not configured">
-            The generation flow below is the real review flow — suggestions arrive as drafts that a
-            person approves. No key is configured in this deployment, so Generate is disabled and
-            nothing is simulated.
-          </AdminNotice>
-
-          <AdminPanel
-            title="Gemini SEO assistant"
-            description="Generate → Review → Apply. Nothing is published without a person applying it."
-          >
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                {
-                  step: '1 · Generate',
-                  body: 'Ask for a title, meta description, keyword set or image alt text for a specific product or category.',
-                },
-                {
-                  step: '2 · Review',
-                  body: 'The suggestion appears beside the current value so the difference is visible before anything changes.',
-                },
-                {
-                  step: '3 · Apply',
-                  body: 'Applying writes through the WordPress connection once it exists — never straight into a search index or a cached page.',
-                },
-              ].map((stage) => (
-                <div key={stage.step} className="rounded-xl border border-admin-line px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-admin-muted">
-                    {stage.step}
-                  </p>
-                  <p className="mt-2 text-sm text-admin-ink">{stage.body}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-admin-line pt-4">
-              <button type="button" disabled className="rounded-xl bg-himalayan px-4 py-2.5 text-sm font-semibold text-white opacity-55">
-                Generate suggestions
-              </button>
-              <span className="text-xs text-admin-muted">
-                Requires GEMINI_API_KEY set server-side (never NEXT_PUBLIC_GEMINI_API_KEY).
-              </span>
-            </div>
-          </AdminPanel>
-
-          <AdminPendingPanel
-            title="AI-assisted SEO needs two connections"
-            summary="The model key alone is not enough: suggestions are only useful once the console can read and write the WordPress SEO fields they target."
-            needs={[
-              'GEMINI_API_KEY as a server-only environment variable.',
-              'The WordPress product meta read/write connection, so a suggestion has a real before value and a real Apply destination.',
-              'A record of who applied which suggestion, since generated copy can be wrong.',
-            ]}
-          />
-        </>
-      )}
+      {tab === 'ai' && <SeoAssistantPanel />}
     </>
   );
 }

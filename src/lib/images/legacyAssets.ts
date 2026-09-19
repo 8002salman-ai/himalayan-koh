@@ -84,3 +84,38 @@ export const LEGACY_IMAGES: Record<LegacyImageKey, LegacyImage> = {
  * — the local files then take over automatically.
  */
 export const legacyImage = (key: LegacyImageKey): string => LEGACY_IMAGES[key].src;
+
+/**
+ * Records that point at a legacy file this repository does not actually have.
+ *
+ * These paths were referenced by editorial records (a blog post's featured image)
+ * and never committed, so they 404 on the site. The honest fix is to correct the
+ * record; until then a reader must not be shown a broken image, and guessing a
+ * *new* photograph for a post would be inventing content. So each dead path is
+ * mapped to the registered asset that is closest in subject, and the substitution
+ * is reported to the console rather than performed silently — the owner sees which
+ * record still needs fixing.
+ */
+export const MISSING_LEGACY_IMAGES: Record<string, LegacyImageKey> = {
+  '/images/legacy/cattle-grazing.jpg': 'saltRockBag',
+  '/images/legacy/horse-salt-lick-paddock.jpg': 'horseLicking',
+};
+
+/**
+ * A usable path for an image reference, and the missing path it stood in for.
+ *
+ * `substitutedFrom` is null when the reference was fine, so a caller can render the
+ * image either way and warn only when something is actually wrong.
+ */
+export function resolveLegacyImageSrc(src: string | null | undefined): {
+  src: string;
+  substitutedFrom: string | null;
+} {
+  const trimmed = (src ?? '').trim();
+  if (!trimmed) return { src: '', substitutedFrom: null };
+
+  const replacement = MISSING_LEGACY_IMAGES[trimmed];
+  if (replacement) return { src: LEGACY_IMAGES[replacement].src, substitutedFrom: trimmed };
+
+  return { src: trimmed, substitutedFrom: null };
+}

@@ -15,6 +15,11 @@ import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { SETTINGS_REGISTRY, type SettingsCategory } from '../../lib/settings/registry';
 import {
+  fetchIntegrationStatuses,
+  testGemini,
+  type IntegrationStatus,
+} from '../../lib/admin/consoleApi';
+import {
   AdminButton,
   AdminChip,
   AdminField,
@@ -74,6 +79,49 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showValues, setShowValues] = useState<Record<string, boolean>>({});
+  const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
+  const [integrationsLoading, setIntegrationsLoading] = useState(true);
+  const [geminiTest, setGeminiTest] = useState<{ state: string; detail: string } | null>(null);
+  const [geminiTesting, setGeminiTesting] = useState(false);
+
+  /**
+   * What each integration is doing, as opposed to what is typed into it.
+   *
+   * The field list below answers "is a value present"; this answers "does the
+   * service accept it" and, for Stripe and Shippo, whether the key in place is a
+   * TEST one or a LIVE one — the distinction that matters most before a staging
+   * run.
+   */
+  const loadIntegrations = useCallback(async () => {
+    setIntegrationsLoading(true);
+    try {
+      const { integrations: list } = await fetchIntegrationStatuses(true);
+      setIntegrations(list);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Integration status could not be read.');
+      setIntegrations([]);
+    } finally {
+      setIntegrationsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void loadIntegrations();
+  }, [loadIntegrations]);
+
+  const runGeminiTest = async () => {
+    setGeminiTesting(true);
+    try {
+      setGeminiTest(await testGemini());
+    } catch (err) {
+      setGeminiTest({
+        state: 'UNREACHABLE',
+        detail: err instanceof Error ? err.message : 'The test could not be run.',
+      });
+    } finally {
+      setGeminiTesting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!session?.access_token) {
@@ -142,6 +190,86 @@ export default function AdminSettings() {
           </AdminButton>
         }
       />
+
+      <AdminPanel
+        title="Connection status"
+        description="What each service is doing right now — never a key value, only whether it is configured, whether it answers, and whether the mode is test or live."
+        action={
+          <AdminButton icon={Loader2} onClick={loadIntegrations} disabled={integrationsLoading}>
+            Re-check
+          </AdminButton>
+        }
+      >
+        {integrationsLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-12 animate-pulse rounded-xl bg-admin-canvas" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {integrations.map((integration) => (
+              <div
+                key={integration.id}
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-admin-line px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-admin-ink">
+                    {integration.label}
+                    {integration.mode && (
+                      <AdminChip tone={integration.mode === 'LIVE' ? 'warning' : 'info'}>
+                        {integration.mode}
+                      </AdminChip>
+                    )}
+                  </p>
+                  <p className="mt-1 text-[13px] text-admin-muted">{integration.detail}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {integration.source !== 'none' && (
+                    <AdminChip tone="neutral">
+                      {integration.source === 'console'
+                        ? 'Saved in console'
+                        : integration.source === 'environment'
+                          ? 'Environment'
+                          : 'Console + environment'}
+                    </AdminChip>
+                  )}
+                  <AdminChip
+                    tone={
+                      integration.state === 'CONNECTED'
+                        ? 'success'
+                        : integration.state === 'INVALID'
+                          ? 'danger'
+                          : integration.state === 'OWNER ACTION REQUIRED'
+                            ? 'warning'
+                            : 'muted'
+                    }
+                  >
+                    {integration.state}
+                  </AdminChip>
+                  {integration.id === 'gemini' && (
+                    <AdminButton onClick={runGeminiTest} disabled={geminiTesting}>
+                      {geminiTesting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Test connection
+                    </AdminButton>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {geminiTest && (
+          <div className="mt-3">
+            <AdminNotice
+              tone={geminiTest.state === 'CONNECTED' ? 'info' : 'warning'}
+              title={`Gemini: ${geminiTest.state}`}
+            >
+              {geminiTest.detail}
+            </AdminNotice>
+          </div>
+        )}
+      </AdminPanel>
 
       <AdminNotice tone="warning" title="Supabase keys cannot be set from this screen">
         <code className="rounded bg-amber-100 px-1 text-xs">NEXT_PUBLIC_SUPABASE_URL</code>,{' '}

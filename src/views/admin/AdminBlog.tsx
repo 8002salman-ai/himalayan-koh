@@ -18,6 +18,7 @@ import { adminApi, AdminBlogFilters, BlogPostFormData } from '../../lib/supabase
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import type { BlogPost } from '../../lib/supabase/database.types';
+import { resolveLegacyImageSrc } from '../../lib/images/legacyAssets';
 import {
   ADMIN_TD,
   AdminButton,
@@ -316,13 +317,30 @@ export default function AdminBlog() {
                 <td className={ADMIN_TD}>
                   <div className="flex items-center gap-3">
                     <img
-                      src={post.featured_image || '/images/placeholder-product.svg'}
+                      /*
+                       * Editorial records still point at two legacy files this
+                       * repository does not have (`cattle-grazing.jpg` and
+                       * `horse-salt-lick-paddock.jpg`), so the row is rendered with
+                       * the closest registered asset instead of a broken image, and
+                       * the substitution is stated below the title. Inventing a new
+                       * photograph for the post, or editing the record from here,
+                       * would be worse than showing the reader something real.
+                       */
+                      src={
+                        resolveLegacyImageSrc(post.featured_image).src ||
+                        '/images/placeholder-product.svg'
+                      }
                       alt=""
                       className="h-12 w-12 rounded-lg bg-admin-canvas object-cover"
                     />
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-admin-ink">{post.title}</p>
                       <p className="truncate text-[11px] text-admin-muted">/{post.slug}</p>
+                      {resolveLegacyImageSrc(post.featured_image).substitutedFrom && (
+                        <p className="truncate text-[11px] font-semibold text-amber-600">
+                          Featured image missing: {resolveLegacyImageSrc(post.featured_image).substitutedFrom}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </td>

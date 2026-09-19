@@ -165,5 +165,47 @@ export const SETTINGS_REGISTRY: SettingsCategory[] = [
       },
     ],
   },
+  {
+    id: 'gemini',
+    label: 'Gemini — Admin SEO Assistant',
+    description:
+      'Writes SEO titles, meta descriptions and product copy drafts for the console. Staff-side only: the customer-facing assistant is OpenRouter, and this key is never sent to a browser.',
+    docsHref: 'https://aistudio.google.com/app/apikey',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'Gemini API Key',
+        type: 'password',
+        placeholder: 'AIza...',
+        hint: 'Stored server-side. Generating copy needs it; drafting and every other screen does not.',
+        envFallback: 'GEMINI_API_KEY',
+      },
+      {
+        key: 'model',
+        label: 'Model (optional)',
+        type: 'text',
+        placeholder: 'gemini-2.5-flash',
+        hint: 'Leave blank to use the default. A model this key cannot use is reported by Test connection.',
+        envFallback: 'GEMINI_MODEL',
+      },
+    ],
+  },
+  {
+    id: 'resend',
+    label: 'Resend — Transactional Email',
+    description:
+      'Order mail and campaign mail. Nothing claims a mail was sent while this is unconfigured, and campaign sending stays disabled.',
+    docsHref: 'https://resend.com/api-keys',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'Resend API Key',
+        type: 'password',
+        placeholder: 're_...',
+        hint: 'Sending also needs a verified sending domain.',
+        envFallback: 'RESEND_API_KEY',
+      },
+    ],
+  },
   // ─── Add future services below ───────────────────────────────────────────────
 ];

@@ -17,9 +17,24 @@ import {
   XCircle,
   type LucideIcon,
 } from 'lucide-react';
-import { adminApi, AdminOrder, AdminOrderAnalytics, AdminOrderFilters } from '../../lib/supabase/api/admin';
+/**
+ * Orders are WooCommerce records.
+ *
+ * The screen's shape did not change: `AdminOrder` here is the store's order
+ * projected into the same `Order`/`OrderItem` fields this view has always
+ * rendered, and the filters are translated into the store's own query. What did
+ * change is where the data comes from — the read and the status write both go to
+ * the store now, so an owner's change is a change in WooCommerce.
+ */
+import {
+  fetchAdminOrders,
+  fetchLegacyOrders,
+  type AdminOrderRecord as AdminOrder,
+  type AdminOrderStats as AdminOrderAnalytics,
+  type AdminOrderFilters,
+  type LegacyOrderSummary,
+} from '../../lib/admin/consoleApi';
 import { FREE_SHIPPING_THRESHOLD } from '../../lib/supabase/api/orders';
-import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { getErrorMessage } from '../../lib/errors';
 import { useAuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -132,43 +147,61 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState('');
+
   const [statusForm, setStatusForm] = useState({
     status: 'pending' as Order['status'],
     paymentStatus: 'pending' as Order['payment_status'],
     trackingNumber: '',
   });
+  const [legacyOrders, setLegacyOrders] = useState<LegacyOrderSummary[]>([]);
+  const [legacyCount, setLegacyCount] = useState(0);
+  const [legacyAvailable, setLegacyAvailable] = useState(false);
+  const [legacyLoading, setLegacyLoading] = useState(false);
+
+  /**
+   * The app's own pre-migration orders, read separately from the store's list.
+   *
+   * Failures here are silent by design: this panel is a record of what the app used
+   * to hold, and a read error in it must not put an error banner over the store's
+   * orders, which are the ones an owner acts on.
+   */
+  const loadLegacyOrders = useCallback(async () => {
+    setLegacyLoading(true);
+    try {
+      const result = await fetchLegacyOrders({ limit: 25 });
+      setLegacyOrders(result.orders ?? []);
+      setLegacyCount(result.count ?? 0);
+      setLegacyAvailable(Boolean(result.available));
+    } catch {
+      setLegacyOrders([]);
+      setLegacyCount(0);
+      setLegacyAvailable(false);
+    } finally {
+      setLegacyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadLegacyOrders();
+  }, [loadLegacyOrders]);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
-
-    if (!isSupabaseConfigured()) {
-      setOrders([]);
-      setAnalytics(null);
-      setTotalCount(0);
-      setTotalPages(1);
-      setLoading(false);
-      return;
-    }
 
     try {
       const filters: AdminOrderFilters = {
         search: search || undefined,
         status: statusFilter ? statusFilter as Order['status'] : undefined,
-        paymentStatus: paymentFilter ? paymentFilter as Order['payment_status'] : undefined,
         page,
         limit: 10,
       };
 
-      const [ordersResult, analyticsResult] = await Promise.all([
-        adminApi.getOrders(filters),
-        adminApi.getOrderAnalytics(),
-      ]);
+      const ordersResult = await fetchAdminOrders(filters);
 
       setOrders(ordersResult.orders);
       setTotalCount(ordersResult.count);
       setTotalPages(ordersResult.totalPages || 1);
-      setAnalytics(analyticsResult);
+      setAnalytics(ordersResult.stats);
       setSelectedOrder((current) => {
         if (!current) return ordersResult.orders[0] || null;
         return ordersResult.orders.find((order) => order.id === current.id) || ordersResult.orders[0] || null;
@@ -178,7 +211,7 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, [page, paymentFilter, search, statusFilter, toast]);
+  }, [page, search, statusFilter, toast]);
 
   useEffect(() => {
     fetchOrders();
@@ -192,7 +225,7 @@ export default function AdminOrders() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, paymentFilter]);
+  }, [search, statusFilter]);
 
   const deepLinkOrderId = searchParams.get('orderId');
 
@@ -364,12 +397,12 @@ export default function AdminOrders() {
         }
       />
 
-      {!isSupabaseConfigured() && (
-        <AdminNotice tone="warning" title="Orders are not connected">
-          Supabase holds orders and this deployment has no configuration for it, so the figures below read
-          <strong> Not connected</strong> and the list stays empty.
-        </AdminNotice>
-      )}
+      <AdminNotice tone="info" title="Orders are read from the store">
+        Every order here is WooCommerce&apos;s own record: its number, its money, its status and its lines.
+        The figures below count the orders the store reported. Payment status is shown per order but is not a
+        filter this console can ask the store for, so the only status filters are the store&apos;s own —
+        including Refunded, which is how a refund request is found.
+      </AdminNotice>
 
       <div className="grid grid-cols-4 gap-4">
         {statCards.map((stat) => (
@@ -407,19 +440,8 @@ export default function AdminOrders() {
               <option key={status} value={status}>{capitalize(status)}</option>
             ))}
           </select>
-          <select
-            value={paymentFilter}
-            onChange={(event) => setPaymentFilter(event.target.value)}
-            aria-label="Filter by payment status"
-            className={SELECT}
-          >
-            <option value="">All payments</option>
-            {paymentStatuses.map((status) => (
-              <option key={status} value={status}>{capitalize(status)}</option>
-            ))}
-          </select>
-          <AdminButton onClick={() => setPaymentFilter('refunded')}>
-            Refund requests
+          <AdminButton onClick={() => setStatusFilter('refunded')}>
+            Refunded orders
           </AdminButton>
           <span className={`ml-auto ${MICRO_LABEL}`}>
             {loading ? 'Reading…' : `${totalCount} order${totalCount === 1 ? '' : 's'}`}
@@ -440,9 +462,9 @@ export default function AdminOrders() {
               </span>
               <p className="text-sm font-semibold text-admin-ink">No orders found</p>
               <p className="text-sm text-admin-muted">
-                {isSupabaseConfigured()
-                  ? 'Orders appear here as soon as customers place them.'
-                  : 'No order source is connected, so there is nothing to list.'}
+                {search || statusFilter
+                  ? 'No order in the store matches this search or filter.'
+                  : 'Orders appear here as soon as customers place them.'}
               </p>
             </div>
           ) : (
@@ -609,6 +631,67 @@ export default function AdminOrders() {
           </AdminModal>
         )}
       </AnimatePresence>
+
+      {/**
+       * Orders the app recorded before WooCommerce became the order source.
+       *
+       * They are shown separately and labelled because they are not the store's
+       * records: merging them into the table above would produce a count true of
+       * neither system, and hiding them would look like they had been lost. This
+       * panel is read-only — status changes write the store, and a legacy record
+       * has no store mirror to change.
+       */}
+      {legacyAvailable && (
+        <AdminPanel
+          title="App-recorded orders (pre-migration)"
+          description="Read from this application's own order table. These are not WooCommerce records and cannot be updated from this console."
+          action={<AdminChip tone="warning">Legacy source</AdminChip>}
+        >
+          {legacyLoading ? (
+            <p className="text-sm text-admin-muted">Reading…</p>
+          ) : legacyOrders.length === 0 ? (
+            <p className="text-sm text-admin-muted">
+              This application’s order table holds no orders.
+            </p>
+          ) : (
+            <AdminTable
+              columns={[
+                { key: 'number', label: 'Order' },
+                { key: 'email', label: 'Email' },
+                { key: 'status', label: 'Status' },
+                { key: 'payment', label: 'Payment' },
+                { key: 'total', label: 'Total', align: 'right' },
+              ]}
+            >
+              {legacyOrders.map((order) => (
+                <tr key={order.id}>
+                  <td className={ADMIN_TD}>
+                    <p className="font-semibold text-admin-ink">{order.order_number}</p>
+                    <p className="text-[11px] text-admin-muted">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </p>
+                  </td>
+                  <td className={`${ADMIN_TD} text-admin-muted`}>{order.email}</td>
+                  <td className={ADMIN_TD}>
+                    <AdminChip tone="muted">{order.status}</AdminChip>
+                  </td>
+                  <td className={ADMIN_TD}>
+                    <AdminChip tone="muted">{order.payment_status}</AdminChip>
+                  </td>
+                  <td className={`${ADMIN_TD} text-right font-semibold`}>
+                    ${order.total.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+          )}
+          <p className="mt-3 text-sm text-admin-muted">
+            {legacyCount} order{legacyCount === 1 ? '' : 's'} are recorded here. Moving them, or making
+            WooCommerce the only order record, is the remaining step of the order migration — it waits on a
+            verified payment leg, because an order is created before the card is charged.
+          </p>
+        </AdminPanel>
+      )}
     </>
   );
 }
