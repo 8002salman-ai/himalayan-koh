@@ -36,17 +36,17 @@ const faqs: Faq[] = [
   {
     question: 'Where do I send a return request, and where do returns go?',
     answer:
-      'Email sales@himalayankoh.com to open a return. Approved returns are sent to Himalayan Koh Salt, 12620 FM 1960 W Ste A-4, Houston, TX 77065.',
+      'Email sales@himalayankoh.com or call (832) 224-6466 to open a return request. Because returns require prior Return Merchandise Authorization (RMA), our support team will provide you with authorized return instructions and the appropriate receiving facility address when approving your request.',
   },
   {
     question: 'How long does it take you to process an order for shipping?',
     answer:
-      'Most orders are packaged and shipped from our warehouse within 1–2 business days. The delivery date depends on the distance your package has to travel from our facility.',
+      'Most orders are packaged and shipped from our Houston, Texas warehouse within 1–2 business days. The delivery date depends on the distance your package has to travel from our facility.',
   },
   {
     question: 'What payment options are available for purchase?',
     answer:
-      'We accept Visa, Mastercard, American Express and Discover online. If you would rather not enter your card details online, call (201) 401-5104 and we will process the order by phone.',
+      'We accept Visa, Mastercard, American Express and Discover online. If you would rather not enter your card details online, call (832) 224-6466 and we will be happy to assist you.',
   },
   {
     question: 'Can I use Himalayan salt blocks and crystals for bath and beauty?',

@@ -2,22 +2,19 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 /**
- * The policy pages, carrying the business's own wording.
+ * The policy pages, carrying the business's approved wording.
  *
- * Every statement here comes from the production WordPress policies (see
- * `docs/FRONTEND-CONTENT-AUDIT.md` for the item-by-item mapping). Two things are
- * deliberate:
- *
- * 1. Promises are not invented. Where production is silent — a reply time, weekend
- *    support hours — the page does not promise one. The hours and the refund route
- *    below are production's, not the storefront's earlier guesses.
- * 2. The return page carries production's refund terms. It previously said refunds
- *    were not offered at all, which contradicted the live policies; the owner should
- *    confirm the refund wording is current (flagged in the audit).
+ * Contact details and return protocols are aligned with approved business identity:
+ * - General business address: 12620 FM 1960 W Ste A-4, Houston, TX 77065
+ * - Phone: (832) 224-6466
+ * - Email: sales@himalayankoh.com
+ * - Returns: Require prior authorization; customers contact support for return instructions.
  */
 
-const SUPPORT_PHONE = '(201) 401-5104';
+const BUSINESS_NAME = 'Himalayan Koh';
+const BUSINESS_ADDRESS = '12620 FM 1960 W Ste A-4, Houston, TX 77065';
 const STORE_PHONE = '(832) 224-6466';
+const SUPPORT_EMAIL = 'sales@himalayankoh.com';
 
 interface LegalPageProps {
   type: 'terms' | 'privacy' | 'return' | 'shipping';
@@ -40,129 +37,12 @@ interface Section {
 }
 
 const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; description: string; sections: Section[] }> = {
-  shipping: {
-    eyebrow: 'Shipping & Delivery',
-    title: 'Shipping & Delivery',
-    description:
-      'How Himalayan Koh packs, dispatches and tracks orders, and what to expect once your package leaves our Houston warehouse.',
-    sections: [
-      {
-        title: 'Where We Ship From',
-        body: 'Once your order is placed it is packaged in our warehouse in Houston, Texas. Shipping rates are calculated from the total weight and volume of your order as well as the destination. We pack every order carefully and securely so it arrives in good condition.',
-      },
-      {
-        title: 'Dispatch Time',
-        body: 'Most orders are packaged and shipped from our warehouse within 1–2 business days, and many go out the same day. The delivery date depends on the distance your package has to travel from our facility. Phone service for website purchases runs Monday through Friday, 8:00 AM to 5:00 PM CST, excluding weekends and holidays.',
-      },
-      {
-        title: 'Carriers and Delivery Options',
-        intro: 'We ship all small package orders with United States Postal Service (USPS) and FedEx.',
-        bullets: [
-          'Standard delivery by USPS or FedEx.',
-          'Expedited options for small packages: FedEx Next Day Air, 2 Day Air and 3-Day Select.',
-          'We always work the shipping calculation to get you the best available rate.',
-        ],
-      },
-      {
-        title: 'Tracking Your Order',
-        bullets: [
-          'Once your order has shipped you will receive a shipment confirmation email from Himalayan Koh with your USPS and FedEx tracking number.',
-          'If you created an account on the website you can log in to your account to check order status and tracking.',
-          'Guest checkout orders do not appear in the website account area — keep your confirmation email, or call us and we will look it up.',
-        ],
-      },
-      {
-        title: 'Changing an Order After Dispatch',
-        body: `Once a package has left our facility and is on its way to you there is very little we can change about the delivery details. If you need to change something, contact us as early as possible — ideally before the order is marked shipped — and we will do whatever the carrier allows. For urgent changes, call ${STORE_PHONE}.`,
-      },
-      {
-        title: 'Bulk, Wholesale and Large Orders',
-        body: 'Bulk bags, blocks and wholesale quantities ship differently from single jars and pouches because of the weight involved. Call us to arrange bulk and wholesale orders, including orders shipping outside the United States.',
-      },
-      {
-        title: 'Returns Ship Separately',
-        body: 'Shipping charges are not refunded as part of a return unless the product was faulty or damaged on arrival. The conditions are on the return policy:',
-        link: { href: '/return', label: 'Return & Refund Policy' },
-      },
-      {
-        title: 'Questions About a Delivery',
-        intro: 'If you cannot find your tracking information or have a question about an order in transit:',
-        bullets: [
-          `Phone: ${STORE_PHONE}`,
-          `Returns and order support line: ${SUPPORT_PHONE}`,
-          'Email: sales@himalayankoh.com',
-          'Mailing address: Himalayan Koh, 12620 FM 1960 W Ste A-4, Houston, TX 77065',
-        ],
-      },
-    ],
-  },
-  terms: {
-    eyebrow: 'Terms',
-    title: 'Terms of Service',
-    description:
-      'The terms that apply when you use this website and buy from Himalayan Koh, including payment, cancellation, shipping and returns.',
-    sections: [
-      {
-        title: 'Payment Options',
-        intro: 'We accept the following payment options online:',
-        bullets: [
-          'Visa',
-          'Mastercard',
-          'American Express',
-          'Discover',
-        ],
-        outro: `If at any point during your shopping experience you feel uncomfortable entering your card details online, call ${SUPPORT_PHONE} and we will be happy to process the order by phone.`,
-      },
-      {
-        title: 'Orders, Pricing and Availability',
-        body: 'Product availability, pricing and descriptions change as inventory and supplier information are updated. We work to keep product details accurate and current. Prices and stock are those held in our store system at the time of purchase.',
-      },
-      {
-        title: 'Cancellations',
-        body: `Most orders are shipped the same day or within 8 hours of being placed. Please call ${SUPPORT_PHONE} as soon as possible if you wish to cancel, and we will do our best to accommodate any request that has not yet been processed or shipped.`,
-      },
-      {
-        title: 'Shipping & Delivery',
-        body: 'Orders are packed in our Houston, Texas warehouse and typically dispatched within 1–2 business days. Small packages ship by USPS and FedEx, with expedited FedEx options available. Full details are on the shipping page:',
-        link: { href: '/shipping', label: 'Shipping & Delivery' },
-      },
-      {
-        title: 'Returns, Replacements and Refunds',
-        body: 'Returns are accepted within 30 days of the order date on unopened products in their original packaging, and refunds are issued in the same manner the purchase was made. Custom and bulk salt items are not returnable. The conditions, including the return address, are set out in full here:',
-        link: { href: '/return', label: 'Return & Refund Policy' },
-      },
-      {
-        title: 'Custom and Bulk Items',
-        bullets: [
-          'Salt bags, salt blocks, and Himalayan salt lumps over 20 lb are made and packed to order and are not returnable.',
-          'We suggest placing a small order (5 lb or less) first, for sampling, before ordering larger quantities.',
-        ],
-      },
-      {
-        title: 'Customer Responsibilities',
-        body: 'Customers are responsible for providing accurate account, shipping and payment details when placing orders or contacting support. Please check your order thoroughly on receipt and tell us about any damage or problem within 30 days of the original order date.',
-      },
-      {
-        title: 'Support',
-        intro: 'For questions about an order, a product or your account:',
-        bullets: [
-          `Phone: ${STORE_PHONE}`,
-          `Returns and order support line: ${SUPPORT_PHONE}`,
-          'Email: sales@himalayankoh.com',
-        ],
-      },
-    ],
-  },
   privacy: {
-    eyebrow: 'Your Data',
+    eyebrow: 'Your Privacy',
     title: 'Privacy Policy',
     description:
-      'What Himalayan Koh collects, why we collect it, how it is protected, and the choices you have over your information.',
+      'Effective Date: August 2, 2026. At Himalayan Koh, we value your privacy and are committed to protecting your personal information. This Privacy Policy explains what information we collect, how we use it, and the choices you have when using our website.',
     sections: [
-      {
-        title: 'Information Collection, Use and Sharing',
-        body: 'We are the sole owners of the information collected on this site. We only have access to information you voluntarily give us by email or other direct contact. We will not sell or rent this information to anyone, and we will not share it with any third party outside our organisation other than as necessary to fulfil your request — for example, to ship an order. Unless you ask us not to, we may contact you by email in the future about specials, new products or services, or changes to this policy.',
-      },
       {
         title: 'Information We Collect',
         bullets: [
@@ -177,15 +57,11 @@ const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; 
         ],
       },
       {
-        title: 'Registration and Orders',
-        body: 'During registration a user is required to give certain information, such as name and email address, which is used to contact you about the products and services on our site that you have expressed interest in. To buy from us you must provide contact information (name and shipping address) and payment information; this is used for billing purposes and to fill your orders. If we have trouble processing an order, we use this information to contact you.',
-      },
-      {
         title: 'Checkout Options',
         subsections: [
           {
             heading: 'Guest Checkout',
-            body: 'You do not need to create an account to make a purchase. Customers may complete their orders using Guest Checkout. We collect only the information necessary to process, ship and support the order.',
+            body: 'You do not need to create an account to make a purchase. Customers may complete their orders using Guest Checkout. We collect only the information necessary to process, ship, and support the order.',
           },
           {
             heading: 'Create an Account',
@@ -199,65 +75,187 @@ const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; 
           },
         ],
         outro:
-          'Whether you choose Guest Checkout or create an account, your personal information is collected, stored and protected in accordance with this Privacy Policy.',
+          'Whether you choose Guest Checkout or create an account, your personal information is collected, stored, and protected in accordance with this Privacy Policy.',
       },
       {
         title: 'How We Use Your Information',
         bullets: [
-          'Process and fulfil your orders.',
+          'Process and fulfill your orders.',
           'Communicate regarding your order or customer service requests.',
           'Improve our website and customer experience.',
-          'Prevent fraud and unauthorised transactions.',
+          'Prevent fraud and unauthorized transactions.',
           'Comply with legal obligations.',
           'Send promotional emails if you have opted in (you may unsubscribe at any time).',
         ],
       },
       {
         title: 'Payment Security',
-        body: 'Payments are processed securely through trusted third-party payment processors. Himalayan Koh does not store your complete credit or debit card information on our servers. Sensitive information submitted through the website is encrypted in transit — you can verify this from the lock icon and the "https" in your browser address bar.',
-      },
-      {
-        title: 'Data Security',
-        body: 'We take precautions to protect your information both online and offline. Only employees who need the information to perform a specific job — billing or customer service, for example — are granted access to personally identifiable information, and the systems holding it are kept in a secure environment. No method of transmission over the internet is completely secure, but we protect your information using industry-standard practices.',
-      },
-      {
-        title: 'Your Rights and Control Over Your Information',
-        intro: 'You may opt out of any future contact from us at any time, and you can do the following by contacting us using the details below:',
-        bullets: [
-          'See what data we have about you, if any.',
-          'Change or correct any data we have about you.',
-          'Have us delete any data we have about you.',
-          'Express any concern you have about our use of your data.',
-          'Opt out of marketing communications at any time.',
-        ],
+        body: 'Payments are processed securely through trusted third-party payment processors. Himalayan Koh does not store your complete credit or debit card information on our servers.',
       },
       {
         title: 'Cookies',
-        body: 'We use cookies on this site. A cookie is a piece of data stored on a site visitor\'s hard drive that helps us improve your access to our site and identify repeat visitors — for example, so you do not have to log in a password more than once. Cookies can also help us track and target the interests of our users to enhance the experience on our site. Usage of a cookie is not linked to any personally identifiable information on our site. You may disable cookies in your browser settings, though some parts of the site may then not work properly.',
+        body: 'Our website uses cookies to remember your preferences, improve website performance, analyze website traffic, and enhance your shopping experience. You may disable cookies through your browser settings, although some website features may not function properly.',
       },
       {
         title: 'Sharing Your Information',
         bullets: [
           'We do not sell or rent your personal information.',
-          'We share information only with service providers needed to run the store — payment processors, shipping carriers, hosting providers and analytics services — and they receive only what is necessary to perform their service.',
+          'We may share your information only with trusted service providers, including payment processors, shipping carriers, website hosting providers, and analytics services. These providers receive only the information necessary to perform their services.',
         ],
       },
       {
-        title: 'Third-Party Links and Services',
-        body: 'This website uses third-party services such as payment processing, shipping rate calculation, shipping label creation and email delivery. Those providers handle your data under their own privacy policies. Our website may link to third-party sites; we are not responsible for their privacy practices or content.',
+        title: 'Data Security',
+        body: 'We use reasonable administrative, technical, and physical safeguards to protect your personal information. While no method of transmission over the Internet is completely secure, we strive to protect your information using industry-standard security practices.',
       },
       {
-        title: 'Changes to This Policy',
-        body: 'We may update this Privacy Policy from time to time. Any changes are posted on this page.',
+        title: 'Your Rights',
+        body: 'Depending on your location, you may request access to, correction of, or deletion of your personal information where permitted by law, and you may opt out of marketing communications.',
+      },
+      {
+        title: 'Third-Party Links',
+        body: 'Our website may contain links to third-party websites. We are not responsible for the privacy practices or content of those websites.',
+      },
+      {
+        title: 'Changes to This Privacy Policy',
+        body: 'We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated effective date.',
       },
       {
         title: 'Contact Us',
-        intro: 'If you have any questions about this Privacy Policy, or if you feel we are not abiding by it:',
+        intro: 'If you have any questions about this Privacy Policy or how we handle your information, please contact us:',
         bullets: [
+          `Email: ${SUPPORT_EMAIL}`,
           `Phone: ${STORE_PHONE}`,
-          `Support line: ${SUPPORT_PHONE}`,
-          'Email: sales@himalayankoh.com',
-          'Mailing address: Himalayan Koh, 12620 FM 1960 W Ste A-4, Houston, TX 77065',
+          `Mailing Address: ${BUSINESS_NAME}, ${BUSINESS_ADDRESS}`,
+        ],
+      },
+    ],
+  },
+  terms: {
+    eyebrow: 'Terms',
+    title: 'Terms of Service',
+    description:
+      'The terms and conditions governing the use of this website and all purchases made through Himalayan Koh.',
+    sections: [
+      {
+        title: 'Agreement to Terms',
+        body: 'By accessing or using the Himalayan Koh website and purchasing our products, you agree to be bound by these Terms of Service. If you do not agree to all terms and conditions, please do not use this site or purchase products from us.',
+      },
+      {
+        title: 'Website Use & Eligibility',
+        body: 'You may use this website only for lawful purposes and in accordance with these Terms. You represent that you are at least the age of majority in your jurisdiction of residence, or that you have given us your consent to allow any of your minor dependents to use this site under your supervision.',
+      },
+      {
+        title: 'Product Information & Pricing',
+        body: 'We make every reasonable effort to display product descriptions, specifications, and images accurately. However, natural variations in color, texture, and grain size are inherent to genuine Himalayan rock salt products. All prices are listed in U.S. Dollars and are subject to change without prior notice. We reserve the right to correct pricing errors before processing orders.',
+      },
+      {
+        title: 'Orders, Acceptance & Cancellation',
+        body: 'An order confirmation receipt does not signify our final acceptance of your order. We reserve the right to limit order quantities, refuse service, or cancel orders at our sole discretion, including cases of suspected fraud or pricing inaccuracies. If your order is canceled after payment has been processed, a full refund will be issued promptly.',
+      },
+      {
+        title: 'Payment Processing',
+        body: 'Payment must be received in full before an order is dispatched. We accept major credit and debit cards (Visa, MasterCard, American Express, Discover) processed securely through authorized third-party payment gateways. Himalayan Koh does not store complete cardholder payment data on our servers.',
+      },
+      {
+        title: 'Shipping & Delivery',
+        body: 'Orders are packed and dispatched from our warehouse facility in Houston, Texas. Delivery times provided at checkout are estimates and are not guaranteed delivery dates. Himalayan Koh is not liable for carrier transit delays, severe weather, or address delivery errors provided by the customer.',
+        link: { href: '/shipping', label: 'View Full Shipping & Delivery Policy' },
+      },
+      {
+        title: 'Returns, Refunds & Damaged Goods',
+        body: 'We accept returns on unopened standard retail products in their original packaging within 30 days of the order date. Bulk bags, pallet quantities, and custom-cut salt blocks over 20 lbs are packed to order and are non-returnable. Customers must contact support to obtain prior return authorization.',
+        link: { href: '/return', label: 'View Full Return & Refund Policy' },
+      },
+      {
+        title: 'Customer Account Responsibilities',
+        body: 'If you create an account on our website, you are responsible for maintaining the confidentiality of your login credentials and for restricting access to your computer or device. You agree to accept responsibility for all activities that occur under your account.',
+      },
+      {
+        title: 'Prohibited Uses',
+        bullets: [
+          'Using the site for any unlawful purpose or to solicit others to perform unlawful acts.',
+          'Violating any local, state, federal, or international regulations, rules, or laws.',
+          'Attempting to interfere with the proper working of the website or circumventing security controls.',
+          'Submitting false, fraudulent, or misleading information.',
+        ],
+      },
+      {
+        title: 'Intellectual Property',
+        body: 'All content on this website, including text, graphics, logos, product names, images, audio clips, and software, is the property of Himalayan Koh or its content suppliers and is protected by United States and international copyright, trademark, and intellectual property laws.',
+      },
+      {
+        title: 'Disclaimer & Limitation of Liability',
+        body: 'Our products are sold "as is" and "as available." Information provided regarding mineral composition and general animal husbandry is for educational purposes only and does not constitute veterinary or medical advice. To the fullest extent permitted by applicable law, Himalayan Koh disclaims all warranties, express or implied, and shall not be liable for any indirect, incidental, punitive, or consequential damages arising from website use or product purchase.',
+      },
+      {
+        title: 'Governing Law',
+        body: 'These Terms of Service and any separate agreements whereby we provide you goods shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions.',
+      },
+      {
+        title: 'Changes to Terms',
+        body: 'We reserve the right to update, replace, or modify any part of these Terms of Service at our discretion. Any updates become effective immediately upon posting to this website.',
+      },
+      {
+        title: 'Contact Information',
+        intro: 'For questions regarding these Terms of Service, please contact us:',
+        bullets: [
+          `Email: ${SUPPORT_EMAIL}`,
+          `Phone: ${STORE_PHONE}`,
+          `Mailing Address: ${BUSINESS_NAME}, ${BUSINESS_ADDRESS}`,
+        ],
+      },
+    ],
+  },
+  shipping: {
+    eyebrow: 'Shipping & Delivery',
+    title: 'Shipping & Delivery Policy',
+    description:
+      'Information on order processing, carrier dispatch, tracking, and delivery timelines for Himalayan Koh products shipped from Houston, Texas.',
+    sections: [
+      {
+        title: 'Dispatch & Order Processing',
+        body: 'All standard orders are packaged and dispatched from our warehouse facility in Houston, Texas. Most retail orders are processed and prepared for carrier pickup within 1 to 2 business days (Monday through Friday, excluding national holidays). During peak seasonal periods, processing may take slightly longer.',
+      },
+      {
+        title: 'Delivery Estimates & Carriers',
+        intro: 'We ship small package orders via recognized domestic carriers including USPS and FedEx:',
+        bullets: [
+          'Standard Ground Delivery: Typically 3 to 7 business days depending on transit distance from Houston, Texas.',
+          'Delivery timelines displayed during checkout or on carrier portals are estimates, not guaranteed delivery dates.',
+          'Shipping charges are calculated at checkout based on total package weight, dimensions, and destination zip code.',
+        ],
+      },
+      {
+        title: 'Order Tracking',
+        body: 'Once your order has been dispatched, you will receive an automated shipment confirmation email containing your carrier tracking number. Registered account holders can also track order status and transit milestones directly from the My Orders dashboard.',
+      },
+      {
+        title: 'Address Accuracy & Customer Responsibility',
+        body: 'Customers are responsible for providing an accurate and complete delivery address, including apartment, suite, or unit numbers. If a package is returned to us due to an incorrect or incomplete address, additional shipping charges may apply to re-dispatch the package.',
+      },
+      {
+        title: 'Carrier Delays, Lost Packages & Damaged Shipments',
+        bullets: [
+          'Carrier Transit Delays: Adverse weather conditions, carrier mechanical issues, or high volume may cause delays beyond our direct control.',
+          'Damaged on Arrival: Please inspect your shipment immediately upon arrival. If an item arrives damaged or broken, contact us within 30 days of the order date with photos of the damaged product and packaging.',
+          'Lost Shipments: If your tracking shows delivered but you cannot locate the package, or if tracking has stalled for more than 7 business days, contact our support team immediately so we can initiate a trace with the carrier.',
+        ],
+      },
+      {
+        title: 'Bulk, Pallet & Freight Shipments',
+        body: 'Bulk granular salt bags (45 lbs), large animal salt blocks, and pallet wholesale orders exceed standard parcel limits and are dispatched via LTL freight. Commercial freight orders require liftgate and delivery appointment coordination. Contact our sales department directly to arrange wholesale freight logistics.',
+      },
+      {
+        title: 'Geographic Scope',
+        body: 'Our automated online checkout currently supports shipping to addresses within the contiguous United States. For shipping inquiries to Alaska, Hawaii, U.S. Territories, or international freight destinations, please contact us for a custom shipping quote.',
+      },
+      {
+        title: 'Questions About a Shipment',
+        intro: 'If you have questions about your order transit or delivery status, please reach out to us:',
+        bullets: [
+          `Email: ${SUPPORT_EMAIL}`,
+          `Phone: ${STORE_PHONE}`,
+          `Facility Address: ${BUSINESS_NAME}, ${BUSINESS_ADDRESS}`,
         ],
       },
     ],
@@ -266,48 +264,52 @@ const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; 
     eyebrow: 'Returns & Refunds',
     title: 'Return & Refund Policy',
     description:
-      'We stand behind our salt. If something is wrong with your order, contact us within 30 days and we will put it right.',
+      'Our 30-day policy for retail returns, damaged order replacements, and return authorization procedures.',
     sections: [
       {
-        title: 'Return Window',
-        body: 'Please contact us within 30 days of your order date to arrange a return or to discuss a damaged or mistaken order. Returns require prior approval from Himalayan Koh before the product is shipped back.',
+        title: '30-Day Return Window',
+        body: 'We want you to be completely satisfied with your purchase. If you are not satisfied with an eligible retail item, you may request a return within 30 days from your original order date.',
       },
       {
-        title: 'Return Eligibility',
+        title: 'Return Eligibility Criteria',
         bullets: [
-          'Returns are accepted only on products that are unopened and still in their original packaging.',
-          'Return requests must be made within 30 days of the original order date.',
-          'Custom and bulk items are not returnable: salt bags, salt blocks, and Himalayan salt lumps over 20 lb.',
-          'Because of that, we suggest placing a small order (5 lb or less) first, for sampling, before ordering larger quantities.',
+          'Products must be unopened, unused, and in their original packaging with all protective seals intact.',
+          'Items showing signs of use, contamination, moisture exposure, or broken packaging are not eligible for return due to food-safety and mineral purity standards.',
+          'Custom orders, bulk 45 lb bags, and wholesale pallets are packed to order and are non-returnable. We recommend ordering smaller retail sample sizes prior to large commercial commitments.',
         ],
       },
       {
-        title: 'Refunds',
+        title: 'Damaged, Defective or Incorrect Items',
+        body: 'Please inspect your delivery thoroughly upon arrival. If an item arrives damaged, defective, or if you received the incorrect product, notify us within 30 days of the order date. Please provide your order number and clear photographs of the damaged product and shipping box. Upon verification, Himalayan Koh will promptly send a replacement or issue a full refund, including applicable shipping costs.',
+      },
+      {
+        title: 'Return Authorization & Instructions',
+        body: 'All returns require prior authorization from Himalayan Koh before items are shipped back. Do not send returns to our general business address without an authorized Return Merchandise Authorization (RMA) number. Please contact our support team via email or phone to receive authorized return instructions and the appropriate returns receiving facility address.',
+      },
+      {
+        title: 'Return Shipping Costs',
         bullets: [
-          'Refunds are issued in the same manner the purchase was made (credit card, check, and so on).',
-          'Free shipping is not included in the refund unless the product was faulty or damaged on arrival.',
-          'Processing a return normally takes around 15 days from the time we receive the product.',
+          'For standard customer preference returns (e.g. change of mind, incorrect item ordered), the customer is responsible for all return shipping postage.',
+          'We strongly recommend using a trackable shipping carrier with insurance, as Himalayan Koh cannot be responsible for items lost or damaged during return transit.',
+          'If the return is due to our error, transit damage, or a defective product, Himalayan Koh will provide a pre-paid return shipping label.',
         ],
       },
       {
-        title: 'Damaged, Faulty or Incorrect Orders',
-        body: 'Check your order thoroughly when it arrives. If a product is damaged, faulty, or not what you ordered, contact us within 30 days of the order date with your order number and photos of the product and packaging so we can review it promptly. When the fault is ours, the cost of shipping is on us and we will correct the error with a replacement or a refund.',
-      },
-      {
-        title: 'Return Shipping',
+        title: 'Refund Processing & Timing',
         bullets: [
-          'Customers are responsible for purchasing their own return shipping label and for properly packaging the product so it cannot be damaged in transit.',
-          'We recommend a trackable service: we cannot be responsible for returns that are lost or damaged on their way back.',
-          'Send approved returns to: Himalayan Koh, Attn: Returns, 10909 Jones Rd #425, Houston, TX 77065.',
+          'Once your return is received and inspected at our authorized facility, we will notify you of the approval or rejection of your refund.',
+          'Approved refunds are processed to your original payment method within 10 to 15 business days.',
+          'Depending on your bank or credit card issuer, it may take an additional 3 to 7 business days for the credit to reflect on your statement.',
+          'Original shipping charges are non-refundable unless the return is due to transit damage or fulfillment error.',
         ],
       },
       {
-        title: 'Start a Return',
-        intro: 'Contact us by phone or email to open a return:',
+        title: 'Contact Support to Initiate a Return',
+        intro: 'To start a return or request assistance with an order, please contact our team:',
         bullets: [
+          `Email: ${SUPPORT_EMAIL}`,
           `Phone: ${STORE_PHONE}`,
-          `Support line: ${SUPPORT_PHONE}`,
-          'Email: sales@himalayankoh.com',
+          `Customer Support Hours: Monday – Friday, 8:00 AM – 5:00 PM CST`,
         ],
       },
     ],
@@ -350,7 +352,7 @@ export default function LegalPage({ type }: LegalPageProps) {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
         <div className="bg-white rounded-2xl shadow-md p-6 md:p-8 space-y-8">
           {page.sections.map((section) => (
-            <section key={section.title}>
+            <section key={section.title} className="border-b border-gray-100 last:border-b-0 pb-6 last:pb-0">
               <h2 className="font-serif text-xl font-bold text-charcoal mb-3">
                 {section.title}
               </h2>
@@ -360,7 +362,7 @@ export default function LegalPage({ type }: LegalPageProps) {
               {section.subsections ? (
                 <div className="space-y-4">
                   {section.subsections.map((sub) => (
-                    <div key={sub.heading}>
+                    <div key={sub.heading} className="pl-1">
                       <h3 className="font-semibold text-charcoal mb-1.5">{sub.heading}</h3>
                       {sub.bullets ? (
                         <ul className="list-disc list-outside pl-5 space-y-1.5 text-charcoal-light leading-relaxed">
@@ -368,13 +370,13 @@ export default function LegalPage({ type }: LegalPageProps) {
                             <li key={i}>{bullet}</li>
                           ))}
                         </ul>
-                      ) : (
+                      ) : sub.body ? (
                         <p className="text-charcoal-light leading-relaxed">{sub.body}</p>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                   {section.outro && (
-                    <p className="text-charcoal-light leading-relaxed">{section.outro}</p>
+                    <p className="text-charcoal-light leading-relaxed pt-2">{section.outro}</p>
                   )}
                 </div>
               ) : section.bullets ? (

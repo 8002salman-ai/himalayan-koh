@@ -19,8 +19,11 @@ const aboutLinks = [
   { label: 'Shop Products', to: '/products' },
   { label: 'Customer Login', to: '/login' },
   { label: 'Contact Us', to: '/contact' },
+  { label: 'Shipping & Delivery', to: '/shipping' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Privacy Policy', to: '/privacy' },
+  { label: 'Terms of Service', to: '/terms' },
+  { label: 'FAQs', to: '/faqs' },
 ];
 
 /**
@@ -212,10 +215,12 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/40">
           <p>Copyright © 2026 Himalayan Koh. All rights reserved.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
+            <Link to="/shipping" className="hover:text-white/60 transition-colors">Shipping Policy</Link>
             <Link to="/return" className="hover:text-white/60 transition-colors">Return Policy</Link>
+            <Link to="/faqs" className="hover:text-white/60 transition-colors">FAQs</Link>
             <a href="/sitemap.xml" className="hover:text-white/60 transition-colors">Sitemap</a>
           </div>
         </div>
