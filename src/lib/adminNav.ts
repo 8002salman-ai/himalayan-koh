@@ -30,6 +30,8 @@ import {
   Factory,
   CreditCard,
   BookOpen,
+  Target,
+  Send,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -75,6 +77,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: 'Overview',
     items: [{ label: 'Dashboard', path: '/admin', icon: LayoutDashboard }],
+  },
+  {
+    label: 'LeadOS',
+    items: [
+      { label: 'LeadOS Workspace', path: '/admin/leados', icon: Target },
+      { label: 'Client Outreach', path: '/admin/client-outreach', icon: Send },
+    ],
   },
   {
     label: 'Catalog',

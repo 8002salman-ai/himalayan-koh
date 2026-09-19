@@ -136,7 +136,7 @@ function VisibilityBadge({ product }: { product: CatalogProduct }) {
   const { listable, reason } = adminPublicVisibility(product);
   if (listable) {
     return (
-      <a href={productPath(product)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 hover:bg-emerald-100 transition-colors" title="Publicly listable — served on storefront">
+      <a href={productPath(product)} className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 hover:bg-emerald-100 transition-colors" title="Publicly listable — served on storefront">
         <Eye size={10} /> PUBLIC
       </a>
     );
@@ -1286,7 +1286,7 @@ export function CatalogProductsPage() {
                               ) : (
                                 <>
                                   <button onClick={() => { setRowMenu(null); nav(`/admin/products/edit/${p.id}`); }} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"><PencilSimple size={14} />Edit</button>
-                                  <a href={productPath(p)} target="_blank" rel="noreferrer" onClick={() => setRowMenu(null)} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-gray-700"><ArrowSquareOut size={14} />View live</a>
+                                  <a href={productPath(p)} onClick={() => setRowMenu(null)} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-gray-700"><ArrowSquareOut size={14} />View live</a>
                                   <button onClick={() => { setRowMenu(null); void onDuplicate(p.id); }} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"><Copy size={14} />Duplicate</button>
                                   <button onClick={() => { setRowMenu(null); void runAutoSeo([p]); }} disabled={seo.running} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-purple-700"><Sparkle size={14} />Auto SEO</button>
                                   <button onClick={() => { setRowMenu(null); setListingModal(p); }} className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"><Clock size={14} />Listing duration…</button>
@@ -2035,7 +2035,7 @@ export function CatalogProductEditor() {
         {!isNew && mode !== 'ai' && (
           <>
             <button onClick={() => nav(productPath(p))} title="Preview product page" className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-green-600 hover:bg-green-50 flex items-center gap-1.5 shrink-0"><Eye size={14} /> Preview</button>
-            <a href={productPath(p)} target="_blank" rel="noreferrer" title="View live on storefront" className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-sky-600 hover:bg-sky-50 flex items-center gap-1.5 shrink-0"><ArrowSquareOut size={14} /> View</a>
+            <a href={productPath(p)} title="View live on storefront" className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-sky-600 hover:bg-sky-50 flex items-center gap-1.5 shrink-0"><ArrowSquareOut size={14} /> View</a>
           </>
         )}
         {mode !== 'ai' && (

@@ -52,6 +52,13 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'LeadOS',
+    items: [
+      { to: '/admin/leados', icon: Target, label: 'LeadOS Workspace', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
+      { to: '/admin/client-outreach', icon: PaperPlaneRight, label: 'Client Outreach', g: 'linear-gradient(135deg,#ec4899,#8b5cf6)', dot: '#f472b6' },
+    ],
+  },
+  {
     title: 'Catalog',
     items: [
       { to: '/admin/products', icon: Package, label: 'Products', g: 'linear-gradient(135deg,#8b5cf6,#a855f7)', dot: '#a78bfa' },
@@ -97,7 +104,6 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: '/admin/product-research', icon: TrendUp, label: 'Product Research', g: 'linear-gradient(135deg,#0d9488,#0891b2)', dot: '#2dd4bf' },
       { to: '/admin/ai-control', icon: Cpu, label: 'AI Control', g: 'linear-gradient(135deg,#0ea5e9,#8b5cf6)', dot: '#60a5fa' },
       { to: '/admin/ai-intelligence', icon: Sparkle, label: 'AI Intelligence', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#a78bfa' },
-      { to: '/admin/leados', icon: Target, label: 'LeadOS', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
     ],
   },
   {
@@ -149,7 +155,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const Sidebar = ({ mobile }: { mobile?: boolean }) => (
     <aside
       className={`flex flex-col shrink-0 ${
-        mobile ? 'w-full h-full' : 'w-60 h-screen sticky top-0 hidden lg:flex'
+        mobile ? 'w-full h-full' : 'w-60 fixed inset-y-0 left-0 z-40 hidden lg:flex'
       }`}
       style={{
         background: 'linear-gradient(180deg, #0f231b 0%, #173629 55%, #0f231b 100%)',
@@ -259,7 +265,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   );
 
   return (
-    <div className="h-screen bg-gray-100 flex overflow-hidden font-sans">
+    <div className="h-screen w-full bg-gray-100 flex overflow-hidden font-sans">
       <Sidebar />
 
       {/* Mobile Drawer */}
@@ -272,9 +278,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-60 h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-14 shrink-0 bg-white/90 backdrop-blur-md border-b border-gray-200/80 flex items-center justify-between gap-3 px-4 lg:px-6 z-40">
+        <header className="h-14 shrink-0 bg-white/90 backdrop-blur-md border-b border-gray-200/80 flex items-center justify-between gap-3 px-4 lg:px-6 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setMobSide(true)}
@@ -329,6 +335,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Content Canvas */}
         <main
+          id="main-content"
           className="flex-1 overflow-y-auto min-w-0 p-3 pb-24 lg:p-5"
           style={{ background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EC 100%)' }}
         >

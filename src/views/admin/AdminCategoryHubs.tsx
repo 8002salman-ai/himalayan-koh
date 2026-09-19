@@ -173,7 +173,7 @@ export default function AdminCategoryHubs() {
         title="Category hubs"
         description="Hero copy, SEO and trust points for the enriched shop category pages. Gallery, guides, PDFs and blog cards still come from the code registry and the blog mapping."
         actions={
-          <Link to={previewPath} target="_blank" rel="noopener noreferrer" className={BUTTON.secondary}>
+          <Link to={previewPath} className={BUTTON.secondary}>
             Preview on storefront
             <ExternalLink size={16} />
           </Link>

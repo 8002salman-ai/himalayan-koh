@@ -50,8 +50,8 @@ export const useSettingsStore = create<SettingsStore>()(
         googleClientId: '',
       },
       storeConfig: {
-        storeName: 'Luxedge',
-        contactEmail: 'hello@luxedge.us',
+        storeName: 'Himalayan Koh',
+        contactEmail: 'sales@himalayankoh.com',
         phone: '(440) 941-8002',
         address: '1500 N Grant St, Denver, CO 80203, USA',
         freeShippingThreshold: 50,

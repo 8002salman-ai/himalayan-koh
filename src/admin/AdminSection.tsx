@@ -83,6 +83,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       ],
     },
     {
+      title: 'LeadOS',
+      items: [
+        { to: '/admin/leados', icon: Target, label: 'LeadOS Workspace', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
+        { to: '/admin/client-outreach', icon: PaperPlaneRight, label: 'Client Outreach', g: 'linear-gradient(135deg,#ec4899,#8b5cf6)', dot: '#f472b6' },
+      ],
+    },
+    {
       title: 'Catalog',
       items: [
         { to: '/admin/products', icon: Package, label: 'Products', g: 'linear-gradient(135deg,#8b5cf6,#a855f7)', dot: '#a78bfa' },
@@ -123,7 +130,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         { to: '/admin/product-research', icon: TrendUp, label: 'Product Research', g: 'linear-gradient(135deg,#0d9488,#0891b2)', dot: '#2dd4bf' },
         { to: '/admin/ai-control', icon: Cpu, label: 'AI Control', g: 'linear-gradient(135deg,#0ea5e9,#8b5cf6)', dot: '#60a5fa' },
         { to: '/admin/hermes-intel', icon: Sparkle, label: 'AI Intelligence', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#a78bfa' },
-        { to: '/admin/leados', icon: Target, label: 'LeadOS', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
       ],
     },
     {
@@ -149,14 +155,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   const Sidebar = ({ mobile }: { mobile?: boolean }) => (
-    <aside className={`flex flex-col shrink-0 ${mobile ? 'w-full h-full' : 'w-60 h-screen sticky top-0 hidden lg:flex'}`}
+    <aside className={`flex flex-col shrink-0 ${mobile ? 'w-full h-full' : 'w-60 fixed inset-y-0 left-0 z-40 hidden lg:flex'}`}
       style={{ background: 'linear-gradient(180deg, #0f231b 0%, #173629 55%, #0f231b 100%)', boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.05)' }}>
       {/* Brand */}
       <div className="px-3.5 py-4 border-b border-white/[0.06] flex items-center gap-2.5">
-        <img src="/luxedge-mark.png" alt="Luxedge" className="w-9 h-9 rounded-lg object-contain shadow-lg shadow-emerald-950/40" />
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-950/40 border border-white/10" style={{ background: 'linear-gradient(135deg, #1E4636, #C5A880)' }}>HK</span>
         <div className="leading-tight">
-          <span className="font-bold text-sm text-white tracking-tight block">Luxedge</span>
-          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-medium">Admin Console</span>
+          <span className="font-bold text-sm text-white tracking-tight block">Himalayan Koh</span>
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-medium">Admin Console</span>
         </div>
         {mobile && <button onClick={() => setMobSide(false)} className="ml-auto p-1.5 hover:bg-white/10 rounded-lg"><X size={14} className="text-slate-400" /></button>}
       </div>
@@ -191,7 +197,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
       <div className="p-2 border-t border-white/[0.06] space-y-0.5">
         <Link to="/" className="flex items-center gap-2 text-[11px] text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
-          <span className="w-[26px] h-[26px] rounded-md bg-white/5 flex items-center justify-center"><ArrowLeft size={12} /></span>Store
+          <span className="w-[26px] h-[26px] rounded-md bg-white/5 flex items-center justify-center"><ArrowLeft size={12} /></span>Storefront
         </Link>
         <button onClick={() => { void signOut().then(() => nav('/admin/login')); }}
           className="flex items-center gap-2 text-[11px] text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg hover:bg-red-500/10 w-full transition-colors">
@@ -202,12 +208,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="h-screen bg-gray-100 flex overflow-hidden">
+    <div className="h-screen w-full bg-gray-100 flex overflow-hidden">
 
       <Sidebar />
       {mobSide && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/50" onClick={() => setMobSide(false)} /><div className="absolute left-0 top-0 h-full w-64"><Sidebar mobile /></div></div>}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between gap-3 px-4 lg:px-6 z-40">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-60 h-screen overflow-hidden">
+        <header className="h-14 shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between gap-3 px-4 lg:px-6 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMobSide(true)} className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg"><List size={18} /></button>
             <div className="hidden md:flex items-center gap-2 bg-gray-100/80 border border-gray-200 rounded-lg px-3 py-1.5 w-64">
@@ -422,7 +428,7 @@ export function ADashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/" target="_blank" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center gap-1.5 transition-colors"><Eye size={13} /> View store</Link>
+          <Link to="/" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center gap-1.5 transition-colors"><Eye size={13} /> View store</Link>
           <Link to="/admin/ai-import" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 border border-gray-200 flex items-center gap-1.5 transition-colors"><MagicWand size={13} /> AI Import</Link>
           <Link to="/admin/products/new?mode=detail" className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#1b1f27] hover:bg-[#2b3140] flex items-center gap-1.5 shadow-sm transition-colors"><Plus size={13} weight="bold" /> Add to Catalog</Link>
         </div>
@@ -466,7 +472,7 @@ export function ADashboard() {
               <div className="py-12 text-center">
                 <div className="mx-auto w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center mb-3"><TrendUp size={16} className="text-gray-300" /></div>
                 <p className="text-xs text-gray-500">No orders yet — share your store or run a campaign.</p>
-                <Link to="/" target="_blank" className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"><Eye size={12} /> View store</Link>
+                <Link to="/" className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"><Eye size={12} /> View store</Link>
               </div>
             ) : (
               <div className="px-4 py-3.5">
@@ -1901,8 +1907,8 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
       <Accordion id="store" title="Store Information" icon={<GearSix size={18} className="text-blue-500" />} open={open} toggle={toggle}>
         <div className="pt-5">
           <form onSubmit={e => { e.preventDefault(); notify('Store settings saved!'); }} className="grid sm:grid-cols-2 gap-4">
-            <div><label className={L}>Store Name</label><input defaultValue="Luxedge" className={I} /></div>
-            <div><label className={L}>Contact Email</label><input defaultValue="hello@luxedge.us" className={I} /></div>
+            <div><label className={L}>Store Name</label><input defaultValue="Himalayan Koh" className={I} /></div>
+            <div><label className={L}>Contact Email</label><input defaultValue="sales@himalayankoh.com" className={I} /></div>
             <div><label className={L}>Phone</label><input defaultValue="(440) 941-8002" className={I} /></div>
             <div><label className={L}>Address</label><input defaultValue="1500 N Grant St, Denver, CO 80203" className={I} /></div>
             <div className="sm:col-span-2">
@@ -2133,15 +2139,15 @@ export function AMarketingGen() {
     return `
       <div style="background:#f4f4f6;padding:32px 16px">
         <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif">
-          <div style="background:linear-gradient(135deg,#7c3aed,#db2777);padding:32px 24px;text-align:center">
-            <p style="margin:0;color:#ffffff;font-size:22px;font-weight:bold">${email.heroHeadline || 'Luxedge'}</p>
+          <div style="background:linear-gradient(135deg,#1E4636,#C5A880);padding:32px 24px;text-align:center">
+            <p style="margin:0;color:#ffffff;font-size:22px;font-weight:bold">${email.heroHeadline || 'Himalayan Koh'}</p>
           </div>
           <div style="padding:24px">
             <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap">${(email.body || '').replace(/\n/g, '<br/>')}</p>
             ${productLine}
-            ${email.urgency ? `<p style="margin:16px 0 0;color:#2563eb;font-weight:600;font-size:14px">${email.urgency}</p>` : ''}
-            <p style="text-align:center;margin:24px 0 0"><a href="https://luxedge.us/shop" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#db2777);color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;font-size:14px">${email.ctaText || 'Shop Now →'}</a></p>
-            <p style="margin:24px 0 0;color:#9ca3af;font-size:11px;line-height:1.5">You are receiving this because you opted in at luxedge.us. Unsubscribe anytime by replying with "unsubscribe".<br/>Luxedge — 8002salman@gmail.com</p>
+            ${email.urgency ? `<p style="margin:16px 0 0;color:#1E4636;font-weight:600;font-size:14px">${email.urgency}</p>` : ''}
+            <p style="text-align:center;margin:24px 0 0"><a href="https://himalayankoh.com/products" style="display:inline-block;background:linear-gradient(135deg,#1E4636,#C5A880);color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;font-size:14px">${email.ctaText || 'Explore Products →'}</a></p>
+            <p style="margin:24px 0 0;color:#9ca3af;font-size:11px;line-height:1.5">You are receiving this because you opted in at himalayankoh.com. Unsubscribe anytime by replying with "unsubscribe".<br/>Himalayan Koh — sales@himalayankoh.com</p>
           </div>
         </div>
       </div>`;
@@ -2161,8 +2167,8 @@ export function AMarketingGen() {
     try {
       const token = getAccessToken();
       const body = sendTarget === 'leads'
-        ? { audience: 'leads', subject, text: `${email.preheader ? email.preheader + '\n\n' : ''}${email.heroHeadline ? email.heroHeadline + '\n\n' : ''}${email.body}\n\n${email.ctaText || 'Shop Now'} → https://luxedge.us/shop${email.urgency ? '\n\n' + email.urgency : ''}`, html: buildEmailHtml() }
-        : { to: sendTo.trim(), subject, text: `${email.preheader ? email.preheader + '\n\n' : ''}${email.heroHeadline ? email.heroHeadline + '\n\n' : ''}${email.body}\n\n${email.ctaText || 'Shop Now'} → https://luxedge.us/shop${email.urgency ? '\n\n' + email.urgency : ''}`, html: buildEmailHtml() };
+        ? { audience: 'leads', subject, text: `${email.preheader ? email.preheader + '\n\n' : ''}${email.heroHeadline ? email.heroHeadline + '\n\n' : ''}${email.body}\n\n${email.ctaText || 'Shop Now'} → https://himalayankoh.com/products${email.urgency ? '\n\n' + email.urgency : ''}`, html: buildEmailHtml() }
+        : { to: sendTo.trim(), subject, text: `${email.preheader ? email.preheader + '\n\n' : ''}${email.heroHeadline ? email.heroHeadline + '\n\n' : ''}${email.body}\n\n${email.ctaText || 'Shop Now'} → https://himalayankoh.com/products${email.urgency ? '\n\n' + email.urgency : ''}`, html: buildEmailHtml() };
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -2819,7 +2825,7 @@ function parseJ<T>(raw: string, fb: T): T {
                     className="mt-2 w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-300" />
                 )}
                 {sendTarget === 'leads' && (
-                  <p className="mt-2 text-[11px] text-gray-400">Sends to every opted-in CRM lead (welcome popup / AI chat / manual signups) from sales@luxedge.us. Store-account users are not emailed — only the marketing opt-in list.</p>
+                  <p className="mt-2 text-[11px] text-gray-400">Sends to every opted-in CRM lead (welcome popup / AI chat / manual signups) from sales@himalayankoh.com. Store-account users are not emailed — only the marketing opt-in list.</p>
                 )}
               </div>
             </div>
@@ -2979,7 +2985,7 @@ function parseJ<T>(raw: string, fb: T): T {
 
           {mediaResult?.ok && mediaResult.url && (
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Result — stored on luxedge.us ✓</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Result — stored on himalayankoh.com ✓</h3>
               {mediaType === 'image' ? (
                 <img src={mediaResult.url} alt="Generated media" className="max-h-96 rounded-xl border border-gray-200" />
               ) : (
@@ -5370,7 +5376,7 @@ export function AEmailMarketing() {
   };
 
   const deleteAddress = async (local: string) => {
-    if (!window.confirm(`Delete ${local}@luxedge.us? Emails to it will stop forwarding.`)) return;
+    if (!window.confirm(`Delete ${local}@himalayankoh.com? Emails to it will stop forwarding.`)) return;
     setAddrBusy(true); setAddrMsg(null);
     try {
       const token = getAccessToken();
@@ -5401,7 +5407,7 @@ export function AEmailMarketing() {
       const r = await fetch('/api/email/send', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: '8002salman@gmail.com', subject: 'Luxedge — Cloudflare email test', text: 'Hi Salman,\n\nThis is a test email sent from sales@luxedge.us through Cloudflare Email Routing / Email Sending. If you received this, outbound email from the site works.\n\n— Luxedge' }),
+        body: JSON.stringify({ to: '8002salman@gmail.com', subject: 'Himalayan Koh — Cloudflare email test', text: 'Hi Salman,\n\nThis is a test email sent from sales@himalayankoh.com through Cloudflare Email Routing / Email Sending. If you received this, outbound email from the site works.\n\n— Himalayan Koh' }),
       });
       const j = await r.json().catch(() => null);
       if (j?.ok) { setTestMail('sent'); setTestMailMsg('Test email sent to 8002salman@gmail.com — check your Gmail inbox.'); notify('Test email sent', 'success'); }
@@ -5430,25 +5436,25 @@ export function AEmailMarketing() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><PaperPlaneRight className="text-green-600" size={24} /> Email Marketing</h1>
-          <p className="text-sm text-gray-500">Omnisend-powered email, SMS & automation for Luxedge.</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><PaperPlaneRight className="text-emerald-600" size={24} /> Email Marketing</h1>
+          <p className="text-sm text-gray-500">Omnisend-powered email, SMS & automation for Himalayan Koh.</p>
         </div>
-        <button onClick={check} disabled={checking} className="btn-glow px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+        <button onClick={check} disabled={checking} className="btn-glow px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-2">
           <ArrowClockwise size={15} />{checking ? 'Checking…' : 'Check Connection'}
         </button>
       </div>
 
       {/* Connection status */}
-      <div className={`rounded-xl border p-5 ${status?.connected ? 'bg-green-50 border-green-200' : status?.configured ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`rounded-xl border p-5 ${status?.connected ? 'bg-emerald-50 border-emerald-200' : status?.configured ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex items-center gap-2 mb-1">
-          <span className={`w-2.5 h-2.5 rounded-full ${status?.connected ? 'bg-green-500' : status?.configured ? 'bg-amber-500' : 'bg-gray-400'}`} />
+          <span className={`w-2.5 h-2.5 rounded-full ${status?.connected ? 'bg-emerald-500' : status?.configured ? 'bg-amber-500' : 'bg-gray-400'}`} />
           <p className="font-semibold text-gray-800">
             {status?.connected ? 'Omnisend Connected' : status?.configured ? 'Key configured — connection pending' : 'Omnisend not configured'}
           </p>
         </div>
         <p className="text-sm text-gray-600">{status?.message || 'Checking server configuration…'}</p>
         {status?.audience !== undefined && (
-          <p className="text-sm mt-2 font-medium text-green-800">Contact list: <span className="font-bold">{status.audience.toLocaleString()}</span> contacts</p>
+          <p className="text-sm mt-2 font-medium text-emerald-800">Contact list: <span className="font-bold">{status.audience.toLocaleString()}</span> contacts</p>
         )}
       </div>
 
@@ -5459,7 +5465,7 @@ export function AEmailMarketing() {
             <CloudArrowUp size={20} className="text-blue-600" />
             <div>
               <h2 className="font-bold text-gray-900">Email Routing & Sending — Cloudflare</h2>
-              <p className="text-xs text-gray-500">Inbound forwarding + outbound sender for Luxedge (sales@luxedge.us).</p>
+              <p className="text-xs text-gray-500">Inbound forwarding + outbound sender for Himalayan Koh (sales@himalayankoh.com).</p>
             </div>
           </div>
           <button onClick={checkEmail} className="text-xs text-blue-600 hover:underline font-medium">Refresh status</button>
@@ -5470,15 +5476,15 @@ export function AEmailMarketing() {
           <div className="bg-white rounded-xl border border-blue-100 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Inbound — Forwarding</p>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               <p className="text-sm font-semibold text-gray-800">Email Routing active</p>
             </div>
             <p className="text-xs text-gray-600">
-              Emails to <b>anything@luxedge.us</b> (incl. <b>sales@luxedge.us</b>) forward to{' '}
+              Emails to <b>anything@himalayankoh.com</b> (incl. <b>sales@himalayankoh.com</b>) forward to{' '}
               <b>{emailStatus?.inbound?.destination || '8002salman@gmail.com'}</b> — set up via the Cloudflare API.
             </p>
             <div className="mt-2 space-y-0.5">
-              {(emailStatus?.inbound?.routes || ['sales@luxedge.us → 8002salman@gmail.com', 'anything@luxedge.us → 8002salman@gmail.com']).map((r, i) => (
+              {(emailStatus?.inbound?.routes || ['sales@himalayankoh.com → 8002salman@gmail.com', 'anything@himalayankoh.com → 8002salman@gmail.com']).map((r, i) => (
                 <p key={i} className="text-[11px] font-mono text-blue-700 bg-blue-50 rounded px-2 py-0.5">{r}</p>
               ))}
             </div>
@@ -5488,21 +5494,21 @@ export function AEmailMarketing() {
           <div className="bg-white rounded-xl border border-blue-100 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Outbound — Sender</p>
             <div className="flex items-center gap-2 mb-1">
-              <span className={`w-2.5 h-2.5 rounded-full ${emailStatus?.outbound?.bindingPresent ? 'bg-green-500' : 'bg-amber-500'}`} />
-              <p className="text-sm font-semibold text-gray-800">sales@luxedge.us {emailStatus?.outbound?.bindingPresent ? '· binding ready' : '· binding pending'}</p>
+              <span className={`w-2.5 h-2.5 rounded-full ${emailStatus?.outbound?.bindingPresent ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <p className="text-sm font-semibold text-gray-800">sales@himalayankoh.com {emailStatus?.outbound?.bindingPresent ? '· binding ready' : '· binding pending'}</p>
             </div>
-            <p className="text-xs text-gray-600">{emailStatus?.outbound?.note || 'Emails are sent from sales@luxedge.us via the Cloudflare send_email binding.'}</p>
+            <p className="text-xs text-gray-600">{emailStatus?.outbound?.note || 'Emails are sent from sales@himalayankoh.com via the Cloudflare send_email binding.'}</p>
             <button onClick={sendTestEmail} disabled={testMail === 'sending'} className="btn-glow mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5">
               <PaperPlaneRight size={13} /> {testMail === 'sending' ? 'Sending…' : 'Send test email to 8002salman@gmail.com'}
             </button>
-            {testMailMsg && <p className={`mt-2 text-[11px] ${testMail === 'sent' ? 'text-green-700' : 'text-red-600'}`}>{testMailMsg}</p>}
+            {testMailMsg && <p className={`mt-2 text-[11px] ${testMail === 'sent' ? 'text-emerald-700' : 'text-red-600'}`}>{testMailMsg}</p>}
           </div>
         </div>
 
-        {/* Email addresses — create more like salman@luxedge.us */}
+        {/* Email addresses — create more like salman@himalayankoh.com */}
         <div className="mt-3 bg-white rounded-xl border border-blue-100 p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Your email addresses (@luxedge.us)</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Your email addresses (@himalayankoh.com)</p>
             <button onClick={loadRoutes} className="text-[11px] text-blue-600 hover:underline font-medium">Refresh</button>
           </div>
           {mailRoutes?.configured === false && (
@@ -5516,7 +5522,7 @@ export function AEmailMarketing() {
               {(mailRoutes?.routes || []).map((r) => (
                 <div key={r.id || r.address} className="flex items-center justify-between gap-2 bg-blue-50/60 rounded-lg px-3 py-2">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 font-mono">{r.address} <span className="text-[10px] font-normal text-green-600">{r.enabled ? '· active' : '· off'}</span></p>
+                    <p className="text-xs font-semibold text-gray-800 font-mono">{r.address} <span className="text-[10px] font-normal text-emerald-600">{r.enabled ? '· active' : '· off'}</span></p>
                     <p className="text-[10px] text-gray-500">forwards to {r.forwardsTo || '—'}</p>
                   </div>
                   <button onClick={() => r.local && deleteAddress(r.local)} disabled={addrBusy} className="shrink-0 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-50 rounded border border-red-200 disabled:opacity-50">Delete</button>
@@ -5530,11 +5536,11 @@ export function AEmailMarketing() {
           )}
           <div className="flex gap-1.5 mt-3">
             <input value={newAddr} onChange={(e) => setNewAddr(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void addAddress(); }} placeholder="e.g. salman" className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs" aria-label="New email address name" />
-            <span className="self-center text-xs text-gray-400 font-mono">@luxedge.us</span>
+            <span className="self-center text-xs text-gray-400 font-mono">@himalayankoh.com</span>
             <button onClick={addAddress} disabled={addrBusy || !newAddr.trim()} className="btn-glow px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold whitespace-nowrap">{addrBusy ? '…' : 'Add address'}</button>
           </div>
-          <p className="text-[10px] text-gray-400 mt-1.5">New addresses forward to 8002salman@gmail.com automatically — emails to <b>anything@luxedge.us</b> already arrive there too (catch-all).</p>
-          {addrMsg && <p className={`mt-2 text-[11px] ${addrMsg.ok ? 'text-green-700' : 'text-red-600'}`}>{addrMsg.text}</p>}
+          <p className="text-[10px] text-gray-400 mt-1.5">New addresses forward to 8002salman@gmail.com automatically — emails to <b>anything@himalayankoh.com</b> already arrive there too (catch-all).</p>
+          {addrMsg && <p className={`mt-2 text-[11px] ${addrMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{addrMsg.text}</p>}
         </div>
 
         {/* DNS checklist */}
@@ -5553,19 +5559,19 @@ export function AEmailMarketing() {
         <h2 className="font-bold text-gray-900 mb-1">1 · Connect Omnisend</h2>
         <p className="text-sm text-gray-500 mb-3">The API key is stored server-side only — it never reaches the browser.</p>
         <ol className="text-sm text-gray-600 space-y-1.5 list-decimal list-inside">
-          <li>Open <a className="text-green-700 font-medium underline" href="https://app.omnisend.com" target="_blank" rel="noreferrer">app.omnisend.com</a> → Settings → <span className="font-medium">API keys</span>.</li>
+          <li>Open <a className="text-emerald-700 font-medium underline" href="https://app.omnisend.com" target="_blank" rel="noreferrer">app.omnisend.com</a> → Settings → <span className="font-medium">API keys</span>.</li>
           <li>Create a key with read access to Contacts.</li>
           <li>Add it as <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">OMNISEND_API_KEY</code> in your hosting env:</li>
         </ol>
         <div className="mt-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono">
-          Cloudflare → luxedge-production → Settings → Variables &amp; Secrets → add <span className="text-green-700 font-semibold">OMNISEND_API_KEY</span> → redeploy
+          Cloudflare → himalayan-koh → Settings → Variables &amp; Secrets → add <span className="text-emerald-700 font-semibold">OMNISEND_API_KEY</span> → redeploy
         </div>
       </div>
 
       {/* Quick actions */}
       <div className="grid sm:grid-cols-3 gap-4">
         {[
-          { t: 'Open Omnisend', d: 'Campaigns, forms & automation dashboard', h: 'https://app.omnisend.com', c: 'bg-green-600 hover:bg-green-700' },
+          { t: 'Open Omnisend', d: 'Campaigns, forms & automation dashboard', h: 'https://app.omnisend.com', c: 'bg-emerald-600 hover:bg-emerald-700' },
           { t: 'New Campaign', d: 'Create an email blast for your list', h: 'https://app.omnisend.com/campaigns', c: 'bg-blue-600 hover:bg-blue-700' },
           { t: 'Automations', d: 'Welcome, abandoned-cart & win-back flows', h: 'https://app.omnisend.com/automations', c: 'bg-purple-600 hover:bg-purple-700' },
         ].map((c) => (
@@ -5578,23 +5584,23 @@ export function AEmailMarketing() {
 
       {/* Playbook */}
       <div className="bg-white rounded-xl border p-5">
-        <h2 className="font-bold text-gray-900 mb-3">Luxedge Email Playbook</h2>
+        <h2 className="font-bold text-gray-900 mb-3">Himalayan Koh Email Playbook</h2>
         <div className="grid sm:grid-cols-2 gap-4 text-sm">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="font-semibold text-gray-800 mb-1">Welcome Series</p>
-            <p className="text-gray-500">Email 1: welcome + 10% code. Email 2: bestsellers. Email 3: care guide for their pet.</p>
+            <p className="text-gray-500">Email 1: welcome + 10% code (HKWELCOME10). Email 2: wholesale & retail bestsellers. Email 3: care & usage guide for pure Himalayan salt.</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="font-semibold text-gray-800 mb-1">Abandoned Cart</p>
-            <p className="text-gray-500">Wait 1h, then send: “Your pet’s picks are waiting” + product photo + free-shipping nudge.</p>
+            <p className="text-gray-500">Wait 1h, then send: “Your Himalayan salt selection is waiting” + product photo + free-shipping nudge.</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="font-semibold text-gray-800 mb-1">Win-back</p>
-            <p className="text-gray-500">30 days inactive: “We miss you (and so does Fido)” + new arrivals.</p>
+            <p className="text-gray-500">30 days inactive: “We miss you at Himalayan Koh” + new artisan arrivals.</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="font-semibold text-gray-800 mb-1">Post-purchase</p>
-            <p className="text-gray-500">Order shipped + review request after 10 days. Never spam — real pet owners only.</p>
+            <p className="text-gray-500">Order shipped + review request after 10 days. Never spam — verified customers and wholesale partners only.</p>
           </div>
         </div>
       </div>
@@ -5807,7 +5813,7 @@ export function AMarketingTraffic() {
       <Card title="ads.txt" icon={<FileText size={18} className="text-blue-600" />} badge={
         <StatusPill ok={adsTxtStatus === 'configured'} text={adsTxtStatus === 'configured' ? 'Configured' : adsTxtStatus === 'checking' ? 'Checking…' : adsTxtStatus === 'invalid' ? 'Invalid' : 'Missing'} />
       }>
-        <p className="text-xs text-gray-400">Served at <code className="bg-gray-100 px-1 rounded">https://luxedge.us/ads.txt</code> (committed in <code className="bg-gray-100 px-1 rounded">public/ads.txt</code>).</p>
+        <p className="text-xs text-gray-400">Served at <code className="bg-gray-100 px-1 rounded">https://himalayankoh.com/ads.txt</code> (committed in <code className="bg-gray-100 px-1 rounded">public/ads.txt</code>).</p>
         <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-gray-200 bg-gray-50 p-3">
           <code className="text-xs font-mono break-all">{cfg.adsTxtRecord}</code>
           <button onClick={copyAdsTxt} className="shrink-0 px-3.5 py-2 bg-white border border-gray-200 hover:border-blue-300 text-xs font-semibold rounded-lg text-gray-700 transition-colors">Copy ads.txt Entry</button>

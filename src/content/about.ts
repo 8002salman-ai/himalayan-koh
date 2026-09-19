@@ -43,12 +43,12 @@ export const ABOUT_SECTIONS: AboutSection[] = [
       'publishing byline, not a claim of professional credentials or independent laboratory testing. ' +
       'Luxedge sells products linked from its guides and may earn advertising revenue. Product links are ' +
       'commercial recommendations, not proof of test results. For a correction or a source question, ' +
-      'email hello@luxedge.us with the page URL and the passage concerned.',
+      'email sales@himalayankoh.com with the page URL and the passage concerned.',
   },
   {
     title: 'Who we are',
     body:
-      'Luxedge.us is an independent US online store operated by Embani LLC. We are a retailer, not a ' +
+      'Himalayan Koh (himalayankoh.com) is an independent US online store operated by Embani LLC. We are a retailer, not a ' +
       'manufacturer, a veterinary practice, or a marketplace: we choose the items we list, write the ' +
       'descriptions and guides that accompany them, and answer the messages that come back. Luxedge is ' +
       'not affiliated with LuxEdge Furniture Co. (Canada) or LuxEdge Property (UK); those are unrelated ' +
@@ -71,7 +71,7 @@ export const ABOUT_SECTIONS: AboutSection[] = [
       'specifications we cannot confirm rather than guessing at them. Where a product has a limitation that ' +
       'matters before you buy, the page says so. Prices and availability are shown at checkout, delivery ' +
       'estimates are described as estimates, and returns follow the published returns policy. If something ' +
-      'arrives damaged, defective, or different from its listing, email hello@luxedge.us and we will work ' +
+      'arrives damaged, defective, or different from its listing, email sales@himalayankoh.com and we will work ' +
       'through it with you.',
   },
   {
@@ -79,7 +79,7 @@ export const ABOUT_SECTIONS: AboutSection[] = [
     body:
       'Our team is available Monday to Friday, 9AM\u20136PM CT. Order processing takes about 1\u20133 business days, and ' +
       'eligible products ship across the United States where the destination is supported. We offer 30-day return ' +
-      'and replacement support for damaged, defective, or incorrect items. Questions? Contact hello@luxedge.us ' +
+      'and replacement support for damaged, defective, or incorrect items. Questions? Contact sales@himalayankoh.com ' +
       'or call (440) 941-8002.',
   },
 ];

@@ -91,7 +91,7 @@ export const HOME_SECTIONS: SiteSection[] = [
   {
     heading: 'Returns and replacements',
     paragraphs: [
-      'If something arrives damaged, defective or incorrect, email hello@luxedge.us within 30 days of your order date with your order number and photos of the product and packaging. Returns need prior approval, and the product should be unused, unopened and in its original packaging; once we receive and inspect it we process a replacement.',
+      'If something arrives damaged, defective or incorrect, email sales@himalayankoh.com within 30 days of your order date with your order number and photos of the product and packaging. Returns need prior approval, and the product should be unused, unopened and in its original packaging; once we receive and inspect it we process a replacement.',
       'Change-of-mind refunds are not a standard remedy, and return shipping is the customer\u2019s responsibility — we recommend a trackable service. Where the law requires a refund, that right is not limited by our policy.',
     ],
     links: [{ label: 'Returns & Refunds', href: '/returns' }],
@@ -99,7 +99,7 @@ export const HOME_SECTIONS: SiteSection[] = [
   {
     heading: 'Support, by email or phone',
     paragraphs: [
-      'Support runs on email and phone: hello@luxedge.us or (440) 941-8002, Monday to Friday, 9AM\u20136PM CT, with email replies within 24 hours. Include your order number if you have one, the product name, what went wrong, and photos if anything arrived damaged — that is usually everything needed to act on the first reply.',
+      'Support runs on email and phone: sales@himalayankoh.com or (440) 941-8002, Monday to Friday, 9AM\u20136PM CT, with email replies within 24 hours. Include your order number if you have one, the product name, what went wrong, and photos if anything arrived damaged — that is usually everything needed to act on the first reply.',
     ],
     links: [
       { label: 'Contact us', href: '/contact' },
@@ -123,7 +123,7 @@ export const CONTACT_SECTIONS: SiteSection[] = [
   {
     heading: 'Email or phone — both reach us',
     paragraphs: [
-      'Send support requests to hello@luxedge.us or call (440) 941-8002. We monitor both Monday to Friday, 9AM\u20136PM CT, and reply to email within 24 hours. The form on this page reaches the same inbox, so either route works — use whichever is easier.',
+      'Send support requests to sales@himalayankoh.com or call (440) 941-8002. We monitor both Monday to Friday, 9AM\u20136PM CT, and reply to email within 24 hours. The form on this page reaches the same inbox, so either route works — use whichever is easier.',
       'If your message is about an order, sign in before you write. It lets us see the order next to your message, which usually removes a round trip.',
     ],
     links: [
