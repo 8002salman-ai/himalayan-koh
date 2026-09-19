@@ -284,7 +284,7 @@ export class GeminiError extends Error {
   }
 }
 
-const SYSTEM_INSTRUCTION = `You are an expert SEO copywriter for Himalayan Koh, an authentic US brand selling pure Himalayan pink salt, cooking salt blocks, and mineral salt blocks/licks, packed and shipped from Houston, Texas.
+const SYSTEM_INSTRUCTION = `You are an expert SEO copywriter for Himalayan Koh, a store selling Himalayan pink salt, cooking salt blocks, and mineral salt blocks/licks.
 
 STRICT REQUIREMENTS:
 1. LANGUAGE: ENGLISH ONLY. All generated titles, meta descriptions, copy, keywords, and notes MUST be in natural, grammatically correct, professional English. Never output Urdu, Roman Urdu, Hindi, or any non-English script.
@@ -341,6 +341,36 @@ function validateEnglishOnly(text: string): boolean {
 function field(value: unknown): SeoDraftField {
   const text = typeof value === 'string' ? value.trim() : '';
   return { value: text, blocked: findProhibitedClaims(text) };
+}
+
+/**
+ * Models often repeat brand-level context as if it were a fact about the
+ * selected product. Remove those unsupported additions before the draft is
+ * returned: Generate is allowed to be useful, but it must never turn a missing
+ * fact into a customer-facing promise.
+ */
+function sanitizeUnsupportedFacts(text: string, input: SeoDraftInput): { value: string; changed: boolean } {
+  const known = [input.name, ...Object.values(input.facts), ...(input.keywords || [])]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+  let value = text.trim();
+  const original = value;
+  const unsupported = (term: string) => !known.includes(term);
+
+  if (unsupported('houston') || unsupported('texas')) {
+    value = value
+      .replace(/,?\s*(?:packed|packaged)\s+and\s+shipped\s+from\s+Houston,?\s*Texas\.?/gi, '')
+      .replace(/,?\s*(?:packed|packaged)\s+and\s+shipped\s+from\s+Houston\.?/gi, '')
+      .replace(/\b(?:from|in)\s+Houston,?\s*Texas\b/gi, '')
+      .replace(/\bHouston,?\s*Texas\b/gi, '');
+  }
+  if (unsupported('pure')) value = value.replace(/\bpure\s+/gi, '');
+  if (unsupported('natural')) value = value.replace(/\bnatural\s+/gi, '');
+  if (unsupported('essential minerals')) value = value.replace(/\bproviding\s+(?:a\s+)?substantial\s+source\s+of\s+essential\s+minerals\b/gi, '');
+  if (unsupported('substantial source')) value = value.replace(/\bproviding\s+(?:a\s+)?substantial\s+source\s+of\s+(?:pure\s+)?Himalayan salt\b/gi, '');
+
+  return { value: value.replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim(), changed: value !== original };
 }
 
 /**
@@ -456,15 +486,21 @@ export async function generateSeoDraft(
       throw new GeminiError('The AI model returned an invalid response shape. Please retry.');
     }
 
-    const seoTitle = typeof parsed.seoTitle === 'string' ? parsed.seoTitle.trim() : typeof parsed.title === 'string' ? parsed.title.trim() : '';
-    const metaDescription = typeof parsed.metaDescription === 'string' ? parsed.metaDescription.trim() : '';
-    const shortSeoCopy = typeof parsed.shortSeoCopy === 'string' ? parsed.shortSeoCopy.trim() : typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    const rawSeoTitle = typeof parsed.seoTitle === 'string' ? parsed.seoTitle.trim() : typeof parsed.title === 'string' ? parsed.title.trim() : '';
+    const rawMetaDescription = typeof parsed.metaDescription === 'string' ? parsed.metaDescription.trim() : '';
+    const rawShortSeoCopy = typeof parsed.shortSeoCopy === 'string' ? parsed.shortSeoCopy.trim() : typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    const cleanTitle = sanitizeUnsupportedFacts(rawSeoTitle, input);
+    const cleanMeta = sanitizeUnsupportedFacts(rawMetaDescription, input);
+    const cleanShort = sanitizeUnsupportedFacts(rawShortSeoCopy, input);
+    const seoTitle = cleanTitle.value;
+    const metaDescription = cleanMeta.value;
+    const shortSeoCopy = cleanShort.value;
     const primaryKeyword = typeof parsed.primaryKeyword === 'string' ? parsed.primaryKeyword.trim() : '';
-    const secondaryKeywords = Array.isArray(parsed.secondaryKeywords)
+    const secondaryKeywords = (Array.isArray(parsed.secondaryKeywords)
       ? parsed.secondaryKeywords.map((s) => String(s).trim()).filter(Boolean)
       : Array.isArray(parsed.keywords)
         ? parsed.keywords.map((s) => String(s).trim()).filter(Boolean)
-        : [];
+        : []).map((keyword) => sanitizeUnsupportedFacts(keyword, input).value).filter(Boolean);
     const imageAltSuggestions = Array.isArray(parsed.imageAltSuggestions)
       ? parsed.imageAltSuggestions.map((s) => String(s).trim()).filter(Boolean)
       : [];
@@ -479,6 +515,8 @@ export async function generateSeoDraft(
     }
 
     const warnings: string[] = [];
+    const sanitizedCount = [cleanTitle, cleanMeta, cleanShort].filter((entry) => entry.changed).length;
+    if (sanitizedCount > 0) warnings.push('Unsupported provider-added facts were removed; review the draft before applying it.');
     const blockedTotal = [field(seoTitle), field(metaDescription), field(shortSeoCopy)]
       .flatMap((entry) => entry.blocked).length;
 
