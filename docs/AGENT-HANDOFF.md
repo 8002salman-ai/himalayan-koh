@@ -10,9 +10,9 @@ Every completed task must update this file **BEFORE** final commit.
 
 * **PROJECT PATH**: `C:\Users\basco\Downloads\hk\himalayan-koh`
 * **BRANCH**: `integration/cloudflare-workers-migration`
-* **LOCAL HEAD**: `7107f9b7a1c0a55d91db30bbb1f4008d34ade414`
-* **GITHUB HEAD**: `7107f9b7a1c0a55d91db30bbb1f4008d34ade414`
-* **LIVE WORKER SHA**: `7107f9b7a1c0a55d91db30bbb1f4008d34ade414`
+* **LOCAL HEAD**: `0508589e792a163c9607c26867807eb4936cc0aa`
+* **GITHUB HEAD**: `0508589e792a163c9607c26867807eb4936cc0aa`
+* **LIVE WORKER SHA**: `0508589e792a163c9607c26867807eb4936cc0aa`
 * **LAST VERIFIED DATE**: September 19, 2026
 * **PRIMARY STAGING URL**: `https://preview.himalayankoh.com`
 * **ROLLBACK / REFERENCE URL**: `https://himalayan-koh.vercel.app`
