@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Phone, ArrowRight, Send } from 'lucide-react';
-import { buildProductsCategoryPath } from '../lib/categoryContent';
+import { CATEGORY_FILTER_TABS, buildProductsCategoryPath } from '../lib/categoryContent';
 
 /**
  * Business pages, all of which are real routes carrying the store's own content,
@@ -32,12 +32,9 @@ const aboutLinks = [
  * products yet is simply not linked — the navigation only advertises what the
  * shop can actually show.
  */
-const productLinks = [
-  { label: 'Edible Pink Salt', to: buildProductsCategoryPath('edible-pink-salt') },
-  { label: 'Cooking & Serving', to: buildProductsCategoryPath('cooking-serving') },
-  { label: 'Salt Lamps & Décor', to: buildProductsCategoryPath('lamps-decor') },
-  { label: 'Bulk & Wholesale', to: buildProductsCategoryPath('bulk') },
-];
+const productLinks = CATEGORY_FILTER_TABS.flatMap((tab) =>
+  tab.key ? [{ label: tab.label, to: buildProductsCategoryPath(tab.key) }] : []
+);
 
 export default function Footer() {
   const [email, setEmail] = useState('');

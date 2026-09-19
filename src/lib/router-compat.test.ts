@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { queryOnlyDestination } from './router/locationMatch';
+
 /**
  * No file may call `useSearchParams` from `next/navigation`.
  *
@@ -75,5 +77,76 @@ describe('router shim SSR safety', () => {
     // components it mounts read from window and therefore do not suspend.
     const providers = readFileSync(fileURLToPath(new URL('../app/providers.tsx', import.meta.url)), 'utf8');
     expect(providers).not.toMatch(/<Suspense/);
+  });
+});
+
+/**
+ * A link that changes only the query string must navigate.
+ *
+ * Measured on the deployed staging build before this rule existed: clicking
+ * "Edible Pink Salt" on `/products` produced `preventDefault` from Next's `Link`
+ * and then nothing at all — no client transition, no history update, no document
+ * load, no error, for the eight seconds it was watched. Every category pill was a
+ * dead control. The cause was that same-pathname navigation was left to Next's
+ * router, which does not complete it in this runtime.
+ *
+ * These cases pin the rule that decides when the shim writes the URL itself. They
+ * run in node because the rule is pure: `currentHref` is passed in rather than read
+ * from `window`.
+ */
+describe('query-only navigation', () => {
+  it('claims a filter link on the page it is already on — the /products category pill', () => {
+    expect(queryOnlyDestination('/products?category=edible-pink-salt', '/products')).toBe(
+      '/products?category=edible-pink-salt'
+    );
+  });
+
+  it('claims switching from one shelf to another', () => {
+    expect(
+      queryOnlyDestination('/products?category=bulk', '/products?category=edible-pink-salt')
+    ).toBe('/products?category=bulk');
+  });
+
+  it('claims clearing the filter back to the whole catalogue', () => {
+    expect(queryOnlyDestination('/products', '/products?category=bulk')).toBe('/products');
+  });
+
+  it('claims a tab inside an account-style screen, however the link is written', () => {
+    expect(queryOnlyDestination('?tab=orders', '/account')).toBe('/account?tab=orders');
+    expect(queryOnlyDestination('/account?tab=profile', '/account?tab=orders')).toBe(
+      '/account?tab=profile'
+    );
+  });
+
+  it('leaves a different pathname to the router', () => {
+    expect(queryOnlyDestination('/about', '/products')).toBeNull();
+    expect(queryOnlyDestination('/products?category=bulk', '/about')).toBeNull();
+  });
+
+  it('leaves a link that points nowhere to the router, so it does not add a history entry', () => {
+    expect(queryOnlyDestination('/products', '/products')).toBeNull();
+    expect(queryOnlyDestination('/products?category=bulk', '/products?category=bulk')).toBeNull();
+  });
+
+  it('leaves in-page anchors alone', () => {
+    expect(queryOnlyDestination('#faq', '/products')).toBeNull();
+    expect(queryOnlyDestination('', '/products')).toBeNull();
+  });
+
+  it('ignores the hash when comparing paths, so /products#top still filters', () => {
+    expect(queryOnlyDestination('/products?category=bulk', '/products#top')).toBe(
+      '/products?category=bulk'
+    );
+  });
+
+  it('is what the shim actually consults, for links and for programmatic tab changes', () => {
+    const shim = readFileSync(fileURLToPath(new URL('./router-compat.tsx', import.meta.url)), 'utf8');
+    // The click path.
+    expect(shim).toMatch(/event\.preventDefault\(\)/);
+    // The programmatic paths: `useNavigate` and `setSearchParams`.
+    const uses = shim.match(/navigateWithinSamePath\(/g) ?? [];
+    expect(uses.length).toBeGreaterThanOrEqual(3);
+    // And subscribers must be told, or the view keeps rendering the old filter.
+    expect(shim).toMatch(/notifyLocationChange\(\)/);
   });
 });

@@ -1,0 +1,186 @@
+import { describe, expect, it } from 'vitest';
+
+import { NICHE_SECTIONS } from '../catalog/nicheSections';
+import {
+  ALL_LABEL,
+  CATEGORY_FILTER_TABS,
+  CATEGORY_QUERY_PARAM,
+  buildProductsCategoryPath,
+  categoryKeyFromFilterLabel,
+  filterLabelFromKey,
+  normalizeCategoryQueryValue,
+  parseCategoryFromSearchParams,
+  productMatchesCategoryFilter,
+} from './index';
+import { queryOnlyDestination } from '../router/locationMatch';
+
+/**
+ * The products page's category control, pinned.
+ *
+ * Every one of these cases was either broken on the deployed staging build or is
+ * one edit away from breaking silently:
+ *
+ *  - clicking a shelf did nothing at all, because the click was a same-pathname
+ *    query change and the router shim left those to Next's router, which did not
+ *    complete them (see `lib/router-compat.test.ts` for that rule);
+ *  - the footer linked `Salt Lamps & Décor`, a shelf the catalogue no longer has —
+ *    a link that looks like a filter and quietly resets to All.
+ *
+ * The suite also covers the data side, so "the filter works" means the grid shows
+ * the right products and not merely that the URL changed.
+ */
+
+const shelves = NICHE_SECTIONS.map((section) => ({ key: section.key, label: section.label }));
+
+/** A product-shaped value for the placement rule, taken from what Woo reports. */
+function product(name: string, categoryNames: string[] = []) {
+  return {
+    id: name,
+    name,
+    category: categoryNames[0] ?? '',
+    categories: categoryNames,
+    sku: '',
+    description: '',
+  } as unknown as Parameters<typeof productMatchesCategoryFilter>[0];
+}
+
+describe('the shelf list', () => {
+  it('offers All first and then every live shelf once', () => {
+    expect(CATEGORY_FILTER_TABS[0]).toEqual({ label: ALL_LABEL, key: null });
+    const keys = CATEGORY_FILTER_TABS.map((tab) => tab.key).filter(Boolean);
+    expect(keys).toEqual(shelves.map((s) => s.key));
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('has a label for every key and a key for every label', () => {
+    for (const shelf of shelves) {
+      expect(filterLabelFromKey(shelf.key)).toBe(shelf.label);
+      expect(categoryKeyFromFilterLabel(shelf.label)).toBe(shelf.key);
+    }
+    expect(categoryKeyFromFilterLabel('Not A Shelf')).toBeNull();
+  });
+
+  it('builds the URL that the router shim knows to apply in place', () => {
+    // The two halves have to agree: the pill writes `?category=<key>`, and the shim
+    // only acts on a link whose pathname matches the current page.
+    for (const shelf of shelves) {
+      const path = buildProductsCategoryPath(shelf.key);
+      expect(path).toBe(`/products?${CATEGORY_QUERY_PARAM}=${shelf.key}`);
+      expect(queryOnlyDestination(path, '/products')).toBe(path);
+    }
+    expect(buildProductsCategoryPath(null)).toBe('/products');
+    expect(queryOnlyDestination('/products', '/products?category=bulk')).toBe('/products');
+  });
+});
+
+/**
+ * Real product titles from the staging store, and the shelf each one belongs on.
+ *
+ * Written from the live catalogue rather than invented, because the fixture has to
+ * fail when the placement rule changes underneath it: these are the titles the
+ * storefront actually renders, so a shelf that stops matching them becomes an empty
+ * grid that no test would otherwise notice.
+ */
+const CATALOGUE: Array<{ title: string; shelf: string }> = [
+  { title: 'Himalayan Pink Edible Salt Fine Grain — 16 oz Jar', shelf: 'edible-pink-salt' },
+  { title: 'Himalayan Pink Edible Salt Coarse Grain — 16 oz Jar', shelf: 'edible-pink-salt' },
+  { title: 'Himalayan Pink Edible Salt Fine Grain Pouch — 6 lbs', shelf: 'edible-pink-salt' },
+  { title: 'Himalayan Salt Fine Grain — 3 lbs', shelf: 'edible-pink-salt' },
+  { title: 'Himalayan Salt Lick — 30 lbs', shelf: 'licks-blocks' },
+  { title: 'Himalayan Salt Lick — 1 to 2 lbs', shelf: 'licks-blocks' },
+  { title: 'Himalayan Salt Block — 30 lbs', shelf: 'cooking-serving' },
+  { title: 'Himalayan Salt Block — Rectangular 8 x 4 x 1 in', shelf: 'cooking-serving' },
+  { title: 'Himalayan Salt Fine Grain — 45 lbs (0.5–1.0 mm)', shelf: 'bulk' },
+  { title: 'Himalayan Rock Salt — 45 lbs (2–3 large chunks)', shelf: 'bulk' },
+];
+
+describe('selecting a shelf', () => {
+  const catalogue = CATALOGUE.map((entry) => product(entry.title));
+
+  it('shows every product under All', () => {
+    for (const item of catalogue) {
+      expect(productMatchesCategoryFilter(item, null, ALL_LABEL)).toBe(true);
+    }
+  });
+
+  it('shows exactly the products the shelf claims, and no others', () => {
+    for (const shelf of shelves) {
+      const expected = CATALOGUE.filter((entry) => entry.shelf === shelf.key).map((e) => e.title);
+      const visible = catalogue
+        .filter((item) => productMatchesCategoryFilter(item, shelf.key, shelf.label))
+        .map((item) => (item as { name: string }).name);
+      expect(visible.sort()).toEqual(expected.sort());
+    }
+  });
+
+  it('places every product on the shelf it is filed under, so no product is counted twice', () => {
+    const placed = CATALOGUE.map((entry) => product(entry.title));
+    const counts = shelves.map(
+      (shelf) => placed.filter((item) => productMatchesCategoryFilter(item, shelf.key, shelf.label)).length
+    );
+    expect(counts.reduce((sum, count) => sum + count, 0)).toBe(placed.length);
+  });
+
+  it('changes what is visible when the shelf changes — the symptom that was missing', () => {
+    // The reported bug was that the grid looked identical whichever shelf was
+    // chosen. Distinct signatures per shelf are what makes that impossible.
+    const signatures = shelves.map((shelf) =>
+      catalogue
+        .filter((item) => productMatchesCategoryFilter(item, shelf.key, shelf.label))
+        .map((item) => (item as { name: string }).name)
+        .sort()
+        .join('|')
+    );
+    const nonEmpty = signatures.filter(Boolean);
+    expect(new Set(nonEmpty).size).toBe(nonEmpty.length);
+  });
+});
+
+describe('the URL is the filter', () => {
+  it('reads a shelf out of the query string', () => {
+    for (const shelf of shelves) {
+      const params = new URLSearchParams(`${CATEGORY_QUERY_PARAM}=${shelf.key}`);
+      expect(parseCategoryFromSearchParams(params)).toBe(shelf.key);
+    }
+  });
+
+  it('falls back to All for a retired shelf, a typo, and nothing at all', () => {
+    // `licings-blocks` is a real key with one letter moved; `animal-feed` was a
+    // staging taxonomy term. Neither may open a shelf, and neither may render an
+    // empty grid under a heading that claims to be a filter.
+    expect(normalizeCategoryQueryValue('licings-blocks')).toBeNull();
+    expect(normalizeCategoryQueryValue('animal-feed')).toBeNull();
+    expect(normalizeCategoryQueryValue('himalayan-chef-fine-grain-jar-1-lbs')).toBeNull();
+    expect(normalizeCategoryQueryValue('')).toBeNull();
+    expect(normalizeCategoryQueryValue(null)).toBeNull();
+    expect(parseCategoryFromSearchParams(new URLSearchParams('category=animal-feed'))).toBeNull();
+  });
+
+  it('is case- and whitespace-insensitive, so a hand-typed link still works', () => {
+    const key = shelves[0].key;
+    expect(normalizeCategoryQueryValue(`  ${key.toUpperCase()}  `)).toBe(key);
+  });
+});
+
+describe('navigation that must never advertise a filter the taxonomy does not have', () => {
+  it('derives its links from the taxonomy rather than from typed-out keys', () => {
+    // The footer used to hardcode its shelf list. A key written out by hand cannot be
+    // checked against anything, so a typo or a shelf that is later removed becomes a
+    // filter link that resets the shopper to All without saying so. Deriving the list
+    // means the only keys it can link are the taxonomy's own.
+    const derived = CATEGORY_FILTER_TABS.flatMap((tab) => (tab.key ? [tab.key] : []));
+    const live = new Set(shelves.map((s) => s.key));
+    expect(derived.every((key) => live.has(key))).toBe(true);
+    expect(derived).toEqual(shelves.map((s) => s.key));
+  });
+
+  it('keeps the lamps shelf in the taxonomy, so its hub copy is still reachable', () => {
+    // Recorded rather than asserted away: `lamps-decor` is a real shelf with real hub
+    // content, and it is empty because the owner withheld the lamp/ionizer product
+    // line. `CategoryFilterNav` hides a shelf with no matching products — which is why
+    // no lamp pill appears on /products — while its URL stays valid for anyone holding
+    // an old link. Whether the shelf should leave the taxonomy is the owner's call, so
+    // this test pins the current, deliberate shape instead of pretending it is gone.
+    expect(normalizeCategoryQueryValue('lamps-decor')).toBe('lamps-decor');
+  });
+});
