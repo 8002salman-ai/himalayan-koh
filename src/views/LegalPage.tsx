@@ -97,6 +97,18 @@ const content: Record<LegalPageProps['type'], { eyebrow: string; title: string; 
         body: 'Our website uses cookies to remember your preferences, improve website performance, analyze website traffic, and enhance your shopping experience. You may disable cookies through your browser settings, although some website features may not function properly.',
       },
       {
+        title: 'Advertising, Google AdSense & Third-Party Vendors',
+        intro: 'To support our educational publishing and content development, our website may display online advertisements delivered by third-party advertising partners, including Google AdSense. Please note the following disclosures regarding advertising technologies and data practices:',
+        bullets: [
+          'Third-party vendors, including Google, may use cookies to serve advertisements based on a user’s prior visits to this website or other websites across the Internet.',
+          'Google’s use of advertising cookies enables it and its partners to serve personalized or non-personalized advertisements to users based on their browsing activity where permitted by applicable law.',
+          'Users may opt out of personalized advertising by visiting Google Ads Settings (https://adssettings.google.com) or through third-party industry opt-out portals such as www.aboutads.info.',
+          'If non-personalized ads are selected or required by region, cookies and mobile identifiers may still be used to combat fraud and abuse, measure ad impressions, frequency cap ads, and provide aggregated reporting.',
+          'Where required by regional data protection laws (such as in the European Economic Area, UK, or specific U.S. states), user consent is gathered prior to deploying optional advertising cookies.',
+          'Please note: Google AdSense integration is configured for future editorial monetization and compliance readiness; advertising partners do not receive access to your private customer account login details or payment credentials.',
+        ],
+      },
+      {
         title: 'Sharing Your Information',
         bullets: [
           'We do not sell or rent your personal information.',

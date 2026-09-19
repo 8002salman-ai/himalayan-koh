@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, Gem, HelpCircle, Shield, Truck, UtensilsCrossed } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronDown, Gem, HelpCircle, Shield, Truck, UtensilsCrossed, ShieldAlert } from 'lucide-react';
 import type { Product } from '../../data/products';
 import { getProductContent } from '../../lib/products/productContent';
 
@@ -46,18 +47,28 @@ export default function ProductDetailSections({ product }: Props) {
       </section>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <section className="bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Truck size={20} className="text-himalayan" />
-            <h2 className="font-serif text-xl font-bold text-charcoal">Shipping</h2>
+        <section className="bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Truck size={20} className="text-himalayan" />
+              <h2 className="font-serif text-xl font-bold text-charcoal">Shipping & Delivery</h2>
+            </div>
+            <ul className="space-y-3 mb-6">
+              {content.shippingInfo.map((item) => (
+                <li key={item} className="text-sm text-charcoal-light leading-relaxed">
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-3">
-            {content.shippingInfo.map((item) => (
-              <li key={item} className="text-sm text-charcoal-light leading-relaxed">
-                {item}
-              </li>
-            ))}
-          </ul>
+          <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-4 text-xs font-semibold text-himalayan">
+            <Link to="/shipping" className="hover:underline">
+              Shipping Policy →
+            </Link>
+            <Link to="/return" className="hover:underline">
+              Return & RMA Policy →
+            </Link>
+          </div>
         </section>
 
         <section className="bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8">
@@ -112,6 +123,28 @@ export default function ProductDetailSections({ product }: Props) {
           </div>
         </section>
       )}
+
+      {/* Compliance, Disclaimer & Resource Linking Section */}
+      <section className="bg-warm-white border border-gray-200/80 rounded-2xl p-6 md:p-8 space-y-3">
+        <div className="flex items-center gap-2 text-charcoal font-serif font-bold text-lg">
+          <ShieldAlert className="w-5 h-5 text-himalayan flex-shrink-0" />
+          <h2>Usage Guidelines & Nutritional Notice</h2>
+        </div>
+        <p className="text-sm text-charcoal-light leading-relaxed">
+          Himalayan pink salt is unrefined halite rock salt composed primarily of sodium chloride with naturally occurring trace minerals (iron, potassium, magnesium, calcium). For animal salt licks: provide continuous access to fresh water. Salt licks do not substitute for a complete veterinary mineral program or forage balancing. For cooking slabs: heat gradually in stages to prevent thermal fractures.
+        </p>
+        <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-5 text-xs font-semibold">
+          <Link to="/disclaimer" className="text-himalayan hover:underline">
+            Product & Health Disclaimer →
+          </Link>
+          <Link to="/quality" className="text-himalayan hover:underline">
+            Quality & Sourcing Standards →
+          </Link>
+          <Link to="/resources" className="text-himalayan hover:underline">
+            Educational Resource Guides →
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 // usePathname instead of useLocation: useLocation reads search params, which
 // opts every route rendering this layout out of static prerendering, leaving
@@ -19,6 +19,8 @@ import ScrollToTop from './ScrollToTop';
 const navLinks = [
   { label: 'Home', path: '/' },
   { label: 'Products', path: '/products' },
+  { label: 'Quality', path: '/quality' },
+  { label: 'Resources', path: '/resources' },
   { label: 'About Us', path: '/about' },
   { label: 'Contact', path: '/contact' },
 ];

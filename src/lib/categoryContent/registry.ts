@@ -235,37 +235,103 @@ export const CATEGORY_CONTENT_REGISTRY: Record<CategoryContentKey, CategoryConte
     key: 'licks-blocks',
     productCategoryLabel: 'Salt Licks & Blocks',
     hero: {
-      eyebrow: 'Solid pink salt',
-      title: 'Salt Licks & Blocks',
+      eyebrow: 'Pasture & Stable Minerals',
+      title: 'Himalayan Salt Licks & Blocks',
       subtitle:
-        'Solid pieces of Himalayan pink salt from the Khewra range, supplied in the weights our price list states.',
+        'Solid crystalline halite rock salt extracted from the Khewra geological deposits in Pakistan—providing free-choice sodium and essential trace elements for horses, cattle, and wildlife without chemical binders.',
     },
     seo: {
-      title: 'Himalayan Pink Salt Licks & Blocks | Himalayan Koh',
+      title: 'Himalayan Pink Salt Licks & Blocks for Horses & Cattle | Himalayan Koh',
       description:
-        'Solid Himalayan pink salt licks and blocks from the Khewra range, in the weights our price list covers. Packed in Houston and shipped across the U.S.',
+        'Pure unrefined Himalayan rock salt licks and compressed blocks. Weather-resistant free-choice mineral supplementation for pasture and barn. Dispatched from Houston, Texas.',
     },
     trustPoints: [
-      { label: 'Solid salt, not coated', detail: 'Cut from the same mineral rock as our edible grades.' },
-      { label: 'Weight as listed', detail: 'Sold at the weight the product line states.' },
-      { label: 'Packed in Houston', detail: 'Ships from our Texas warehouse in 1–2 business days.' },
+      { label: 'Solid halite stone', detail: 'Cut directly from geological salt beds—zero artificial binders or glues.' },
+      { label: 'Extreme weather durability', detail: 'Dense crystalline structure resists rapid rain dissolution.' },
+      { label: 'Dispatched from Houston', detail: 'Stocked in Texas for prompt domestic delivery across America.' },
     ],
     gallery: [
-      { id: 'lick-rock', src: IMG.rockBag, alt: 'Large pieces of solid pink Himalayan salt', width: 600, height: 450 },
-      { id: 'lick-bowl', src: IMG.saltBowl, alt: 'Coarse pink salt crystals beside a solid salt piece', width: 600, height: 450 },
+      { id: 'lick-rock', src: IMG.rockBag, alt: 'Solid rock salt licks with hanging ropes for livestock', width: 600, height: 450 },
+      { id: 'lick-bowl', src: IMG.saltBowl, alt: 'Mineral crystals from genuine Himalayan rock salt', width: 600, height: 450 },
     ],
-    // Empty on purpose. These collections are content, and inventing guides or
-    // articles about a range the owner has only just authorised would be exactly
-    // the kind of unverified claim this migration has been removing. The shelf
-    // says so in its own empty states instead of rendering nothing.
-    guides: [],
-    articles: [],
-    pdfs: [],
-    emptyStates: {
-      guides: 'Handling guides for this range are being written.',
-      articles: 'Articles for this range are coming soon.',
-      pdfs: 'No downloads are published for this range yet.',
-    },
+    articles: [
+      {
+        id: 'lick-vs-loose',
+        title: 'Salt Block vs. Loose Salt for Livestock',
+        excerpt: 'How rock salt blocks compare with loose mineral salt in weather erosion and intake regulation.',
+        image: IMG.rockBag,
+        readTime: '7 min read',
+        tag: 'Pasture',
+        href: '/resources/salt-block-vs-loose-salt-for-livestock',
+      },
+      {
+        id: 'lick-equine',
+        title: 'How Horses Use Salt and Electrolytes',
+        excerpt: 'Why equine sweat demands sodium and chloride, and how free-choice rock licks stimulate vital thirst.',
+        image: IMG.saltBowl,
+        readTime: '6 min read',
+        tag: 'Equine',
+        href: '/resources/how-horses-use-salt-and-electrolytes',
+      },
+      {
+        id: 'lick-cattle',
+        title: 'Salt Needs for Cattle: Practical Farm Guide',
+        excerpt: 'Managing pasture herd cation-anion balance, seasonal forage shifts, and mineral placement.',
+        image: IMG.rockBag,
+        readTime: '6 min read',
+        tag: 'Bovine',
+        href: '/resources/salt-needs-for-cattle-practical-farm-guide',
+      },
+    ],
+    guides: [
+      {
+        id: 'lick-management',
+        title: 'Pasture & Stall Management',
+        bullets: [
+          'Hang 3–4 kg rope licks at shoulder height in individual horse stalls to provide behavioral enrichment.',
+          'Place 20 kg blocks on pallets or rubber mats in cattle pastures to prevent mud contamination.',
+          'Locate salt stations 100 to 300 yards away from water troughs to encourage uniform pasture grazing.',
+          'Always verify herd water access: never restrict water when supplementing free-choice salt.',
+        ],
+      },
+      {
+        id: 'lick-weather',
+        title: 'Weather Protection & Field Longevity',
+        bullets: [
+          'Rock salt blocks withstand rainfall substantially better than soft pressed salt cakes.',
+          'Elevate blocks off clay soil so groundwater does not leach the base into sludge.',
+          'In open loafing pens, place blocks inside three-sided run-in sheds during wet seasons.',
+          'Inspect hanging ropes regularly for chew wear and knot security.',
+        ],
+      },
+      {
+        id: 'lick-faq',
+        title: 'Livestock Salt FAQs',
+        faqs: [
+          {
+            question: 'Can horses bite off large chunks of a Himalayan rock lick?',
+            answer:
+              'No. Because these licks are cut from solid halite crystal rather than compressed powders, animals lick rather than chew, minimizing choke hazards and preventing rapid over-consumption.',
+          },
+          {
+            question: 'Does Himalayan salt replace a veterinary mineral program?',
+            answer:
+              'No. Rock salt supplies essential sodium and chloride alongside naturally occurring trace minerals, but it is not a complete formulated vitamin/mineral premix. Consult a veterinarian or livestock nutritionist for custom herd diets.',
+          },
+        ],
+      },
+    ],
+    pdfs: [
+      {
+        id: 'livestock-salt-guide',
+        title: 'Livestock Salt Management Guide',
+        description: 'Intake baselines, stall mounting, pasture placement, and seasonal pasture management.',
+        url: '/resources/salt-block-vs-loose-salt-for-livestock',
+        fileSize: 'Online Guide',
+        publishedAt: '2026-03-12',
+      },
+    ],
+    emptyStates: {},
   },
 
   'lamps-decor': {

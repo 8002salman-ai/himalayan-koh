@@ -23,15 +23,15 @@ export interface ProductContent {
 }
 
 const SHARED_TRUST: TrustIndicator[] = [
-  { label: '100% natural', detail: 'Unrefined salt with no anti-caking agents or additives.' },
-  { label: '84+ trace minerals', detail: 'Naturally occurring minerals from ancient sea deposits.' },
-  { label: 'Family-owned quality', detail: 'Trusted by home cooks, kitchens and shops across the U.S.' },
+  { label: '100% natural', detail: 'Unrefined rock salt with no anti-caking agents, bleaches, or additives.' },
+  { label: 'Trace minerals', detail: 'Naturally occurring iron, potassium, magnesium, and calcium from ancient halite beds.' },
+  { label: 'Houston distribution', detail: 'Stocked and inspected at our Texas distribution facility.' },
 ];
 
 const SHARED_SHIPPING: string[] = [
-  'Orders ship within 1–2 business days from our Texas warehouse.',
-  'Free standard shipping on U.S. orders over $50.',
-  'Bulk orders welcome — contact us for quantity pricing.',
+  'Orders dispatch within 1–2 business days from our Houston, Texas facility.',
+  'Carrier-calculated shipping rates at checkout based on package weight and destination.',
+  'Bulk pallet freight and wholesale delivery available across the continental United States.',
 ];
 
 /**

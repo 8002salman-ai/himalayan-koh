@@ -4,6 +4,8 @@ import { buildProductsCategoryPath, productShelfKey } from '@/lib/categoryConten
 import { NICHE_SECTIONS } from '@/lib/catalog/nicheSections';
 import type { CategoryContentKey } from '@/lib/categoryContent';
 import { getCatalogProducts } from '@/lib/backend/serverCatalog';
+import { RESOURCE_ARTICLES } from '@/data/resources';
+import { getAllAuthors } from '@/data/authors';
 
 type ChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
@@ -12,9 +14,13 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: ChangeFr
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/products', priority: 0.9, changeFrequency: 'daily' },
   { path: '/about', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/quality', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/resources', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/gallery', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/contact', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/faqs', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/disclaimer', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/sitemap', priority: 0.5, changeFrequency: 'weekly' },
   { path: '/shipping', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/return', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/terms', priority: 0.3, changeFrequency: 'yearly' },
@@ -103,6 +109,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: post.updated_at ? new Date(post.updated_at) : post.published_at ? new Date(post.published_at) : now,
       changeFrequency: 'monthly',
       priority: 0.6,
+    });
+  }
+
+  for (const article of RESOURCE_ARTICLES) {
+    entries.push({
+      url: `${origin}/resources/${article.slug}`,
+      lastModified: new Date(article.updatedAt),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    });
+  }
+
+  for (const author of getAllAuthors()) {
+    entries.push({
+      url: `${origin}/author/${author.slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.5,
     });
   }
 

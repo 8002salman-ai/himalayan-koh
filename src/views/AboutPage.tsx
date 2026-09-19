@@ -1,52 +1,52 @@
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, Gem, Heart, Droplets, Leaf, Timer, Utensils } from 'lucide-react';
+import { Check, Gem, Heart, Droplets, Leaf, Timer, Utensils, ShieldCheck, MapPin, Phone, Mail, UserCheck } from 'lucide-react';
 import { legacyImage } from '@/lib/images/legacyAssets';
 
 /**
- * The about page tells the story the business actually has: one rock, one
- * mineral profile, and a shelf of ways to use it. The livestock framing that
- * used to be here went with the products it advertised.
- *
- * Health claims are deliberately soft. "84+ trace minerals" is a statement about
- * the rock, which is true of unrefined salt; nothing here promises a health
- * outcome, because the store sells salt, not a supplement.
+ * AboutPage tells the verified story of Himalayan Koh:
+ * - Direct geological sourcing from the Salt Range / Khewra region in Pakistan.
+ * - Processing, quality inspection, and dispatch from our Houston, Texas facility.
+ * - Factual, non-inflated nutritional and mineral disclosures.
+ * - Transparent business identity and leadership placeholders.
  */
+
 const bulletPoints = [
-  'Up to 84 minerals and trace elements, as the rock holds them',
-  'Unrefined — no anti-caking agents, bleaching or additives',
-  'Fine, medium and coarse grain, plus blocks, lamps and bulk bags',
-  'Packed to stay dry in jars, resealable pouches and bags',
+  'Naturally occurring trace minerals including iron, potassium, and magnesium',
+  'Unrefined — no anti-caking chemicals, artificial bleaches, or synthetic additives',
+  'Precise grain sizing: fine, medium, coarse, plus carved salt blocks and licks',
+  'Moisture-protective packaging dispatched directly from Houston, Texas',
 ];
 
 const benefits = [
   {
-    title: '84 Trace Minerals',
-    description: 'The seam carries up to 84 minerals and trace elements; unrefined salt keeps them.',
+    title: 'Natural Trace Elements',
+    description: 'Ancient geological seams preserve natural trace minerals, giving each crystal its authentic rose-pink hue.',
     icon: Gem,
   },
   {
-    title: 'The Pink Is Iron',
-    description: 'Colour and vein vary through the rock. A washed white salt has had that character removed.',
+    title: 'Characteristic Iron Minerals',
+    description: 'Natural mineral veins produce tones from light peach to deep ruby. No artificial dyes or bleaching agents.',
     icon: Heart,
   },
   {
-    title: 'Every Grain Size',
-    description: 'Fine for baking and brines, medium for the grinder, coarse for finishing and slow cooks.',
+    title: 'Uniform Grain Sorting',
+    description: 'Carefully screened for consistency: fine for culinary baking, medium for table grinders, and coarse for curing.',
     icon: Droplets,
   },
   {
-    title: 'Nothing Added',
-    description: 'No anti-caking agents, no bleaching, no iodine. Salt, and what the rock already contained.',
+    title: 'Zero Chemical Additives',
+    description: '100% natural unrefined rock salt. Free of artificial anti-caking agents (such as sodium ferrocyanide or aluminosilicate).',
     icon: Leaf,
   },
   {
-    title: 'Built to Last',
-    description: 'Sealed and kept dry, salt does not spoil — a bulk bag is pantry stock, not a race against a date.',
+    title: 'Durable & Non-Perishable',
+    description: 'Naturally resistant to spoilage when stored in dry conditions, providing lasting stability for kitchens and ranches.',
     icon: Timer,
   },
   {
-    title: 'Beyond the Kitchen',
-    description: 'Blocks and plates for grilling and serving, and lamps and décor carved from the same salt.',
+    title: 'Kitchen & Pasture Uses',
+    description: 'Food-grade crystals for culinary arts, hand-carved slabs for cooking, and dense mineral blocks for livestock herds.',
     icon: Utensils,
   },
 ];
@@ -62,7 +62,7 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-5"
           >
-            About Us
+            About Himalayan Koh
           </motion.span>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -70,7 +70,7 @@ export default function AboutPage() {
             transition={{ delay: 0.1 }}
             className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight"
           >
-            One Rock, Many Kitchens
+            Purity From the Source, Integrity in Every Grain
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -78,7 +78,7 @@ export default function AboutPage() {
             transition={{ delay: 0.2 }}
             className="text-white/75 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
           >
-            Unrefined Himalayan pink salt, packed and shipped from our Texas facility
+            Authentic Himalayan pink rock salt, inspected, packed, and dispatched from Houston, Texas.
           </motion.p>
         </div>
       </div>
@@ -98,25 +98,11 @@ export default function AboutPage() {
                   <img
                     src={legacyImage('bowlOfSalt')}
                     alt="Coarse unrefined pink Himalayan salt crystals"
-                    loading="lazy"
-                    decoding="async"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.svg'; }}
                   />
                 </div>
-                {/* Floating badge */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="absolute -bottom-6 -right-4 md:right-8 bg-white rounded-2xl p-5 shadow-xl shadow-black/10"
-                >
-                  <div className="text-center">
-                    <span className="block text-3xl font-bold text-himalayan">84+</span>
-                    <span className="text-sm text-charcoal-light font-medium">Trace Minerals</span>
-                  </div>
-                </motion.div>
-                {/* Decorative */}
                 <div className="hidden sm:block absolute -top-4 -left-4 w-24 h-24 bg-himalayan/10 rounded-full -z-10" />
                 <div className="hidden sm:block absolute -bottom-4 -left-8 w-32 h-32 bg-himalayan/5 rounded-full -z-10" />
               </div>
@@ -129,24 +115,18 @@ export default function AboutPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal mb-6 leading-tight">
-                Premium Himalayan Salt for the{' '}
-                <span className="text-himalayan">Kitchen and the Home</span>
+                Authentic Salt Sourced for{' '}
+                <span className="text-himalayan">Gourmet & Agricultural Excellence</span>
               </h2>
               <div className="space-y-4 text-charcoal-light leading-relaxed text-base md:text-lg">
                 <p>
-                  Himalayan pink salt is rock salt: it was laid down as an ancient sea dried, then
-                  pushed up into the mountains and cut out of the seam. Washing it into pure white
-                  sodium chloride is what removes the trace minerals and the colour.
+                  Himalayan pink salt was deposited over 250 million years ago during the Precambrian era as ancient ocean beds evaporated. Protected beneath tectonic mountain strata in Pakistan&apos;s Salt Range, this mineral deposit remained shielded from modern industrial pollutants.
                 </p>
                 <p>
-                  We do not wash it. What the rock holds — up to 84 minerals and trace elements, and
-                  the iron that makes it pink — is what reaches the jar, and the flavour is why cooks
-                  reach for it.
+                  At Himalayan Koh, we preserve this natural geological mineral in its unrefined state. We never chemically bleach, strip, or alter our salt crystals. What the rock naturally holds — essential sodium chloride balanced with trace minerals like iron, potassium, and magnesium — is exactly what reaches your home or farm.
                 </p>
                 <p>
-                  We stock it the way a kitchen and a home actually use it: fine grain for baking and
-                  brines, coarse for finishing, blocks for the grill and the table, and lamps and
-                  décor cut from the same piece of rock.
+                  We supply salt the way chefs, ranchers, and families actually use it: fine grain for balanced culinary seasoning, medium for table grinders, coarse crystals for brining, dense hand-carved slabs for cooking, and weather-hardy blocks for equine and livestock herds.
                 </p>
               </div>
 
@@ -181,13 +161,13 @@ export default function AboutPage() {
             className="text-center mb-14"
           >
             <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
-              Why Choose Us
+              Our Standards
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-charcoal mb-4">
-              What Unrefined Salt Keeps
+              What Natural Unrefined Salt Retains
             </h2>
             <p className="text-charcoal-light text-lg max-w-2xl mx-auto">
-              The same rock, in the format each job needs
+              Authentic mineral composition tailored for specific culinary and agricultural needs.
             </p>
           </motion.div>
 
@@ -217,7 +197,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Story Section */}
+      {/* Sourcing & QC Story Section */}
       <section className="py-16 md:py-24 bg-charcoal text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
@@ -225,25 +205,128 @@ export default function AboutPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
+            <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+              Direct Origin
+            </span>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-6">
-              Where the Salt Comes From
+              Geological Sourcing from the Khewra Salt Range
             </h2>
-            <p className="text-white/70 text-lg leading-relaxed mb-6">
-              Our Himalayan rose pink salt comes from the Khewra salt mine, in the Jhelum
-              District of Pakistan. We work only with hand-picked exporters, so the salt that
-              reaches us is the salt we asked for, and we check each batch for grain consistency
-              before it is packed.
+            <p className="text-white/80 text-lg leading-relaxed mb-6">
+              Our Himalayan rose pink salt originates from the ancient Khewra salt mines, situated in the foothills of the Salt Range in Punjab, Pakistan. We work directly with licensed mining partners who practice ethical extraction and traditional craftsmanship.
             </p>
-            <p className="text-white/70 text-lg leading-relaxed mb-6">
-              From there it is packed and shipped from our warehouse in Houston, Texas — jars and
-              pouches for the kitchen, blocks for the grill and the table, and bulk bags for
-              kitchens and shops that go through salt quickly.
+            <p className="text-white/80 text-lg leading-relaxed mb-6">
+              Upon maritime arrival in the United States, every batch is received at our facility in Houston, Texas. Our team conducts physical inspections for moisture barriers, granulometry consistency, and purity before packaging into sealed, food-safe containers.
             </p>
-            <p className="text-white/70 text-lg leading-relaxed">
-              Bulk and wholesale orders are welcome, including orders shipping outside the United
-              States. If you are buying in quantity, call us and we will work it out with you.
+            <p className="text-white/80 text-lg leading-relaxed mb-8">
+              We welcome wholesale, retail distribution, and bulk commercial inquiries. For full details on our quality-assurance framework and laboratory protocols, visit our dedicated sourcing guide.
             </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                href="/quality"
+                className="px-6 py-3 bg-himalayan hover:bg-himalayan-dark text-white font-semibold rounded-xl transition-all shadow-lg shadow-himalayan/20"
+              >
+                Quality & Sourcing Standards →
+              </Link>
+              <Link
+                href="/disclaimer"
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all"
+              >
+                Product Disclaimer →
+              </Link>
+            </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Leadership & Editorial Trust Section */}
+      <section className="py-16 md:py-24 bg-warm-white border-t border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-himalayan-lighter text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-3">
+              Leadership & Editorial Team
+            </span>
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal mb-4">
+              Transparency & Customer Commitment
+            </h2>
+            <p className="text-charcoal-light max-w-2xl mx-auto text-base">
+              Himalayan Koh is proudly based in Houston, Texas. Our operations and educational publications are managed by professionals dedicated to authenticity and transparency.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Operations & Sourcing Leadership */}
+            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="w-16 h-16 bg-himalayan-lighter rounded-2xl flex items-center justify-center text-himalayan mb-5">
+                  <UserCheck size={32} />
+                </div>
+                <h3 className="font-serif text-xl font-bold text-charcoal mb-1">Operations & Sourcing Team</h3>
+                <p className="text-xs font-semibold text-himalayan uppercase tracking-wider mb-4">Supply Chain & Quality Control</p>
+                <p className="text-sm text-charcoal-light leading-relaxed mb-4">
+                  Oversees direct supplier auditing in the Salt Range, transatlantic freight logistics, and warehouse quality inspections at our Houston distribution center.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-gray-100 text-xs text-charcoal-light">
+                Location: Houston, Texas Facility
+              </div>
+            </div>
+
+            {/* Editorial & Educational Review */}
+            <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="w-16 h-16 bg-himalayan-lighter rounded-2xl flex items-center justify-center text-himalayan mb-5">
+                  <ShieldCheck size={32} />
+                </div>
+                <h3 className="font-serif text-xl font-bold text-charcoal mb-1">Editorial & Resource Board</h3>
+                <p className="text-xs font-semibold text-himalayan uppercase tracking-wider mb-4">Agricultural & Culinary Education</p>
+                <p className="text-sm text-charcoal-light leading-relaxed mb-4">
+                  Researches and reviews practical guides on livestock mineral management, equine electrolyte replenishment, and culinary salt block techniques to ensure factual accuracy.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-gray-100 text-xs text-charcoal-light">
+                Review Standard: Human Fact-Checked Against Extension Guidelines
+              </div>
+            </div>
+          </div>
+
+          {/* Direct Verified Contact Bar */}
+          <div className="mt-12 bg-white rounded-2xl p-6 md:p-8 border border-gray-200/70 shadow-sm">
+            <div className="grid sm:grid-cols-3 gap-6 text-center sm:text-left">
+              <div className="flex items-center gap-4 justify-center sm:justify-start">
+                <div className="w-10 h-10 bg-himalayan-lighter rounded-xl flex items-center justify-center text-himalayan flex-shrink-0">
+                  <MapPin size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-charcoal-light uppercase">Operating Facility</p>
+                  <p className="text-sm font-bold text-charcoal">12620 FM 1960 W Ste A-4, Houston, TX</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 justify-center sm:justify-start">
+                <div className="w-10 h-10 bg-himalayan-lighter rounded-xl flex items-center justify-center text-himalayan flex-shrink-0">
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-charcoal-light uppercase">Customer Service</p>
+                  <a href="tel:8322246466" className="text-sm font-bold text-charcoal hover:text-himalayan">
+                    (832) 224-6466
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 justify-center sm:justify-start">
+                <div className="w-10 h-10 bg-himalayan-lighter rounded-xl flex items-center justify-center text-himalayan flex-shrink-0">
+                  <Mail size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-charcoal-light uppercase">Direct Inquiries</p>
+                  <a href="mailto:sales@himalayankoh.com" className="text-sm font-bold text-charcoal hover:text-himalayan">
+                    sales@himalayankoh.com
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

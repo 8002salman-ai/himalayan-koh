@@ -213,7 +213,7 @@ export default function ProductDetailView({
                 Houston TX). A previous line here advertised "Free Shipping on $50+",
                 which appears nowhere in production content — shipping is priced by
                 weight and destination — so it is gone rather than implied. */}
-            {['100% Natural & Unrefined', 'Up to 84 trace minerals', 'Packed in Houston, Texas'].map((feat) => (
+            {['100% Natural & Unrefined', 'Naturally occurring trace minerals', 'Packed in Houston, Texas'].map((feat) => (
               <div key={feat} className="flex items-center gap-2 text-sm text-charcoal">
                 <Check size={16} className="text-green-500 flex-shrink-0" />
                 {feat}

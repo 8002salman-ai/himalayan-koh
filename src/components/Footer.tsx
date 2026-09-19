@@ -16,14 +16,17 @@ import { buildProductsCategoryPath } from '../lib/categoryContent';
  */
 const aboutLinks = [
   { label: 'About Himalayan Koh', to: '/about' },
+  { label: 'Quality & Sourcing', to: '/quality' },
+  { label: 'Resource Center', to: '/resources' },
+  { label: 'Product Disclaimer', to: '/disclaimer' },
   { label: 'Shop Products', to: '/products' },
-  { label: 'Customer Login', to: '/login' },
   { label: 'Contact Us', to: '/contact' },
   { label: 'Shipping & Delivery', to: '/shipping' },
   { label: 'Return Policy', to: '/return' },
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
   { label: 'FAQs', to: '/faqs' },
+  { label: 'HTML Sitemap', to: '/sitemap' },
 ];
 
 /**
@@ -38,7 +41,7 @@ const aboutLinks = [
 const productLinks = [
   { label: 'Edible Pink Salt', to: buildProductsCategoryPath('edible-pink-salt') },
   { label: 'Cooking & Serving', to: buildProductsCategoryPath('cooking-serving') },
-  { label: 'Salt Lamps & Décor', to: buildProductsCategoryPath('lamps-decor') },
+  { label: 'Salt Licks & Blocks', to: buildProductsCategoryPath('licks-blocks') },
   { label: 'Bulk & Wholesale', to: buildProductsCategoryPath('bulk') },
 ];
 
@@ -90,7 +93,7 @@ export default function Footer() {
                 Stay Updated
               </h3>
               <p className="text-white/90 text-base md:text-lg leading-relaxed">
-                Subscribe for exclusive offers, livestock health tips, and product updates.
+                Subscribe for product updates, salt handling guides, and seasonal offers.
               </p>
             </div>
             <div>
@@ -131,6 +134,13 @@ export default function Footer() {
                   )}
                 </motion.button>
               </form>
+              <p className="mt-2 text-xs text-white/60 leading-relaxed">
+                By subscribing, you agree to receive commercial and educational emails from Himalayan Koh. You may unsubscribe at any time. Read our{' '}
+                <Link to="/privacy" className="underline hover:text-white">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
               {subscribeError && (
                 <p className="mt-2 text-sm text-amber-300">{subscribeError}</p>
               )}
@@ -152,7 +162,7 @@ export default function Footer() {
               className="h-12 mb-5 brightness-0 invert"
             />
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-xs">
-              Premium Himalayan Pink Salt products for livestock, horses, cattle, deer, and gourmet cooking. Trusted by ranchers across America.
+              Pure, mineral-dense Himalayan pink rock salt for livestock, equine management, wildlife, and gourmet culinary cooking. Sourced from Khewra, Pakistan and distributed from Houston, Texas.
             </p>
 
           </div>
@@ -216,12 +226,15 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/40">
           <p>Copyright © 2026 Himalayan Koh. All rights reserved.</p>
           <div className="flex flex-wrap items-center gap-4">
+            <Link to="/disclaimer" className="hover:text-white/60 transition-colors">Disclaimer</Link>
+            <Link to="/quality" className="hover:text-white/60 transition-colors">Quality Standards</Link>
+            <Link to="/resources" className="hover:text-white/60 transition-colors">Resource Center</Link>
             <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white/60 transition-colors">Terms of Service</Link>
             <Link to="/shipping" className="hover:text-white/60 transition-colors">Shipping Policy</Link>
             <Link to="/return" className="hover:text-white/60 transition-colors">Return Policy</Link>
             <Link to="/faqs" className="hover:text-white/60 transition-colors">FAQs</Link>
-            <a href="/sitemap.xml" className="hover:text-white/60 transition-colors">Sitemap</a>
+            <Link to="/sitemap" className="hover:text-white/60 transition-colors">Sitemap</Link>
           </div>
         </div>
       </div>

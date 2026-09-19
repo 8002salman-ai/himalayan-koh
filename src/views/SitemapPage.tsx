@@ -1,0 +1,220 @@
+import Link from 'next/link';
+import {
+  BookOpen,
+  FolderTree,
+  Home,
+  Package,
+  Shield,
+  Users,
+} from 'lucide-react';
+import { RESOURCE_ARTICLES } from '@/data/resources';
+import { getAllAuthors } from '@/data/authors';
+
+interface SitemapProduct {
+  name: string;
+  slug: string;
+  category?: string;
+}
+
+interface SitemapPageProps {
+  products?: SitemapProduct[];
+}
+
+const STATIC_PAGES = [
+  { name: 'Home', href: '/' },
+  { name: 'About Himalayan Koh', href: '/about' },
+  { name: 'Quality, Sourcing & Verification Standards', href: '/quality' },
+  { name: 'Resource Center & Guides', href: '/resources' },
+  { name: 'All Products Shop', href: '/products' },
+  { name: 'Visual Gallery', href: '/gallery' },
+  { name: 'Frequently Asked Questions (FAQs)', href: '/faqs' },
+  { name: 'Contact & Warehouse Support', href: '/contact' },
+];
+
+const POLICY_PAGES = [
+  { name: 'Product, Veterinary & Health Disclaimer', href: '/disclaimer' },
+  { name: 'Privacy Policy & Google AdSense Disclosures', href: '/privacy' },
+  { name: 'Terms of Service', href: '/terms' },
+  { name: 'Shipping & Delivery Policy', href: '/shipping' },
+  { name: 'Return Policy & RMA Instructions', href: '/return' },
+  { name: 'Google ads.txt Verification Record', href: '/ads.txt' },
+  { name: 'Machine-Readable XML Sitemap', href: '/sitemap.xml' },
+];
+
+const CATEGORIES = [
+  { name: 'Edible Pink Salt', href: '/products?category=edible-pink-salt' },
+  { name: 'Cooking & Serving Slabs', href: '/products?category=cooking-serving' },
+  { name: 'Salt Licks & Blocks for Livestock', href: '/products?category=licks-blocks' },
+  { name: 'Bulk & Wholesale Minerals', href: '/products?category=bulk' },
+];
+
+const DEFAULT_PRODUCTS: SitemapProduct[] = [
+  { name: 'Animal Salt Lick 3-4 kg', slug: 'animal-salt-lick-3-4-kg' },
+  { name: 'Animal Salt Lick 5-6 kg', slug: 'salt-lick-5-6-kg' },
+  { name: 'Animal Salt Lick 1-2 lbs', slug: 'animal-salt-lick-1-2-lbs' },
+  { name: 'Animal Salt Lick 12-14 lbs', slug: 'animal-salt-lick-12-14-lbs' },
+  { name: 'Animal Salt Lick 30 lbs', slug: 'animal-salt-lick-30-lbs' },
+  { name: 'Compressed Salt Block 20kg', slug: 'compressed-salt-block-20kg' },
+  { name: 'Himalayan Salt Block 30 lbs', slug: 'himalayan-salt-block-30-lbs' },
+  { name: 'Himalayan Salt Block Rectangular 8 x 4 x 1 in', slug: 'himalayan-salt-block-rectangular-8-x-4-x-1-in' },
+  { name: 'Cooking Salt Plate', slug: 'cooking-salt-plate' },
+  { name: 'Himalayan Salt Fine Grain 45 lbs (0.5-1.0 mm)', slug: 'himalayan-salt-fine-grain-45-lbs' },
+  { name: 'Himalayan Pink Salt Fine Grain 25kg', slug: 'pink-salt-fine-grain-25kg' },
+  { name: 'Himalayan Pink Edible Salt Fine Grain Pouch 6 lbs', slug: 'himalayan-pink-edible-salt-fine-grain-pouch-6-lbs' },
+  { name: 'Himalayan Salt Chunks', slug: 'himalayan-salt-chunks' },
+  { name: 'Himalayan Rock Salt 45 lbs', slug: 'himalayan-rock-salt-45-lbs' },
+  { name: 'Himalayan Rock Salt Chunks 18 lbs', slug: 'himalayan-rock-salt-chunks-18-lbs' },
+  { name: 'Himalayan Pink Salt 2-3 kg Pack of 6', slug: 'himalayan-pink-salt-2-3-kg-pack-of-6' },
+  { name: 'Animal Salt Lick with Rope 3-4 kg Pack of 6', slug: 'animal-salt-lick-with-rope-3-4-kg-pack-of-6' },
+  { name: 'Fine Grain Himalayan Pink Salt 50 lb Bag', slug: 'fine-grain-himalayan-pink-salt-50-lb-bag' },
+];
+
+export default function SitemapPage({ products = DEFAULT_PRODUCTS }: SitemapPageProps) {
+  const authors = getAllAuthors();
+
+  return (
+    <div className="min-h-screen bg-warm-white">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-charcoal to-charcoal-light py-16 md:py-24 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+          <span className="inline-block px-4 py-1.5 bg-himalayan/20 text-himalayan text-sm font-semibold tracking-wider uppercase rounded-full mb-4">
+            Navigation Index
+          </span>
+          <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-4">
+            HTML Site Directory & Index
+          </h1>
+          <p className="text-white/80 text-lg max-w-2xl mx-auto">
+            A complete human-readable architectural index of all public catalog products, educational guides, policy disclosures, and commercial hubs.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Directory Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          
+          {/* Main Pages */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <Home className="w-5 h-5 text-himalayan" /> Core Website Pages
+            </h2>
+            <ul className="space-y-2.5 text-sm">
+              {STATIC_PAGES.map((page) => (
+                <li key={page.href}>
+                  <Link
+                    href={page.href}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="text-himalayan/60">•</span>
+                    <span>{page.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal & Policies */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <Shield className="w-5 h-5 text-himalayan" /> Policies & Disclosures
+            </h2>
+            <ul className="space-y-2.5 text-sm">
+              {POLICY_PAGES.map((policy) => (
+                <li key={policy.href}>
+                  <Link
+                    href={policy.href}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="text-himalayan/60">•</span>
+                    <span>{policy.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Catalog Categories */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <FolderTree className="w-5 h-5 text-himalayan" /> Catalog Shelves
+            </h2>
+            <ul className="space-y-2.5 text-sm">
+              {CATEGORIES.map((cat) => (
+                <li key={cat.href}>
+                  <Link
+                    href={cat.href}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="text-himalayan/60">•</span>
+                    <span>{cat.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Educational Articles */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4 md:col-span-2 lg:col-span-2">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-himalayan" /> Resource Center & Research Library ({RESOURCE_ARTICLES.length} Guides)
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+              {RESOURCE_ARTICLES.map((art) => (
+                <div key={art.slug}>
+                  <Link
+                    href={`/resources/${art.slug}`}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-start gap-1.5"
+                  >
+                    <span className="text-himalayan/60 mt-1">•</span>
+                    <span className="leading-snug">{art.title}</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Authors */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <Users className="w-5 h-5 text-himalayan" /> Authors & Editorial Board
+            </h2>
+            <ul className="space-y-2.5 text-sm">
+              {authors.map((auth) => (
+                <li key={auth.slug}>
+                  <Link
+                    href={`/author/${auth.slug}`}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="text-himalayan/60">•</span>
+                    <span>{auth.name} ({auth.role})</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Published Products */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4 md:col-span-2 lg:col-span-3">
+            <h2 className="font-serif text-xl font-bold text-charcoal flex items-center gap-2">
+              <Package className="w-5 h-5 text-himalayan" /> Verified Catalog Products ({products.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2.5 text-sm">
+              {products.map((prod) => (
+                <div key={prod.slug}>
+                  <Link
+                    href={`/products/${prod.slug}`}
+                    className="text-charcoal-light hover:text-himalayan transition-colors flex items-start gap-1.5"
+                  >
+                    <span className="text-himalayan/60 mt-1">•</span>
+                    <span className="leading-snug">{prod.name}</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

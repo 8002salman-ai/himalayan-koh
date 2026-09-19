@@ -23,24 +23,24 @@ const USES_SUPABASE_SOURCE = isSupabaseDataSource();
  * the catalog below and never stated in this copy.
  */
 const saltBenefits = [
-  'Himalayan pink rock salt has up to 84 nutritious minerals and trace elements for cattle, horses, deer, and other animals.',
-  'Livestock need sodium and chloride to maintain appetite, weight, milk production, and healthy growth.',
-  'Pure Himalayan pink salt provides natural magnesium and mineral support that helps animals stay stronger and healthier.',
-  'Our Himalayan salt licks and rock salt are a natural improvement over livestock salts with added mineral supplements.',
+  'Naturally dense Himalayan rock salt provides essential sodium and chloride for horses, cattle, and livestock.',
+  'Sodium and chloride are vital electrolytes required to maintain proper fluid balance and encourage normal feed intake.',
+  'Solid rock salt licks withstand rain, wind, and pasture weathering significantly better than compressed salt blocks.',
+  'Unrefined pink rock salt contains naturally occurring trace elements like iron, potassium, and magnesium with zero chemical binders.',
 ];
 
 const healthCards = [
   {
-    title: 'Better Livestock Health',
-    text: 'Quality sodium and chloride support appetite, body weight, hydration, and daily herd performance.',
+    title: 'Essential Electrolyte Support',
+    text: 'Sodium and chloride are fundamental nutrients required for normal osmotic balance, cellular function, and feed consumption.',
   },
   {
-    title: 'Milk Production Support',
-    text: 'Good salt intake helps mothers maintain the mineral balance needed for stronger milk production.',
+    title: 'Weather-Resistant Durability',
+    text: 'Dense, natural crystal rock salt blocks resist dissolving in rain and humidity, reducing waste in outdoor pastures and paddocks.',
   },
   {
-    title: 'Magnesium & Nutrition',
-    text: 'Natural Himalayan minerals support recovery, strength, and overall wellness for working animals.',
+    title: 'Naturally Sourced Minerals',
+    text: 'Mined from ancient geologic salt seams, our unrefined rock salt retains naturally occurring trace elements with zero added binders.',
   },
 ];
 
@@ -177,6 +177,10 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+
+          <p className="mt-8 text-center text-xs text-charcoal-light/75 max-w-2xl mx-auto">
+            *Nutritional Note: Free-choice salt licks supply vital dietary sodium and chloride. They are not a substitute for a tailored, complete livestock mineral and vitamin program. Always consult your veterinarian or animal nutritionist for herd-specific dietary formulation.
+          </p>
         </div>
       </section>
 
