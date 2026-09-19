@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/seo/jsonLd';
-import { fetchSeoProductModel } from '@/lib/seo/server';
+import { fetchSeoProductModel, seoFetchDeadline } from '@/lib/seo/server';
+import { lookupCatalogProduct } from '@/lib/backend/serverCatalog';
 import { buildProductStructuredData } from '@/lib/products/productSchema';
 import { buildProductPageSeo, getProductDisplayName } from '@/lib/products/productSeo';
 import JsonLd from '@/components/seo/JsonLd';
@@ -88,7 +89,9 @@ const PRODUCT_FAQs = faqJsonLd([
  */
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const product = await fetchSeoProductModel(slug).catch(() => null);
+  const lookup = await lookupCatalogProduct(slug, seoFetchDeadline()).catch(() => null);
+  const product = lookup?.product ?? null;
+  const related = lookup?.related ?? [];
 
   if (!product) notFound();
 
@@ -107,7 +110,11 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       <JsonLd data={PRODUCT_FAQs} />
       {/* key remounts the view when navigating product-to-product, so the
           seeded server data is picked up instead of the previous product's. */}
-      <ProductDetailClient key={product.slug} initialProduct={product} />
+      <ProductDetailClient
+        key={product.slug}
+        initialProduct={product}
+        initialRelated={related}
+      />
     </>
   );
 }

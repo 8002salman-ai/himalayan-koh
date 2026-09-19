@@ -63,12 +63,8 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
-      className={`group bg-white rounded-2xl overflow-hidden transition-all duration-500 ${
+    <div
+      className={`group bg-white rounded-2xl overflow-hidden transition-all duration-300 ${
         shopHighlight
           ? 'shadow-md shadow-himalayan/10 border border-himalayan/15 hover:shadow-xl hover:shadow-himalayan/20 hover:border-himalayan/35'
           : 'shadow-md shadow-black/5 hover:shadow-xl hover:shadow-himalayan/10'
@@ -78,7 +74,7 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         <Link to={`/products/${product.slug}`} className="block w-full h-full">
           <img
-            src={product.image}
+            src={product.image?.trim() || '/images/placeholder-product.svg'}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             loading="lazy"
@@ -180,6 +176,6 @@ export default function ProductCard({ product, index, onQuickView, shopHighlight
           </motion.button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

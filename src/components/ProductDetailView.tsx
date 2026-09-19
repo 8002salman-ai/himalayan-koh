@@ -101,8 +101,7 @@ export default function ProductDetailView({
   };
 
   const details = (
-    <motion.div
-      layout
+    <div
       className={
         variant === 'modal'
           ? 'bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl'
@@ -148,7 +147,13 @@ export default function ProductDetailView({
           {/* The product shot is the LCP element on a PDP — fetch it eagerly and
               at high priority rather than letting it queue behind other assets. */}
           <ProductImageGallery
-            images={product.images && product.images.length > 0 ? product.images : [product.image]}
+            images={Array.from(
+              new Set(
+                [...(product.images || []), product.image].filter(
+                  (img): img is string => typeof img === 'string' && img.trim().length > 0
+                )
+              )
+            )}
             alt={displayName}
             variant={variant}
             rounded={variant === 'modal' ? 'md:rounded-l-3xl' : ''}
@@ -303,7 +308,7 @@ export default function ProductDetailView({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 
   if (variant === 'modal') {

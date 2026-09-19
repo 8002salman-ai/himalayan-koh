@@ -16,7 +16,12 @@ export default function ProductImageGallery({
 }: ProductImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  if (!images || images.length === 0) {
+  // Filter out empty or whitespace-only strings
+  const validImages = (images || []).filter(
+    (img): img is string => typeof img === 'string' && img.trim().length > 0
+  );
+
+  if (validImages.length === 0) {
     return (
       <div className={`w-full aspect-square bg-gray-100 ${rounded} flex items-center justify-center`}>
         <img
@@ -29,18 +34,18 @@ export default function ProductImageGallery({
   }
 
   const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentIndex((prev) => (prev === 0 ? validImages.length - 1 : prev - 1));
   };
 
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentIndex((prev) => (prev === validImages.length - 1 ? 0 : prev + 1));
   };
 
-  const currentImage = images[currentIndex];
+  const currentImage = validImages[currentIndex] || validImages[0];
 
   return (
     <div className={`relative w-full aspect-square bg-gray-50 overflow-hidden ${rounded}`}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.img
           key={currentIndex}
           src={currentImage}
@@ -48,10 +53,10 @@ export default function ProductImageGallery({
           fetchPriority={currentIndex === 0 ? 'high' : 'auto'}
           decoding="async"
           className="w-full h-full object-cover"
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
           onError={(e) => {
             (e.target as HTMLImageElement).src = '/images/placeholder-product.svg';
           }}

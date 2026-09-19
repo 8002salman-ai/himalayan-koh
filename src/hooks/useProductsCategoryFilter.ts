@@ -18,13 +18,20 @@ const ALL_LABEL = 'All';
  * or a typo — lands on the whole catalogue instead of an empty grid. Browser
  * back/forward restores filters.
  */
-export function useProductsCategoryFilter() {
+export function useProductsCategoryFilter(initialCategoryKey?: string | null) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const categoryKey = useMemo(
-    () => parseCategoryFromSearchParams(searchParams),
-    [searchParams]
-  );
+  const categoryKey = useMemo(() => {
+    if (typeof window !== 'undefined' && window.location.search) {
+      return parseCategoryFromSearchParams(searchParams);
+    }
+    const fromParams = parseCategoryFromSearchParams(searchParams);
+    if (fromParams !== null) return fromParams;
+    if (initialCategoryKey) {
+      return normalizeCategoryQueryValue(initialCategoryKey);
+    }
+    return null;
+  }, [searchParams, initialCategoryKey]);
 
   const activeFilter = useMemo(
     () => (categoryKey ? filterLabelFromKey(categoryKey) : ALL_LABEL),

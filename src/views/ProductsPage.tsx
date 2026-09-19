@@ -37,10 +37,14 @@ import { useProductsCategoryFilter } from '../hooks/useProductsCategoryFilter';
  */
 export interface ProductsPageProps {
   initialProducts?: Product[] | null;
+  initialCategoryKey?: string | null;
 }
 
-export default function ProductsPage({ initialProducts }: ProductsPageProps = {}) {
-  const { activeFilter, categoryKey } = useProductsCategoryFilter();
+export default function ProductsPage({
+  initialProducts,
+  initialCategoryKey,
+}: ProductsPageProps = {}) {
+  const { activeFilter, categoryKey } = useProductsCategoryFilter(initialCategoryKey);
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts ?? fallbackProducts);

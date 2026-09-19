@@ -131,7 +131,10 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     <>
       <JsonLd data={breadcrumbJsonLd(breadcrumb)} />
       {aggregateOffer && <JsonLd data={aggregateOffer} />}
-      <ProductsClient initialProducts={catalogProducts} />
+      <ProductsClient
+        initialProducts={catalogProducts}
+        initialCategoryKey={categoryKey}
+      />
     </>
   );
 }

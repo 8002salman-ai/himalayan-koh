@@ -9,9 +9,11 @@ export function useCategoryBlogArticles(
   categoryKey: CategoryContentKey | null,
   placeholderArticles: CategoryArticleCard[] = []
 ) {
-  const [articles, setArticles] = useState<CategoryArticleCard[]>([]);
+  const [articles, setArticles] = useState<CategoryArticleCard[]>(placeholderArticles);
   const [loading, setLoading] = useState(false);
-  const [source, setSource] = useState<CategoryArticleSource>('idle');
+  const [source, setSource] = useState<CategoryArticleSource>(
+    placeholderArticles.length > 0 ? 'placeholder' : 'idle'
+  );
 
   useEffect(() => {
     if (!categoryKey) {

@@ -14,18 +14,29 @@ interface ProductDetailPageProps {
    * loading spinner a client-only fetch would leave for crawlers.
    */
   initialProduct?: Product | null;
+  initialRelated?: Product[];
 }
 
-export default function ProductDetailPage({ initialProduct = null }: ProductDetailPageProps) {
+export default function ProductDetailPage({
+  initialProduct = null,
+  initialRelated = [],
+}: ProductDetailPageProps) {
   const { slug: routeSlug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<Product | null>(initialProduct);
-  const [related, setRelated] = useState<Product[]>([]);
+  const [related, setRelated] = useState<Product[]>(initialRelated);
   const [loading, setLoading] = useState(!initialProduct);
 
   useEffect(() => {
     if (!routeSlug) {
       setProduct(null);
       setRelated([]);
+      setLoading(false);
+      return;
+    }
+
+    // If server already seeded this exact product and related items, bypass
+    // the client refetch so we never cause an unnecessary re-render / layout shift.
+    if (initialProduct && initialProduct.slug === routeSlug) {
       setLoading(false);
       return;
     }
