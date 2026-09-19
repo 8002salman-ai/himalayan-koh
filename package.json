@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@react-pdf/renderer": "^4.5.1",
     "@stripe/react-stripe-js": "^3.10.0",
     "@stripe/stripe-js": "^5.10.0",
@@ -52,8 +53,10 @@
     "onnxruntime-web": "^1.21.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
+    "recharts": "^3.10.1",
     "stripe": "^17.7.0",
-    "tailwind-merge": "3.4.0"
+    "tailwind-merge": "3.4.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.56.0",

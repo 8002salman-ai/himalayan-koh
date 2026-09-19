@@ -356,3 +356,29 @@ export function useSearchParams(): [
 
   return [searchParams, setSearchParams];
 }
+
+export interface RouteProps {
+  path?: string;
+  element?: ReactNode;
+  children?: ReactNode;
+}
+
+export function Route(_props: RouteProps): ReactNode {
+  return null;
+}
+
+export function Routes({ children }: { children?: ReactNode }): ReactNode {
+  const pathname = usePathname() || '/';
+  const childrenArray = Array.isArray(children) ? children : [children];
+  for (const child of childrenArray) {
+    if (!child || typeof child !== 'object' || !('props' in child)) continue;
+    const props = (child as { props: RouteProps }).props;
+    if (!props) continue;
+    const routePath = props.path || '';
+    if (routePath === '*' || pathname.endsWith(routePath) || pathname === `/admin/${routePath}` || (routePath === '' && pathname === '/admin')) {
+      return props.element || null;
+    }
+  }
+  return null;
+}
+
