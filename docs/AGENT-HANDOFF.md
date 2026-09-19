@@ -39,6 +39,7 @@ Every completed task must update this file **BEFORE** final commit.
 * **Canonical `/returns` Route**: Created `src/app/(main)/returns/` (matching all footer/internal links and SEO schema), with permanent 308 redirect from legacy `/return` and `/return-policy`.
 * **Product Flicker Elimination**: Addressed SSR and hydration layout shifts across `/products` and `/admin/products`.
 * **Storefront Catalog Integrity**: Verified all 18 published WooCommerce products have unique SKUs, unique slugs, zero duplicates, and map accurately to the 4 active shelves (`edible-pink-salt`, `cooking-serving`, `licks-blocks`, `bulk`).
+* **Admin Products & Categories Live Integration**: Connected `/admin/products` and `listProducts()`/`listCategories()` in `src/features/catalog/repository.ts` directly to the live WooCommerce catalog via `/api/admin/catalog` with fallback to `/api/catalog`. All 18 products with names, prices, SKUs, and categories now load accurately in the Admin Console without relying on the empty Supabase `products` table.
 * **Admin Route Audit**: Verified all 14 primary admin routes return HTTP 200, and all admin write APIs strictly require authenticated admin tokens (anonymous requests return HTTP 401).
 
 ---

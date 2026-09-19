@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { getDb, type DbAdapter } from '../../services/db';
+import { getFreshAccessToken } from '../../services/supabase';
 import {
   CatalogProduct, CatalogCategory, CatalogImage, CatalogVariant, Coupon,
   StoreOffer, StoreSettings, DEFAULT_STORE_SETTINGS, deriveMarginPercent,
@@ -439,6 +440,33 @@ export function rowToProduct(row: ProductRow, categories: CategoryRow[], images:
 // Categories
 // ---------------------------------------------------------------------------
 export async function listCategories(): Promise<CatalogCategory[]> {
+  if (typeof window !== 'undefined') {
+    try {
+      const prods = await listProducts();
+      if (prods.length > 0) {
+        const seen = new Map<string, string>();
+        for (const p of prods) {
+          if (p.categoryName && !seen.has(p.categoryName)) {
+            const catId = p.categoryId || `cat-${p.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            seen.set(p.categoryName, catId);
+          }
+        }
+        if (seen.size > 0) {
+          let order = 1;
+          return Array.from(seen.entries()).map(([name, id]) => ({
+            id,
+            name,
+            slug: id.replace(/^cat-/, ''),
+            isActive: true,
+            sortOrder: order++,
+          }));
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   const db = getDb();
   const rows = (await db.list<CategoryRow>('categories', { orderBy: 'sort_order' })) || [];
   if (rows && rows.length > 0) {
@@ -452,13 +480,11 @@ export async function listCategories(): Promise<CatalogCategory[]> {
     }));
   }
   return [
-    { id: 'cat-edible', name: 'Edible Salt', slug: 'edible-pink-salt', isActive: true, sortOrder: 1 },
-    { id: 'cat-wellness', name: 'Bath & Wellness', slug: 'bath-wellness', isActive: true, sortOrder: 2 },
-    { id: 'cat-lamps', name: 'Salt Lamps', slug: 'salt-lamps', isActive: true, sortOrder: 3 },
-    { id: 'cat-cooking', name: 'Cooking Blocks & Tiles', slug: 'cooking-blocks-tiles', isActive: true, sortOrder: 4 },
-    { id: 'cat-animal', name: 'Animal Lick Salt', slug: 'animal-lick-salt', isActive: true, sortOrder: 5 },
-    { id: 'cat-industrial', name: 'Industrial & Deicing Salt', slug: 'industrial-deicing-salt', isActive: true, sortOrder: 6 },
-    { id: 'cat-specialty', name: 'Specialty & Black Salt', slug: 'specialty-black-salt', isActive: true, sortOrder: 7 },
+    { id: 'cat-bulk-and-rock-salt', name: 'Bulk and Rock Salt', slug: 'bulk-and-rock-salt', isActive: true, sortOrder: 1 },
+    { id: 'cat-granular-salt-pouches', name: 'Granular Salt Pouches', slug: 'granular-salt-pouches', isActive: true, sortOrder: 2 },
+    { id: 'cat-salt-licks', name: 'Salt Licks', slug: 'salt-licks', isActive: true, sortOrder: 3 },
+    { id: 'cat-salt-blocks', name: 'Salt Blocks', slug: 'salt-blocks', isActive: true, sortOrder: 4 },
+    { id: 'cat-edible-pink-salt', name: 'Edible Pink Salt', slug: 'edible-pink-salt', isActive: true, sortOrder: 5 },
   ];
 }
 
@@ -538,14 +564,19 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     ? r.priceMin
     : parseFloat(String(r.price || '').replace(/[^0-9.]/g, '')) || 0;
   const compareAt = typeof r.compareAtPrice === 'number' ? r.compareAtPrice : 0;
-  const rawImgs = Array.isArray(r.images) && r.images.length > 0 ? (r.images as string[]) : (r.image ? [String(r.image)] : []);
+  const rawImgs = (Array.isArray(r.images) && r.images.length > 0
+    ? (r.images as string[])
+    : (r.image ? [String(r.image)] : [])
+  ).map((s) => String(s || '').trim()).filter(Boolean);
   const name = String(r.name || 'Untitled Product');
   const id = String(r.id);
   const slug = String(r.slug || id);
-  const catName = (r.categoryName as string) || 'Edible Salt';
-  const stockQty = typeof r.stockQuantity === 'number' ? r.stockQuantity : (r.stockStatus === 'instock' ? 50 : 0);
-  const stockStat = r.stockStatus === 'instock' ? 'in_stock' : (r.stockStatus === 'outofstock' ? 'out_of_stock' : 'in_stock');
-  const isListed = r.isListed !== false;
+  const catName = (r.categoryName as string) || (r.category as string) || 'Edible Salt';
+  const catId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const stockQty = typeof r.stockQuantity === 'number' ? r.stockQuantity : (r.stockStatus === 'instock' || r.inStock ? 50 : 0);
+  const stockStat = r.stockStatus === 'instock' || r.inStock ? 'in_stock' : (r.stockStatus === 'outofstock' ? 'out_of_stock' : 'in_stock');
+  const isListed = r.isListed !== false && r.status !== 'draft';
+  const imagesList = rawImgs.length > 0 ? rawImgs : ['/images/placeholder-product.svg'];
 
   return {
     id,
@@ -553,11 +584,11 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     name,
     shortTitle: name,
     subtitle: catName,
-    shortDescription: (r.shortDescription as string) || '',
+    shortDescription: (r.shortDescription as string) || (r.description as string) || '',
     description: (r.description as string) || '',
     features: [],
     specifications: {},
-    categoryId: (r.categoryId as string) || null,
+    categoryId: catId,
     categoryName: catName,
     brand: 'Himalayan Koh',
     status: isListed ? 'active' : 'inactive',
@@ -598,7 +629,7 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     seoTitleStored: `${name} | Himalayan Koh`,
     seoDescriptionStored: `Pure Himalayan Pink Salt ${name}`,
     seoKeywords: ['himalayan salt', 'pink salt', 'khewra mines'],
-    images: rawImgs.map((url, i) => ({
+    images: imagesList.map((url, i) => ({
       id: `img-${id}-${i}`,
       productId: id,
       url,
@@ -617,8 +648,11 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
 /** All products (any status) with images/variants — admin view. */
 export async function listProducts(): Promise<CatalogProduct[]> {
   if (typeof window !== 'undefined') {
+    // 1. Try authenticated /api/admin/catalog first (reads all products including drafts from WooCommerce)
     try {
-      const res = await fetch('/api/admin/catalog');
+      const token = await getFreshAccessToken().catch(() => null);
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch('/api/admin/catalog', { headers });
       if (res.ok) {
         const data = (await res.json()) as { page?: { rows?: Record<string, unknown>[] } };
         if (data && Array.isArray(data.page?.rows) && data.page.rows.length > 0) {
@@ -626,9 +660,23 @@ export async function listProducts(): Promise<CatalogProduct[]> {
         }
       }
     } catch {
-      // fallback to db adapter
+      // Continue to /api/catalog fallback
+    }
+
+    // 2. Fallback to /api/catalog (storefront public read - always serves the 18 WooCommerce products)
+    try {
+      const res = await fetch('/api/catalog');
+      if (res.ok) {
+        const data = (await res.json()) as { products?: Record<string, unknown>[] };
+        if (data && Array.isArray(data.products) && data.products.length > 0) {
+          return data.products.map(adminCatalogRowToProduct);
+        }
+      }
+    } catch {
+      // Continue to db fallback
     }
   }
+
   const db = getDb();
   const [rows, { cats, imgs, vars }] = await Promise.all([db.list<ProductRow>('products'), loadRefs()]);
   if (!Array.isArray(rows)) return [];
@@ -639,6 +687,16 @@ export async function listProducts(): Promise<CatalogProduct[]> {
 }
 
 export async function getProduct(id: string): Promise<CatalogProduct | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const prods = await listProducts();
+      const found = prods.find((p) => p.id === id || p.slug === id);
+      if (found) return found;
+    } catch {
+      // fallback to db adapter
+    }
+  }
+
   const db = getDb();
   // Single-product read: fetch ONLY this product's images/variants plus the
   // category list. rowToProduct filters images/variants by product_id anyway,
