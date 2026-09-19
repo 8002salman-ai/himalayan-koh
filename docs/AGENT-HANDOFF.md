@@ -32,6 +32,15 @@ Every completed task must update this file **BEFORE** final commit.
 
 ## 3. Last Completed Work
 
+* **Loading / Flash / Dead-Endpoint Pass (this pass)** — measured on the deployed Worker, not inferred:
+  * *Admin first paint*: cold `GET /admin` renders the admin shell's own skeleton (`Loading the admin console…` at ~120ms), then the dashboard's data at ~330ms; the legacy `Loading admin panel` screen never reaches the DOM (`legacyLoader: false` at 25ms sampling from document-start). No animation-frame stall > 200ms on `/`, `/products`, `/blog`, `/admin`.
+  * *Route walk* `/admin → products → seo → orders → /admin`: no full-screen loader flash, no Server Components error, console errors 0, exceptions 0. Cold loads were TTFB 91–1502ms (WooCommerce reads dominate; `/blog` 352ms).
+  * *Top progress bar*: instrumented at 25ms; it goes 12% → 100% and hides within ~200ms of a route change, with **0ms spent crawling in 90–99%** — the old hang is gone.
+  * *Duplicate reads removed*. Two real duplications were found and fixed:
+    - `GET /api/admin/orders` made **two** WooCommerce list calls per request (page + a separate stats window). It now reuses the page read when that page already *is* the window (`src/lib/admin/orderStatsWindow.ts`, unit-tested) — the dashboard and orders screen no longer pay two ~1.2–1.8s round trips for one answer.
+    - The products screen read the catalog **twice** per mount, because `listCategories()` derives its list from `listProducts()`. Concurrent reads now share one in-flight call (`src/lib/admin/singleFlight.ts`, unit-tested; deliberately not a cache, so a reload after a save still re-reads).
+  * *Dead endpoints retired*. The Orders screen called `/api/checkout?action=orders` and `/api/admin/erp` on every visit — neither route exists, so opening it produced two 404s and an empty list. The list now reads the console's real WooCommerce route (`/api/admin/orders?limit=100`), and the ERP panel (Save/Test/Push buttons that could never succeed) is replaced by an honest status card that keeps the working CSV export.
+  * *Public category rail*: `Bulk & Wholesale` is withheld from the storefront filter (`visibleInStorefront: false` in `src/lib/categoryContent/keys.ts`), verified live — its pill is absent and no footer link points at it. The remaining shelves were clicked with trusted mouse events on the deployed build: Edible Pink Salt → 8 products, Cooking & Serving → 2, Salt Licks & Blocks → 4, All → 18, each updating the URL, the active state, and the card list with 0 console errors.
 * **Admin Loading & Flicker Root-Cause Fix**:
   Moved `<AppProvider>` to `src/app/admin/layout.tsx` so the entire admin section shares a single persistent context across client-side route transitions. Stripped 28 redundant `<AppProvider>` wrappers from `src/views/admin/*`, eliminating context destruction, state resets, and loading/flicker cascades on admin navigation.
 * **Admin AI SEO Engine Rebuilt**:
@@ -72,6 +81,8 @@ Every completed task must update this file **BEFORE** final commit.
 * **Admin Product Writes Blocked by Policy**: Direct write access in `CatalogAdmin.tsx` / `ProductEditorModal.tsx` remains intentionally blocked until a dedicated, fully audited WooCommerce REST write pipeline is validated for mutations (to avoid stale Supabase writes).
 * **Draft Products in WooCommerce**: 14 legacy draft products without SKUs exist in WooCommerce staging (these do not display on the public storefront).
 * **Salt Lamps & Décor Shelf**: Footer contains Salt Lamps & Décor but current shelf has zero products. Reported as `OWNER DECISION REQUIRED` without altering approved footer.
+* **Admin Orders screen reads WooCommerce, but its Stripe-era extras do not**: the list, totals and statuses are the store's own records. The legacy per-order tabs (provider filter, gift-drop inclusion, ERP push) were removed in this pass because they described a payment pipeline the store does not have.
+* **Catalog read latency is the dominant cost on admin screens**: `/api/admin/catalog` ~1.2–1.4s and `/api/admin/orders?limit=100` ~1.2–1.8s are WooCommerce reads. They are now issued once instead of twice per screen; making them *faster* means a short-TTL server cache with write invalidation, which is not done yet.
 
 ---
 

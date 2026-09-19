@@ -23,6 +23,7 @@ import {
   statsFromWooOrders,
   type AppOrderStatus,
 } from '@/lib/woo/orders';
+import { STATS_WINDOW, pageCoversStatsWindow } from '@/lib/admin/orderStatsWindow';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,6 @@ const APP_STATUSES: AppOrderStatus[] = [
   'refunded',
 ];
 
-/** The window the dashboard figures are counted over. */
-const STATS_WINDOW = 100;
-
 export async function GET(request: Request) {
   const auth = await verifyAdminRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -50,22 +48,30 @@ export async function GET(request: Request) {
     ? (statusParam as AppOrderStatus)
     : undefined;
 
+  const search = params.get('search') || undefined;
+  const pageNumber = Number(params.get('page') ?? '1') || 1;
+  const perPage = Number(params.get('limit') ?? '') || undefined;
+
+  // One WooCommerce read whenever the page already is the stats window; see
+  // `pageCoversStatsWindow` for why that is sound and when it is not.
+  const reusesPage = pageCoversStatsWindow({
+    status,
+    search,
+    page: pageNumber,
+    perPage,
+  });
+
   try {
-    const [page, statsPage] = await Promise.all([
-      listWooOrders({
-        status,
-        search: params.get('search') || undefined,
-        page: Number(params.get('page') ?? '1') || 1,
-        perPage: Number(params.get('limit') ?? '') || undefined,
-      }),
-      listWooOrders({ perPage: STATS_WINDOW }),
-    ]);
+    const page = await listWooOrders({ status, search, page: pageNumber, perPage });
+    const statsOrders = reusesPage
+      ? page.orders
+      : (await listWooOrders({ perPage: STATS_WINDOW })).orders;
 
     return NextResponse.json({
       orders: page.orders.map(orderWithItemsFromWoo),
       count: page.total,
       totalPages: page.totalPages,
-      stats: statsFromWooOrders(statsPage.orders),
+      stats: statsFromWooOrders(statsOrders),
     });
   } catch (error) {
     const status = error instanceof WooOrderError ? error.status : 502;

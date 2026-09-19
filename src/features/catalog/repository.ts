@@ -14,6 +14,7 @@
 
 import { getDb, type DbAdapter } from '../../services/db';
 import { getFreshAccessToken } from '../../services/supabase';
+import { singleFlight } from '../../lib/admin/singleFlight';
 import {
   CatalogProduct, CatalogCategory, CatalogImage, CatalogVariant, Coupon,
   StoreOffer, StoreSettings, DEFAULT_STORE_SETTINGS, deriveMarginPercent,
@@ -645,38 +646,59 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
   };
 }
 
+/**
+ * One screen routinely asks for the catalog twice: `listCategories()` derives
+ * its list from `listProducts()`, and the products screen calls `listProducts()`
+ * as well, so a single mount used to send two identical `/api/admin/catalog`
+ * reads (measured on staging: two requests, ~1.3s each, against a WooCommerce
+ * read). Concurrent callers now share the one in-flight read.
+ */
+const shareBrowserCatalogRead = singleFlight<CatalogProduct[]>();
+
+/** The browser-side read: authenticated admin route first, public route second. */
+async function readBrowserCatalog(): Promise<CatalogProduct[] | null> {
+  // 1. Try authenticated /api/admin/catalog first (reads all products including drafts from WooCommerce)
+  try {
+    const token = await getFreshAccessToken().catch(() => null);
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch('/api/admin/catalog', { headers });
+    if (res.ok) {
+      const data = (await res.json()) as { page?: { rows?: Record<string, unknown>[] } };
+      if (data && Array.isArray(data.page?.rows) && data.page.rows.length > 0) {
+        return data.page.rows.map(adminCatalogRowToProduct);
+      }
+    }
+  } catch {
+    // Continue to /api/catalog fallback
+  }
+
+  // 2. Fallback to /api/catalog (storefront public read - always serves the 18 WooCommerce products)
+  try {
+    const res = await fetch('/api/catalog');
+    if (res.ok) {
+      const data = (await res.json()) as { products?: Record<string, unknown>[] };
+      if (data && Array.isArray(data.products) && data.products.length > 0) {
+        return data.products.map(adminCatalogRowToProduct);
+      }
+    }
+  } catch {
+    // Continue to db fallback
+  }
+
+  return null;
+}
+
 /** All products (any status) with images/variants — admin view. */
 export async function listProducts(): Promise<CatalogProduct[]> {
   if (typeof window !== 'undefined') {
-    // 1. Try authenticated /api/admin/catalog first (reads all products including drafts from WooCommerce)
-    try {
-      const token = await getFreshAccessToken().catch(() => null);
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch('/api/admin/catalog', { headers });
-      if (res.ok) {
-        const data = (await res.json()) as { page?: { rows?: Record<string, unknown>[] } };
-        if (data && Array.isArray(data.page?.rows) && data.page.rows.length > 0) {
-          return data.page.rows.map(adminCatalogRowToProduct);
-        }
-      }
-    } catch {
-      // Continue to /api/catalog fallback
-    }
-
-    // 2. Fallback to /api/catalog (storefront public read - always serves the 18 WooCommerce products)
-    try {
-      const res = await fetch('/api/catalog');
-      if (res.ok) {
-        const data = (await res.json()) as { products?: Record<string, unknown>[] };
-        if (data && Array.isArray(data.products) && data.products.length > 0) {
-          return data.products.map(adminCatalogRowToProduct);
-        }
-      }
-    } catch {
-      // Continue to db fallback
-    }
+    return shareBrowserCatalogRead(async () => (await readBrowserCatalog()) ?? readFromDb());
   }
 
+  return readFromDb();
+}
+
+/** The database fallback, used when neither server read answers. */
+async function readFromDb(): Promise<CatalogProduct[]> {
   const db = getDb();
   const [rows, { cats, imgs, vars }] = await Promise.all([db.list<ProductRow>('products'), loadRefs()]);
   if (!Array.isArray(rows)) return [];

@@ -50,7 +50,7 @@ import {
   ShareNetwork, ShieldCheck, ShoppingCart, Shuffle, Sliders, DeviceMobile, Sparkle, Star, Table, Tag,
   Target, ToggleLeft, ToggleRight, Trash, TrendUp, UploadSimple, User as UserIcon,
   Users as UsersIcon, MagicWand, X, Lightning, Truck, Printer, Barcode, MapPin,
-  Receipt, CloudArrowUp, YoutubeLogo, CreditCard, Gift, Clock, BookBookmark,
+  Receipt, CloudArrowUp, YoutubeLogo, CreditCard, Gift, BookBookmark,
 } from '@phosphor-icons/react';
 
 // ADMIN PANEL - FULL WORKING SYSTEM
@@ -919,13 +919,46 @@ export function _AProductEdit() { // superseded by CatalogAdmin.CatalogProductEd
 
 interface StripeOrderRow { id: string; order_number: string; customer_email: string | null; customer_name?: string | null; total: number | null; currency: string | null; status: string; stripe_session_id: string | null; stripe_payment_intent?: string | null; created_at: string; items?: unknown[]; shipping_address?: { name?: string; line1?: string; city?: string; state?: string; zip?: string } | null; }
 
-// ERP (Embani LLC) sync — server-side only. The browser never sees the webhook
-// token: /api/admin/erp stores it server-side and calls the ERP webhook. GET
-// returns masked values + a per-order sync ledger.
-interface ErpKeyStatus { configured: boolean; masked: string; source: 'env' | 'attached' | 'none' }
-interface ErpSyncEntry { status: string; synced_at?: string; error?: string }
-interface ErpSyncLogEntry { order_number: string; status: string; at: string; error?: string }
-interface ErpConfig { webhook: ErpKeyStatus; token: ErpKeyStatus; sync: Record<string, ErpSyncEntry>; syncLog?: ErpSyncLogEntry[] }
+/**
+ * One order as this screen's row.
+ *
+ * `/api/admin/orders` answers with the app's `Order` shape built by
+ * `lib/woo/orders.orderFromWoo`, so this is a rename rather than a translation:
+ * `email` → `customer_email`, `order_items` → `items`. Nothing is invented — a
+ * field the store does not report stays null.
+ */
+interface AdminOrderRow {
+  id: string;
+  order_number: string;
+  email?: string | null;
+  status: string;
+  payment_status?: string | null;
+  total: number | null;
+  currency?: string | null;
+  created_at: string;
+  order_items?: { id: string; product_name?: string | null; quantity?: number; unit_price?: number }[];
+  shipping_address?: StripeOrderRow['shipping_address'];
+}
+
+function adminOrderToRow(order: AdminOrderRow): StripeOrderRow {
+  return {
+    id: String(order.id),
+    order_number: String(order.order_number ?? order.id),
+    customer_email: order.email ?? null,
+    total: order.total ?? null,
+    currency: order.currency ?? 'USD',
+    status: String(order.status || 'pending'),
+    stripe_session_id: null,
+    created_at: order.created_at,
+    items: (order.order_items || []).map((item) => ({
+      id: item.id,
+      name: item.product_name || 'Item',
+      quantity: Number(item.quantity || 1),
+      price: Number(item.unit_price || 0),
+    })),
+    shipping_address: order.shipping_address ?? null,
+  };
+}
 
 export function AOrders() {
   const { notify } = useApp();
@@ -939,18 +972,6 @@ export function AOrders() {
   // Per-order invoice extras (shipping / tax rate / discount) — admin-recorded,
   // persisted locally like tracking. Defaults are honest: 0 = not recorded.
   const [orderExtras, setOrderExtras] = useState<Record<string, { shipping: number; taxRate: number; discount: number }>>({});
-  // ERP (Embani LLC) sync — webhook URL + token live server-side (env wins,
-  // app_settings fallback). This UI only ever sees masked values.
-  const [erpCfg, setErpCfg] = useState<ErpConfig | null>(null);
-  const [erpWebhookInput, setErpWebhookInput] = useState('');
-  const [erpTokenInput, setErpTokenInput] = useState('');
-  const [erpBusy, setErpBusy] = useState(false);
-  const [erpResult, setErpResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [showErpLog, setShowErpLog] = useState(false);
-  // Provider filter for orders
-  const [providerFilter, setProviderFilter] = useState<string>('all');
-  const [includeGifts, setIncludeGifts] = useState(false);
-
   // Authoritative persisted orders ONLY (created by the Stripe webhook or gift-drop). No
   // fake order history — the legacy demo table was removed for truthfulness.
   // Paid-only stats come from the server (full order set); refresh near-real-time.
@@ -958,39 +979,39 @@ export function AOrders() {
   const loadOrders = useCallback(() => {
     const token = getAccessToken();
     if (!token) { setLoaded(true); return Promise.resolve(); }
-    const params = new URLSearchParams({ action: 'orders' });
-    if (providerFilter !== 'all') params.set('provider', providerFilter);
-    if (includeGifts) params.set('includeGifts', 'true');
-    return fetch(`/api/checkout?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then((d: { orders?: StripeOrderRow[]; stats?: DashStats | null }) => {
-        setStripeOrders(Array.isArray(d.orders) ? d.orders : []);
-        setOrderStats(d.stats && typeof d.stats.revenue === 'number' ? d.stats : null);
+    // WooCommerce holds the store's orders, and /api/admin/orders is the
+    // console's authenticated read of them. This screen used to call
+    // `/api/checkout?action=orders` — a route that no longer exists — so every
+    // mount produced a 404 and an empty list.
+    return fetch('/api/admin/orders?limit=100', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (r) => {
+        const d = (await r.json().catch(() => ({}))) as {
+          orders?: AdminOrderRow[];
+          stats?: { totalOrders?: number; totalRevenue?: number } | null;
+        };
+        if (!r.ok) throw new Error('The store\u2019s orders could not be read.');
+        const orders = Array.isArray(d.orders) ? d.orders : [];
+        const revenue = Number(d.stats?.totalRevenue ?? 0) || 0;
+        const paid = orders.filter((o) => o.payment_status === 'paid');
+        setStripeOrders(orders.map(adminOrderToRow));
+        setOrderStats({
+          revenue,
+          paidCount: Number(d.stats?.totalOrders ?? paid.length) || 0,
+          aov: paid.length ? revenue / paid.length : 0,
+          days: [],
+        });
       })
       .catch(() => { setStripeOrders([]); setOrderStats(null); })
       .finally(() => setLoaded(true));
-  }, [providerFilter, includeGifts]);
+  }, []);
   const refreshOrders = useAutoRefresh(loadOrders);
-  useEffect(() => { refreshOrders(); }, [refreshOrders, providerFilter, includeGifts]);
+  useEffect(() => { refreshOrders(); }, [refreshOrders]);
   useEffect(() => {
     try { const raw = localStorage.getItem('luxedge-tracking'); if (raw) setTracking(JSON.parse(raw)); } catch { /* ignore */ }
     try { const raw = localStorage.getItem('luxedge-order-extras'); if (raw) setOrderExtras(JSON.parse(raw)); } catch { /* ignore */ }
     // Purge legacy plaintext ERP settings that older builds stored locally.
     try { localStorage.removeItem('luxedge-erp-webhook'); localStorage.removeItem('luxedge-erp-token'); } catch { /* ignore */ }
-    loadErpCfg();
   }, []);
-
-  // ── ERP config + sync ledger (masked, from the server) ──
-  const loadErpCfg = () => {
-    const token = getAccessToken();
-    if (!token) return;
-    fetch('/api/admin/erp', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => (r.ok ? r.json() : null))
-      .then((d: ErpConfig | null) => { if (d) setErpCfg(d); })
-      .catch(() => { /* keep last known state */ });
-  };
-
-  const erpSyncFor = (orderNumber: string): ErpSyncEntry | undefined => erpCfg?.sync?.[orderNumber];
 
   const saveTracking = (id: string, t: { carrier: string; number: string }) => {
     const next = { ...tracking, [id]: t };
@@ -1102,112 +1123,7 @@ export function AOrders() {
     a.href = URL.createObjectURL(blob); a.download = `luxedge-orders-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(a.href);
-    notify(`CSV exported — ${stripeOrders.length} real order(s). Import it into your Embani ERP workbook.`);
-  };
-
-  // ── ERP actions — the browser talks ONLY to /api/admin/erp. The webhook URL
-  //    and Bearer token never leave the server, so they can't appear in the
-  //    bundle, page source, or client network requests. ──
-  const saveErpSettings = async () => {
-    const token = getAccessToken();
-    const fields: { field: 'webhook' | 'token'; value: string }[] = [];
-    if (erpWebhookInput.trim()) fields.push({ field: 'webhook', value: erpWebhookInput.trim() });
-    if (erpTokenInput.trim()) fields.push({ field: 'token', value: erpTokenInput.trim() });
-    if (!fields.length) { setErpResult({ ok: false, msg: 'Enter a webhook URL or token to save.' }); return; }
-    setErpBusy(true); setErpResult(null);
-    try {
-      for (const f of fields) {
-        const res = await fetch('/api/admin/erp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ action: 'set', field: f.field, value: f.value }),
-        });
-        const data = await res.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-        if (!res.ok || !data?.ok) {
-          setErpResult({ ok: false, msg: `Could not save ${f.field}: ${(data as { error?: string })?.error || `HTTP ${res.status}`}` });
-          return;
-        }
-      }
-      setErpWebhookInput(''); setErpTokenInput('');
-      loadErpCfg();
-      setErpResult({ ok: true, msg: '✓ ERP settings saved server-side.' });
-    } catch {
-      setErpResult({ ok: false, msg: 'Network error — could not save ERP settings.' });
-    } finally { setErpBusy(false); }
-  };
-
-  const clearErpField = async (field: 'webhook' | 'token') => {
-    const token = getAccessToken();
-    setErpBusy(true); setErpResult(null);
-    try {
-      const res = await fetch('/api/admin/erp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ action: 'clear', field }),
-      });
-      const data = await res.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !data?.ok) {
-        setErpResult({ ok: false, msg: (data as { error?: string })?.error || `Could not clear — HTTP ${res.status}` });
-        return;
-      }
-      loadErpCfg();
-      setErpResult({ ok: true, msg: `✓ ${field === 'webhook' ? 'Webhook URL' : 'API token'} cleared.` });
-    } catch {
-      setErpResult({ ok: false, msg: 'Network error — could not clear setting.' });
-    } finally { setErpBusy(false); }
-  };
-
-  const pushToErp = async (testOnly = false, orderNumbers?: string[]) => {
-    if (erpBusy) return;
-    const token = getAccessToken();
-    if (!token) { setErpResult({ ok: false, msg: 'Not signed in.' }); return; }
-    setErpBusy(true); setErpResult(null);
-    try {
-      const res = await fetch('/api/admin/erp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify(orderNumbers && orderNumbers.length ? { action: testOnly ? 'test' : 'push', orderNumbers } : { action: testOnly ? 'test' : 'push' }),
-      });
-      const data = await res.json().catch(() => null) as { ok?: boolean; message?: string; sent?: number; created?: number | null; updated?: number | null; failed?: { order_number?: string; reason?: string }[]; error?: string } | null;
-      if (!data) { setErpResult({ ok: false, msg: `ERP request failed — HTTP ${res.status}` }); return; }
-      if (!res.ok) { setErpResult({ ok: false, msg: data.error || `ERP request failed — HTTP ${res.status}` }); return; }
-      if (data.ok === false) {
-        setErpResult({ ok: false, msg: data.message || 'ERP sync failed' });
-        if (!testOnly) loadErpCfg(); // refresh the failed ledger badges
-        return;
-      }
-      if (!testOnly) loadErpCfg(); // refresh created/updated badges
-      setErpResult({ ok: true, msg: data.message || (testOnly ? 'ERP connection successful' : 'ERP Sync complete') });
-      if (testOnly) notify('ERP connection OK');
-    } catch {
-      setErpResult({ ok: false, msg: 'ERP request failed — could not reach the Luxedge server.' });
-    } finally { setErpBusy(false); }
-  };
-
-  // Failed ERP syncs from the server-side ledger — retry one, retry all, or
-  // clear the recorded errors after they have been resolved another way.
-  const failedErpSyncs = erpCfg ? Object.entries(erpCfg.sync).filter(([, e]) => e.status === 'failed') : [];
-
-  const clearFailedErp = async () => {
-    if (erpBusy || failedErpSyncs.length === 0) return;
-    const token = getAccessToken();
-    setErpBusy(true); setErpResult(null);
-    try {
-      const res = await fetch('/api/admin/erp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ action: 'clear-failed' }),
-      });
-      const data = await res.json().catch(() => null) as { ok?: boolean; message?: string; cleared?: number; error?: string } | null;
-      if (!res.ok || !data?.ok) {
-        setErpResult({ ok: false, msg: (data as { error?: string })?.error || `Could not clear — HTTP ${res.status}` });
-        return;
-      }
-      loadErpCfg();
-      setErpResult({ ok: true, msg: data.message || '✓ Failed ERP syncs cleared.' });
-    } catch {
-      setErpResult({ ok: false, msg: 'Network error — could not clear failed ERP syncs.' });
-    } finally { setErpBusy(false); }
+    notify(`CSV exported — ${stripeOrders.length} order(s). Import it into the Embani ERP workbook.`);
   };
 
   // DEMO order — clearly marked, only shown for UI preview until the first
@@ -1271,7 +1187,6 @@ export function AOrders() {
   const orderBadges = (o: StripeOrderRow, isDemo: boolean) => {
     const pp = String((o as unknown as Record<string, unknown>).payment_provider || '');
     const ot = String((o as unknown as Record<string, unknown>).order_type || 'paid');
-    const s = erpSyncFor(o.order_number);
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         {isDemo && <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded-full">DEMO</span>}
@@ -1281,9 +1196,6 @@ export function AOrders() {
         {!isDemo && pp && pp !== 'stripe' && pp !== 'none' && (
           <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full capitalize">{pp}</span>
         )}
-        {!isDemo && s && (s.status === 'failed'
-          ? <span title={s.error || 'ERP sync failed'} className="text-[9px] font-bold px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full">ERP ✗</span>
-          : <span title={`Synced to ERP ${s.synced_at ? new Date(s.synced_at).toLocaleString() : ''}`} className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">ERP ✓</span>)}
       </div>
     );
   };
@@ -1362,7 +1274,7 @@ export function AOrders() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2"><ShoppingCart size={20} className="text-[#9a6f16]" /> Orders</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Track, fulfil and sync orders to your ERP.</p>
+          <p className="text-xs text-gray-500 mt-0.5">Track and fulfil the store&apos;s orders. Export the CSV for the ERP workbook.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {showDemo && <button onClick={() => setShowDemo(false)} className="text-xs text-gray-400 hover:text-gray-600 underline whitespace-nowrap">Hide demo order</button>}
@@ -1389,140 +1301,19 @@ export function AOrders() {
         ))}
       </div>
 
-      {/* ERP Sync — Embani LLC (server-side webhook push + CSV for the Excel workbook) */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(27,31,39,0.04)]">
-        {/* Header: status + Export CSV */}
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[#f6efdd] flex items-center justify-center shrink-0"><CloudArrowUp size={15} className="text-[#9a6f16]" /></div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-gray-900 leading-tight">ERP Sync — Embani LLC</p>
-              <p className="text-[11px] text-gray-500">Orders are pushed to your ERP webhook from the server — the API token never touches this browser.</p>
-            </div>
+      {/* ERP Sync — Embani LLC. There is no server-side ERP endpoint in this
+          deployment, so this used to fetch a missing route on every mount and
+          offer Save/Test/Push buttons that could never succeed. It now states the
+          real position and keeps the CSV export, which is built in the browser. */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_1px_2px_rgba(27,31,39,0.04)] flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-[#f6efdd] flex items-center justify-center shrink-0"><CloudArrowUp size={15} className="text-[#9a6f16]" /></div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-tight">ERP Sync — Embani LLC</p>
+            <p className="text-[11px] text-gray-500">Not connected on this deployment — no server-side ERP endpoint is configured, so no order is pushed anywhere. Exporting the CSV and importing it into the ERP workbook still works.</p>
           </div>
-          <button onClick={downloadCsv} className="btn-glow inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors"><Download size={13} /> Export CSV (Excel)</button>
         </div>
-
-        <div className="p-4 space-y-4">
-          {/* Connection summary */}
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 min-w-0">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Webhook</p>
-              {erpCfg?.webhook.configured ? (
-                <button onClick={() => copyText(erpCfg.webhook.masked, 'Webhook URL')} title="Copy masked webhook URL" className="flex items-center gap-1.5 text-[11px] font-medium text-gray-700 min-w-0 max-w-full">
-                  <span className="truncate">{erpCfg.webhook.masked}</span>
-                  <Clipboard size={11} className="text-gray-400 shrink-0" />
-                  <span className="text-[9px] text-gray-400 shrink-0">({erpCfg.webhook.source === 'env' ? 'env' : 'attached'})</span>
-                </button>
-              ) : <p className="text-[11px] text-gray-400">Not configured</p>}
-            </div>
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 min-w-0">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Token</p>
-              {erpCfg?.token.configured ? (
-                <button onClick={() => copyText(erpCfg.token.masked, 'API token')} title="Copy masked API token" className="flex items-center gap-1.5 text-[11px] font-medium text-gray-700 min-w-0 max-w-full">
-                  <span className="truncate font-mono">••••••••••</span>
-                  <Clipboard size={11} className="text-gray-400 shrink-0" />
-                  <span className="text-[9px] text-gray-400 shrink-0">({erpCfg.token.source === 'env' ? 'env' : 'attached'})</span>
-                </button>
-              ) : <p className="text-[11px] text-gray-400">Not configured</p>}
-            </div>
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 min-w-0">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Sync count</p>
-              {erpCfg && Object.keys(erpCfg.sync).length > 0 ? (() => {
-                const entries = Object.values(erpCfg.sync);
-                const failed = entries.filter(e => e.status === 'failed').length;
-                return (
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-gray-700">
-                    <ShieldCheck size={12} className={failed ? 'text-amber-500 shrink-0' : 'text-emerald-600 shrink-0'} />
-                    {entries.length - failed} synced · {failed} failed
-                  </p>
-                );
-              })() : <p className="text-[11px] text-gray-400">Nothing synced yet</p>}
-            </div>
-          </div>
-
-          {/* Settings fields + actions — side-by-side on desktop, stacked below */}
-          <div className="grid gap-2 lg:grid-cols-2">
-            <div className="min-w-0">
-              <input value={erpWebhookInput} onChange={(e) => setErpWebhookInput(e.target.value)} placeholder={erpCfg?.webhook.configured ? (erpCfg.webhook.source === 'env' ? 'Webhook is set in the server environment (••••)' : `Update webhook (currently ${erpCfg.webhook.masked})`) : 'ERP webhook URL — e.g. https://erp.example.com/api/luxedge/orders'} className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#9a6f16] focus:ring-2 focus:ring-[#9a6f16]/15" />
-              {erpCfg?.webhook.configured && erpCfg.webhook.source === 'attached' && <button onClick={() => clearErpField('webhook')} disabled={erpBusy} className="mt-1 text-[10px] text-gray-400 hover:text-red-500 underline disabled:opacity-50">Remove webhook URL</button>}
-            </div>
-            <div className="min-w-0">
-              <input value={erpTokenInput} onChange={(e) => setErpTokenInput(e.target.value)} type="password" autoComplete="new-password" placeholder={erpCfg?.token.configured ? `Token is set${erpCfg.token.source === 'env' ? ' in the server environment' : ''} (••••) — leave blank to keep` : 'ERP API token (optional)'} className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#9a6f16] focus:ring-2 focus:ring-[#9a6f16]/15" />
-              {erpCfg?.token.configured && erpCfg.token.source === 'attached' && <button onClick={() => clearErpField('token')} disabled={erpBusy} className="mt-1 text-[10px] text-gray-400 hover:text-red-500 underline disabled:opacity-50">Remove token</button>}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={saveErpSettings} disabled={erpBusy} className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"><FloppyDisk size={13} /> Save settings</button>
-            <button onClick={() => pushToErp(true)} disabled={erpBusy} className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors">{erpBusy ? <ArrowClockwise size={13} className="animate-spin" /> : <Shuffle size={13} />}{erpBusy ? 'Working…' : 'Test'}</button>
-            <button onClick={() => pushToErp(false)} disabled={erpBusy} className="btn-glow inline-flex items-center gap-1.5 px-3 py-2 bg-[#1b1f27] hover:bg-[#2b3140] text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors"><CloudArrowUp size={13} /> Push orders</button>
-          </div>
-
-          {/* Failed ERP syncs — compact red error card; stacks on small screens */}
-          {failedErpSyncs.length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50/50 overflow-hidden">
-              <div className="px-3 py-2 bg-red-50 border-b border-red-100 flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5"><Warning size={13} /> {failedErpSyncs.length} failed ERP sync{failedErpSyncs.length !== 1 ? 's' : ''}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => pushToErp(false, failedErpSyncs.map(([n]) => n))} disabled={erpBusy} className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-semibold disabled:opacity-50 flex items-center gap-1"><ArrowClockwise size={11} /> Retry all</button>
-                  <button onClick={clearFailedErp} disabled={erpBusy} className="px-2.5 py-1 border border-red-300 text-red-600 rounded-lg text-[10px] font-semibold hover:bg-red-100 disabled:opacity-50">Clear all errors</button>
-                </div>
-              </div>
-              <div className="divide-y divide-red-100/70">
-                {failedErpSyncs.map(([orderNumber, e]) => (
-                  <div key={orderNumber} className="px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                    <p className="font-mono text-[11px] font-semibold text-gray-800 shrink-0">{orderNumber}</p>
-                    <p className="text-[10px] text-red-600/90 break-words min-w-0 flex-1" title={e.error || ''}>{e.error || 'ERP sync failed'}</p>
-                    <span className="text-[9px] text-gray-400 shrink-0">{e.synced_at ? new Date(e.synced_at).toLocaleString() : ''}</span>
-                    <button onClick={() => pushToErp(false, [orderNumber])} disabled={erpBusy} className="self-start sm:self-auto px-2.5 py-1 bg-white border border-red-300 text-red-600 hover:bg-red-100 rounded-lg text-[10px] font-semibold disabled:opacity-50 flex items-center gap-1"><ArrowClockwise size={11} /> Retry</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Full ERP sync history — every attempt (created/updated/failed) with timestamps */}
-          {erpCfg?.syncLog?.length ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50/60 overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-                <button onClick={() => setShowErpLog(!showErpLog)} className="text-xs font-semibold text-gray-800 flex items-center gap-1.5 hover:text-gray-950">
-                  <Clock size={13} className="text-[#9a6f16]" /> Sync history ({erpCfg.syncLog.length}) {showErpLog ? <CaretUp size={12} /> : <CaretDown size={12} />}
-                </button>
-                <div className="flex gap-1.5 text-[10px]">
-                  {(() => {
-                    const c = erpCfg.syncLog!.filter(e => e.status === 'created').length;
-                    const u = erpCfg.syncLog!.filter(e => e.status === 'updated' || e.status === 'sent').length;
-                    const f = erpCfg.syncLog!.filter(e => e.status === 'failed').length;
-                    return (<>
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">{c} created</span>
-                      <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">{u} updated</span>
-                      <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">{f} failed</span>
-                    </>);
-                  })()}
-                </div>
-              </div>
-              {showErpLog && (
-                <div className="max-h-56 overflow-y-auto divide-y divide-gray-100/80">
-                  {erpCfg.syncLog.slice(0, 300).map((e, i) => (
-                    <div key={i} className="px-3 py-1.5 flex items-start gap-2 min-w-0">
-                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 ${e.status === 'created' ? 'bg-emerald-100 text-emerald-700' : e.status === 'updated' || e.status === 'sent' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-600'}`}>{e.status}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[10px] font-semibold text-gray-800 break-words">{e.order_number}</p>
-                        {e.error && <p className="text-[9px] text-red-500/90 break-words" title={e.error}>{e.error}</p>}
-                      </div>
-                      <span className="text-[9px] text-gray-400 shrink-0">{e.at ? new Date(e.at).toLocaleString() : ''}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {erpResult && (
-            <p className={`text-[11px] break-words ${erpResult.ok ? 'text-green-700' : 'text-red-600'}`}>{erpResult.ok ? '✓ ' : '✗ '}{erpResult.msg}</p>
-          )}
-          <p className="text-[10px] text-gray-400">Only genuine Stripe-webhook orders are pushed — the demo LX-1001 order and $0 gift-drop claims are never sent. Every order keeps its original order number, so re-pushing reconciles in the ERP instead of duplicating.</p>
-        </div>
+        <button onClick={downloadCsv} className="btn-glow inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors"><Download size={13} /> Export CSV (Excel)</button>
       </div>
 
     {/* Demo banner */}
@@ -1537,22 +1328,7 @@ export function AOrders() {
       <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="font-semibold text-sm text-gray-800">Orders <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full ml-1">AUTHORITATIVE</span></h2>
-          <p className="text-[11px] text-gray-400">Real records from the Stripe webhook + gift drops. Filter by provider or type.</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-600">
-            <option value="all">All providers</option>
-            <option value="none">🎁 Free Gift</option>
-            <option value="stripe">Stripe</option>
-            <option value="square">Square</option>
-            <option value="paypal">PayPal</option>
-            <option value="braintree">Braintree</option>
-            <option value="authorize_net">Authorize.Net</option>
-          </select>
-          <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer select-none">
-            <input type="checkbox" checked={includeGifts} onChange={(e) => setIncludeGifts(e.target.checked)} className="w-3.5 h-3.5 rounded" />
-            Include gifts
-          </label>
+          <p className="text-[11px] text-gray-400">The store&apos;s own orders, read from WooCommerce.</p>
         </div>
       </div>
       {!loaded ? (
