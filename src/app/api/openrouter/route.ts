@@ -11,16 +11,19 @@ interface ChatMessage {
 }
 
 const stableFreeModels = [
-  'deepseek/deepseek-v4-flash:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.5-flash-lite',
+  'openrouter/free',
+  'deepseek/deepseek-v4-flash-0731:free',
   'meta-llama/llama-3.3-70b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
 ];
 
 async function resolveModelCandidates(): Promise<string[]> {
   const dbModel = await getSetting('openrouter', 'model');
   const envModel = process.env.OPENROUTER_MODEL;
-  return Array.from(new Set([...stableFreeModels, dbModel || envModel].filter(Boolean))) as string[];
+  const preferred = dbModel || envModel || 'google/gemini-2.5-flash';
+  return Array.from(new Set([preferred, ...stableFreeModels].filter(Boolean))) as string[];
 }
 
 const maxMessages = 12;

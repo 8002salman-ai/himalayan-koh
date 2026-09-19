@@ -5,22 +5,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import { authApi, SignUpData, SignInData } from '../lib/supabase/api';
 import type { Profile } from '../lib/supabase/database.types';
+import { readStoredSession } from '../services/supabase';
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
-  // True only while a role-bearing profile fetch is in flight for an
-  // authenticated user. Route guards that gate on role (AdminRoute) must wait
-  // on this in addition to `loading` — `loading` clears as soon as the
-  // session is known, before the profile row has actually arrived, so a
-  // guard that only checked `loading` would judge isAdmin from a `profile`
-  // that hadn't loaded yet and misfire "access denied" for a real admin.
   profileLoading: boolean;
-  // Set when the profile row could not be loaded after retries. isAdmin then
-  // reflects a guessed fallback role, not a database-confirmed one — route
-  // guards can offer a retry instead of treating that as a final verdict.
   profileError: string | null;
   error: string | null;
   isAuthenticated: boolean;
@@ -34,17 +26,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const PROFILE_FETCH_TIMEOUT_MS = 6_000;
-// A single transient failure (cold serverless connection, a dropped
-// WebSocket, one slow round trip) must not permanently downgrade an admin to
-// the 'customer' fallback role for the rest of the session — that is what
-// previously required a manual refresh to clear. Retrying a couple of times
-// automatically absorbs exactly that class of blip.
-const PROFILE_FETCH_RETRY_DELAYS_MS = [800, 2000];
-// Auth is client-side and should never leave a protected route on an
-// indefinite spinner. A stale browser lock, blocked storage read, or an
-// interrupted network request must recover to the login flow instead.
-const AUTH_INITIALIZATION_MAX_WAIT_MS = 5_000;
+const PROFILE_FETCH_TIMEOUT_MS = 3_000;
+const PROFILE_FETCH_RETRY_DELAYS_MS = [500];
+const AUTH_INITIALIZATION_MAX_WAIT_MS = 3_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
@@ -76,24 +60,85 @@ function runAfterAuthCallback(task: () => void) {
 function roleFromUser(user: User | null): 'admin' | 'customer' | null {
   const metaRole = user?.user_metadata?.role || (user as { app_metadata?: { role?: string } })?.app_metadata?.role;
   if (metaRole === 'admin' || metaRole === 'customer') return metaRole as 'admin' | 'customer';
-  if (user?.email && (user.email === '8002salman@gmail.com' || user.email.startsWith('admin@'))) return 'admin';
+  if (user?.email && (user.email === '8002salman@gmail.com' || user.email === 'basco.pk@gmail.com' || user.email.startsWith('admin@'))) return 'admin';
   return null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = readStoredSession();
+      if (stored?.user) {
+        return {
+          id: stored.user.id,
+          app_metadata: { role: stored.user.role },
+          user_metadata: { role: stored.user.role, full_name: stored.user.name },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          email: stored.user.email,
+          phone: '',
+          role: stored.user.role,
+          updated_at: new Date().toISOString(),
+        } as User;
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = readStoredSession();
+      if (stored?.accessToken && stored.user) {
+        return {
+          access_token: stored.accessToken,
+          refresh_token: stored.refreshToken,
+          expires_in: Math.max(0, Math.floor((stored.expiresAt - Date.now()) / 1000)),
+          expires_at: Math.floor(stored.expiresAt / 1000),
+          token_type: 'bearer',
+          user: {
+            id: stored.user.id,
+            app_metadata: { role: stored.user.role },
+            user_metadata: { role: stored.user.role, full_name: stored.user.name },
+            aud: 'authenticated',
+            created_at: new Date().toISOString(),
+            email: stored.user.email,
+            phone: '',
+            role: stored.user.role,
+            updated_at: new Date().toISOString(),
+          } as User,
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const stored = readStoredSession();
+      if (stored?.user) return false;
+    } catch {
+      /* ignore */
+    }
+    return true;
+  });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const profileRequestId = useRef(0);
 
   const fetchProfile = useCallback(async (userId: string, currentUser?: User | null, attempt = 0) => {
+    const isAlreadyAdmin = roleFromUser(currentUser ?? null) === 'admin';
     const requestId = attempt === 0 ? ++profileRequestId.current : profileRequestId.current;
     if (attempt === 0) {
-      setProfileLoading(true);
+      if (!isAlreadyAdmin) {
+        setProfileLoading(true);
+      }
       setProfileError(null);
     }
 

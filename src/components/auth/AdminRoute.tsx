@@ -11,12 +11,13 @@ export default function AdminRoute({ children }: AdminRouteProps) {
   const { isAuthenticated, loading, isAdmin, profileLoading, profileError } = useAuthContext();
   const location = useLocation();
 
-  // `loading` clears as soon as the session itself is known — before the
-  // profiles-table row has actually arrived, by design, so sign-in never
-  // looks hung. isAdmin reads that row, so a role-gated route has to wait on
-  // it too: checking isAdmin before the profile loads judged a real admin
-  // "not admin" from a profile that was simply still in flight.
-  if (loading || (isAuthenticated && profileLoading)) {
+  // If already confirmed admin, render IMMEDIATELY — NEVER block on background profile fetch!
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
+  // Only show the loading spinner if we don't know the role yet AND auth is still loading
+  if (loading || (isAuthenticated && profileLoading && !isAdmin)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-charcoal">
         <div className="text-center">

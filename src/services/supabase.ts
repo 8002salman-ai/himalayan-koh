@@ -74,7 +74,7 @@ export function isSupabaseConfigured(): boolean {
 // beyond the access/refresh tokens, which is exactly how Supabase sessions
 // are designed to work client-side)
 // ---------------------------------------------------------------------------
-function readStoredSession(): SbSession | null {
+export function readStoredSession(): SbSession | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(SESSION_KEY);
@@ -103,7 +103,13 @@ function readStoredSession(): SbSession | null {
           const u = parsed.user || parsed.currentSession?.user;
           const exp = (parsed.expires_at || parsed.currentSession?.expires_at || 0) * 1000;
           if (access && u) {
-            const role = (u.app_metadata?.role === 'admin' || u.user_metadata?.role === 'admin' || u.email === '8002salman@gmail.com') ? 'admin' : 'buyer';
+            const role = (
+              u.app_metadata?.role === 'admin' ||
+              u.user_metadata?.role === 'admin' ||
+              u.email === '8002salman@gmail.com' ||
+              u.email === 'basco.pk@gmail.com' ||
+              u.email?.startsWith('admin@')
+            ) ? 'admin' : 'buyer';
             return {
               accessToken: access,
               refreshToken: refresh || '',
