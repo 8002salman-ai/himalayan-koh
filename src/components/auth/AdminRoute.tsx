@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../../context/AuthContext';
 import { CUSTOMER_HOME } from '../../lib/auth/roleRouting';
+import AdminShellSkeleton from '../admin/AdminShellSkeleton';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -11,21 +12,33 @@ export default function AdminRoute({ children }: AdminRouteProps) {
   const { isAuthenticated, loading, isAdmin, profileLoading, profileError } = useAuthContext();
   const location = useLocation();
 
-  // If already confirmed admin, render IMMEDIATELY — NEVER block on background profile fetch!
-  if (isAdmin) {
+  /**
+   * Whether this is a client render rather than the prerendered document.
+   *
+   * `/admin` is prerendered, and the server has no session, so the document it
+   * produced holds whatever the no-identity branch renders. The browser, by
+   * contrast, reads the stored session while rendering — so a signed-in admin's
+   * first client render already knows who they are and would replace that
+   * document with the console on the very first paint. That mismatch is the
+   * "old page first, then the dashboard" flash: two different screens, one after
+   * the other.
+   *
+   * Holding the pending state until after mount makes the first client render
+   * agree with the document it hydrates, and the swap happens once — skeleton to
+   * console — instead of twice.
+   */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // A confirmed admin keeps the console, and never waits on a background profile
+  // fetch — but only once we are rendering in the browser.
+  if (isAdmin && mounted) {
     return <>{children}</>;
   }
 
-  // Only show the loading spinner if we don't know the role yet AND auth is still loading
-  if (loading || (isAuthenticated && profileLoading && !isAdmin)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-charcoal">
-        <div className="text-center">
-          <Loader2 size={40} className="animate-spin text-himalayan mx-auto mb-4" />
-          <p className="text-white/70">Loading admin panel...</p>
-        </div>
-      </div>
-    );
+  // Pending: either the document's own render, or an unresolved session/role.
+  if (!mounted || loading || (isAuthenticated && profileLoading && !isAdmin)) {
+    return <AdminShellSkeleton />;
   }
 
   // `from` travels as a query param, not router state — see ProtectedRoute

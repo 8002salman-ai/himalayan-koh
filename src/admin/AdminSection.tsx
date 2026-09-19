@@ -271,7 +271,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   );
 }
 
-interface DashOrderRow { id: string; order_number: string; customer_email: string | null; total: number | null; currency: string | null; status: string; created_at: string; }
+interface DashOrderRow { id: string; order_number: string; customer_email: string | null; total: number | null; currency: string | null; status: string; payment_status?: string | null; created_at: string; }
 
 interface DashStats { revenue: number; paidCount: number; aov: number; days: { label: string; total: number }[]; }
 
@@ -280,34 +280,40 @@ export function ADashboard() {
   const [realOrders, setRealOrders] = useState<DashOrderRow[]>([]);
   const [stats, setStats] = useState<DashStats | null>(null);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
-  const [gift, setGift] = useState<{ active: boolean; remaining: number; total: number; claimsToday: number } | null>(null);
+  const [gift] = useState<{ active: boolean; remaining: number; total: number; claimsToday: number } | null>(null);
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
   const [range, setRange] = useState<7 | 30 | 90>(7);
 
-  // REAL data only (Stripe webhook orders + the DB catalog + Gift Drop ledger).
-  // No demo numbers. Orders stats come from the server (paid-only, full order
-  // set, refunds subtracted) and refresh near-real-time on focus + interval.
+  // WooCommerce is the dashboard's commerce source. Keep this read on the
+  // authenticated admin route rather than probing removed Gift Drop / legacy
+  // checkout endpoints (both produced 404s on every dashboard mount). The
+  // route's stats are counted from the same Woo records shown in Admin Orders.
   const loadOrders = useCallback(() => {
     const token = getAccessToken();
     if (!token) return Promise.resolve();
     setDbToken(token);
-    // Gift Drop live status — claims ledger + remaining inventory.
-    fetch('/api/admin/gift-drop', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then((d: { campaign?: { active?: boolean }; stats?: { total?: number; remaining?: number }; claims?: Array<{ createdAt?: string; isTest?: boolean }> }) => {
-        if (!d || !d.stats) return;
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const claimsToday = Array.isArray(d.claims)
-          ? d.claims.filter((c) => !c.isTest && new Date(c.createdAt || 0) >= today).length
-          : 0;
-        setGift({ active: !!d.campaign?.active, remaining: Number(d.stats.remaining) || 0, total: Number(d.stats.total) || 0, claimsToday });
-      })
-      .catch(() => setGift(null));
-    return fetch('/api/checkout?action=orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then((d: { orders?: DashOrderRow[]; stats?: DashStats | null }) => {
-        setRealOrders(Array.isArray(d.orders) ? d.orders : []);
-        setStats(d.stats && typeof d.stats.revenue === 'number' ? d.stats : null);
+    return fetch('/api/admin/orders?limit=100', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => ({}))) as {
+          orders?: DashOrderRow[];
+          stats?: {
+            totalOrders?: number;
+            totalRevenue?: number;
+          };
+        };
+        if (!response.ok) throw new Error('WooCommerce orders could not be read.');
+        const orders = Array.isArray(data.orders) ? data.orders : [];
+        const revenue = Number(data.stats?.totalRevenue ?? 0) || 0;
+        const paidOrders = orders.filter((order) => order.payment_status === 'paid');
+        setRealOrders(orders);
+        setStats({
+          revenue,
+          paidCount: Number(data.stats?.totalOrders ?? paidOrders.length) || 0,
+          aov: paidOrders.length ? revenue / paidOrders.length : 0,
+          days: [],
+        });
       })
       .catch(() => { setRealOrders([]); setStats(null); })
       .finally(() => setLoadedAt(new Date()));
