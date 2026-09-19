@@ -32,7 +32,9 @@ import { queryOnlyDestination } from '../router/locationMatch';
  * the right products and not merely that the URL changed.
  */
 
-const shelves = NICHE_SECTIONS.map((section) => ({ key: section.key, label: section.label }));
+const shelves = NICHE_SECTIONS
+  .filter((section) => section.visibleInStorefront)
+  .map((section) => ({ key: section.key, label: section.label }));
 
 /** A product-shaped value for the placement rule, taken from what Woo reports. */
 function product(name: string, categoryNames: string[] = []) {
@@ -59,6 +61,8 @@ describe('the shelf list', () => {
       expect(filterLabelFromKey(shelf.key)).toBe(shelf.label);
       expect(categoryKeyFromFilterLabel(shelf.label)).toBe(shelf.key);
     }
+    expect(filterLabelFromKey('bulk')).toBe('Bulk & Wholesale');
+    expect(categoryKeyFromFilterLabel('Bulk & Wholesale')).toBeNull();
     expect(categoryKeyFromFilterLabel('Not A Shelf')).toBeNull();
   });
 
@@ -116,7 +120,9 @@ describe('selecting a shelf', () => {
   });
 
   it('places every product on the shelf it is filed under, so no product is counted twice', () => {
-    const placed = CATALOGUE.map((entry) => product(entry.title));
+    const placed = CATALOGUE
+      .filter((entry) => entry.shelf !== 'bulk')
+      .map((entry) => product(entry.title));
     const counts = shelves.map(
       (shelf) => placed.filter((item) => productMatchesCategoryFilter(item, shelf.key, shelf.label)).length
     );

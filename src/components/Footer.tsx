@@ -42,7 +42,6 @@ const productLinks = [
   { label: 'Edible Pink Salt', to: buildProductsCategoryPath('edible-pink-salt') },
   { label: 'Cooking & Serving', to: buildProductsCategoryPath('cooking-serving') },
   { label: 'Salt Licks & Blocks', to: buildProductsCategoryPath('licks-blocks') },
-  { label: 'Bulk & Wholesale', to: buildProductsCategoryPath('bulk') },
 ];
 
 export default function Footer() {

@@ -43,11 +43,13 @@ export interface CategoryFilterTab {
 /** The filter pills, All first, then the shelves in the order niche.ts lists them. */
 export const CATEGORY_FILTER_TABS: readonly CategoryFilterTab[] = [
   { label: ALL_LABEL, key: null },
-  ...NICHE_SECTIONS.map((section) => ({ label: section.label, key: section.key })),
+  ...NICHE_SECTIONS.filter((section) => section.visibleInStorefront)
+    .map((section) => ({ label: section.label, key: section.key })),
 ];
 
 const KEY_BY_LABEL = new Map<string, CategoryContentKey>(
-  NICHE_SECTIONS.map((section) => [section.label, section.key])
+  NICHE_SECTIONS.filter((section) => section.visibleInStorefront)
+    .map((section) => [section.label, section.key])
 );
 
 export function categoryKeyFromFilterLabel(label: string): CategoryContentKey | null {
@@ -132,7 +134,8 @@ export function buildProductsCategorySearch(key: CategoryContentKey | null): str
  * everything.
  */
 export const CATEGORY_LINK_BY_TITLE: Record<string, CategoryContentKey> = Object.fromEntries(
-  NICHE_SECTIONS.map((section) => [section.label, section.key])
+  NICHE_SECTIONS.filter((section) => section.visibleInStorefront)
+    .map((section) => [section.label, section.key])
 );
 
 export function productsPathForCategoryTitle(title: string): string {

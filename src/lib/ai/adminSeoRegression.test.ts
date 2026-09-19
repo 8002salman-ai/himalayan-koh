@@ -78,7 +78,9 @@ describe('Catalog Grounding & Duplicate SKU Prevention', () => {
     expect(categoryKeyFromFilterLabel('Edible Pink Salt')).toBe('edible-pink-salt');
     expect(categoryKeyFromFilterLabel('Cooking & Serving')).toBe('cooking-serving');
     expect(categoryKeyFromFilterLabel('Salt Licks & Blocks')).toBe('licks-blocks');
-    expect(categoryKeyFromFilterLabel('Bulk & Wholesale')).toBe('bulk');
+    // Bulk & Wholesale remains in the taxonomy for direct product placement, but
+    // its public filter/link is temporarily hidden by owner instruction.
+    expect(categoryKeyFromFilterLabel('Bulk & Wholesale')).toBeNull();
 
     expect(buildProductsCategoryPath('edible-pink-salt')).toBe('/products?category=edible-pink-salt');
     expect(buildProductsCategoryPath(null)).toBe('/products');

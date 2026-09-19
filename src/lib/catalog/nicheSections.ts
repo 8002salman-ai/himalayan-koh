@@ -63,6 +63,8 @@ export interface NicheSection {
   label: string;
   /** What the section holds, in the store's own words. */
   description: string;
+  /** Public navigation visibility only; Woo records remain untouched. */
+  visibleInStorefront: boolean;
 }
 
 export const NICHE_SECTIONS: readonly NicheSection[] = [
@@ -70,26 +72,32 @@ export const NICHE_SECTIONS: readonly NicheSection[] = [
     key: 'edible-pink-salt',
     label: 'Edible Pink Salt',
     description: 'Fine and coarse pink salt for the kitchen, in jars, pouches and larger bags.',
+    visibleInStorefront: true,
   },
   {
     key: 'cooking-serving',
     label: 'Cooking & Serving',
     description: 'Salt blocks and plates for grilling, chilling and serving at the table.',
+    visibleInStorefront: true,
   },
   {
     key: 'licks-blocks',
     label: 'Salt Licks & Blocks',
     description: 'Solid pink salt licks and blocks in the sizes the owner price list covers.',
+    visibleInStorefront: true,
   },
   {
     key: 'lamps-decor',
     label: 'Salt Lamps & Décor',
     description: 'Hand-carved pink salt lamps and decorative pieces for the home.',
+    visibleInStorefront: true,
   },
   {
     key: 'bulk',
     label: 'Bulk & Wholesale',
     description: 'Larger bags and pouches for kitchens, retailers and gifting at volume.',
+    // Temporary public-nav hold: keep Woo products/category intact and visible in All.
+    visibleInStorefront: false,
   },
 ];
 

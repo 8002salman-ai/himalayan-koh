@@ -83,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // from /products?category=<key>. Without these the hub content is unreachable to
   // crawlers, which only ever see the unfiltered /products page.
   for (const section of NICHE_SECTIONS) {
-    if (!shelvesWithProducts.has(section.key)) continue;
+    if (!section.visibleInStorefront || !shelvesWithProducts.has(section.key)) continue;
 
     entries.push({
       url: `${origin}${buildProductsCategoryPath(section.key)}`,
