@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { NICHE_SECTIONS } from '../catalog/nicheSections';
@@ -163,15 +165,18 @@ describe('the URL is the filter', () => {
 });
 
 describe('navigation that must never advertise a filter the taxonomy does not have', () => {
-  it('derives its links from the taxonomy rather than from typed-out keys', () => {
-    // The footer used to hardcode its shelf list. A key written out by hand cannot be
-    // checked against anything, so a typo or a shelf that is later removed becomes a
-    // filter link that resets the shopper to All without saying so. Deriving the list
-    // means the only keys it can link are the taxonomy's own.
-    const derived = CATEGORY_FILTER_TABS.flatMap((tab) => (tab.key ? [tab.key] : []));
-    const live = new Set(shelves.map((s) => s.key));
-    expect(derived.every((key) => live.has(key))).toBe(true);
-    expect(derived).toEqual(shelves.map((s) => s.key));
+  it('gives the footer no shelf key the taxonomy does not have', () => {
+    // The footer writes its shelf keys out by hand, and nothing in the type system
+    // stops one of them being misspelled into a filter that silently resets the
+    // shopper to All. This walks the file's own `buildProductsCategoryPath('…')`
+    // calls and checks each against the taxonomy — the same guard shape the admin
+    // route suite uses, and the reason a key can no longer drift here unnoticed.
+    const footer = readFileSync(fileURLToPath(new URL('../../components/Footer.tsx', import.meta.url)), 'utf8');
+    const declared = [...footer.matchAll(/buildProductsCategoryPath\('([^']+)'\)/g)].map((m) => m[1]);
+    expect(declared.length).toBeGreaterThan(0);
+
+    const live = new Set<string>(shelves.map((s) => s.key));
+    expect(declared.filter((key) => !live.has(key))).toEqual([]);
   });
 
   it('keeps the lamps shelf in the taxonomy, so its hub copy is still reachable', () => {
