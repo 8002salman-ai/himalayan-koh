@@ -1,3 +1,5 @@
+import { isWooCommerceDataSource } from '@/lib/backend/dataSource';
+import { HK_META, createWooOrder, orderWithItemsFromWoo } from '@/lib/woo/orders';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import {
   calculateOrderTotals,
@@ -140,6 +142,62 @@ export async function serverCreateOrder(
   const resolvedRateId = resolvedShipping.shippoRateId;
   const resolvedCarrier = resolvedShipping.carrier ?? data.shippingCarrier ?? null;
   const resolvedService = resolvedShipping.service ?? data.shippingService ?? null;
+
+  if (isWooCommerceDataSource()) {
+    const wooOrder = await createWooOrder({
+      email: data.email,
+      phone: data.phone,
+      billing: {
+        first_name: data.billingAddress?.fullName?.split(' ')[0] || data.shippingAddress.fullName.split(' ')[0] || '',
+        last_name: data.billingAddress?.fullName?.split(' ').slice(1).join(' ') || data.shippingAddress.fullName.split(' ').slice(1).join(' ') || '',
+        address_1: data.billingAddress?.addressLine1 || data.shippingAddress.addressLine1,
+        address_2: data.billingAddress?.addressLine2 || data.shippingAddress.addressLine2,
+        city: data.billingAddress?.city || data.shippingAddress.city,
+        state: data.billingAddress?.state || data.shippingAddress.state,
+        postcode: data.billingAddress?.postalCode || data.shippingAddress.postalCode,
+        country: data.billingAddress?.country || data.shippingAddress.country || 'US',
+        email: data.email,
+        phone: data.phone,
+      },
+      shipping: {
+        first_name: data.shippingAddress.fullName.split(' ')[0] || '',
+        last_name: data.shippingAddress.fullName.split(' ').slice(1).join(' ') || '',
+        address_1: data.shippingAddress.addressLine1,
+        address_2: data.shippingAddress.addressLine2,
+        city: data.shippingAddress.city,
+        state: data.shippingAddress.state,
+        postcode: data.shippingAddress.postalCode,
+        country: data.shippingAddress.country || 'US',
+      },
+      lineItems: pricedItems.map((item) => ({
+        productId: Number(item.product_id),
+        quantity: item.quantity,
+        price: item.unitPrice,
+      })),
+      shippingMethod,
+      couponCode: data.couponCode,
+      customerNote: data.notes,
+      status: 'pending',
+      meta: {
+        [HK_META.userId]: options.userId || null,
+        [HK_META.shippoRateId]: resolvedRateId,
+        [HK_META.carrier]: resolvedCarrier,
+        [HK_META.service]: resolvedService,
+      },
+    });
+
+    if (data.clearCart !== false) {
+      const { error: clearError } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('cart_id', cart.id);
+      if (clearError) throw clearError;
+    }
+
+    const projected = orderWithItemsFromWoo(wooOrder);
+    dispatchOrderCreatedNotifications(projected.id);
+    return projected as OrderWithItems;
+  }
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
