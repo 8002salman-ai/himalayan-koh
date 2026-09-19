@@ -1,438 +1,391 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import React, { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Bell,
-  ChevronDown,
-  ExternalLink,
-  Home,
-  LogOut,
+  SquaresFour,
   Package,
-  Search,
+  Tag,
+  Gift,
+  Megaphone,
   ShoppingCart,
-  Users,
-} from 'lucide-react';
-import { ADMIN_NAV_GROUPS, findAdminNavItem } from '../../lib/adminNav';
+  Users as UsersIcon,
+  UserGear,
+  TreeStructure,
+  Star,
+  FileText,
+  YoutubeLogo,
+  Sparkle,
+  TrendUp,
+  PaperPlaneRight,
+  Stack,
+  Robot,
+  List,
+  Target,
+  Cpu,
+  CreditCard,
+  GearSix,
+  BookBookmark,
+  Truck,
+  ArrowLeft,
+  SignOut,
+  MagnifyingGlass,
+  ShieldCheck,
+  Plus,
+  X,
+} from '@phosphor-icons/react';
 import { useAuthContext } from '../../context/AuthContext';
-import { isSupabaseConfigured, supabase, clearSupabaseSession } from '../../lib/supabase/client';
-import {
-  ADMIN_CANVAS_MIN_WIDTH,
-  ICON_TILE,
-  ICON_TILE_TONES,
-  RAIL_LINK_ACTIVE,
-  RAIL_LINK_BASE,
-  RAIL_LINK_IDLE,
-  RAIL_WIDTH,
-  SURFACE,
-} from './adminTheme';
-import { AdminChip } from './AdminUI';
-import AIChatWidget from '../AIChatWidget';
+import { clearSupabaseSession } from '../../lib/supabase/client';
 
-interface AdminAlert {
-  id: string;
-  title: string;
-  message: string;
-  type: 'order' | 'customer' | 'inventory';
-  createdAt: string;
-  read: boolean;
+export interface AdminLayoutProps {
+  children: ReactNode;
 }
 
-interface AdminLayoutProps {
-  children: React.ReactNode;
-}
+type NavIcon = React.ComponentType<Record<string, unknown>>;
+type NavItem = { to: string; icon: NavIcon; label: string; g: string; dot: string };
 
-/**
- * The admin console shell.
- *
- * Two decisions worth keeping:
- *
- * 1. It is a desktop application frame, not a responsive page. The canvas has a
- *    fixed minimum width, the rail is always a rail and the content pane is the
- *    only thing that scrolls. Narrowing the viewport therefore produces
- *    horizontal scrolling of a desktop console — it never converts the admin
- *    into mobile cards, a hamburger drawer or a bottom bar. The public
- *    storefront keeps its own responsive behaviour; this file does not touch it.
- * 2. All scrolling happens inside the frame (`h-screen` + per-pane overflow), so
- *    the rail and header cannot scroll out of view and the page background never
- *    shows through behind them.
- */
+const SECTIONS: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Overview',
+    items: [
+      { to: '/admin', icon: SquaresFour, label: 'Dashboard', g: 'linear-gradient(135deg,#3b82f6,#22d3ee)', dot: '#38bdf8' },
+    ],
+  },
+  {
+    title: 'Catalog',
+    items: [
+      { to: '/admin/products', icon: Package, label: 'Products', g: 'linear-gradient(135deg,#8b5cf6,#a855f7)', dot: '#a78bfa' },
+      { to: '/admin/promotions', icon: Tag, label: 'Promotions', g: 'linear-gradient(135deg,#ec4899,#f43f5e)', dot: '#f472b6' },
+      { to: '/admin/gift-drop', icon: Gift, label: 'Gift Drop', g: 'linear-gradient(135deg,#f59e0b,#fbbf24)', dot: '#fbbf24' },
+      { to: '/admin/campaigns', icon: Megaphone, label: 'Campaigns', g: 'linear-gradient(135deg,#f472b6,#e879f9)', dot: '#f9a8d4' },
+      { to: '/admin/orders', icon: ShoppingCart, label: 'Orders', g: 'linear-gradient(135deg,#10b981,#14b8a6)', dot: '#34d399' },
+      { to: '/admin/customers', icon: UsersIcon, label: 'Customers', g: 'linear-gradient(135deg,#6366f1,#3b82f6)', dot: '#818cf8' },
+      { to: '/admin/users', icon: UserGear, label: 'Users', g: 'linear-gradient(135deg,#6366f1,#818cf8)', dot: '#818cf8' },
+      { to: '/admin/categories', icon: TreeStructure, label: 'Categories', g: 'linear-gradient(135deg,#f59e0b,#f97316)', dot: '#fbbf24' },
+      { to: '/admin/reviews', icon: Star, label: 'Reviews', g: 'linear-gradient(135deg,#eab308,#f59e0b)', dot: '#facc15' },
+      { to: '/admin/blog', icon: FileText, label: 'Blog Posts', g: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', dot: '#38bdf8' },
+      { to: '/admin/category-hubs', icon: SquaresFour, label: 'Category Hubs', g: 'linear-gradient(135deg,#14b8a6,#06b6d4)', dot: '#2dd4bf' },
+      { to: '/admin/inventory', icon: Stack, label: 'Inventory', g: 'linear-gradient(135deg,#8b5cf6,#6366f1)', dot: '#a78bfa' },
+      { to: '/admin/coupons', icon: Tag, label: 'Coupons', g: 'linear-gradient(135deg,#f43f5e,#fb7185)', dot: '#fb7185' },
+    ],
+  },
+  {
+    title: 'Media',
+    items: [
+      { to: '/admin/media', icon: YoutubeLogo, label: 'Media Hub', g: 'linear-gradient(135deg,#ef4444,#f97316)', dot: '#f87171' },
+    ],
+  },
+  {
+    title: 'Marketing',
+    items: [
+      { to: '/admin/seo', icon: Sparkle, label: 'SEO Engine', g: 'linear-gradient(135deg,#8b5cf6,#ec4899)', dot: '#c084fc' },
+      { to: '/admin/marketing', icon: Megaphone, label: 'Marketing Gen', g: 'linear-gradient(135deg,#f97316,#eab308)', dot: '#fbbf24' },
+      { to: '/admin/marketing-traffic', icon: TrendUp, label: 'Marketing & Traffic', g: 'linear-gradient(135deg,#06b6d4,#3b82f6)', dot: '#38bdf8' },
+      { to: '/admin/email-marketing', icon: PaperPlaneRight, label: 'Email Marketing', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#818cf8' },
+      { to: '/admin/crm', icon: UsersIcon, label: 'CRM (Leads)', g: 'linear-gradient(135deg,#22c55e,#84cc16)', dot: '#4ade80' },
+      { to: '/admin/analytics', icon: TrendUp, label: 'Analytics', g: 'linear-gradient(135deg,#0ea5e9,#2563eb)', dot: '#38bdf8' },
+    ],
+  },
+  {
+    title: 'AI Studio',
+    items: [
+      { to: '/admin/variant-gen', icon: Stack, label: 'Variant Gen', g: 'linear-gradient(135deg,#8b5cf6,#d946ef)', dot: '#c084fc' },
+      { to: '/admin/ai', icon: Robot, label: 'AI Hub', g: 'linear-gradient(135deg,#4f46e5,#7c3aed)', dot: '#818cf8' },
+      { to: '/admin/ai-import', icon: Robot, label: 'AI Import', g: 'linear-gradient(135deg,#9333ea,#c026d3)', dot: '#c084fc' },
+      { to: '/admin/listing-task', icon: List, label: 'Listing Task', g: 'linear-gradient(135deg,#2563eb,#0ea5e9)', dot: '#60a5fa' },
+      { to: '/admin/scout', icon: Target, label: 'Product Scout', g: 'linear-gradient(135deg,#f43f5e,#fb923c)', dot: '#fb7185' },
+      { to: '/admin/product-research', icon: TrendUp, label: 'Product Research', g: 'linear-gradient(135deg,#0d9488,#0891b2)', dot: '#2dd4bf' },
+      { to: '/admin/ai-control', icon: Cpu, label: 'AI Control', g: 'linear-gradient(135deg,#0ea5e9,#8b5cf6)', dot: '#60a5fa' },
+      { to: '/admin/ai-intelligence', icon: Sparkle, label: 'AI Intelligence', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#a78bfa' },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { to: '/admin/labels', icon: Truck, label: 'Shipping Labels', g: 'linear-gradient(135deg,#10b981,#14b8a6)', dot: '#34d399' },
+      { to: '/admin/suppliers', icon: Package, label: 'Suppliers', g: 'linear-gradient(135deg,#10b981,#06b6d4)', dot: '#34d399' },
+      { to: '/admin/payments', icon: CreditCard, label: 'Payments', g: 'linear-gradient(135deg,#635bff,#8b5cf6)', dot: '#a78bfa' },
+      { to: '/admin/settings', icon: GearSix, label: 'Settings', g: 'linear-gradient(135deg,#94a3b8,#64748b)', dot: '#cbd5e1' },
+      { to: '/admin/listing-playbook', icon: BookBookmark, label: 'Listing Playbook', g: 'linear-gradient(135deg,#0ea5e9,#6366f1)', dot: '#60a5fa' },
+    ],
+  },
+];
+
+const MOBILE_NAV: { key: string; label: string; to?: string; icon: NavIcon }[] = [
+  { key: 'home', label: 'Home', to: '/admin', icon: SquaresFour },
+  { key: 'products', label: 'Listings', to: '/admin/products', icon: Package },
+  { key: 'add', label: 'Add', to: '/admin/products/new', icon: Plus },
+  { key: 'orders', label: 'Orders', to: '/admin/orders', icon: ShoppingCart },
+  { key: 'more', label: 'More', icon: List },
+];
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [alerts, setAlerts] = useState<AdminAlert[]>([]);
-  const location = useLocation();
+  const { user, profile } = useAuthContext();
   const navigate = useNavigate();
-  const { profile, user } = useAuthContext();
-  const unreadCount = alerts.filter((alert) => !alert.read).length;
-  const activeItem = findAdminNavItem(location.pathname);
+  const location = useLocation();
+  const [mobSide, setMobSide] = useState(false);
+  const [searchVal, setSearchVal] = useState('');
+
+  useEffect(() => {
+    setMobSide(false);
+  }, [location.pathname]);
 
   const handleSignOut = () => {
-    // Sign out entirely client-side: wipe the persisted session synchronously
-    // (all sb-* storage keys + cookies), then hard-navigate. We deliberately do
-    // NOT call supabase.auth.signOut() here — it can hang on navigator.locks,
-    // and worse, its async internals can re-persist the session to localStorage
-    // right after we clear it, which kept re-authenticating admins on the next
-    // page load. A best-effort server revoke isn't needed for the UX; the local
-    // token is gone, so the user is signed out.
     clearSupabaseSession();
     window.location.assign('/login');
   };
 
-  const handleSearch = (event: React.FormEvent) => {
-    event.preventDefault();
-    const term = searchTerm.trim();
-    if (!term) return;
-    // The console search is the product search: it hands the term to the catalog
-    // page, which owns querying. Nothing here filters a second, parallel list.
-    navigate(`/admin/products?search=${encodeURIComponent(term)}`);
-    setSearchTerm('');
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchVal.trim();
+    if (!q) return;
+    navigate(`/admin/products?search=${encodeURIComponent(q)}`);
   };
 
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+  const adminName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Super Admin';
+  const adminInitial = String(adminName).charAt(0).toUpperCase() || 'H';
 
-    const addAlert = (alert: Omit<AdminAlert, 'id' | 'createdAt' | 'read'>) => {
-      setAlerts((current) => [
-        {
-          ...alert,
-          id: `${alert.type}-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          read: false,
-        },
-        ...current,
-      ].slice(0, 10));
-    };
-
-    const channel = supabase
-      .channel('admin-layout-notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        const order = payload.new as { order_number?: string; total?: number; email?: string };
-        addAlert({
-          type: 'order',
-          title: 'New order received',
-          message: `${order.order_number || 'Order'} from ${order.email || 'customer'}${order.total ? ` · $${Number(order.total).toFixed(2)}` : ''}`,
-        });
-      })
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          ...(user?.id ? { filter: `user_id=eq.${user.id}` } : {}),
-        },
-        (payload) => {
-          const note = payload.new as { title?: string; message?: string };
-          addAlert({
-            type: 'order',
-            title: note.title || 'Order update',
-            message: note.message || 'You have a new order notification.',
-          });
-        }
-      )
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
-        const customer = payload.new as { full_name?: string; email?: string; role?: string };
-        if (customer.role === 'admin') return;
-        addAlert({
-          type: 'customer',
-          title: 'New customer activity',
-          message: customer.full_name || customer.email || 'A customer joined',
-        });
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory' }, (payload) => {
-        const inventory = payload.new as { quantity?: number; low_stock_threshold?: number };
-        if (
-          typeof inventory.quantity === 'number' &&
-          typeof inventory.low_stock_threshold === 'number' &&
-          inventory.quantity > inventory.low_stock_threshold
-        ) {
-          return;
-        }
-        addAlert({
-          type: 'inventory',
-          title: 'Inventory alert',
-          message: `Stock changed to ${inventory.quantity ?? 0}`,
-        });
-      })
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [user?.id]);
-
-  return (
-    <div className="h-screen overflow-hidden bg-admin-canvas text-admin-ink">
-      {/* The desktop canvas: below its minimum width the console scrolls
-          sideways instead of restacking into a mobile layout. */}
-      <div className="h-full w-full overflow-x-auto">
-        <div className="flex h-full" style={{ minWidth: ADMIN_CANVAS_MIN_WIDTH }}>
-          <aside className={`flex h-full ${RAIL_WIDTH} shrink-0 flex-col bg-admin-rail`}>
-            {/* The console's own identity, not the shop's. The storefront logo
-                used to sit here and it made the admin read as a second header of
-                the website; a compact monogram plus a wordmark says which tool
-                this is without repeating the storefront's artwork. */}
-            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-himalayan to-himalayan-dark text-[13px] font-bold tracking-tight text-white shadow-[0_6px_16px_-8px_rgba(0,0,0,0.8)]">
-                HK
-              </span>
-              <span className="min-w-0 leading-tight">
-                <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                  Admin Console
-                </span>
-                <span className="block truncate text-[10px] font-medium tracking-[0.08em] text-admin-rail-text">
-                  Himalayan Koh
-                </span>
-              </span>
-            </div>
-
-            <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-              {ADMIN_NAV_GROUPS.map((group, groupIndex) => (
-                <div
-                  key={group.label}
-                  className={groupIndex > 0 ? 'border-t border-white/[0.07] pt-4' : undefined}
-                >
-                  <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
-                    {group.label}
-                  </p>
-                  <div className="space-y-1">
-                    {group.items.map((item) => {
-                      const isActive =
-                        location.pathname === item.path ||
-                        (item.path !== '/admin' && location.pathname.startsWith(`${item.path}/`));
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          aria-current={isActive ? 'page' : undefined}
-                          className={`${RAIL_LINK_BASE} ${isActive ? RAIL_LINK_ACTIVE : RAIL_LINK_IDLE}`}
-                        >
-                          <item.icon
-                            size={17}
-                            className={`shrink-0 ${isActive ? 'text-himalayan' : 'text-admin-rail-text group-hover:text-white'}`}
-                          />
-                          <span className="truncate">{item.label}</span>
-                          {item.pending && (
-                            <span
-                              className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                              title="Built, backend integration pending"
-                            />
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </nav>
-
-            <div className="shrink-0 border-t border-white/10 p-3">
-              <Link to="/" className={`${RAIL_LINK_BASE} ${RAIL_LINK_IDLE}`}>
-                <ExternalLink size={17} className="shrink-0" />
-                <span>View storefront</span>
-              </Link>
-            </div>
-          </aside>
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex h-16 shrink-0 items-center justify-between gap-6 border-b border-admin-line bg-admin-surface px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
-                >
-                  <Home size={15} />
-                  Admin
-                </Link>
-                {activeItem && (
-                  <>
-                    <span className="text-admin-line-strong">/</span>
-                    <span className="flex items-center gap-2 text-sm font-semibold text-admin-ink">
-                      {activeItem.label}
-                      {activeItem.pending && <AdminChip tone="warning">Pending</AdminChip>}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <form onSubmit={handleSearch} className="relative">
-                  <Search
-                    size={15}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-muted"
-                  />
-                  <input
-                    type="search"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search products…"
-                    aria-label="Search products"
-                    className="w-[260px] rounded-xl border border-admin-line bg-admin-canvas py-2 pl-9 pr-3 text-sm text-admin-ink placeholder:text-admin-muted/70 focus:border-himalayan focus:outline-none focus:ring-2 focus:ring-himalayan/25"
-                  />
-                </form>
-
-                <div className="relative">
-                  <button
-                    type="button"
-                    aria-label="Notifications"
-                    onClick={() => {
-                      setNotificationOpen((open) => !open);
-                      setAlerts((current) => current.map((alert) => ({ ...alert, read: true })));
-                    }}
-                    className="relative rounded-xl border border-admin-line p-2 text-admin-muted transition-colors hover:bg-admin-canvas hover:text-admin-ink"
-                  >
-                    <Bell size={17} />
-                    {unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-himalayan px-1 text-[10px] font-semibold text-white">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </button>
-
-                  <AnimatePresence>
-                    {notificationOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        className={`absolute right-0 z-dropdown mt-2 w-80 ${SURFACE}`}
-                      >
-                        <div className="border-b border-admin-line px-4 py-3">
-                          <p className="text-sm font-semibold text-admin-ink">Notifications</p>
-                          <p className="text-xs text-admin-muted">Realtime order and customer alerts</p>
-                        </div>
-                        <div className="max-h-80 overflow-y-auto">
-                          {alerts.length === 0 ? (
-                            <p className="px-4 py-10 text-center text-sm text-admin-muted">
-                              No alerts yet
-                            </p>
-                          ) : (
-                            alerts.map((alert) => (
-                              <div
-                                key={alert.id}
-                                className="flex items-start gap-3 border-b border-admin-line px-4 py-3 last:border-0"
-                              >
-                                <span
-                                  className={`${ICON_TILE} ${
-                                    alert.type === 'order'
-                                      ? ICON_TILE_TONES.green
-                                      : alert.type === 'customer'
-                                        ? ICON_TILE_TONES.violet
-                                        : ICON_TILE_TONES.amber
-                                  }`}
-                                >
-                                  {alert.type === 'order' ? (
-                                    <ShoppingCart size={14} />
-                                  ) : alert.type === 'customer' ? (
-                                    <Users size={14} />
-                                  ) : (
-                                    <Package size={14} />
-                                  )}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-admin-ink">{alert.title}</p>
-                                  <p className="text-xs text-admin-muted">{alert.message}</p>
-                                  <p className="mt-1 text-[11px] text-admin-muted">
-                                    {new Date(alert.createdAt).toLocaleTimeString()}
-                                  </p>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setUserMenuOpen((open) => !open)}
-                    className="flex items-center gap-2.5 rounded-xl border border-admin-line py-1.5 pl-1.5 pr-3 transition-colors hover:bg-admin-canvas"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-himalayan to-himalayan-dark text-sm font-semibold text-white">
-                      {(profile?.full_name || profile?.email || 'A').slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="max-w-[160px] truncate text-sm font-semibold text-admin-ink">
-                      {profile?.full_name || 'Admin'}
-                    </span>
-                    <ChevronDown size={15} className="text-admin-muted" />
-                  </button>
-
-                  <AnimatePresence>
-                    {userMenuOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        className={`absolute right-0 z-dropdown mt-2 w-60 ${SURFACE}`}
-                      >
-                        <div className="border-b border-admin-line px-4 py-3">
-                          <p className="truncate text-sm font-semibold text-admin-ink">
-                            {profile?.full_name || 'Admin'}
-                          </p>
-                          <p className="truncate text-xs text-admin-muted">
-                            {profile?.email || user?.email || ''}
-                          </p>
-                          <div className="mt-2">
-                            <AdminChip tone={profile?.role === 'admin' ? 'brand' : 'neutral'}>
-                              {profile?.role === 'admin' ? 'Super Admin' : (profile?.role ?? 'user')}
-                            </AdminChip>
-                          </div>
-                        </div>
-                        <Link
-                          to="/account"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
-                        >
-                          My profile
-                        </Link>
-                        <Link
-                          to="/admin/users"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
-                        >
-                          Users &amp; Roles
-                        </Link>
-                        <Link
-                          to="/admin/settings"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-admin-ink hover:bg-admin-canvas"
-                        >
-                          Settings
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={handleSignOut}
-                          className="flex w-full items-center gap-2 border-t border-admin-line px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
-                        >
-                          <LogOut size={15} />
-                          Sign out
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-            </header>
-
-            <main className="flex-1 overflow-y-auto px-6 py-6">
-              <div className="mx-auto w-full max-w-[1600px] space-y-5">{children}</div>
-            </main>
-          </div>
+  const Sidebar = ({ mobile }: { mobile?: boolean }) => (
+    <aside
+      className={`flex flex-col shrink-0 ${
+        mobile ? 'w-full h-full' : 'w-60 h-screen sticky top-0 hidden lg:flex'
+      }`}
+      style={{
+        background: 'linear-gradient(180deg, #0f231b 0%, #173629 55%, #0f231b 100%)',
+        boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.05)',
+      }}
+    >
+      {/* Brand */}
+      <div className="px-3.5 py-4 border-b border-white/[0.06] flex items-center gap-2.5">
+        <span
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-950/40 border border-white/10"
+          style={{ background: 'linear-gradient(135deg, #1E4636, #C5A880)' }}
+        >
+          HK
+        </span>
+        <div className="leading-tight">
+          <span className="font-bold text-sm text-white tracking-tight block">Himalayan Koh</span>
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-medium">Admin Console</span>
         </div>
+        {mobile && (
+          <button
+            onClick={() => setMobSide(false)}
+            className="ml-auto p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white"
+            aria-label="Close menu"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
-      {userMenuOpen && (
-        <div className="fixed inset-0 z-nav-overlay" onClick={() => setUserMenuOpen(false)} />
-      )}
-      {notificationOpen && (
-        <div className="fixed inset-0 z-nav-overlay" onClick={() => setNotificationOpen(false)} />
+      {/* Nav List */}
+      <nav className="flex-1 p-2 space-y-4 overflow-y-auto">
+        {SECTIONS.map((sec) => (
+          <div key={sec.title}>
+            <p className="px-2.5 mb-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {sec.title}
+            </p>
+            <div className="space-y-0.5">
+              {sec.items.map((l) => {
+                const isActive =
+                  location.pathname === l.to ||
+                  (l.to !== '/admin' && location.pathname.startsWith(`${l.to}/`));
+                const Icon = l.icon;
+                return (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    className={`group relative flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[12px] font-medium transition-all duration-200 ${
+                      isActive ? 'text-white' : 'text-slate-300 hover:text-white'
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            background: 'linear-gradient(90deg, rgba(30,70,54,0.55), rgba(46,95,73,0.30))',
+                            boxShadow: 'inset 0 0 0 1px rgba(197,168,128,0.35)',
+                          }
+                        : undefined
+                    }
+                  >
+                    {isActive && (
+                      <div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                        style={{ background: 'linear-gradient(180deg,#34d399,#C5A880)' }}
+                      />
+                    )}
+                    <span
+                      className={`min-w-[26px] min-h-[26px] w-[26px] h-[26px] rounded-md flex items-center justify-center text-white transition-all duration-200 ${
+                        isActive ? 'scale-105' : 'opacity-90 group-hover:scale-105 group-hover:opacity-100'
+                      }`}
+                      style={{
+                        background: l.g,
+                        boxShadow: isActive ? `0 2px 10px ${l.dot}40` : '0 1px 4px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      <Icon size={13} weight="bold" />
+                    </span>
+                    <span className="truncate">{l.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer / Store / Logout */}
+      <div className="p-2 border-t border-white/[0.06] space-y-0.5">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-[11px] text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+        >
+          <span className="w-[26px] h-[26px] rounded-md bg-white/5 flex items-center justify-center">
+            <ArrowLeft size={12} />
+          </span>
+          Storefront
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-2 text-[11px] text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg hover:bg-red-500/10 w-full transition-colors"
+        >
+          <span className="w-[26px] h-[26px] rounded-md bg-red-500/10 flex items-center justify-center">
+            <SignOut size={12} />
+          </span>
+          Logout
+        </button>
+      </div>
+    </aside>
+  );
+
+  return (
+    <div className="h-screen bg-gray-100 flex overflow-hidden font-sans">
+      <Sidebar />
+
+      {/* Mobile Drawer */}
+      {mobSide && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setMobSide(false)} />
+          <div className="absolute left-0 top-0 h-full w-64 shadow-2xl">
+            <Sidebar mobile />
+          </div>
+        </div>
       )}
 
-      <AIChatWidget />
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="h-14 shrink-0 bg-white/90 backdrop-blur-md border-b border-gray-200/80 flex items-center justify-between gap-3 px-4 lg:px-6 z-40">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setMobSide(true)}
+              className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg text-gray-600"
+              aria-label="Open sidebar"
+            >
+              <List size={18} />
+            </button>
+            <form
+              onSubmit={handleSearch}
+              className="hidden md:flex items-center gap-2 bg-gray-100/90 border border-gray-200 rounded-lg px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-emerald-600/20 focus-within:border-emerald-600"
+            >
+              <MagnifyingGlass size={13} className="text-gray-400 shrink-0" />
+              <input
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                placeholder="Search products…"
+                className="bg-transparent text-xs outline-none w-full placeholder:text-gray-400"
+              />
+              <span className="text-[9px] text-gray-400 border border-gray-300 rounded px-1 py-px font-medium">
+                ⌘K
+              </span>
+            </form>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
+            <button
+              className="relative p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors"
+              title="System Secure & Verified"
+            >
+              <ShieldCheck size={16} />
+              <span
+                className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
+                style={{ background: 'linear-gradient(135deg,#1E4636,#C5A880)' }}
+              />
+            </button>
+            <div className="flex items-center gap-2 pl-1.5 border-l border-gray-200">
+              <span className="text-xs font-medium text-gray-700 hidden sm:block">{adminName}</span>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md shadow-emerald-950/20 ring-2 ring-white"
+                style={{ background: 'linear-gradient(135deg, #1E4636, #2d634d)' }}
+              >
+                {adminInitial}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Canvas */}
+        <main
+          className="flex-1 overflow-y-auto min-w-0 p-3 pb-24 lg:p-5"
+          style={{ background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EC 100%)' }}
+        >
+          {children}
+        </main>
+
+        {/* Mobile quick navigation */}
+        <nav
+          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          aria-label="Admin quick navigation"
+        >
+          <div className="grid grid-cols-5 max-w-lg mx-auto">
+            {MOBILE_NAV.map((it) => {
+              if (it.key === 'more') {
+                return (
+                  <button
+                    key="more"
+                    type="button"
+                    onClick={() => setMobSide(true)}
+                    className="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium text-gray-500 hover:text-gray-800 min-h-[52px]"
+                  >
+                    <span className="p-1.5">
+                      <List size={20} />
+                    </span>
+                    More
+                  </button>
+                );
+              }
+              const on =
+                it.key === 'home'
+                  ? location.pathname === '/admin'
+                  : it.key === 'products'
+                  ? location.pathname.startsWith('/admin/products') && !location.pathname.startsWith('/admin/products/new')
+                  : it.key === 'add'
+                  ? location.pathname.startsWith('/admin/products/new')
+                  : it.key === 'orders'
+                  ? location.pathname.startsWith('/admin/orders')
+                  : false;
+              const Icon = it.icon;
+              return (
+                <Link
+                  key={it.key}
+                  to={it.to || '/admin'}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] min-h-[52px] ${
+                    on ? 'text-emerald-700 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'
+                  }`}
+                >
+                  <span className={`px-3 py-1 rounded-xl ${on ? 'bg-emerald-50 text-emerald-700' : ''}`}>
+                    <Icon size={20} weight={on ? 'bold' : 'regular'} />
+                  </span>
+                  {it.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

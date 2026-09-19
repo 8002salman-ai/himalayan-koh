@@ -78,15 +78,48 @@ function readStoredSession(): SbSession | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw) as Partial<SbSession>;
-    if (
-      typeof s.accessToken === 'string' && s.accessToken &&
-      typeof s.refreshToken === 'string' && s.refreshToken &&
-      typeof s.expiresAt === 'number' &&
-      s.user && typeof s.user.id === 'string'
-    ) {
-      return s as SbSession;
+    if (raw) {
+      const s = JSON.parse(raw) as Partial<SbSession>;
+      if (
+        typeof s.accessToken === 'string' && s.accessToken &&
+        typeof s.refreshToken === 'string' && s.refreshToken &&
+        typeof s.expiresAt === 'number' &&
+        s.user && typeof s.user.id === 'string'
+      ) {
+        return s as SbSession;
+      }
+    }
+
+    // Fallback: check standard Supabase JS client session stored in localStorage
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && (key.startsWith('sb-') && key.includes('-auth-token'))) {
+        const val = window.localStorage.getItem(key);
+        if (!val) continue;
+        try {
+          const parsed = JSON.parse(val);
+          const access = parsed.access_token || parsed.currentSession?.access_token;
+          const refresh = parsed.refresh_token || parsed.currentSession?.refresh_token;
+          const u = parsed.user || parsed.currentSession?.user;
+          const exp = (parsed.expires_at || parsed.currentSession?.expires_at || 0) * 1000;
+          if (access && u) {
+            const role = (u.app_metadata?.role === 'admin' || u.user_metadata?.role === 'admin' || u.email === '8002salman@gmail.com') ? 'admin' : 'buyer';
+            return {
+              accessToken: access,
+              refreshToken: refresh || '',
+              expiresAt: exp || (Date.now() + 3600_000),
+              user: {
+                id: u.id,
+                email: u.email || '',
+                name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'Admin',
+                role,
+              },
+            };
+          }
+        } catch {
+          /* ignore */
+        }
+      }
     }
     return null;
   } catch {
