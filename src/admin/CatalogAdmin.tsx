@@ -2912,8 +2912,10 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
           </div>
           <div className="flex-1 min-w-[140px]"><input value={alt} onChange={(e) => setAlt(e.target.value)} className={I} placeholder="Alt text (optional)" /></div>
           <button onClick={addByUrl} disabled={uploading} className="btn-glow px-3.5 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1.5"><Plus size={15} />Add URL</button>
+          {/* Sibling of the URL button, never nested inside it: a <button> inside
+              a <button> is invalid HTML and produces a hydration error. */}
+          <button onClick={findByTitle} disabled={uploading || finding} className="px-3.5 py-2 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 rounded-lg text-sm flex items-center gap-1.5" title="Search the store for this product by its name and pull its images (AI filters out the ones that are not this product)"><Sparkle size={15} />{finding ? 'Searching…' : 'Find by name'}</button>
           <button onClick={importAllFromUrl} disabled={uploading} className="px-3.5 py-2 border border-blue-300 text-blue-700 hover:bg-blue-50 disabled:opacity-50 rounded-lg text-sm flex items-center gap-1.5" title="Fetch every image found on the pasted page URL and add them all (max 5)">
-            <button onClick={findByTitle} disabled={uploading || finding} className="px-3.5 py-2 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 rounded-lg text-sm flex items-center gap-1.5" title="Search the store for this product by its name and pull its images (AI filters out the ones that are not this product)"><Sparkle size={15} />{finding ? 'Searching…' : 'Find by name'}</button>
             <Download size={15} />Fetch all from page
           </button>
         </div>
