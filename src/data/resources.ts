@@ -29,7 +29,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '7 min read',
     publishedAt: '2026-01-15T08:00:00Z',
     updatedAt: '2026-03-10T14:30:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'A practical evaluation of free-choice salt blocks versus granular loose salt for cattle, horses, and small ruminants—comparing intake regulation, pasture durability, and labor efficiency.',
@@ -86,7 +86,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '6 min read',
     publishedAt: '2026-01-20T09:15:00Z',
     updatedAt: '2026-03-08T11:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'Understanding equine thermoregulation, sweat composition, and why plain sodium chloride is the indispensable trigger for the equine thirst response.',
@@ -138,7 +138,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '6 min read',
     publishedAt: '2026-01-28T10:00:00Z',
     updatedAt: '2026-03-05T16:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'Quantitative sodium chloride requirements for beef and dairy cattle, seasonal grazing shifts, and how salt acts as a nutritional intake regulator across pasture herds.',
@@ -189,7 +189,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '5 min read',
     publishedAt: '2026-02-02T11:00:00Z',
     updatedAt: '2026-03-01T15:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'Everything ranchers, equestrians, and wildlife managers need to know about unprocessed Himalayan rock salt licks: physical structure, rope mounts, and handling.',
@@ -236,7 +236,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '5 min read',
     publishedAt: '2026-02-08T09:00:00Z',
     updatedAt: '2026-03-04T12:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'A practical sizing reference chart comparing 1–2 kg, 3–4 kg, 5–6 kg, and 20 kg blocks based on herd numbers, stocking density, and mounting options.',
@@ -280,7 +280,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '6 min read',
     publishedAt: '2026-02-12T13:00:00Z',
     updatedAt: '2026-03-02T10:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'How to manage hygroscopic salt storage in humid warehouse, barn, and shipping environments—preventing caking, pallet collapse, and packaging degradation.',
@@ -320,7 +320,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '6 min read',
     publishedAt: '2026-02-18T14:30:00Z',
     updatedAt: '2026-03-06T09:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'A technical breakdown of Himalayan salt particle sizing (granulometry) from 0.2 mm fine shaker grind to 4.0 mm coarse brining crystal, matching each to culinary and industrial needs.',
@@ -368,7 +368,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     publishedAt: '2026-02-22T10:00:00Z',
     updatedAt: '2026-03-09T17:00:00Z',
     authorId: 'editorial-board',
-    reviewerId: 'salman-ayaz',
+    reviewerId: 'sourcing-team',
     summary:
       'Step-by-step techniques for safely heating, searing, and freezing solid pink salt slabs—including crucial temperature graduation stages to prevent thermal shock fractures.',
     metaDescription:
@@ -414,7 +414,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     publishedAt: '2026-02-26T12:00:00Z',
     updatedAt: '2026-03-07T14:00:00Z',
     authorId: 'editorial-board',
-    reviewerId: 'salman-ayaz',
+    reviewerId: 'sourcing-team',
     summary:
       'Proper maintenance rules for culinary salt slabs: why soap and dishwashers ruin the stone, damp-cloth cleaning, scrape techniques, and dry storage.',
     metaDescription:
@@ -459,7 +459,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     readTime: '6 min read',
     publishedAt: '2026-03-01T08:30:00Z',
     updatedAt: '2026-03-11T13:00:00Z',
-    authorId: 'salman-ayaz',
+    authorId: 'sourcing-team',
     reviewerId: 'editorial-board',
     summary:
       'Field strategies to maximize the lifespan of outdoor salt blocks: managing rain erosion, ground contact barriers, predator security, and rotational positioning.',
@@ -499,7 +499,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     publishedAt: '2026-03-05T11:00:00Z',
     updatedAt: '2026-03-12T16:00:00Z',
     authorId: 'editorial-board',
-    reviewerId: 'salman-ayaz',
+    reviewerId: 'sourcing-team',
     summary:
       'A chemical reality check on the popular "84 minerals" claim: spectroscopy findings, why the salt is pink (iron oxide), and factual nutritional boundaries.',
     metaDescription:
@@ -546,7 +546,7 @@ export const RESOURCE_ARTICLES: ResourceArticle[] = [
     publishedAt: '2026-03-08T15:00:00Z',
     updatedAt: '2026-03-14T10:00:00Z',
     authorId: 'editorial-board',
-    reviewerId: 'salman-ayaz',
+    reviewerId: 'sourcing-team',
     summary:
       'A head-to-head comparison between mined Himalayan rock salt and refined vacuum-evaporated table salt—covering processing methods, additives, moisture, and culinary performance.',
     metaDescription:

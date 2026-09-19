@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { User, CheckCircle, Calendar, ShieldCheck } from 'lucide-react';
-import { AUTHORS, type Author } from '@/data/authors';
+import { AUTHORS, getAuthorBySlug, type Author } from '@/data/authors';
 
 interface AuthorBylineProps {
   authorId: string;
@@ -17,8 +17,10 @@ export default function AuthorByline({
   publishedAt,
   className = '',
 }: AuthorBylineProps) {
-  const author: Author | undefined = AUTHORS[authorId];
-  const reviewer: Author | undefined = reviewerId ? AUTHORS[reviewerId] : undefined;
+  const author: Author | undefined = AUTHORS[authorId] || getAuthorBySlug(authorId);
+  const reviewer: Author | undefined = reviewerId
+    ? AUTHORS[reviewerId] || getAuthorBySlug(reviewerId)
+    : undefined;
 
   const displayDate = updatedAt || publishedAt;
   const formattedDate = displayDate

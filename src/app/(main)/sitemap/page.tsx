@@ -7,9 +7,9 @@ import SitemapClient from './SitemapClient';
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'Site Directory & Sitemap - Himalayan Koh',
+    title: 'Sitemap - Himalayan Koh',
     description:
-      'Human-readable directory of all Himalayan Koh pages: products, educational resources, quality standards, and policies.',
+      'Directory of all Himalayan Koh pages: products, educational resources, quality standards, and policies.',
     path: '/sitemap',
   });
 }

@@ -14,20 +14,20 @@ export interface Author {
 }
 
 export const AUTHORS: Record<string, Author> = {
-  'salman-ayaz': {
+  'sourcing-team': {
     id: 'author-1',
-    slug: 'salman-ayaz',
-    name: 'Salman Ayaz',
-    role: 'Founder & Supply Chain Director',
+    slug: 'sourcing-team',
+    name: 'Himalayan Koh Sourcing & Supply Chain Team',
+    role: 'Sourcing & Supply Chain Directorate',
     expertise: [
       'Geological Salt Sourcing',
       'Transatlantic Freight Logistics',
       'Quality Control & Granulometry',
       'Bulk Mineral Distribution',
     ],
-    bio: 'Salman Ayaz oversees direct mining partnerships in the Salt Range of northern Pakistan and bulk dispatch operations from Himalayan Koh’s Houston distribution warehouse. He works closely with logistics partners to ensure raw rock salt and food-grade mineral products meet precise moisture, grading, and packaging specifications.',
-    avatar: '/images/authors/salman-placeholder.jpg',
-    credentials: 'Owner & Sourcing Lead, Himalayan Koh LLC',
+    bio: 'The Himalayan Koh Sourcing & Supply Chain Team oversees direct mining partnerships in the Salt Range of northern Pakistan and bulk dispatch operations from Himalayan Koh’s Houston distribution warehouse. The team works closely with logistics partners to ensure raw rock salt and food-grade mineral products meet precise moisture, grading, and packaging specifications.',
+    avatar: '/images/authors/sourcing-team.jpg',
+    credentials: 'Sourcing & Supply Chain Directorate, Himalayan Koh LLC',
     socials: {
       email: 'sales@himalayankoh.com',
     },
@@ -50,19 +50,19 @@ export const AUTHORS: Record<string, Author> = {
       email: 'sales@himalayankoh.com',
     },
   },
-  'dr-marcus-vance': {
+  'agricultural-advisory': {
     id: 'author-3',
-    slug: 'dr-marcus-vance',
-    name: 'Agricultural Nutrition Contributor (Placeholder)',
-    role: 'Consulting Livestock Specialist',
+    slug: 'agricultural-advisory',
+    name: 'Himalayan Koh Agricultural Nutrition Advisory',
+    role: 'Livestock Mineral Nutrition Specialists',
     expertise: [
       'Equine Electrolyte Physiology',
       'Ruminant Sodium Balance',
       'Free-Choice Mineral Supplementation',
     ],
-    bio: 'Consulting contributor specializing in large animal forage balance, sodium chloride supplementation strategies, and pasture lick placement. (Identity placeholder pending owner submission of formal advisory credentials).',
+    bio: 'The Himalayan Koh Agricultural Nutrition Advisory specializes in large animal forage balance, sodium chloride supplementation strategies, and pasture lick placement for livestock operations.',
     avatar: '/images/authors/advisor-placeholder.jpg',
-    credentials: 'DVM / Animal Nutrition Consultant (Pending Verification)',
+    credentials: 'Agricultural Nutrition Advisory, Himalayan Koh LLC',
   },
 };
 

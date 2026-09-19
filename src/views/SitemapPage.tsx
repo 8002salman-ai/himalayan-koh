@@ -81,10 +81,10 @@ export default function SitemapPage({ products = DEFAULT_PRODUCTS }: SitemapPage
             Navigation Index
           </span>
           <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-4">
-            HTML Site Directory & Index
+            Sitemap
           </h1>
           <p className="text-white/80 text-lg max-w-2xl mx-auto">
-            A complete human-readable architectural index of all public catalog products, educational guides, policy disclosures, and commercial hubs.
+            A complete index of all public catalog products, educational guides, policy disclosures, and commercial hubs.
           </p>
         </div>
       </div>

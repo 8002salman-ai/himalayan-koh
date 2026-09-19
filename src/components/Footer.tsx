@@ -26,7 +26,7 @@ const aboutLinks = [
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
   { label: 'FAQs', to: '/faqs' },
-  { label: 'HTML Sitemap', to: '/sitemap' },
+  { label: 'Sitemap', to: '/sitemap' },
 ];
 
 /**
