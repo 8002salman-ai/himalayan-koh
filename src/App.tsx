@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import Modal from './components/common/Modal';
 
 import type {
@@ -193,12 +193,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [notif, setNotif] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const notify = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const notify = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     setNotif({ msg, type });
     setTimeout(() => setNotif(null), 4000);
-  };
+  }, []);
 
-  const value: Ctx = {
+  const value: Ctx = useMemo(() => ({
     ...defaultAppContext,
     products, setProducts,
     users, setUsers,
@@ -206,7 +206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     categories, setCategories,
     blogs, setBlogs,
     notif, notify,
-  };
+  }), [products, users, reviews, categories, blogs, notif, notify]);
 
   return (
     <AC.Provider value={value}>

@@ -97,6 +97,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: '/admin/product-research', icon: TrendUp, label: 'Product Research', g: 'linear-gradient(135deg,#0d9488,#0891b2)', dot: '#2dd4bf' },
       { to: '/admin/ai-control', icon: Cpu, label: 'AI Control', g: 'linear-gradient(135deg,#0ea5e9,#8b5cf6)', dot: '#60a5fa' },
       { to: '/admin/ai-intelligence', icon: Sparkle, label: 'AI Intelligence', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#a78bfa' },
+      { to: '/admin/leados', icon: Target, label: 'LeadOS', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
     ],
   },
   {

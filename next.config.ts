@@ -9,16 +9,6 @@ const nextConfig: NextConfig = {
   pageExtensions: ['tsx', 'ts'],
   async redirects() {
     return [
-      {
-        source: '/admin/products/new',
-        destination: '/admin/products?action=new',
-        permanent: false,
-      },
-      {
-        source: '/admin/categories/new',
-        destination: '/admin/categories',
-        permanent: false,
-      },
       // NOTE: /admin/settings deliberately has NO redirect here. It used to send
       // the admin back to the dashboard because no settings screen existed; the
       // console now has one (src/views/admin/AdminSettings.tsx, also served at

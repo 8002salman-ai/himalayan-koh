@@ -172,7 +172,7 @@ export default function CampaignManager() {
   };
 
   const setStatus = async (slug: string, status: Status) => {
-    if (slug === 'pet-gift-drop') { setErr('The flagship Pet Gift Drop status is controlled on the Gift Drop page.'); return; }
+    if (slug === 'pet-gift-drop' || slug === 'gift-drop') { setErr('The flagship Gift Drop status is controlled on the Gift Drop page.'); return; }
     const d = await post({ action: 'status', slug, status });
     if (d) load();
   };
@@ -307,8 +307,8 @@ export default function CampaignManager() {
                 <input type="number" min={0} className={inputCls} value={editing.offer?.maxDiscountCents ?? 0} onChange={(e) => setOffer('maxDiscountCents', num(e.target.value))} /></label>
               <label className={labelCls}>Max eligible retail price (cents)
                 <input type="number" min={0} className={inputCls} value={editing.offer?.maxEligibleRetailCents ?? 0} onChange={(e) => setOffer('maxEligibleRetailCents', num(e.target.value))} /></label>
-              <label className={labelCls}>Audience pet types (comma separated)
-                <input className={inputCls} value={(editing.audience?.petTypes || []).join(', ')} onChange={(e) => setField('audience', { ...(editing.audience || {}), petTypes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} /></label>
+              <label className={labelCls}>Audience segments (comma separated)
+                <input className={inputCls} placeholder="e.g. wholesale, farms, retail" value={(editing.audience?.petTypes || []).join(', ')} onChange={(e) => setField('audience', { ...(editing.audience || {}), petTypes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} /></label>
               <label className={labelCls}>Starts at (ISO)
                 <input className={inputCls} value={editing.startsAt || ''} placeholder="2026-06-01T00:00:00Z" onChange={(e) => setField('startsAt', e.target.value || null)} /></label>
               <label className={labelCls}>Ends at (ISO)
@@ -400,8 +400,8 @@ export default function CampaignManager() {
         <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-amber-600">Flagship · Pet Gift Drop</p>
-              <h2 className="mt-0.5 text-sm font-bold text-gray-900">Luxedge Pet Gift Drop</h2>
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-600">Flagship · Gift Drop</p>
+              <h2 className="mt-0.5 text-sm font-bold text-gray-900">Himalayan Koh Gift Drop</h2>
             </div>
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Managed on Gift Drop page</span>
           </div>
@@ -452,7 +452,7 @@ export default function CampaignManager() {
           <h2 className="text-xs font-black uppercase tracking-wider text-gray-400">Claims ledger</h2>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <select className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-medium" value={activeCampaign} onChange={(e) => setActiveCampaign(e.target.value)}>
-              <option value="pet-gift-drop">Pet Gift Drop (flagship)</option>
+              <option value="pet-gift-drop">Gift Drop (flagship)</option>
               {campaigns.map(({ config: c }) => <option key={c.slug} value={c.slug}>{c.title}</option>)}
             </select>
             <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-gray-500">
@@ -490,7 +490,7 @@ function ClaimRow({ claim: c, busy, post }: { claim: ClaimView; busy: boolean; p
         <p className="text-[11px] text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</p>
       </div>
       <div className="mt-1.5 grid gap-1 text-[11px] text-gray-500 sm:grid-cols-3">
-        <span>🐾 {c.petType || '—'}{c.petName ? ` · ${c.petName}` : ''}</span>
+        <span>🏷️ {c.giftName || c.petType || 'Sample Gift'}{c.petName ? ` · ${c.petName}` : ''}</span>
         <span>🎁 {(c.giftName || '').slice(0, 36)} · {c.giftPriceCents ? `$${(c.giftPriceCents / 100).toFixed(2)}` : '$0'}</span>
         <span>📍 {[c.address.line1, c.address.city, c.address.zip].filter(Boolean).join(', ') || 'no address'}</span>
         <span>💳 {c.payment}</span>

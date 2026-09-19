@@ -26,10 +26,25 @@ export async function generateSeoJson(prompt: string): Promise<SeoJson> {
     prompt,
     loadAIProviders(),
     undefined,
-    'You write honest, factual ecommerce SEO. Never invent claims, prices or reviews.',
+    'You write honest, factual ecommerce SEO for Himalayan Koh in English. Never invent claims, prices or reviews. Return ONLY valid JSON.',
   );
-  const obj = text.match(/(\{[\s\S]*\})/);
-  const parsed = obj ? JSON.parse(obj[1]) : null;
-  if (!parsed || typeof parsed !== 'object') throw new Error('AI returned no usable SEO JSON');
-  return parsed as SeoJson;
+  const cleaned = text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  const obj = cleaned.match(/(\{[\s\S]*\})/);
+  if (!obj) throw new Error('AI backend returned non-JSON text. Please retry.');
+  try {
+    const parsed = JSON.parse(obj[1]) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') throw new Error('AI returned no usable SEO JSON');
+    return {
+      seoTitle: typeof parsed.seoTitle === 'string' ? parsed.seoTitle : typeof parsed.title === 'string' ? parsed.title : undefined,
+      metaDescription: typeof parsed.metaDescription === 'string' ? parsed.metaDescription : typeof parsed.description === 'string' ? parsed.description : undefined,
+      focusKeyword: typeof parsed.focusKeyword === 'string' ? parsed.focusKeyword : typeof parsed.primaryKeyword === 'string' ? parsed.primaryKeyword : undefined,
+      seoKeywords: Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords.map(String) : Array.isArray(parsed.keywords) ? parsed.keywords.map(String) : [],
+      slug: typeof parsed.slug === 'string' ? parsed.slug : undefined,
+      targetKeyword: typeof parsed.targetKeyword === 'string' ? parsed.targetKeyword : undefined,
+      secondaryKeywords: Array.isArray(parsed.secondaryKeywords) ? parsed.secondaryKeywords.map(String) : [],
+      searchIntent: typeof parsed.searchIntent === 'string' ? parsed.searchIntent : undefined,
+    };
+  } catch {
+    throw new Error('Could not parse AI response as JSON. Please retry.');
+  }
 }

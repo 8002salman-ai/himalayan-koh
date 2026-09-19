@@ -6,10 +6,8 @@ import { AppProvider } from '@/App';
 
 export default function AdminProductEditPage() {
   return (
-    <AppProvider>
-      <div className="w-full">
-        <CatalogProductEditor />
-      </div>
-    </AppProvider>
+    <div className="w-full">
+      <CatalogProductEditor />
+    </div>
   );
 }

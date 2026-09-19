@@ -40,15 +40,15 @@ export const YOUTUBE_CHANNEL_ID = 'UCPvPDstYz61AebGhKzKS1lw';
 
 export const MEDIA_CATEGORIES = [
   { id: 'product-education', label: 'Product Education', blurb: 'How our products are made, what they do, and why they earn their place.' },
-  { id: 'pet-animal-care', label: 'Pet & Animal Care', blurb: 'Practical care guidance for dogs, cats, horses and more.' },
+  { id: 'livestock-mineral-care', label: 'Livestock & Mineral Care', blurb: 'Practical mineral and salt lick care guidance for horses, cattle and farm livestock.' },
   { id: 'himalayan-salt', label: 'Himalayan Salt & Natural Products', blurb: 'Salt licks, blocks and natural essentials — sourcing, science and use.' },
   { id: 'how-to-guides', label: 'How-To Guides', blurb: 'Step-by-step video guides with real demonstrations.' },
   { id: 'buying-guides', label: 'Buying Guides', blurb: 'What to look for, what to avoid, and how to choose well.' },
-  { id: 'behind-the-brand', label: 'Behind the Brand', blurb: 'Stories from the Luxedge team and how we source.' },
+  { id: 'behind-the-brand', label: 'Behind the Brand', blurb: 'Stories from the Himalayan Koh team and how we source.' },
 ] as const;
 
 export const MEDIA_COPYRIGHT =
-  '© Luxedge. Original video content may not be reproduced or redistributed without permission, except where permitted by applicable law.';
+  '© Himalayan Koh. Original video content may not be reproduced or redistributed without permission, except where permitted by applicable law.';
 
 export function categoryLabel(id: string): string {
   return MEDIA_CATEGORIES.find((c) => c.id === id)?.label || 'Videos';

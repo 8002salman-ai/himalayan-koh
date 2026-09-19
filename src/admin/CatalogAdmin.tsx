@@ -133,23 +133,20 @@ function publicVisibilitySummary(products: CatalogProduct[]): string {
  * storefront will actually serve it). Uses the same contract the storefront
  * applies, so the operator sees the real reason instead of a misleading badge. */
 function VisibilityBadge({ product }: { product: CatalogProduct }) {
-  // Only rows the owner has put forward for sale need a public/not-public
-  // verdict; draft/ready/archived rows are not expected to be live.
-  if (product.status !== 'active') return null;
   const { listable, reason } = adminPublicVisibility(product);
   if (listable) {
     return (
-      <a href={productPath(product)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-green-600 hover:underline" title="Publicly listable — this PDP is served and in the sitemap">
-        <Eye size={10} /> LIVE
+      <a href={productPath(product)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 hover:bg-emerald-100 transition-colors" title="Publicly listable — served on storefront">
+        <Eye size={10} /> PUBLIC
       </a>
     );
   }
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"
-      title={`Active, but NOT publicly listable — ${reason || 'unknown reason'}. The storefront returns 404 for this PDP and it is excluded from the sitemap.`}
+      className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5"
+      title={`Not publicly listable — ${reason || 'unverified conditions'}. The storefront returns 404 for this PDP and it is excluded from the sitemap.`}
     >
-      NOT PUBLIC
+      NOT PUBLIC — {reason || 'unverified'}
     </span>
   );
 }
@@ -1804,6 +1801,7 @@ export function CatalogProductEditor() {
   const [cats, setCats] = useState<CatalogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [tab, setTab] = useState<EditorTab>('general');
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -1846,9 +1844,9 @@ export function CatalogProductEditor() {
     } finally {
       setLoading(false);
     }
-  }, [paramId, notify, nav]);
+  }, [paramId, nav]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [paramId]);
 
   const set = <K extends keyof CatalogProduct>(k: K, v: CatalogProduct[K]) => {
     setP((prev) => (prev ? { ...prev, [k]: v } : prev));
@@ -1972,9 +1970,16 @@ export function CatalogProductEditor() {
         const published = await updateProduct(saved.id, { status: 'active' });
         if (published) notify('Auto-published — product is commerce-ready.');
       }
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
       notify(isNew ? 'Product created' : 'Product saved');
-      nav('/admin/products');
+      if (isNew) {
+        nav(`/admin/products/edit/${saved.id}`);
+      } else {
+        setP(saved);
+      }
     } catch (e) {
+      setSaveStatus('idle');
       notify(`Save failed: ${(e as Error).message}`, 'error');
     } finally {
       setSaving(false);
@@ -2045,6 +2050,16 @@ export function CatalogProductEditor() {
               </select>
               <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"><CaretDown size={11} /></span>
             </div>
+            {saveStatus === 'saved' && (
+              <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1 shrink-0">
+                <CheckCircle size={14} weight="bold" /> Saved
+              </span>
+            )}
+            {saveStatus === 'saving' && (
+              <span className="text-xs text-blue-600 font-medium animate-pulse flex items-center gap-1 shrink-0">
+                Saving…
+              </span>
+            )}
             <button onClick={handleSave} disabled={saving} className="btn-glow px-4 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0">
               <FloppyDisk size={14} />{saving ? 'Saving…' : 'Save'}
             </button>
@@ -2071,7 +2086,7 @@ export function CatalogProductEditor() {
         {/* ── GENERAL ── */}
         {tab === 'general' && (
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2"><label className={L}>Product name <span className="text-red-500">*</span> <span className="normal-case font-normal text-gray-400">required</span></label><input value={p.name} onChange={(e) => set('name', e.target.value)} className={I} placeholder="e.g. Interactive Squeaky Enrichment Toy for Dogs" /></div>
+            <div className="sm:col-span-2"><label className={L}>Product name <span className="text-red-500">*</span> <span className="normal-case font-normal text-gray-400">required</span></label><input value={p.name} onChange={(e) => set('name', e.target.value)} className={I} placeholder="e.g. Handcrafted Himalayan Pink Salt Lamp (Natural Shape)" /></div>
             <div><label className={L}>Short title <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={p.shortTitle || ''} onChange={(e) => set('shortTitle', e.target.value)} className={I} /></div>
             <div><label className={L}>Subtitle <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={p.subtitle || ''} onChange={(e) => set('subtitle', e.target.value)} className={I} /></div>
             <div className="sm:col-span-2"><label className={L}>Short description <span className="normal-case font-normal text-gray-400">(optional)</span></label><textarea value={p.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} rows={2} className={I} /></div>
@@ -2092,7 +2107,7 @@ export function CatalogProductEditor() {
                 </div>
               )}
             </div>
-            <div><label className={L}>Brand <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={p.brand} onChange={(e) => set('brand', e.target.value)} className={I} placeholder="e.g. KONG" /></div>
+            <div><label className={L}>Brand <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={p.brand} onChange={(e) => set('brand', e.target.value)} className={I} placeholder="e.g. Himalayan Koh" /></div>
             <div className="sm:col-span-2">
               <label className={L}>Tags</label>
               <div className="flex flex-wrap gap-1.5 items-center">
@@ -2128,37 +2143,88 @@ export function CatalogProductEditor() {
 
         {/* ── INVENTORY ── */}
         {tab === 'inventory' && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div><label className={L}>SKU</label><input value={p.sku} onChange={(e) => set('sku', e.target.value)} className={I} /></div>
-            <div><label className={L}>Stock quantity</label><input type="number" min="0" value={p.inventoryQty} onChange={(e) => set('inventoryQty', +e.target.value)} className={I} /></div>
-            <div><label className={L}>Stock status</label>
-              <select value={p.stockStatus} onChange={(e) => set('stockStatus', e.target.value as CatalogProduct['stockStatus'])} className={I}>
-                <option value="in_stock">In stock</option>
-                <option value="low_stock">Low stock</option>
-                <option value="out_of_stock">Out of stock</option>
-                <option value="on_backorder">On backorder</option>
-                <option value="unknown">Unknown</option>
-              </select>
+          <div className="space-y-5">
+            <div className="bg-gray-50 border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Current Stock Control</p>
+                <p className="text-2xl font-black text-gray-900 mt-0.5">{p.inventoryQty} <span className="text-sm font-normal text-gray-500">units available</span></p>
+                {p.supplierSource === 'Own Stock' || p.inventorySource === 'INTERNAL_STOCK' || !p.supplierSource ? (
+                  <p className="text-xs text-emerald-700 font-medium mt-1 flex items-center gap-1">
+                    <CheckCircle size={13} weight="bold" /> Own Stock is authoritative — internal quantity controls storefront availability.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Source: {p.supplierSource}</p>
+                )}
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Last updated: {p.updatedAt ? new Date(p.updatedAt).toLocaleString() : 'Just now'}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1.5">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock Stepper</label>
+                <div className="inline-flex items-center rounded-lg border border-gray-300 bg-white shadow-xs p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.max(0, p.inventoryQty - 1);
+                      set('inventoryQty', next);
+                      if (next === 0 && p.stockStatus === 'in_stock') set('stockStatus', 'out_of_stock');
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 active:bg-gray-200 font-bold text-base transition-colors"
+                    aria-label="Decrease stock"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="0"
+                    value={p.inventoryQty}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      set('inventoryQty', val);
+                      if (val === 0 && p.stockStatus === 'in_stock') set('stockStatus', 'out_of_stock');
+                      else if (val > 0 && p.stockStatus === 'out_of_stock') set('stockStatus', 'in_stock');
+                    }}
+                    className="w-18 text-center text-sm font-bold text-gray-800 focus:outline-none"
+                    aria-label="Stock quantity"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = p.inventoryQty + 1;
+                      set('inventoryQty', next);
+                      if (p.stockStatus === 'out_of_stock') set('stockStatus', 'in_stock');
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 active:bg-gray-200 font-bold text-base transition-colors"
+                    aria-label="Increase stock"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
-            <div><label className={L}>Low stock threshold</label><input type="number" min="0" value={p.lowStockThreshold} onChange={(e) => set('lowStockThreshold', +e.target.value)} className={I} /></div>
-            <div className="sm:col-span-2 flex items-center gap-2 pt-1">
-              <input id="us-inv" type="checkbox" checked={p.usInventory} onChange={(e) => set('usInventory', e.target.checked)} className="w-4 h-4" />
-              <label htmlFor="us-inv" className="text-sm text-gray-600">USA inventory verified (real warehouse evidence)</label>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div><label className={L}>SKU</label><input value={p.sku} onChange={(e) => set('sku', e.target.value)} className={I} /></div>
+              <div><label className={L}>Stock status</label>
+                <select value={p.stockStatus} onChange={(e) => set('stockStatus', e.target.value as CatalogProduct['stockStatus'])} className={I}>
+                  <option value="in_stock">In stock</option>
+                  <option value="low_stock">Low stock</option>
+                  <option value="out_of_stock">Out of stock</option>
+                  <option value="on_backorder">On backorder</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+              <div><label className={L}>Low stock threshold</label><input type="number" min="0" value={p.lowStockThreshold} onChange={(e) => set('lowStockThreshold', +e.target.value)} className={I} /></div>
+              <div className="flex items-center gap-2 pt-6">
+                <input id="us-inv" type="checkbox" checked={p.usInventory} onChange={(e) => set('usInventory', e.target.checked)} className="w-4 h-4" />
+                <label htmlFor="us-inv" className="text-sm text-gray-600">USA inventory verified (real warehouse evidence)</label>
+              </div>
             </div>
           </div>
         )}
 
         {/* ── SHIPPING ── */}
-        {tab === 'shipping' && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div><label className={L}>Shipping cost (USD)</label><input type="number" min="0" step="0.01" value={p.shippingCost || ''} onChange={(e) => set('shippingCost', +e.target.value)} className={I} /></div>
-            <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-gray-600 pb-2"><input type="checkbox" checked={p.freeShipping} onChange={(e) => set('freeShipping', e.target.checked)} className="w-4 h-4" />Free shipping on this product</label></div>
-            <div><label className={L}>Delivery min days</label><input type="number" min="0" value={p.deliveryMinDays ?? ''} onChange={(e) => set('deliveryMinDays', e.target.value ? +e.target.value : null)} className={I} /></div>
-            <div><label className={L}>Delivery max days</label><input type="number" min="0" value={p.deliveryMaxDays ?? ''} onChange={(e) => set('deliveryMaxDays', e.target.value ? +e.target.value : null)} className={I} /></div>
-            <div className="sm:col-span-2"><label className={L}>Shipping note (truthful)</label><input value={p.shippingNote || ''} onChange={(e) => set('shippingNote', e.target.value)} className={I} placeholder="e.g. Ships from a US warehouse via tracked carrier." /></div>
-            <div className="sm:col-span-2"><label className={L}>Supplier / source reference</label><SupplierSourceSelect value={p.supplierSource || ''} onChange={(v) => set('supplierSource', v)} /></div>
-          </div>
-        )}
+        {tab === 'shipping' && <ShippingTab product={p} set={set} />}
 
         {/* ── IMAGES ── */}
         {tab === 'images' && <ImageManager product={p} onProduct={(next) => setP(next)} />}
@@ -2169,89 +2235,161 @@ export function CatalogProductEditor() {
         {/* ── SEO ── */}
         {tab === 'seo' && <SeoTab product={p} cats={cats} set={set} onSave={handleSave} />}
 
-        {/* ── COMMERCE / READINESS ── */}
+        {/* ── COMMERCE / SOURCING ── */}
         {tab === 'commerce' && (
-          <div className="space-y-4">
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Final readiness</p>
+          <div className="space-y-5">
+            {/* Sourcing & Inventory Choice */}
+            <div className="bg-white border rounded-xl p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Inventory & Sourcing Model</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Select how this product is sourced and stocked. Himalayan Koh uses 4 verified options.</p>
+              </div>
+              <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {(['Own Stock', 'Amazon', 'eBay', 'Walmart'] as const).map((src) => {
+                  const isSelected = p.supplierSource === src || (!p.supplierSource && src === 'Own Stock');
+                  return (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => {
+                        set('supplierSource', src);
+                        if (src === 'Own Stock') {
+                          set('sourceType', 'OWNER_STOCK');
+                          set('inventorySource', 'INTERNAL_STOCK');
+                        } else {
+                          set('sourceType', 'OTHER_VERIFIED');
+                          set('inventorySource', 'SUPPLIER_VERIFIED');
+                        }
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-100'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-900">{src}</span>
+                        {isSelected && <CheckCircle size={16} weight="bold" className="text-blue-600" />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        {src === 'Own Stock'
+                          ? 'Internal warehouse stock. Physical inventory is authoritative.'
+                          : `External ${src} product reference.`}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {p.supplierSource && p.supplierSource !== 'Own Stock' && (
+                <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t">
+                  <div>
+                    <label className={L}>External Product / Listing URL</label>
+                    <input
+                      value={p.supplierUrl || ''}
+                      onChange={(e) => set('supplierUrl', e.target.value)}
+                      className={I}
+                      placeholder="https://… (external reference URL)"
+                    />
+                  </div>
+                  <div>
+                    <label className={L}>External SKU / Item ID / ASIN</label>
+                    <input
+                      value={p.supplierProductRef || ''}
+                      onChange={(e) => set('supplierProductRef', e.target.value)}
+                      className={I}
+                      placeholder="e.g. B08XYZ1234 or Item #"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Simplified Readiness Overview Card */}
+            <div className="bg-white border rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800">Final Readiness Summary</h3>
+                  <p className="text-xs text-gray-500">Commercial readiness required for storefront publication.</p>
+                </div>
                 <ReadinessBadge readiness={p.commerceReadiness} />
-                <p className="text-[11px] text-gray-500 mt-2">COMMERCE_READY is the only state that appears on the storefront.</p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Source type</p>
-                <p className="text-sm font-medium">{p.sourceType ? SOURCE_TYPE_LABELS[p.sourceType] : 'Unknown'}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inventory source</p>
-                <p className="text-sm font-medium">{p.inventorySource ? INVENTORY_SOURCE_LABELS[p.inventorySource] : 'Unknown'}</p>
-              </div>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><label className={L}>Supplier / source</label><SupplierSourceSelect value={p.supplierSource || ''} onChange={(v) => set('supplierSource', v)} /></div>
-              <div><label className={L}>Supplier product ref / SKU</label><input value={p.supplierProductRef || ''} onChange={(e) => set('supplierProductRef', e.target.value)} className={I} placeholder="e.g. CJ PID" /></div>
-              <div><label className={L}>Supplier URL</label><input value={p.supplierUrl || ''} onChange={(e) => set('supplierUrl', e.target.value)} className={I} placeholder="https://… (verified supplier page)" /></div>
-              <div><label className={L}>Fulfillment method</label><input value={p.fulfillmentMethod || ''} onChange={(e) => set('fulfillmentMethod', e.target.value)} className={I} placeholder="e.g. CJ US warehouse dropship" /></div>
-            </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Status</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5 capitalize">{p.status}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Publication</p>
+                  <div className="mt-0.5"><VisibilityBadge product={p} /></div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Inventory Source</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.supplierSource || 'Own Stock'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Stock</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.inventoryQty} units</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Selling Price</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">${p.price.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Cost</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.costPrice > 0 ? `$${p.costPrice.toFixed(2)}` : '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Margin</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.marginPercent != null ? `${p.marginPercent.toFixed(1)}%` : '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Shipping</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.freeShipping ? 'Free' : p.shippingCost > 0 ? `$${p.shippingCost.toFixed(2)}` : 'Calculated'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Delivery</p>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{p.deliveryMinDays && p.deliveryMaxDays ? `${p.deliveryMinDays}–${p.deliveryMaxDays}d` : 'Standard'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase">Risk Flags</p>
+                  <p className={`text-sm font-bold mt-0.5 ${p.riskFlags?.length ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {p.riskFlags?.length ? `${p.riskFlags.length} flagged` : 'Clean'}
+                  </p>
+                </div>
+              </div>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><label className={L}>Source type</label>
-                <select value={p.sourceType || ''} onChange={(e) => set('sourceType', (e.target.value || null) as CatalogProduct['sourceType'])} className={I}>
-                  <option value="">— Auto / unknown —</option>
-                  <option value="CJ_DROPSHIPPING">CJ Dropshipping</option>
-                  <option value="AUTHORIZED_WHOLESALE">Authorized Wholesale</option>
-                  <option value="MANUFACTURER_DIRECT">Manufacturer Direct</option>
-                  <option value="RETAIL_REFERENCE_ONLY">Retail Reference Only</option>
-                  <option value="OWNER_STOCK">Owner Stock</option>
-                  <option value="OTHER_VERIFIED">Other Verified</option>
-                  <option value="UNKNOWN">Unknown</option>
-                </select>
-              </div>
-              <div><label className={L}>Inventory source</label>
-                <select value={p.inventorySource || ''} onChange={(e) => set('inventorySource', (e.target.value || null) as CatalogProduct['inventorySource'])} className={I}>
-                  <option value="">— Auto / unknown —</option>
-                  <option value="SUPPLIER_VERIFIED">Supplier Verified</option>
-                  <option value="INTERNAL_STOCK">Internal Stock</option>
-                  <option value="UNTRACKED">Untracked</option>
-                  <option value="UNKNOWN">Unknown</option>
-                </select>
-              </div>
-            </div>
+              {p.riskFlags && p.riskFlags.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1">
+                  <p className="font-semibold text-amber-800 flex items-center gap-1.5"><Warning size={14} /> Attention required:</p>
+                  {p.riskFlags.map((rf) => <p key={rf} className="text-amber-700 ml-4">• {rf}</p>)}
+                </div>
+              )}
 
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Economics</p>
-                <dl className="text-sm space-y-1">
-                  <div className="flex justify-between"><dt className="text-gray-500">Sell price</dt><dd className="font-semibold">${p.price.toFixed(2)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Supplier cost</dt><dd>{p.costPrice > 0 ? `$${p.costPrice.toFixed(2)}` : <span className="text-amber-600">UNKNOWN</span>}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Landed cost</dt><dd>{p.landedCost > 0 ? `$${p.landedCost.toFixed(2)}` : <span className="text-amber-600">UNKNOWN</span>}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Gross margin</dt><dd>{p.marginPercent != null ? `${p.marginPercent.toFixed(1)}%` : <span className="text-amber-600">UNKNOWN</span>}</dd></div>
-                </dl>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Supply / evidence</p>
-                <dl className="text-sm space-y-1">
-                  <div className="flex justify-between"><dt className="text-gray-500">USA inventory</dt><dd>{p.usInventory ? 'Verified' : 'No'}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Supplier stock</dt><dd>{p.supplierStockStatus || (p.stockStatus || 'unknown')}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Shipping</dt><dd>{p.shippingCost > 0 ? `$${p.shippingCost.toFixed(2)}` : p.freeShipping ? 'Free' : <span className="text-amber-600">UNKNOWN</span>}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-500">Delivery</dt><dd>{p.deliveryMinDays != null && p.deliveryMaxDays != null ? `${p.deliveryMinDays}–${p.deliveryMaxDays} days` : <span className="text-amber-600">UNKNOWN</span>}</dd></div>
-                </dl>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Risk flags</p>
-                {p.riskFlags && p.riskFlags.length > 0
-                  ? <ul className="text-xs space-y-1">{p.riskFlags.map((r) => <li key={r} className="flex items-start gap-1.5"><Warning className="text-amber-500 shrink-0 mt-0.5" size={13} />{r}</li>)}</ul>
-                  : <p className="text-xs text-gray-400">No unresolved risk flags recorded.</p>}
-                {p.evidenceNotes && <p className="text-[11px] text-gray-500 mt-2 border-t border-gray-200 pt-2">Evidence: {p.evidenceNotes.slice(0, 220)}{p.evidenceNotes.length > 220 ? '…' : ''}</p>}
-              </div>
+              {/* Collapsible Advanced Details */}
+              <details className="group border rounded-lg p-3 bg-gray-50/50">
+                <summary className="text-xs font-semibold text-gray-600 cursor-pointer flex items-center justify-between">
+                  <span>Advanced details & diagnostics</span>
+                  <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="mt-3 pt-3 border-t border-gray-200 space-y-3 text-xs">
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div><span className="text-gray-500">Source Type:</span> <span className="font-mono">{p.sourceType || 'UNKNOWN'}</span></div>
+                    <div><span className="text-gray-500">Inventory Source:</span> <span className="font-mono">{p.inventorySource || 'UNKNOWN'}</span></div>
+                    <div><span className="text-gray-500">Fulfillment Method:</span> <span className="font-mono">{p.fulfillmentMethod || 'Internal Warehouse'}</span></div>
+                    <div><span className="text-gray-500">Landed Cost:</span> <span className="font-mono">${p.landedCost || 0}</span></div>
+                  </div>
+                  {p.evidenceNotes && (
+                    <div className="p-2 bg-white rounded border">
+                      <p className="font-semibold text-gray-600">Evidence Notes:</p>
+                      <p className="text-gray-500 whitespace-pre-wrap">{p.evidenceNotes}</p>
+                    </div>
+                  )}
+                  <AiIntelPanel product={p} />
+                </div>
+              </details>
             </div>
-
-            <div className="bg-blue-50 rounded-lg p-4 text-xs text-gray-600">
-              <p><strong>Readiness rule:</strong> storefront visibility requires status active AND commerce_readiness = COMMERCE_READY. A manufacturer retail page alone (no wholesale/dropship purchasing path) is <strong>Retail Reference Only → Source Pending</strong>. Do not treat internal quantity as supplier stock.</p>
-            </div>
-
-            <AiIntelPanel product={p} />
           </div>
         )}
 
@@ -2268,14 +2406,14 @@ export function CatalogProductEditor() {
 
 /** Factual SEO prompt shared by the per-product tab and the list bulk run. */
 function buildProductSeoPrompt(p: CatalogProduct, category: string): string {
-  return `Write premium, honest SEO for this pet product for Luxedge (a US pet store).
+  return `Write premium, honest SEO for this authentic Himalayan salt and mineral product for Himalayan Koh (a premium US artisan and mineral salt store).
 Product name: ${p.name}
-Brand: ${p.brand || 'Luxedge'}
-Category: ${category || 'unknown'}
+Brand: ${p.brand || 'Himalayan Koh'}
+Category: ${category || 'Himalayan Pink Salt'}
 Short description: ${p.shortDescription || ''}
 Long description: ${p.description || ''}
 
-Return ONLY JSON with EXACTLY these keys:
+Return ONLY valid JSON with EXACTLY these keys:
 {"seoTitle": "<=60 chars, factual, no fake claims", "metaDescription": "<=160 chars, factual", "focusKeyword": "one primary keyword", "seoKeywords": ["5-8 keywords"], "slug": "url-friendly-slug"}
 No other text.`;
 }
@@ -2365,7 +2503,302 @@ function SeoTab({ product, cats, set, onSave }: { product: CatalogProduct; cats:
 }
 
 // ============================================================================
-// PROMOTIONS TAB (simpler + AI-assisted suggestions)
+// SHIPPING TAB (Package specs, dimensions, presets, and Shippo connection)
+// ============================================================================
+function ShippingTab({ product, set }: { product: CatalogProduct; set: <K extends keyof CatalogProduct>(k: K, v: CatalogProduct[K]) => void }) {
+  const specs = (product.specifications || {}) as Record<string, unknown>;
+  const [weightLbs, setWeightLbs] = useState<number>(() => Number(specs.weightLbs) || (Number(specs.weightOz) ? Number(specs.weightOz) / 16 : 2));
+  const [lengthIn, setLengthIn] = useState<number>(() => Number(specs.lengthIn) || 10);
+  const [widthIn, setWidthIn] = useState<number>(() => Number(specs.widthIn) || 10);
+  const [heightIn, setHeightIn] = useState<number>(() => Number(specs.heightIn) || 6);
+  const [packagePreset, setPackagePreset] = useState<string>(() => String(specs.packagePreset || 'BOX_10_10_6'));
+  const [ratingZip, setRatingZip] = useState('90210');
+  const [shippoRates, setShippoRates] = useState<Array<{ provider: string; serviceName: string; amount: number; estimatedDays: number | null }>>([]);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [shippoNote, setShippoNote] = useState<string | null>(null);
+
+  const updateSpecs = (patch: Record<string, unknown>) => {
+    const updated = { ...specs, ...patch };
+    set('specifications', updated);
+  };
+
+  const onPresetChange = (presetKey: string) => {
+    setPackagePreset(presetKey);
+    const presets: Record<string, { l: number; w: number; h: number; wt?: number }> = {
+      BOX_10_10_6: { l: 10, w: 10, h: 6, wt: 6 },
+      BOX_9_5_5_5: { l: 9.5, w: 9.5, h: 5.5, wt: 4 },
+      BOX_30_BLOCK: { l: 8.5, w: 7.5, h: 6.5, wt: 30 },
+      BOX_BAG_18: { l: 10, w: 10, h: 8, wt: 18 },
+      BOX_BAG_45: { l: 12, w: 10, h: 8, wt: 45 },
+    };
+    if (presets[presetKey]) {
+      const { l, w, h, wt } = presets[presetKey];
+      setLengthIn(l);
+      setWidthIn(w);
+      setHeightIn(h);
+      if (wt && !weightLbs) setWeightLbs(wt);
+      updateSpecs({ packagePreset: presetKey, lengthIn: l, widthIn: w, heightIn: h, ...(wt && !weightLbs ? { weightLbs: wt } : {}) });
+    } else {
+      updateSpecs({ packagePreset: 'custom' });
+    }
+  };
+
+  const calculateShippo = async () => {
+    setRatingLoading(true);
+    setShippoNote(null);
+    try {
+      const res = await fetch('/api/shippo/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: {
+            fullName: 'Admin Rate Estimate',
+            addressLine1: '100 Universal City Plaza',
+            city: 'Universal City',
+            state: 'CA',
+            postalCode: ratingZip || '90210',
+            country: 'US',
+          },
+          items: [{ productId: product.id, quantity: 1, weightLbs: Math.max(0.1, weightLbs) }],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 503 || !data.configured) {
+        setShippoNote('Shippo live carrier API is not configured in this environment (set SHIPPO_API_TOKEN in env). Storefront uses standard flat rates.');
+        setShippoRates([]);
+      } else if (!res.ok) {
+        setShippoNote(data.error || 'Shippo rate check unavailable for this destination.');
+        setShippoRates([]);
+      } else {
+        const rates = Array.isArray(data.rates) ? data.rates : [];
+        setShippoRates(rates);
+        if (rates.length === 0) setShippoNote('No carrier rates returned for these dimensions/weight.');
+      }
+    } catch (e) {
+      setShippoNote(`Rate check error: ${(e as Error).message}`);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const bestShippoRate = shippoRates[0] || null;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className={L}>Customer Shipping Cost (USD)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={product.shippingCost || ''}
+            onChange={(e) => set('shippingCost', +e.target.value)}
+            className={I}
+            placeholder="0.00"
+          />
+        </div>
+        <div className="flex items-end">
+          <label className="flex items-center gap-2 text-sm text-gray-700 pb-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={product.freeShipping}
+              onChange={(e) => set('freeShipping', e.target.checked)}
+              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+            />
+            <span className="font-semibold">Free shipping on this product (Customer pays $0)</span>
+          </label>
+        </div>
+        <div>
+          <label className={L}>Delivery Min Days</label>
+          <input
+            type="number"
+            min="0"
+            value={product.deliveryMinDays ?? ''}
+            onChange={(e) => set('deliveryMinDays', e.target.value ? +e.target.value : null)}
+            className={I}
+            placeholder="e.g. 2"
+          />
+        </div>
+        <div>
+          <label className={L}>Delivery Max Days</label>
+          <input
+            type="number"
+            min="0"
+            value={product.deliveryMaxDays ?? ''}
+            onChange={(e) => set('deliveryMaxDays', e.target.value ? +e.target.value : null)}
+            className={I}
+            placeholder="e.g. 5"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={L}>Shipping Note (Truthful)</label>
+          <input
+            value={product.shippingNote || ''}
+            onChange={(e) => set('shippingNote', e.target.value)}
+            className={I}
+            placeholder="e.g. Ships carefully packed from our US warehouse via tracked carrier."
+          />
+        </div>
+      </div>
+
+      {/* Package Dimensions & Weight */}
+      <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Package Dimensions & Weight</h4>
+            <p className="text-xs text-gray-500">Authoritative package specs used for carrier rating and dispatch.</p>
+          </div>
+          <div className="w-64">
+            <select
+              value={packagePreset}
+              onChange={(e) => onPresetChange(e.target.value)}
+              className="w-full text-xs font-medium border border-gray-300 rounded-lg p-1.5 bg-white"
+            >
+              <option value="custom">Custom Box</option>
+              <option value="BOX_10_10_6">Standard Box — 10 × 10 × 6 in</option>
+              <option value="BOX_9_5_5_5">Medium Square Box — 9.5 × 9.5 × 5.5 in</option>
+              <option value="BOX_30_BLOCK">Heavy Block Box — 8.5 × 7.5 × 6.5 in</option>
+              <option value="BOX_BAG_18">18 lb Bag Box — 10 × 10 × 8 in</option>
+              <option value="BOX_BAG_45">45 lb Heavy Sack — 12 × 10 × 8 in</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Weight (lb)</label>
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={weightLbs || ''}
+              onChange={(e) => {
+                const val = +e.target.value;
+                setWeightLbs(val);
+                updateSpecs({ weightLbs: val, weightOz: Math.round(val * 16) });
+              }}
+              className={I}
+              placeholder="e.g. 12"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Length (in)</label>
+            <input
+              type="number"
+              min="1"
+              step="0.1"
+              value={lengthIn || ''}
+              onChange={(e) => {
+                const val = +e.target.value;
+                setLengthIn(val);
+                updateSpecs({ lengthIn: val, packagePreset: 'custom' });
+              }}
+              className={I}
+              placeholder="10"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Width (in)</label>
+            <input
+              type="number"
+              min="1"
+              step="0.1"
+              value={widthIn || ''}
+              onChange={(e) => {
+                const val = +e.target.value;
+                setWidthIn(val);
+                updateSpecs({ widthIn: val, packagePreset: 'custom' });
+              }}
+              className={I}
+              placeholder="10"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Height (in)</label>
+            <input
+              type="number"
+              min="1"
+              step="0.1"
+              value={heightIn || ''}
+              onChange={(e) => {
+                const val = +e.target.value;
+                setHeightIn(val);
+                updateSpecs({ heightIn: val, packagePreset: 'custom' });
+              }}
+              className={I}
+              placeholder="6"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Shippo Live Carrier Rating Connection */}
+      <div className="border rounded-xl p-4 bg-white space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Truck size={15} className="text-blue-600" /> Shippo Carrier Rate Connection
+            </h4>
+            <p className="text-xs text-gray-500">Live rate estimate based on real Shippo USPS/carrier rules.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Test Zip:</span>
+            <input
+              type="text"
+              value={ratingZip}
+              onChange={(e) => setRatingZip(e.target.value)}
+              className="w-20 px-2 py-1 text-xs border rounded-lg text-center font-mono"
+            />
+            <button
+              type="button"
+              onClick={calculateShippo}
+              disabled={ratingLoading}
+              className="btn-glow px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold"
+            >
+              {ratingLoading ? 'Checking…' : 'Check Shippo Rate'}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Carrier Breakdown */}
+        <div className="p-3.5 rounded-lg bg-blue-50/70 border border-blue-100 text-xs space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="font-semibold text-gray-700">Customer shipping:</span>
+            <span className="font-bold text-gray-900">{product.freeShipping ? 'FREE ($0.00)' : `$${product.shippingCost.toFixed(2)}`}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="font-semibold text-gray-700">Estimated internal carrier cost:</span>
+            <span className="font-bold text-blue-700">
+              {bestShippoRate ? `$${bestShippoRate.amount.toFixed(2)} (${bestShippoRate.provider} ${bestShippoRate.serviceName})` : 'Calculable via Shippo'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-gray-600">
+            <span>Package dimensions:</span>
+            <span className="font-mono">{lengthIn || 10} × {widthIn || 10} × {heightIn || 6} in</span>
+          </div>
+          <div className="flex justify-between items-center text-gray-600">
+            <span>Weight:</span>
+            <span className="font-mono">{weightLbs || 2} lb</span>
+          </div>
+          <div className="flex justify-between items-center text-gray-600">
+            <span>Carrier source:</span>
+            <span className="font-semibold">Shippo API</span>
+          </div>
+        </div>
+
+        {shippoNote && (
+          <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+            {shippoNote}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// PROMOTIONS TAB (with single product summary header + economic suggestions)
 // ============================================================================
 function PromoTab({ product, set }: { product: CatalogProduct; set: <K extends keyof CatalogProduct>(k: K, v: CatalogProduct[K]) => void }) {
   const { notify } = useApp();
@@ -2387,12 +2820,41 @@ function PromoTab({ product, set }: { product: CatalogProduct; set: <K extends k
     }
   };
 
+  const primaryImage = product.images.find((im) => im.isPrimary) || product.images[0];
+
   return (
     <div className="space-y-5">
+      {/* Product Summary Header (Single product representation) */}
+      <div className="bg-gray-50 border rounded-xl p-4 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-lg bg-white border flex items-center justify-center shrink-0 overflow-hidden">
+          {primaryImage?.url ? (
+            <img src={primaryImage.url} alt={product.name} className="w-full h-full object-cover" />
+          ) : (
+            <Package size={24} className="text-gray-400" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-gray-900 truncate">{product.name || 'Untitled Product'}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            SKU: <span className="font-mono font-medium text-gray-700">{product.sku || 'None'}</span> · Retail Price: <span className="font-semibold text-gray-800">${product.price.toFixed(2)}</span>
+            {product.compareAtPrice > product.price && <span className="text-gray-400 line-through ml-1.5">${product.compareAtPrice.toFixed(2)}</span>}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {product.saleEnabled && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">Sale ({product.discountValue ? `${product.discountValue}${product.discountType === 'percent' ? '%' : '$'}` : 'Active'})</span>}
+            {product.featured && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">Featured</span>}
+            {product.newArrival && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">New Arrival</span>}
+            {product.promoted && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold">Promoted</span>}
+            {product.trending && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">Trending</span>}
+            {product.bestRated && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">Best Rated</span>}
+            {product.bestSeller && <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-bold">Best Seller</span>}
+          </div>
+        </div>
+      </div>
+
       <div className="bg-indigo-50 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-indigo-800 flex items-center gap-1.5"><Sparkle size={15} />Promotions — simplified</p>
-          <p className="text-xs text-indigo-600 mt-0.5">AI checks your economics and suggests a safe discount. Trending / Best rated / Best seller are NEVER auto-suggested — they need real evidence.</p>
+          <p className="text-sm font-semibold text-indigo-800 flex items-center gap-1.5"><Sparkle size={15} />Promotions & Merchandising</p>
+          <p className="text-xs text-indigo-600 mt-0.5">Economics-based suggestions keep margins safe. Merchandising flags require genuine evidence.</p>
         </div>
         <button onClick={suggest} className="btn-glow px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium flex items-center gap-1.5">
           <Sparkle size={15} />Suggest a sale (economics)
@@ -2499,7 +2961,7 @@ function QuickAddForm({ product, cats, onChange, onAddCategory }: { product: Cat
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="sm:col-span-2">
           <label className={L}>Product name <span className="text-red-500">*</span></label>
-          <input value={product.name} onChange={(e) => set('name', e.target.value)} className={I} placeholder="e.g. Interactive Squeaky Enrichment Toy for Dogs" autoFocus />
+          <input value={product.name} onChange={(e) => set('name', e.target.value)} className={I} placeholder="e.g. Handcrafted Himalayan Pink Salt Lamp (Natural Shape)" autoFocus />
         </div>
         <div>
           <label className={L}>Category</label>
@@ -2517,7 +2979,7 @@ function QuickAddForm({ product, cats, onChange, onAddCategory }: { product: Cat
             </div>
           )}
         </div>
-        <div><label className={L}>Brand <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={product.brand} onChange={(e) => set('brand', e.target.value)} className={I} placeholder="e.g. KONG" /></div>
+        <div><label className={L}>Brand <span className="normal-case font-normal text-gray-400">(optional)</span></label><input value={product.brand} onChange={(e) => set('brand', e.target.value)} className={I} placeholder="e.g. Himalayan Koh" /></div>
         <div>
           <label className={L}>Retail price (USD) <span className="text-red-500">*</span></label>
           <input type="number" min="0" step="0.01" value={product.price || ''} onChange={(e) => set('price', +e.target.value)} className={I} placeholder="0.00" />
@@ -2538,10 +3000,6 @@ function QuickAddForm({ product, cats, onChange, onAddCategory }: { product: Cat
             onChange={(v) => {
               const prevSearch = supplierSearchUrl(product.supplierSource || '', product.name);
               const currentUrl = (product.supplierUrl || '').trim();
-              // Prefill a marketplace search page for this product's name when
-              // the field is empty, or when it still holds the previous source's
-              // auto search URL (switching AliExpress -> Amazon updates it).
-              // A URL the seller typed by hand is never overwritten.
               const next = { ...product, supplierSource: v };
               const search = supplierSearchUrl(v, product.name);
               if (search && (!currentUrl || currentUrl === prevSearch)) next.supplierUrl = search;
@@ -2555,7 +3013,7 @@ function QuickAddForm({ product, cats, onChange, onAddCategory }: { product: Cat
         </div>
         <div className="sm:col-span-2">
           <label className={L}>Supplier SKU <span className="normal-case font-normal text-gray-400">(optional — for sourcing traceability)</span></label>
-          <input value={product.supplierProductRef || ''} onChange={(e) => set('supplierProductRef', e.target.value)} className={I} placeholder="e.g. CJ PID or supplier item ID — can be added later in Detail" />
+          <input value={product.supplierProductRef || ''} onChange={(e) => set('supplierProductRef', e.target.value)} className={I} placeholder="e.g. HK-SALT-001 or marketplace item ID" />
         </div>
         <div className="sm:col-span-2 grid sm:grid-cols-2 gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-gray-700 pb-2"><input type="checkbox" checked={product.freeShipping} onChange={(e) => set('freeShipping', e.target.checked)} className="w-4 h-4" />Free shipping on this product</label></div>
@@ -2776,14 +3234,48 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
   };
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const addByUrl = () => {
+  const addByUrl = async () => {
     const u = url.trim();
     if (!u) return;
     if (!/^https?:\/\//i.test(u)) { notify('Enter a valid image URL (https://…)', 'error'); return; }
-    const isFirst = product.images.length === 0;
-    onProduct({ ...product, images: [...product.images, { id: uid(), productId: product.id, url: u, altText: alt.trim(), kind: 'product', isPrimary: isFirst, sortOrder: product.images.length, variantId: null }] });
-    setUrl(''); setAlt('');
-    notify('Image added — save the product to persist');
+    if (product.images.length >= 5) { notify('Max 5 images total', 'error'); return; }
+    setUploading(true);
+    try {
+      const token = await getFreshAccessToken();
+      const res = await fetch('/api/admin/media/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ url: u, productId: product.id || 'imported' }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || `Import failed (HTTP ${res.status})`);
+      }
+      const isFirst = product.images.length === 0;
+      onProduct({
+        ...product,
+        images: [
+          ...product.images,
+          {
+            id: uid(),
+            productId: product.id,
+            url: String(data.publicUrl),
+            altText: alt.trim() || product.name,
+            kind: 'product',
+            isPrimary: isFirst,
+            sortOrder: product.images.length,
+            variantId: null,
+          },
+        ],
+      });
+      setUrl('');
+      setAlt('');
+      notify('Image imported and uploaded to storage — save product to persist');
+    } catch (err) {
+      notify(`Could not import image: ${(err as Error).message}`, 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addByFile = async (files: FileList | null) => {
@@ -2828,7 +3320,7 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
     setUploading(true);
     try {
       // If it's a direct image URL, just add it.
-      if (/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u)) { addByUrl(); return; }
+      if (/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u)) { void addByUrl(); return; }
       let token = await getFreshAccessToken();
       let r = await fetch(`/api/fetch-page?url=${encodeURIComponent(u)}`, {
         headers: { Accept: 'text/plain', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -3167,10 +3659,251 @@ export function CatalogPromotionsPage() {
         </div>
       </div>
 
+      {/* Product Merchandising & Promotions */}
+      <ProductPromotionsManager
+        products={products}
+        onProductUpdated={(upd) => setProducts((prev) => prev.map((x) => (x.id === upd.id ? upd : x)))}
+      />
+
       <FeedPanel products={products} />
 
       <CouponModal coupon={couponModal} onClose={() => setCouponModal(null)} onSaved={load} />
       <OfferModal offer={offerModal} products={products} onClose={() => setOfferModal(null)} onSaved={load} />
+    </div>
+  );
+}
+
+function ProductPromotionsManager({ products, onProductUpdated }: { products: CatalogProduct[]; onProductUpdated: (p: CatalogProduct) => void }) {
+  const { notify } = useApp();
+  const [search, setSearch] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [editingPromo, setEditingPromo] = useState<Partial<CatalogProduct>>({});
+  const [saving, setSaving] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
+  }, [products, search]);
+
+  const selectProduct = (p: CatalogProduct) => {
+    setSelectedProduct(p);
+    setEditingPromo({
+      saleEnabled: p.saleEnabled,
+      discountType: p.discountType || 'percent',
+      discountValue: p.discountValue ?? 10,
+      compareAtPrice: p.compareAtPrice,
+      featured: p.featured,
+      newArrival: p.newArrival,
+      promoted: p.promoted,
+      trending: p.trending,
+      bestRated: p.bestRated,
+      bestSeller: p.bestSeller,
+    });
+  };
+
+  const handleSavePromo = async () => {
+    if (!selectedProduct) return;
+    setSaving(true);
+    try {
+      const payload: Partial<ProductInput> = {
+        saleEnabled: Boolean(editingPromo.saleEnabled),
+        discountType: editingPromo.discountType || 'percent',
+        discountValue: editingPromo.discountValue != null ? Number(editingPromo.discountValue) : undefined,
+        compareAtPrice: editingPromo.compareAtPrice != null ? Number(editingPromo.compareAtPrice) : undefined,
+        featured: Boolean(editingPromo.featured),
+        newArrival: Boolean(editingPromo.newArrival),
+        promoted: Boolean(editingPromo.promoted),
+        trending: Boolean(editingPromo.trending),
+        bestRated: Boolean(editingPromo.bestRated),
+        bestSeller: Boolean(editingPromo.bestSeller),
+      };
+      const updated = await updateProduct(selectedProduct.id, payload);
+      if (updated) {
+        onProductUpdated(updated);
+        setSelectedProduct(updated);
+        notify(`Promotions saved for ${updated.name}`);
+      }
+    } catch (e) {
+      notify(`Could not save promotion: ${(e as Error).message}`, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border p-5 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-semibold flex items-center gap-2">
+            <Tag size={18} className="text-blue-600" />
+            Product Merchandising & Promotions
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Search products to inspect promotion states and configure discounts, featured status, and evidence-backed badges.
+          </p>
+        </div>
+        <div className="w-72">
+          <div className="relative">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search product or SKU…"
+              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-blue-400"
+            />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"><MagnifyingGlass size={13} /></span>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto max-h-72 border rounded-lg">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider sticky top-0">
+            <tr>
+              <th className="px-3 py-2 text-left">Product</th>
+              <th className="px-3 py-2 text-left">SKU</th>
+              <th className="px-3 py-2 text-left">Price</th>
+              <th className="px-3 py-2 text-left">Current Promotion State</th>
+              <th className="px-3 py-2 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filtered.slice(0, 30).map((p) => {
+              const isSelected = selectedProduct?.id === p.id;
+              const img = p.images[0]?.url;
+              return (
+                <tr key={p.id} className={`hover:bg-blue-50/40 transition-colors ${isSelected ? 'bg-blue-50/70' : ''}`}>
+                  <td className="px-3 py-2 flex items-center gap-2 max-w-[260px]">
+                    <div className="w-7 h-7 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                      {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <Package size={14} className="text-gray-400" />}
+                    </div>
+                    <span className="truncate font-medium text-gray-800" title={p.name}>{p.name}</span>
+                  </td>
+                  <td className="px-3 py-2 font-mono text-gray-600">{p.sku || '—'}</td>
+                  <td className="px-3 py-2 font-semibold text-gray-900">${p.price.toFixed(2)}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {p.saleEnabled && <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">Sale</span>}
+                      {p.featured && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-semibold">Featured</span>}
+                      {p.newArrival && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-semibold">New</span>}
+                      {p.promoted && <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-semibold">Promoted</span>}
+                      {p.trending && <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">Trending</span>}
+                      {p.bestRated && <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold">Best Rated</span>}
+                      {p.bestSeller && <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-semibold">Best Seller</span>}
+                      {!p.saleEnabled && !p.featured && !p.newArrival && !p.promoted && !p.trending && !p.bestRated && !p.bestSeller && (
+                        <span className="text-gray-400 text-[11px]">Standard</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => selectProduct(p)}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold ${
+                        isSelected ? 'bg-blue-600 text-white' : 'border border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {isSelected ? 'Editing' : 'Configure'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="py-8 text-center text-gray-400">No products match your search.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedProduct && (
+        <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/20 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-800">
+              Configuring Promotions: <span className="text-blue-700">{selectedProduct.name}</span>
+            </h3>
+            <button onClick={() => setSelectedProduct(null)} className="p-1 hover:bg-gray-200 rounded text-gray-400"><X size={15} /></button>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="cfg-sale"
+                type="checkbox"
+                checked={Boolean(editingPromo.saleEnabled)}
+                onChange={(e) => setEditingPromo({ ...editingPromo, saleEnabled: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <label htmlFor="cfg-sale" className="text-xs font-semibold text-gray-700">Enable Store Discount</label>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 mb-1">Discount Type</label>
+              <select
+                value={editingPromo.discountType || 'percent'}
+                onChange={(e) => setEditingPromo({ ...editingPromo, discountType: e.target.value as 'percent' | 'fixed' })}
+                className="w-full text-xs p-1.5 border rounded-lg bg-white"
+              >
+                <option value="percent">Percentage (%)</option>
+                <option value="fixed">Fixed Dollar Amount ($)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 mb-1">Discount Value</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editingPromo.discountValue ?? ''}
+                onChange={(e) => setEditingPromo({ ...editingPromo, discountValue: e.target.value ? +e.target.value : 0 })}
+                className="w-full text-xs p-1.5 border rounded-lg bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+            {[
+              { key: 'featured', label: 'Featured Product' },
+              { key: 'newArrival', label: 'New Arrival' },
+              { key: 'promoted', label: 'Promoted' },
+              { key: 'trending', label: 'Trending', caution: 'Requires real trend evidence' },
+              { key: 'bestRated', label: 'Best Rated', caution: 'Requires verified reviews' },
+              { key: 'bestSeller', label: 'Best Seller', caution: 'Requires sales volume evidence' },
+            ].map(({ key, label, caution }) => (
+              <label key={key} className="p-2 border rounded-lg bg-white flex items-start gap-2 cursor-pointer hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editingPromo[key as keyof typeof editingPromo])}
+                  onChange={(e) => setEditingPromo({ ...editingPromo, [key]: e.target.checked })}
+                  className="w-4 h-4 mt-0.5"
+                />
+                <div>
+                  <span className="text-xs font-medium block text-gray-800">{label}</span>
+                  {caution && <span className="text-[10px] text-amber-600 block">{caution}</span>}
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSavePromo}
+              disabled={saving}
+              className="btn-glow px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+            >
+              <FloppyDisk size={14} /> {saving ? 'Saving…' : 'Save Promotion'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3183,7 +3916,7 @@ function FeedPanel({ products }: { products: CatalogProduct[] }) {
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'luxedge-merchant-feed.csv';
+    a.download = 'himalayan-koh-merchant-feed.csv';
     a.click();
     URL.revokeObjectURL(a.href);
     notify('Feed CSV downloaded (data only — nothing submitted externally)');

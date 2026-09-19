@@ -9,8 +9,9 @@
 // ============================================================================
 
 import { CatalogProduct, CatalogImage, effectivePrice } from './types';
+import { SITE_ORIGIN } from '../../lib/site/origin';
 
-export const SITE_URL = 'https://luxedge.us';
+export const SITE_URL = SITE_ORIGIN;
 
 /** Relative product-route path — the slug is the canonical crawlable form
  * (the worker emits full Product JSON-LD/canonical only for slug URLs); id is
@@ -180,10 +181,10 @@ export function buildStoreJsonLd(): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'Store',
-    name: 'Luxedge',
+    name: 'Himalayan Koh',
     url: SITE_URL,
-    description: 'Premium pet essentials for dogs and cats.',
-    brand: { '@type': 'Brand', name: 'Luxedge' },
+    description: 'Premium authentic Himalayan salt and mineral products.',
+    brand: { '@type': 'Brand', name: 'Himalayan Koh' },
   };
 }
 

@@ -22,6 +22,7 @@ import {
 } from '@phosphor-icons/react';
 import { useApp } from '../App';
 import type { BlogPost } from '../App';
+import { SITE_ORIGIN } from '../lib/site/origin';
 import { loadPublishedMedia, loadPublishedMediaBySlug, mediaThumbnail, formatDuration } from '../services/media';
 import type { MediaVideo } from '../services/media';
 import { loadPublishedBlogs } from '../services/blog';
@@ -245,8 +246,8 @@ export function MediaHubPage() {
 // Share row
 // ---------------------------------------------------------------------------
 function ShareRow({ video }: { video: MediaVideo }) {
-  const url = `https://luxedge.us/media/${video.slug}`;
-  const text = `${video.title} — Luxedge Media`;
+  const url = `${SITE_ORIGIN}/media/${video.slug}`;
+  const text = `${video.title} — Himalayan Koh Media`;
   const encoded = encodeURIComponent(url);
   const encodedText = encodeURIComponent(text);
   const [copied, setCopied] = useState(false);
@@ -342,8 +343,8 @@ export function MediaVideoPage() {
       if (!el) { el = document.createElement('meta'); el.setAttribute('property', p); document.head.appendChild(el); }
       el.setAttribute('content', c);
     };
-    const canonical = `https://luxedge.us/media/${video.slug}`;
-    const title = (video.seoTitle || video.title).replace(/\s*\|\s*Luxedge\s*$/i, '') + ' | Luxedge';
+    const canonical = `${SITE_ORIGIN}/media/${video.slug}`;
+    const title = (video.seoTitle || video.title).replace(/\s*\|\s*(Luxedge|Himalayan Koh)\s*$/i, '') + ' | Himalayan Koh';
     const desc = (video.metaDescription || video.summary || video.description || '').slice(0, 200);
     document.title = title;
     setMeta('description', desc);
@@ -368,8 +369,8 @@ export function MediaVideoPage() {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://luxedge.us/' },
-          { '@type': 'ListItem', position: 2, name: 'Media', item: 'https://luxedge.us/media' },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_ORIGIN}/` },
+          { '@type': 'ListItem', position: 2, name: 'Media', item: `${SITE_ORIGIN}/media` },
           { '@type': 'ListItem', position: 3, name: video.title, item: canonical },
         ],
       },

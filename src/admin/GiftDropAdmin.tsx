@@ -81,13 +81,13 @@ export default function GiftDropAdmin() {
         setClaims(Array.isArray(d.claims) ? d.claims : []);
         setRemaining(typeof d.stats?.remaining === 'number' ? d.stats.remaining : -1);
       })
-      .catch(() => setErr('Could not load the Pet Gift Drop — are you signed in as admin?'))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Could not load Gift Drop. Please verify admin session.'))
       .finally(() => setLoaded(true));
   };
 
   useEffect(load, []);
 
-  const post = async (action: string, extra: Record<string, unknown> = {}) => {
+  const post = async (action: string, extra: Record<string, unknown> | CampaignView = {}) => {
     const token = getAccessToken();
     if (!token) return;
     setBusy(true);
@@ -112,6 +112,21 @@ export default function GiftDropAdmin() {
     await post('campaign', { ...cfgDraft, totalQuantity: Math.max(Math.trunc(Number(cfgDraft.totalQuantity)) || 0, 0) });
   };
 
+  const initDefaultCampaign = async () => {
+    const defaultCampaign: CampaignView = {
+      title: 'Himalayan Koh Welcome Gift Drop',
+      message: 'Complimentary authentic Himalayan Pink Salt sample for our community.',
+      giftName: 'Himalayan Pink Salt Sample Pouch',
+      giftValueCents: 500,
+      totalQuantity: 100,
+      active: true,
+      startsAt: new Date().toISOString(),
+      endsAt: null,
+    };
+    setCfgDraft(defaultCampaign);
+    await post('campaign', defaultCampaign);
+  };
+
   const setField = (k: keyof CampaignView, v: string | number | boolean) =>
     setCfgDraft((c) => (c ? { ...c, [k]: v } : c));
 
@@ -122,9 +137,9 @@ export default function GiftDropAdmin() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-gray-900">Pet Gift Drop</h1>
+          <h1 className="text-lg font-bold text-gray-900">Gift Drop</h1>
           <p className="text-xs text-gray-500">
-            Real $0 giveaway — claims live in the same order table as sales, marked <code className="rounded bg-gray-100 px-1">PET-GIFT-DROP</code>.
+            Real $0 promotional giveaway — claims are verified promotional gift drops.
             No payment method is ever collected.
           </p>
         </div>
@@ -138,15 +153,20 @@ export default function GiftDropAdmin() {
         </div>
       </div>
 
-      {err && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div>}
+      {err && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800 flex items-center justify-between">
+          <span>{err}</span>
+          <button onClick={() => setErr('')} className="text-red-600 hover:underline">Dismiss</button>
+        </div>
+      )}
 
-      {/* Campaign config */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-black uppercase tracking-wider text-gray-400">Campaign configuration</h2>
+      {/* Campaign settings */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-bold text-gray-900">Active Campaign Settings</h2>
         {campaign && cfgDraft && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block text-xs font-semibold text-gray-600">
-              Title
+              Campaign title
               <input className="mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm" value={cfgDraft.title} onChange={(e) => setField('title', e.target.value)} />
             </label>
             <label className="block text-xs font-semibold text-gray-600">
@@ -179,8 +199,15 @@ export default function GiftDropAdmin() {
           </div>
         )}
         {loaded && !campaign && (
-          <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-            No campaign configured yet — seed the app_settings row <code className="bg-gray-100 px-1">gift_drop_campaign_v1</code>.
+          <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 space-y-3">
+            <p>No active Gift Drop campaign configured yet.</p>
+            <button
+              onClick={initDefaultCampaign}
+              disabled={busy}
+              className="px-4 py-2 bg-[#1b1f27] hover:bg-black text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+            >
+              Initialize Default Gift Drop Campaign
+            </button>
           </div>
         )}
       </div>
@@ -210,15 +237,15 @@ export default function GiftDropAdmin() {
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.isTest ? 'bg-orange-100 text-orange-700' : chip(c.status)}`}>{c.isTest ? 'TEST' : STATUS_UI[c.status]?.label || c.status}</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-gray-500">
-              <span>🐾 {c.petType || '—'}{c.petName ? ` · ${c.petName}` : ''}</span>
               <span>🎁 {(c.giftName || '').slice(0, 32)}</span>
+              <span>🏷️ {c.petType || c.giftName || 'Gift Item'}</span>
               <span className="col-span-2">📍 {[c.address.line1, c.address.city, c.address.zip].filter(Boolean).join(', ')}</span>
               <span className="col-span-2">💵 {c.payment} · ${Number(c.totalCents ?? 0) / 100}</span>
             </div>
             <GiftActions claim={c} busy={busy} post={post} trackingDraft={trackingDraft} setTrackingDraft={setTrackingDraft} />
           </div>
         ))}
-        {loaded && !visible.length && <p className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">No gift-drop claims yet — share /free-pet-gift.</p>}
+        {loaded && !visible.length && <p className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">No gift-drop claims yet.</p>}
       </div>
 
       {/* Desktop table */}
@@ -227,8 +254,8 @@ export default function GiftDropAdmin() {
           <thead>
             <tr className="border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-400">
               <th className="px-3 py-2.5">Customer</th>
-              <th className="px-3 py-2.5">Pet</th>
-              <th className="px-3 py-2.5">Gift</th>
+              <th className="px-3 py-2.5">Gift Details</th>
+              <th className="px-3 py-2.5">Gift Item</th>
               <th className="px-3 py-2.5">Ship to</th>
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5">Claimed</th>
@@ -244,7 +271,7 @@ export default function GiftDropAdmin() {
                   <p className="font-mono text-[10px] text-gray-300">#{c.orderNumber}</p>
                 </td>
                 <td className="px-3 py-2.5">
-                  <p className="capitalize text-gray-700">{c.petType || '—'}{c.petName ? ` (${c.petName})` : ''}</p>
+                  <p className="capitalize text-gray-700">{c.giftName || c.petType || 'Sample Gift'}</p>
                   <p className="text-gray-400">{[c.petSize, c.petInterest].filter(Boolean).join(' · ')}</p>
                 </td>
                 <td className="max-w-[180px] px-3 py-2.5">

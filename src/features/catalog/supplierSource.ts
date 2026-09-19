@@ -12,11 +12,11 @@
 // real listing (which they then paste back as the verified supplier URL).
 // ============================================================================
 
-export const SUPPLIER_SOURCE_PRESETS = ['AliExpress', 'Amazon', 'Alibaba', 'CJ', 'eBay', 'Walmart'] as const;
+export const SUPPLIER_SOURCE_PRESETS = ['Own Stock', 'Amazon', 'eBay', 'Walmart'] as const;
 
 export type SupplierSourcePreset = (typeof SUPPLIER_SOURCE_PRESETS)[number];
 
-/** Lowercase, hyphenated search slug (AliExpress/CJ list pages use it). */
+/** Lowercase, hyphenated search slug. */
 function searchSlug(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
@@ -30,16 +30,9 @@ export function supplierSearchUrl(source: string, productName: string): string |
   const name = productName.trim();
   if (!name) return null;
   const q = encodeURIComponent(name);
-  const slug = searchSlug(name);
   switch (source.trim().toLowerCase()) {
-    case 'aliexpress':
-      return `https://www.aliexpress.com/w/wholesale-${slug}.html`;
-    case 'cj':
-      return `https://cjdropshipping.com/list/wholesale-${slug}.html`;
     case 'amazon':
       return `https://www.amazon.com/s?k=${q}`;
-    case 'alibaba':
-      return `https://www.alibaba.com/trade/search?SearchText=${q}`;
     case 'ebay':
       return `https://www.ebay.com/sch/i.html?_nkw=${q}`;
     case 'walmart':

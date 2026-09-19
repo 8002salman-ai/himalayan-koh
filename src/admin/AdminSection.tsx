@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, ReactNode, Component, Fragment } from
 import { Routes, Route, Link, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { useApp, Modal, CAT_LIST, loadAIProviders, saveAIProviders, callAIProvider, fetchPageContent, serverTestProvider, serverOpenRouterCredits, serverProviderStatus } from '../App';
 import { SOCIAL_PROFILES } from '../content/socialProfiles';
+import { SITE_ORIGIN } from '../lib/site/origin';
 import { useAuthStore } from '../store/authStore';
 import { getAccessToken } from '../services/supabase';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
@@ -27,6 +28,7 @@ import { CatalogProductsPage, CatalogProductEditor, CatalogPromotionsPage } from
 import HermesIntel from './HermesIntel';
 import BlogManager from './BlogManager';
 import MediaManager from './MediaManager';
+import LeadOSAdmin from './LeadOSAdmin';
 import type {
   Product, ProductVariant, AdminCategory,
   AIProvider, EnterpriseVariant, VariantAttribute,
@@ -121,6 +123,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         { to: '/admin/product-research', icon: TrendUp, label: 'Product Research', g: 'linear-gradient(135deg,#0d9488,#0891b2)', dot: '#2dd4bf' },
         { to: '/admin/ai-control', icon: Cpu, label: 'AI Control', g: 'linear-gradient(135deg,#0ea5e9,#8b5cf6)', dot: '#60a5fa' },
         { to: '/admin/hermes-intel', icon: Sparkle, label: 'AI Intelligence', g: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', dot: '#a78bfa' },
+        { to: '/admin/leados', icon: Target, label: 'LeadOS', g: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#a5b4fc' },
       ],
     },
     {
@@ -395,6 +398,7 @@ export function ADashboard() {
     { to: '/admin/variant-gen', icon: Stack, label: 'Create Variants', desc: 'Generate color/size combinations in one pass' },
     { to: '/admin/seo-engine', icon: MagnifyingGlass, label: 'SEO Optimize', desc: 'Meta, schema and keyword suggestions for pages' },
     { to: '/admin/hermes-intel', icon: Sparkle, label: 'Open AI Intelligence', desc: 'Hermes insights across catalog, media and traffic' },
+    { to: '/admin/leados', icon: Target, label: 'LeadOS Intelligence', desc: 'Find B2B mineral buyers, farm stores and salt distributors' },
   ];
 
   return (
@@ -662,7 +666,7 @@ export function _AProducts() { // superseded by CatalogAdmin.CatalogProductsPage
 // ============================================================================
 // ADVANCED PRODUCT EDITOR (eBay-style)
 // ============================================================================
-const EMPTY_PRODUCT: Product = { id:'',name:'',shortDesc:'',description:'',price:0,originalPrice:0,category:'Dog Supplies',stock:0,images:[],imageAlts:[],rating:0,reviews:0,isActive:true,brand:'',condition:'New',tags:[],weight:'',dimensions:'',origin:'China',freeShipping:true,shippingCost:'0',variants:[] };
+const EMPTY_PRODUCT: Product = { id:'',name:'',shortDesc:'',description:'',price:0,originalPrice:0,category:'Edible Salt',stock:0,images:[],imageAlts:[],rating:0,reviews:0,isActive:true,brand:'Himalayan Koh',condition:'New',tags:[],weight:'',dimensions:'',origin:'Pakistan',freeShipping:true,shippingCost:'0',variants:[] };
 
 export function _AProductEdit() { // superseded by CatalogAdmin.CatalogProductEditor (DB-backed)
   const { id: paramId } = useParams<{ id: string }>();
@@ -1075,7 +1079,7 @@ export function AOrders() {
         .grand{font-weight:bold;border-top:2px solid #1e3a8a;margin-top:4px;padding-top:8px;font-size:15px}
         .foot{margin-top:26px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px}
       </style></head><body>
-      <div class="head"><div><h1>LUXEDGE — INVOICE</h1><p class="muted">Luxedge.us · Houston, TX · hello@luxedge.us</p></div>
+      <div class="head"><div><h1>HIMALAYAN KOH — INVOICE</h1><p class="muted">HimalayanKoh.com · Houston, TX · orders@himalayankoh.com</p></div>
       <div style="text-align:right"><p><strong>${o.order_number}</strong></p><p class="muted">${new Date(o.created_at).toLocaleDateString()}</p><p class="muted">Status: ${String(o.status || 'unknown')}</p></div></div>
       <div class="muted" style="margin-bottom:14px"><strong style="color:#111">Bill To:</strong> ${String(o.customer_email || '—')}<br>${addr ? `${String(addr.line1 || '')}, ${String(addr.city || '')} ${String(addr.state || '')} ${String(addr.zip || '')}` : 'Address not recorded'}</div>
       <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit</th><th style="text-align:right">Line Total</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="muted">No line items recorded.</td></tr>'}</tbody></table>
@@ -1086,7 +1090,7 @@ export function AOrders() {
         ${t.tax > 0 ? `<div><span>Tax (${t.taxRate.toFixed(2)}%)</span><span>$${t.tax.toFixed(2)}</span></div>` : ''}
         <div class="grand"><span>Total</span><span>$${t.grand.toFixed(2)}</span></div>
       </div>
-      <p class="foot">Thank you for shopping with Luxedge. ${Number(o.total || 0) > 0 && Math.abs(t.grand - Number(o.total || 0)) > 0.01 ? `Stripe-recorded total: $${Number(o.total).toFixed(2)}. ` : ''}This is a Luxedge-generated invoice.</p>
+      <p class="foot">Thank you for ordering with Himalayan Koh. ${Number(o.total || 0) > 0 && Math.abs(t.grand - Number(o.total || 0)) > 0.01 ? `Stripe-recorded total: $${Number(o.total).toFixed(2)}. ` : ''}This is an official Himalayan Koh invoice.</p>
     </body></html>`;
     const win = window.open('', '_blank', 'width=820,height=1000');
     if (!win) { notify('Popup blocked — allow popups to download the invoice', 'error'); return; }
@@ -1441,11 +1445,11 @@ export function AOrders() {
         const addr = (o as { shipping_address?: { name?: string; line1?: string; city?: string; state?: string; zip?: string } | null }).shipping_address;
         return (
           <div className="space-y-4">
-            <div className="rounded-xl border border-gray-200 p-5 bg-white text-sm" id="luxedge-invoice">
-              <div className="flex items-start justify-between border-b-2 border-blue-800 pb-3">
+            <div className="rounded-xl border border-gray-200 p-5 bg-white text-sm" id="himalayan-koh-invoice">
+              <div className="flex items-start justify-between border-b-2 border-amber-800 pb-3">
                 <div>
-                  <p className="text-lg font-bold text-gray-900">LUXEDGE</p>
-                  <p className="text-[11px] text-gray-400">Luxedge.us · Houston, TX · hello@luxedge.us</p>
+                  <p className="text-lg font-bold text-gray-900">HIMALAYAN KOH</p>
+                  <p className="text-[11px] text-gray-400">HimalayanKoh.com · Houston, TX · orders@himalayankoh.com</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-gray-900">{o.order_number}</p>
@@ -3141,15 +3145,15 @@ function _genProductSchema(p: Product, seo: SEOData, c: ContentData): string {
     "description": c.shortDescription || p.shortDesc,
     "image": p.images?.length ? [p.images[0]] : [],
     "sku": p.id,
-    "brand": { "@type": "Brand", "name": p.brand || "Luxedge" },
+    "brand": { "@type": "Brand", "name": p.brand || "Himalayan Koh" },
     "offers": {
       "@type": "Offer",
-      "url": `https://luxedge.us/#/products/${p.id}`,
+      "url": `${SITE_ORIGIN}/#/products/${p.id}`,
       "priceCurrency": "USD",
       "price": p.price.toFixed(2),
       "priceValidUntil": new Date(Date.now() + 86400000 * 90).toISOString().split('T')[0],
       "availability": p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      "seller": { "@type": "Organization", "name": "Luxedge" }
+      "seller": { "@type": "Organization", "name": "Himalayan Koh" }
     },
     "aggregateRating": {
       "@type": "AggregateRating",
@@ -3166,9 +3170,9 @@ function _genBreadcrumbSchema(p: Product, seo: SEOData): string {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://luxedge.us" },
-      { "@type": "ListItem", "position": 2, "name": p.category, "item": `https://luxedge.us/#/category/${p.category.toLowerCase().replace(/\s+/g,'-')}` },
-      { "@type": "ListItem", "position": 3, "name": seo.title || p.name, "item": `https://luxedge.us/#/products/${seo.slug || p.id}` }
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": SITE_ORIGIN },
+      { "@type": "ListItem", "position": 2, "name": p.category, "item": `${SITE_ORIGIN}/#/category/${p.category.toLowerCase().replace(/\s+/g,'-')}` },
+      { "@type": "ListItem", "position": 3, "name": seo.title || p.name, "item": `${SITE_ORIGIN}/#/products/${seo.slug || p.id}` }
     ]
   }, null, 2);
 }
@@ -3177,16 +3181,11 @@ function _genOrgSchema(): string {
   return JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Luxedge",
-    "url": "https://luxedge.us",
-    "logo": { "@type": "ImageObject", "url": "https://luxedge.us/logo.png" },
-    "contactPoint": { "@type": "ContactPoint", "contactType": "customer service", "email": "support@luxedge.us", "availableLanguage": "English" },
+    "name": "Himalayan Koh",
+    "url": SITE_ORIGIN,
+    "logo": { "@type": "ImageObject", "url": `${SITE_ORIGIN}/logo.png` },
+    "contactPoint": { "@type": "ContactPoint", "contactType": "customer service", "email": "support@himalayankoh.com", "availableLanguage": "English" },
     "address": { "@type": "PostalAddress", "addressCountry": "US" },
-    // sameAs is emitted ONLY for profiles that actually exist. This helper used
-    // to hardcode three invented Luxedge handles on Twitter, Facebook and
-    // Instagram — none of which is a real account, so copying this schema
-    // published a false claim about the business. It now reads the single list
-    // in src/content/socialProfiles.ts and omits the key entirely when empty.
     ...(SOCIAL_PROFILES.length > 0 ? { "sameAs": SOCIAL_PROFILES.map((p) => p.href) } : {}),
   }, null, 2);
 }
@@ -3195,12 +3194,12 @@ function _genWebsiteSchema(): string {
   return JSON.stringify({
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "Luxedge",
-    "url": "https://luxedge.us",
-    "description": "Premium pet essentials for dogs and cats",
+    "name": "Himalayan Koh",
+    "url": SITE_ORIGIN,
+    "description": "Authentic Himalayan pink salt, wellness, and mineral products",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": { "@type": "EntryPoint", "urlTemplate": "https://luxedge.us/#/search?q={search_term_string}" },
+      "target": { "@type": "EntryPoint", "urlTemplate": `${SITE_ORIGIN}/#/search?q={search_term_string}` },
       "query-input": "required name=search_term_string"
     }
   }, null, 2);
@@ -3276,7 +3275,7 @@ export function ASEOEngine() {
       ...prev,
       title: prev.title || p.name,
       slug: prev.slug || slug,
-      canonicalUrl: `https://luxedge.us/#/products/${slug}`,
+      canonicalUrl: `https://himalayankoh.com/product/${slug}`,
       imageAlt: prev.imageAlt || (p.name + ' product image'),
       imageTitle: prev.imageTitle || p.name,
     }));
@@ -3398,7 +3397,7 @@ Rules:
         imageAlt: str('imageAlt') || prev.imageAlt,
         imageTitle: str('imageTitle') || prev.imageTitle,
         imageCaption: str('imageCaption') || prev.imageCaption,
-        canonicalUrl: `https://luxedge.us/#/products/${str('slug') || prev.slug}`,
+        canonicalUrl: `https://himalayankoh.com/product/${str('slug') || prev.slug}`,
       }));
       setSocial(prev => ({
         ...prev,
@@ -3586,7 +3585,7 @@ Example: {"${fieldHint}": "your content here"}`;
               </div>
             </FieldRow>
             <FieldRow label="Canonical URL">
-              <input value={seo.canonicalUrl} onChange={e => setSeo(p => ({...p, canonicalUrl: e.target.value}))} className={inp} placeholder="https://luxedge.us/#/products/…" />
+              <input value={seo.canonicalUrl} onChange={e => setSeo(p => ({...p, canonicalUrl: e.target.value}))} className={inp} placeholder="https://himalayankoh.com/product/…" />
             </FieldRow>
             <FieldRow label="Focus Keyword">
               <input value={seo.focusKeyword} onChange={e => setSeo(p => ({...p, focusKeyword: e.target.value}))} className={inp} placeholder="Primary SEO keyword" />
@@ -3931,7 +3930,7 @@ Example: {"${fieldHint}": "your content here"}`;
                 <span className="text-sm font-medium text-gray-500">Google MagnifyingGlass — Desktop</span>
               </div>
               <div className="border border-gray-200 rounded-xl p-5 max-w-2xl bg-white font-sans">
-                <p className="text-xs text-gray-500 mb-1">https://luxedge.us › products › {seo.slug || 'product'}</p>
+                <p className="text-xs text-gray-500 mb-1">https://himalayankoh.com › product › {seo.slug || 'product'}</p>
                 <p className="text-xl text-blue-700 hover:underline cursor-pointer font-medium leading-tight mb-1">{seo.title || selProduct?.name || 'SEO Title will appear here'}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">{seo.metaDescription || 'Meta description will appear here. It shows up to 160 characters in Google search results.'}</p>
               </div>
@@ -3948,7 +3947,7 @@ Example: {"${fieldHint}": "your content here"}`;
               </div>
               <div className="max-w-sm mx-auto">
                 <div className="border border-gray-200 rounded-2xl p-4 bg-white font-sans shadow-sm">
-                  <p className="text-xs text-green-600 mb-0.5">luxedge.us › {seo.slug || 'products'}</p>
+                  <p className="text-xs text-green-600 mb-0.5">himalayankoh.com › {seo.slug || 'product'}</p>
                   <p className="text-base text-blue-700 font-medium leading-tight mb-1 line-clamp-2">{seo.title || 'SEO Title'}</p>
                   <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{seo.metaDescription || 'Meta description shown in mobile search results.'}</p>
                 </div>
@@ -3972,7 +3971,7 @@ Example: {"${fieldHint}": "your content here"}`;
                   </div>
                 )}
                 <div className="p-3 bg-gray-50 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 uppercase">LUXEDGE.US</p>
+                  <p className="text-xs text-gray-500 uppercase">HIMALAYANKOH.COM</p>
                   <p className="font-bold text-gray-900 text-sm leading-tight mt-0.5">{social.ogTitle || seo.title || 'OG Title'}</p>
                   <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{social.ogDescription || seo.metaDescription || 'OG Description'}</p>
                 </div>
@@ -3998,7 +3997,7 @@ Example: {"${fieldHint}": "your content here"}`;
                 <div className="p-3">
                   <p className="font-bold text-gray-900 text-sm">{social.twitterTitle || seo.title || 'Twitter Title'}</p>
                   <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{social.twitterDescription || seo.metaDescription || 'Twitter description'}</p>
-                  <p className="text-xs text-gray-400 mt-1">luxedge.us</p>
+                  <p className="text-xs text-gray-400 mt-1">himalayankoh.com</p>
                 </div>
               </div>
             </div>
@@ -6010,6 +6009,8 @@ export default function AdminSection() {
       <Route path="product-research" element={<AdminLayout><ProductResearch /></AdminLayout>} />
       <Route path="ai-control" element={<AdminLayout><AiControlCenter /></AdminLayout>} />
       <Route path="hermes-intel" element={<AdminLayout><HermesIntel /></AdminLayout>} />
+      <Route path="leados" element={<AdminLayout><LeadOSAdmin /></AdminLayout>} />
+      <Route path="client-outreach" element={<AdminLayout><LeadOSAdmin defaultTab="outreach" /></AdminLayout>} />
       <Route path="cj-setup" element={<AdminLayout><CJSetup /></AdminLayout>} />
       <Route path="payments" element={<AdminLayout><PaymentsSetup /></AdminLayout>} />
       <Route path="shipping" element={<AdminLayout><ShippingSetup /></AdminLayout>} />

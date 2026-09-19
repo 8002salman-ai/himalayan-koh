@@ -352,7 +352,7 @@ export function rowToProduct(row: ProductRow, categories: CategoryRow[], images:
     specifications: asRecord(row.specifications),
     categoryId: row.category_id || null,
     categoryName: cat?.name || '',
-    brand: row.brand || 'Luxedge',
+    brand: row.brand || 'Himalayan Koh',
     status: (['draft', 'ready', 'active', 'inactive', 'archived', 'safety_hold'].includes(row.status) ? row.status : row.status === 'published' ? 'active' : 'draft') as CatalogStatus,
     price,
     compareAtPrice: compare > price ? compare : 0,
@@ -655,6 +655,21 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
  */
 const shareBrowserCatalogRead = singleFlight<CatalogProduct[]>();
 
+let catalogMemoryCache: { products: CatalogProduct[]; timestamp: number } | null = null;
+const CATALOG_CACHE_TTL_MS = 60_000; // 60 seconds TTL
+
+export function invalidateCatalogCache(updatedProduct?: CatalogProduct | null) {
+  if (!catalogMemoryCache) return;
+  if (updatedProduct) {
+    const idx = catalogMemoryCache.products.findIndex((p) => p.id === updatedProduct.id);
+    if (idx >= 0) {
+      catalogMemoryCache.products[idx] = updatedProduct;
+      return;
+    }
+  }
+  catalogMemoryCache = null;
+}
+
 /** The browser-side read: authenticated admin route first, public route second. */
 async function readBrowserCatalog(): Promise<CatalogProduct[] | null> {
   // 1. Try authenticated /api/admin/catalog first (reads all products including drafts from WooCommerce)
@@ -689,9 +704,16 @@ async function readBrowserCatalog(): Promise<CatalogProduct[] | null> {
 }
 
 /** All products (any status) with images/variants — admin view. */
-export async function listProducts(): Promise<CatalogProduct[]> {
+export async function listProducts(forceFresh = false): Promise<CatalogProduct[]> {
   if (typeof window !== 'undefined') {
-    return shareBrowserCatalogRead(async () => (await readBrowserCatalog()) ?? readFromDb());
+    if (!forceFresh && catalogMemoryCache && (Date.now() - catalogMemoryCache.timestamp < CATALOG_CACHE_TTL_MS)) {
+      return catalogMemoryCache.products;
+    }
+    const res = await shareBrowserCatalogRead(async () => (await readBrowserCatalog()) ?? readFromDb());
+    if (res && res.length > 0) {
+      catalogMemoryCache = { products: res, timestamp: Date.now() };
+    }
+    return res;
   }
 
   return readFromDb();
@@ -710,6 +732,11 @@ async function readFromDb(): Promise<CatalogProduct[]> {
 
 export async function getProduct(id: string): Promise<CatalogProduct | null> {
   if (typeof window !== 'undefined') {
+    // Fast in-memory cache hit (<1ms) so clicking product title renders immediately
+    if (catalogMemoryCache && (Date.now() - catalogMemoryCache.timestamp < CATALOG_CACHE_TTL_MS)) {
+      const found = catalogMemoryCache.products.find((p) => p.id === id || p.slug === id);
+      if (found) return found;
+    }
     try {
       const prods = await listProducts();
       const found = prods.find((p) => p.id === id || p.slug === id);
@@ -924,6 +951,7 @@ export async function createProduct(input: ProductInput): Promise<CatalogProduct
     updated_at: now,
     published_at: status === 'active' ? now : null,
   });
+  invalidateCatalogCache();
   return getProduct(row.id).then((p) => p!);
 }
 
@@ -1013,6 +1041,7 @@ export async function updateProduct(id: string, input: Partial<ProductInput>): P
     effectivePatch.slug = await uniqueSlug(db, input.name, id);
   }
   await db.update('products', id, effectivePatch);
+  invalidateCatalogCache();
   return getProduct(id);
 }
 
@@ -1024,6 +1053,7 @@ export async function setProductStatus(id: string, status: CatalogStatus): Promi
   const patch: Record<string, unknown> = { status: effective };
   if (effective === 'active' && !existing.published_at) patch.published_at = new Date().toISOString();
   await db.update('products', id, patch);
+  invalidateCatalogCache();
   return getProduct(id);
 }
 

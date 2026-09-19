@@ -35,14 +35,14 @@ type SuccessState = {
 };
 
 
-const PET_TYPES = [
-  { id: 'dog', label: 'Dog', emoji: '🐶', blurb: 'Toys, treats, walking & grooming' },
-  { id: 'cat', label: 'Cat', emoji: '🐱', blurb: 'Toys, grooming & everyday comfort' },
+const AUDIENCE_TYPES = [
+  { id: 'culinary', label: 'Culinary & Gourmet', emoji: '🧂', blurb: 'Pink salt, fine grinds & kitchen essentials' },
+  { id: 'livestock', label: 'Livestock & Farm', emoji: '🐎', blurb: 'Salt licks, trace mineral blocks & animal care' },
 ] as const;
 
-const INTERESTS = ['Feeding', 'Grooming', 'Toys', 'Walking', 'Accessories', 'Health', 'Training'];
+const INTERESTS = ['Culinary Jars', 'Fine Grain Salt', 'Coarse Salt', 'Animal Salt Licks', 'Mineral Blocks', 'Bulk Bags'];
 
-const SIZES = ['Small', 'Medium', 'Large', 'Giant / Multiple pets'];
+const SIZES = ['Individual / Household', 'Commercial Kitchen', 'Farm / Barn', 'Distributor / Bulk'];
 
 const inputCls =
   'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-[#9a6f16] focus:outline-none focus:ring-2 focus:ring-[#9a6f16]/20 transition';
@@ -68,13 +68,13 @@ export default function GiftDropPage() {
   const [success, setSuccess] = useState<SuccessState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [petType, setPetType] = useState<'dog' | 'cat' | ''>('');
+  const [categoryType, setCategoryType] = useState<'culinary' | 'livestock' | ''>('');
   const [form, setForm] = useState({
     firstName: '',
     email: '',
-    petName: '',
-    petSize: '',
-    petInterest: '',
+    recipientName: '',
+    scaleSize: '',
+    interest: '',
     line1: '',
     line2: '',
     city: '',
@@ -101,14 +101,12 @@ export default function GiftDropPage() {
 
   // ---- Basic local address validation (no Shippo required for free gifts) ----
   useEffect(() => {
-    if (!addressComplete || (petType !== 'dog' && petType !== 'cat')) {
+    if (!addressComplete || (categoryType !== 'culinary' && categoryType !== 'livestock')) {
       setValidatedFor('');
       return;
     }
-    // Basic format validation — no async calls, no Shippo.
     const fp = addrFingerprint();
-    if (fp === validatedFor) return; // already validated
-    // Simple format checks
+    if (fp === validatedFor) return;
     const zip = form.zip.trim();
     const state = form.state.trim();
     const valid = form.line1.trim() && form.city.trim() && state && zip && /^\d{5}(-\d{4})?$/.test(zip);
@@ -118,7 +116,7 @@ export default function GiftDropPage() {
       setValidatedFor('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressComplete, form.line1, form.line2, form.city, form.state, form.zip, petType]);
+  }, [addressComplete, form.line1, form.line2, form.city, form.state, form.zip, categoryType]);
 
   useEffect(() => {
     let alive = true;
@@ -132,9 +130,9 @@ export default function GiftDropPage() {
         }
         const total = Number(d.total) || 0;
         const remaining = Number(d.remaining) || 0;
-        if (!d.active) setState({ phase: 'closed', title: String(d.title || 'Luxedge Pet Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
-        else if (total > 0 && remaining <= 0) setState({ phase: 'full', title: String(d.title || 'Luxedge Pet Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
-        else setState({ phase: 'open', title: String(d.title || 'Luxedge Pet Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
+        if (!d.active) setState({ phase: 'closed', title: String(d.title || 'Himalayan Koh Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
+        else if (total > 0 && remaining <= 0) setState({ phase: 'full', title: String(d.title || 'Himalayan Koh Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
+        else setState({ phase: 'open', title: String(d.title || 'Himalayan Koh Gift Drop'), message: String(d.message || ''), giftName: String(d.giftName || ''), total, remaining });
       })
       .catch(() => alive && setState({ phase: 'error' }));
     return () => {
@@ -153,8 +151,8 @@ export default function GiftDropPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!petType) {
-      showError('Please choose your pet type — Dog or Cat.');
+    if (!categoryType) {
+      showError('Please choose your focus area — Culinary or Livestock.');
       return;
     }
     if (!form.firstName.trim() || !form.email.trim() || !form.line1.trim() || !form.city.trim() || !form.zip.trim()) {
@@ -178,10 +176,10 @@ export default function GiftDropPage() {
         body: JSON.stringify({
           firstName: form.firstName.trim(),
           email: form.email.trim(),
-          petType,
-          petName: form.petName.trim(),
-          petSize: form.petSize,
-          petInterest: form.petInterest,
+          categoryType,
+          recipientName: form.recipientName.trim(),
+          scaleSize: form.scaleSize,
+          interest: form.interest,
           address: {
             line1: form.line1.trim(),
             line2: form.line2.trim(),
@@ -270,7 +268,7 @@ export default function GiftDropPage() {
             <p className="text-lg font-bold text-[#1b1f27]">We could not check availability right now.</p>
             <p className="mx-auto mt-2 max-w-md text-sm text-[#5b626e]">
               Please refresh in a moment — if this keeps happening, email{' '}
-              <a className="font-semibold text-[#9a6f16] underline" href="mailto:hello@luxedge.us">hello@luxedge.us</a>.
+              <a className="font-semibold text-[#9a6f16] underline" href="mailto:orders@himalayankoh.com">orders@himalayankoh.com</a>.
             </p>
           </div>
         )}
@@ -278,10 +276,9 @@ export default function GiftDropPage() {
         {state.phase === 'closed' && (
           <div className="rounded-2xl border border-[#ece5d4] bg-white p-8 text-center shadow-sm">
             <p className="text-3xl">🎁</p>
-            <h2 className="mt-2 text-xl font-bold text-[#1b1f27]">This Pet Gift Drop is not open right now.</h2>
+            <h2 className="mt-2 text-xl font-bold text-[#1b1f27]">This Gift Drop is not open right now.</h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#5b626e]">
-              We run drops in small batches for real pet owners. When the next drop opens it will be announced on our{' '}
-              <a className="font-semibold text-[#9a6f16] underline" href="https://luxedge.us/blog">blog</a> and social channels.
+              We run drops in small batches. When the next drop opens it will be announced on our social channels.
             </p>
             <WaitlistForm />
           </div>
@@ -290,10 +287,9 @@ export default function GiftDropPage() {
         {state.phase === 'full' && (
           <div className="rounded-2xl border border-[#ece5d4] bg-white p-8 text-center shadow-sm">
             <p className="text-3xl">🎉</p>
-            <h2 className="mt-2 text-2xl font-bold text-[#1b1f27]">This Pet Gift Drop has been fully claimed.</h2>
+            <h2 className="mt-2 text-2xl font-bold text-[#1b1f27]">This Gift Drop has been fully claimed.</h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#5b626e]">
-              All {state.total} real gifts are now matched with pet owners. No payment was ever required, and nobody is
-              charged for anything, ever. Follow the Luxedge blog for the next drop.
+              All {state.total} real gifts are now claimed. No payment was ever required, and nobody is charged for anything.
             </p>
             <WaitlistForm />
           </div>
@@ -311,17 +307,17 @@ export default function GiftDropPage() {
 
               {/* Single premium claim card with numbered sections */}
               <div className="overflow-hidden rounded-2xl border border-[#ece5d4] bg-white shadow-[0_1px_2px_rgba(27,31,39,0.04),0_12px_32px_-16px_rgba(27,31,39,0.14)]">
-                {/* 1. Your pet */}
+                {/* 1. Your preference */}
                 <div className="p-5 sm:p-6">
-                  <SectionHeading n={1} title="Your pet" sub="This drop currently covers dogs and cats." />
+                  <SectionHeading n={1} title="Your preference" sub="Choose your preferred category." />
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {PET_TYPES.map((p) => {
-                      const active = petType === p.id;
+                    {AUDIENCE_TYPES.map((p) => {
+                      const active = categoryType === p.id;
                       return (
                         <button
                           key={p.id}
                           type="button"
-                          onClick={() => setPetType(p.id)}
+                          onClick={() => setCategoryType(p.id)}
                           aria-pressed={active}
                           className={`relative rounded-xl border p-4 text-left transition ${
                             active
@@ -342,34 +338,34 @@ export default function GiftDropPage() {
                     })}
                   </div>
 
-                  {/* Optional pet details — collapsed by default */}
+                  {/* Optional details */}
                   <details className="group mt-4">
                     <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-gray-200 bg-[#fafaf8] px-3.5 py-2.5 text-[12.5px] font-semibold text-gray-500 transition hover:border-[#d8c59a] hover:text-[#7c5a10]">
-                      <span>Tell us more about your pet <span className="font-normal text-gray-400">(optional — helps us match the right gift)</span></span>
+                      <span>Tell us more about your needs <span className="font-normal text-gray-400">(optional — helps us match the right gift)</span></span>
                       <span className="text-[#9a6f16] transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
                     </summary>
                     <div className="mt-3 grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className={optLabelCls} htmlFor="gd-petname">Pet name (optional)</label>
-                        <input id="gd-petname" className={inputCls} value={form.petName} onChange={set('petName')} placeholder="e.g. Biscuit" autoComplete="off" />
+                        <label className={optLabelCls} htmlFor="gd-petname">Recipient / business name (optional)</label>
+                        <input id="gd-petname" className={inputCls} value={form.recipientName} onChange={set('recipientName')} placeholder="e.g. My Farm / Kitchen" autoComplete="off" />
                       </div>
                       <div>
-                        <label className={optLabelCls} htmlFor="gd-petsize">Pet size (optional)</label>
-                        <select id="gd-petsize" className={inputCls} value={form.petSize} onChange={set('petSize')}>
-                          <option value="">Choose a size…</option>
+                        <label className={optLabelCls} htmlFor="gd-petsize">Scale / usage (optional)</label>
+                        <select id="gd-petsize" className={inputCls} value={form.scaleSize} onChange={set('scaleSize')}>
+                          <option value="">Choose scale…</option>
                           {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <div className="sm:col-span-2">
-                        <label className={optLabelCls} htmlFor="gd-interest">What is your pet into? (optional)</label>
+                        <label className={optLabelCls} htmlFor="gd-interest">What are you most interested in? (optional)</label>
                         <div className="flex flex-wrap gap-2">
                           {INTERESTS.map((i) => (
                             <button
                               key={i}
                               type="button"
-                              onClick={() => setForm((f) => ({ ...f, petInterest: f.petInterest === i ? '' : i }))}
+                              onClick={() => setForm((f) => ({ ...f, interest: f.interest === i ? '' : i }))}
                               className={`rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition ${
-                                form.petInterest === i ? 'border-[#9a6f16] bg-[#faf4e4] text-[#7c5a10]' : 'border-gray-300 bg-white text-gray-600 hover:border-[#d8c59a]'
+                                form.interest === i ? 'border-[#9a6f16] bg-[#faf4e4] text-[#7c5a10]' : 'border-gray-300 bg-white text-gray-600 hover:border-[#d8c59a]'
                               }`}
                             >
                               {i}
@@ -486,7 +482,7 @@ export default function GiftDropPage() {
                   <span aria-hidden="true">🤝</span> Why we give gifts
                 </h3>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-[#5b626e]">
-                  We'd rather put a real product in your pet's paws than spend the same money on ads. Tell us about your dog or cat and we'll send a complimentary gift from our current stock.
+                  We'd rather put authentic Himalayan salt products directly into your hands than spend money on ads. Tell us what you need and we'll send a complimentary gift from our current stock.
                 </p>
                 <ul className="mt-4 space-y-2 text-[13px] text-[#3d4350]">
                   {[
@@ -521,7 +517,7 @@ export default function GiftDropPage() {
               Your gift is reserved{success.test ? ' (TEST)' : ''}!
             </h2>
             <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-[#5b626e]">
-              <strong className="font-semibold text-[#1b1f27]">{success.giftName}</strong> is matched to your pet and headed your way soon.
+              <strong className="font-semibold text-[#1b1f27]">{success.giftName}</strong> is reserved and headed your way soon.
             </p>
 
             <div className="mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-[#ece5d4] bg-white text-left shadow-[0_12px_32px_-16px_rgba(27,31,39,0.18)]">
@@ -581,8 +577,8 @@ export default function GiftDropPage() {
               ))}
             </div>
             <p className="mt-6 text-center text-[12px] text-gray-400">
-              Genuine Luxedge promotion · One gift per household · Questions?{' '}
-              <a className="font-semibold text-[#9a6f16] underline" href="mailto:hello@luxedge.us">hello@luxedge.us</a>
+              Genuine Himalayan Koh promotion · One gift per household · Questions?{' '}
+              <a className="font-semibold text-[#9a6f16] underline" href="mailto:orders@himalayankoh.com">orders@himalayankoh.com</a>
             </p>
           </div>
         )}
@@ -595,9 +591,9 @@ export default function GiftDropPage() {
 // WAITLIST — shown only when the drop is paused or fully claimed.
 //
 // Explicit consent: the visitor submits their email *only* to be notified
-// about the next Pet Gift Drop, and the submit itself is the opt-in. The lead
+// about the next Gift Drop, and the submit itself is the opt-in. The lead
 // is stored through the existing CRM capture endpoint (source=manual) with
-// message metadata = pet-gift-drop-waitlist, so the owner can segment it.
+// message metadata = gift-drop-waitlist, so the owner can segment it.
 // ============================================================================
 function WaitlistForm() {
   const [email, setEmail] = useState('');
@@ -622,8 +618,8 @@ function WaitlistForm() {
           email: em,
           source: 'manual',
           optedIn: true,
-          pageUrl: typeof window !== 'undefined' ? window.location.href : 'https://luxedge.us/free-pet-gift',
-          message: 'pet-gift-drop-waitlist',
+          pageUrl: typeof window !== 'undefined' ? window.location.href : 'https://himalayankoh.com/gift-drop',
+          message: 'gift-drop-waitlist',
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -644,7 +640,7 @@ function WaitlistForm() {
       <div className="mx-auto mt-6 max-w-sm rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-left">
         <p className="text-sm font-bold text-emerald-800">You're on the list! ✓</p>
         <p className="mt-1 text-[12.5px] leading-snug text-emerald-700">
-          We'll email you only when the next Pet Gift Drop opens — no spam, and you can unsubscribe anytime.
+          We'll email you only when the next Gift Drop opens — no spam, and you can unsubscribe anytime.
         </p>
       </div>
     );
@@ -652,7 +648,7 @@ function WaitlistForm() {
 
   return (
     <form onSubmit={join} className="mx-auto mt-6 max-w-sm text-left">
-      <p className="text-sm font-semibold text-[#1b1f27]">Notify me about the next Pet Gift Drop</p>
+      <p className="text-sm font-semibold text-[#1b1f27]">Notify me about the next Gift Drop</p>
       <p className="mt-1 text-[12px] text-gray-500">
         Submitting your email is your opt-in — we'll only use it to tell you when a new drop opens.
       </p>
