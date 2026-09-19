@@ -132,26 +132,32 @@ export const SITE_ORIGIN = resolveSiteOrigin({
 /**
  * The origin a *server-side* feature should read this site's own pages from.
  *
- * Why the request is consulted first
- * ---------------------------------
- * `SITE_ORIGIN` above is a build-time constant, so it is only as good as the
- * build env. A deployed bundle whose build env carried no `NEXT_PUBLIC_SITE_URL`
- * falls back to a loopback default (`http://localhost:3000`) — and a loopback
- * origin makes every self-referential read fail: the SSRF guard refuses it, so a
- * feature like "find this product's images on our own store" searches
- * `http://localhost:3000`, refuses every page, and reports "nothing found" while
- * the catalogue sits one hostname away. Observed on the staging Worker.
+ * Two real failures shape this rule, both observed on the staging Worker
+ * ------------------------------------------------------------------------
+ * 1. `SITE_ORIGIN` above is a build-time constant, so it is only as good as the
+ *    build env. The deployed Worker resolved it to `http://localhost:3000` — the
+ *    development fallback — so a feature like "find this product's images on our
+ *    own store" searched loopback, the SSRF guard refused every page, and the
+ *    answer was "nothing found" while the catalogue sat one hostname away.
+ * 2. Fixing that to the request's own host introduced the second failure: a
+ *    Worker cannot reliably fetch its own hostname, so every page came back
+ *    `HTTP 522` from Cloudflare. The storefront the Worker serves is not
+ *    reachable from inside itself; the WordPress/WooCommerce backend it loads its
+ *    products from is, and that backend is where the product pages and their
+ *    images actually live.
  *
- * The request's own origin cannot be wrong about which host the deployment is
- * serving: staging asks staging, production asks production. So: prefer the
- * request, then a real configured origin, and only fall back to staging when
- * both are loopback (local development), because staging is where the catalogue
- * a local build reads actually lives.
+ * So the order is: the catalogue backend, then the host being served (for a
+ * deployment with no separate backend), then a real configured origin, and only
+ * then staging — so a local build searches the store the catalogue comes from.
+ * A loopback origin is never returned for a request that is not loopback.
  */
 export function resolveRuntimeSiteOrigin(
   requestUrl: string,
-  input: SiteOriginInput = {}
+  input: SiteOriginInput & { catalogueBackend?: string | null } = {}
 ): string {
+  const catalogueBackend = input.catalogueBackend ? normalize(input.catalogueBackend) : null;
+  if (catalogueBackend && !isLoopbackOrigin(catalogueBackend)) return catalogueBackend;
+
   const fromRequest = (() => {
     try {
       return normalize(new URL(requestUrl).origin);

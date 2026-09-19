@@ -21,6 +21,7 @@ import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { isAllowedRequestOrigin } from '@/lib/http/originAllowlist';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { resolveRuntimeSiteOrigin } from '@/lib/site/origin';
+import { backendConfig } from '@/lib/backend/config';
 import { checkFetchableUrl } from '@/lib/scrape/urlSafety';
 import { fetchImagesForTitle, rankImagesWithAi } from '@/lib/scrape/pageImages';
 
@@ -56,13 +57,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: checkFetchableUrl(explicitUrl).reason }, { status: 400 });
   }
 
-  // The store the admin is working on. Defaults to the host THIS deployment is
-  // serving (the request's origin) — production is never implied, only used when
-  // asked for. The build-time constant is not used as the primary source: on the
-  // staging Worker it had degraded to `http://localhost:3000`, so the search
-  // refused every page it needed to read and reported "nothing found".
+  // The store the admin is working on. Defaults to the catalogue this deployment
+  // already reads its products from — production is never implied, only used when
+  // asked for. Neither a build-time constant nor the Worker's own hostname is used
+  // as the primary source: the constant had degraded to `http://localhost:3000` on
+  // staging (every page refused), and a Worker fetching its own hostname answers
+  // `HTTP 522`, so "search our own store" has to go through the backend.
   const requestedOrigin = typeof record.origin === 'string' ? record.origin.trim() : '';
-  let siteOrigin = resolveRuntimeSiteOrigin(request.url);
+  let siteOrigin = resolveRuntimeSiteOrigin(request.url, {
+    catalogueBackend: backendConfig.wordpressBaseUrl,
+  });
   if (requestedOrigin) {
     const safety = checkFetchableUrl(requestedOrigin);
     if (!safety.ok) return NextResponse.json({ error: safety.reason }, { status: 400 });

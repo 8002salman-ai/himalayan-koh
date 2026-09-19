@@ -120,11 +120,22 @@ describe('resolveSiteOrigin', () => {
  * away. The rule under test is that the host actually being served wins.
  */
 describe('resolveRuntimeSiteOrigin', () => {
-  it('prefers the request host, so a deployed build never searches localhost', () => {
+  it('prefers the catalogue backend, because a Worker cannot fetch its own host', () => {
     expect(
       resolveRuntimeSiteOrigin('https://preview.himalayankoh.com/api/admin/product-images', {
         configured: '',
         nodeEnv: 'development',
+        catalogueBackend: 'https://himalayankoh.com/staging',
+      })
+    ).toBe('https://himalayankoh.com/staging');
+  });
+
+  it('falls back to the host being served when there is no separate backend', () => {
+    expect(
+      resolveRuntimeSiteOrigin('https://preview.himalayankoh.com/api/admin/product-images', {
+        configured: '',
+        nodeEnv: 'development',
+        catalogueBackend: '',
       })
     ).toBe('https://preview.himalayankoh.com');
     expect(
@@ -133,6 +144,16 @@ describe('resolveRuntimeSiteOrigin', () => {
         nodeEnv: 'development',
       })
     ).toBe('https://himalayankoh.com');
+  });
+
+  it('ignores a loopback backend rather than searching localhost from a deployment', () => {
+    expect(
+      resolveRuntimeSiteOrigin('https://preview.himalayankoh.com/api/admin/product-images', {
+        configured: '',
+        nodeEnv: 'development',
+        catalogueBackend: 'http://localhost:8080',
+      })
+    ).toBe('https://preview.himalayankoh.com');
   });
 
   it('uses a real configured origin when the request itself is loopback', () => {
@@ -144,7 +165,7 @@ describe('resolveRuntimeSiteOrigin', () => {
     ).toBe('https://preview.himalayankoh.com');
   });
 
-  it('falls back to staging when both the request and the configuration are loopback', () => {
+  it('falls back to staging when everything else is loopback or missing', () => {
     expect(
       resolveRuntimeSiteOrigin('http://localhost:3102/api/admin/product-images', {
         configured: 'http://localhost:3001',
@@ -164,9 +185,9 @@ describe('resolveRuntimeSiteOrigin', () => {
     }
   });
 
-  it('survives a request URL that is not a URL at all', () => {
-    expect(resolveRuntimeSiteOrigin('not-a-url', { configured: '', nodeEnv: 'development' })).toBe(
-      SITE_ORIGIN_STAGING
-    );
+  it('survives a request URL and a backend value that are not URLs', () => {
+    expect(
+      resolveRuntimeSiteOrigin('not-a-url', { configured: '', nodeEnv: 'development', catalogueBackend: 'nope' })
+    ).toBe(SITE_ORIGIN_STAGING);
   });
 });
