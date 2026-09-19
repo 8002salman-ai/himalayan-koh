@@ -620,15 +620,20 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     tags: ['himalayan-salt', 'pink-salt'],
     featured: !!r.isFeatured,
     newArrival: false,
-    trending: true,
-    bestRated: true,
+    // Merchandising claims are NOT fabricated for Woo-backed rows: badges
+    // like Trending/Best Rated may only render when real evidence exists
+    // (see the Promotions tab guardrails).
+    trending: false,
+    bestRated: false,
     bestSeller: false,
     promoted: false,
     saleEnabled: compareAt > priceNum,
     seoTitle: `${name} | Himalayan Koh`,
     seoDescription: `${name} - 100% pure authentic Himalayan Pink Salt directly from the Khewra Salt Mines.`,
-    seoTitleStored: `${name} | Himalayan Koh`,
-    seoDescriptionStored: `Pure Himalayan Pink Salt ${name}`,
+    // Stored values are null until actually persisted — displaying a
+    // generated value as "stored" misreports the Woo record.
+    seoTitleStored: null,
+    seoDescriptionStored: null,
     seoKeywords: ['himalayan salt', 'pink salt', 'khewra mines'],
     images: imagesList.map((url, i) => ({
       id: `img-${id}-${i}`,
@@ -1021,7 +1026,14 @@ const INPUT_FIELD_TO_COLUMNS: Record<keyof ProductInput, string[]> = {
 export async function updateProduct(id: string, input: Partial<ProductInput>): Promise<CatalogProduct | null> {
   const db = getDb();
   const existing = await db.get<ProductRow>('products', id);
-  if (!existing) return null;
+  // Woo-sourced product (numeric WooCommerce id, no row in the local catalog
+  // table): route the edit through the server Woo write API. The client db
+  // adapter only knows rows it created itself, so a Woo product edit used to
+  // crash with `saved.id of null` after making zero network requests.
+  if (!existing) {
+    if (!/^\d+$/.test(id)) return null; // unknown local id — genuine miss
+    return updateWooProductViaApi(id, input);
+  }
   // Only fields present in the partial input are read below (field in input).
   const full = productToRow(input as ProductInput);
   const patch: Record<string, unknown> = {};
@@ -1048,6 +1060,9 @@ export async function updateProduct(id: string, input: Partial<ProductInput>): P
 export async function setProductStatus(id: string, status: CatalogStatus): Promise<CatalogProduct | null> {
   const db = getDb();
   const existing = await db.get<ProductRow>('products', id);
+  if (!existing && isWooId(id)) {
+    return updateWooProductViaApi(id, { status });
+  }
   if (!existing) return null;
   const effective = await effectiveStatus(status);
   const patch: Record<string, unknown> = { status: effective };
@@ -1057,8 +1072,14 @@ export async function setProductStatus(id: string, status: CatalogStatus): Promi
   return getProduct(id);
 }
 
-/** Archive keeps history (preferred over hard delete). */
+/** Archive keeps history (preferred over hard delete). Woo-aware: drafts the Woo record. */
 export async function archiveProduct(id: string): Promise<boolean> {
+  const db = getDb();
+  const existing = await db.get<ProductRow>('products', id);
+  if (!existing && isWooId(id)) {
+    const updated = await updateWooProductViaApi(id, { status: 'draft' });
+    return !!updated;
+  }
   const updated = await setProductStatus(id, 'archived');
   return !!updated;
 }
@@ -1067,6 +1088,79 @@ export async function hardDeleteProduct(id: string): Promise<void> {
   const db = getDb();
   // Images/variants cascade via FK (product_images, product_variants).
   await db.remove('products', id);
+}
+
+// ---------------------------------------------------------------------------
+// WooCommerce server bridge — Woo-sourced products (numeric ids) are not rows
+// in the local catalog table, so their edits must go through the server-side
+// Woo write API (`/api/admin/products/[id]`), which holds the credentials.
+// ---------------------------------------------------------------------------
+
+const WOO_STATUS_BY_LOCAL: Record<string, string> = {
+  active: 'publish',
+  inactive: 'private',
+  archived: 'draft',
+};
+
+function isWooId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+
+/**
+ * PATCH the WooCommerce product through the authenticated server route and
+ * return the refreshed catalog view of it. Only fields the caller supplied
+ * are sent — Woo keeps everything else.
+ */
+async function updateWooProductViaApi(id: string, input: Partial<ProductInput>): Promise<CatalogProduct | null> {
+  if (!isWooId(id)) return null;
+  const body: Record<string, unknown> = {};
+  if (input.name !== undefined) body.name = input.name;
+  if (input.description !== undefined) body.description = input.description;
+  if (input.shortDescription !== undefined) body.shortDescription = input.shortDescription;
+  if (input.sku !== undefined) body.sku = input.sku;
+  if (input.price !== undefined) body.price = input.price;
+  if (input.compareAtPrice !== undefined && input.compareAtPrice > 0) body.compareAtPrice = input.compareAtPrice;
+  if (input.featured !== undefined) body.featured = input.featured;
+  if (input.tags !== undefined) body.tags = input.tags;
+  if (input.status !== undefined) {
+    body.status = WOO_STATUS_BY_LOCAL[input.status] ?? (input.status === 'draft' ? 'draft' : 'publish');
+  }
+  const imgInput = input as { images?: Array<{ url?: string | null }> };
+  if (imgInput.images !== undefined) body.images = imgInput.images.map((i) => String(i.url || '')).filter(Boolean);
+  if (input.inventoryQty !== undefined || input.stockStatus !== undefined || input.lowStockThreshold !== undefined) {
+    // Woo requires manage_stock=true for stock_quantity to take effect; the
+    // editor's Own Stock model is “internal quantity is authoritative”, so an
+    // inventory edit enables stock management rather than silently no-op'ing.
+    if (!body.manageStock) body.manageStock = true;
+    if (input.inventoryQty !== undefined && input.inventoryQty !== null) body.stockQuantity = input.inventoryQty;
+    if (input.stockStatus !== undefined) {
+      body.stockStatus = input.stockStatus === 'out_of_stock' ? 'outofstock' : input.stockStatus === 'on_backorder' ? 'onbackorder' : 'instock';
+    }
+    if (input.lowStockThreshold !== undefined) body.lowStockAmount = input.lowStockThreshold;
+  }
+  if (input.seoTitle !== undefined || input.seoDescription !== undefined) {
+    body.seo = {
+      ...(input.seoTitle !== undefined ? { title: input.seoTitle } : {}),
+      ...(input.seoDescription !== undefined ? { description: input.seoDescription } : {}),
+    };
+  }
+  if (!Object.keys(body).length) return getProduct(id);
+
+  const token = await getFreshAccessToken().catch(() => null);
+  const res = await fetch(`/api/admin/products/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Woo save failed (${res.status}): ${detail.slice(0, 160)}`);
+  }
+  invalidateCatalogCache();
+  return getProduct(id);
 }
 
 export async function duplicateProduct(id: string): Promise<CatalogProduct | null> {

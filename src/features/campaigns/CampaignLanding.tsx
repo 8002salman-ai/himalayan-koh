@@ -233,7 +233,7 @@ export default function CampaignLanding() {
               )}
               {eligible.length === 0 && (
                 <div className="rounded-2xl bg-white/5 p-8 text-center ring-1 ring-white/10">
-                  <p className="text-sm text-blue-100/80">A complimentary {st.giftName || 'Luxedge gift'} is reserved for every eligible pet owner — tell us about your pet to claim it.</p>
+                  <p className="text-sm text-blue-100/80">A complimentary {st.giftName || 'Himalayan Koh gift'} is reserved for every eligible customer — tell us how you plan to use it to claim it.</p>
                 </div>
               )}
               {eligible.length > 0 && (

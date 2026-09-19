@@ -1816,6 +1816,12 @@ export function CatalogProductEditor() {
     urlMode === 'detail' || urlMode === 'ai' ? urlMode : 'quick',
   );
   const [p, setP] = useState<CatalogProduct | null>(null);
+  // Status the product had when the editor loaded it. The Listing Playbook
+  // gate blocks *publishing* (transition into Live); it must NOT block edits
+  // of a listing that is already live — otherwise legacy live products
+  // (e.g. imported Woo products with 1 image) become uneditable and even a
+  // price change is rejected.
+  const [originStatus, setOriginStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -1824,6 +1830,7 @@ export function CatalogProductEditor() {
       if (paramId) {
         const prod = await getProduct(paramId);
         if (!prod) { notify('Product not found', 'error'); nav('/admin/products'); return; }
+        setOriginStatus(prod.status);
         setP(prod);
       } else {
         setP({
@@ -1838,6 +1845,7 @@ export function CatalogProductEditor() {
           supplierUrl: null, supplierStockStatus: null, riskFlags: [],
           images: [], variants: [], createdAt: '', updatedAt: '', publishedAt: null,
         });
+        setOriginStatus(null);
       }
     } catch (e) {
       notify(`Could not load: ${(e as Error).message}`, 'error');
@@ -1856,10 +1864,14 @@ export function CatalogProductEditor() {
     if (!p) return;
     if (!p.name.trim()) { notify('Product name is required', 'error'); return; }
     if (!(p.price > 0)) { notify('Price must be greater than 0', 'error'); return; }
-    if (p.images.length === 0) { notify('At least one image is required before activating a premium listing', 'error'); setTab('images'); return; }
-    // Listing Playbook gate — a Live product needs verified images (no
-    // placeholders / inline base64) and supplier data. Draft saves get
-    // non-blocking warnings; Live saves are blocked with the exact reason.
+    // Already-live listing: edits (price, inventory, status, copy…) must save.
+    // Playbook gaps become loud warnings instead of hard blockers.
+    const wasLive = originStatus === 'active';
+    if (p.images.length === 0 && !wasLive) { notify('At least one image is required before activating a premium listing', 'error'); setTab('images'); return; }
+    // Listing Playbook gate — publishing a listing as Live needs verified
+    // images (no placeholders / inline base64) and supplier data. Draft
+    // saves and edits of already-live products get non-blocking warnings;
+    // only the transition into Live is blocked, with the exact reason.
     const pb = await getListingPlaybook();
     const verdict = validateListingAgainstPlaybook(pb, {
       name: p.name,
@@ -1870,10 +1882,13 @@ export function CatalogProductEditor() {
       supplierName: p.supplierSource,
       supplierSku: p.supplierProductRef,
     });
-    if (p.status === 'active' && !verdict.ok) {
+    if (p.status === 'active' && !verdict.ok && !wasLive) {
       notify(`Cannot save as Live: ${verdict.errors.join(' ')}`, 'error');
       setTab('images');
       return;
+    }
+    if (p.status === 'active' && !verdict.ok && wasLive) {
+      notify(`Saved (already live). Playbook gaps: ${verdict.errors.join(' ')}`, 'error');
     }
     if (verdict.warnings.length) notify(verdict.warnings.join(' '), 'error');
     setSaving(true);

@@ -677,10 +677,10 @@ export function deriveTitleInference(title: string, itemId?: string | null): {
 
   // 2-3 factual sentences restating ONLY what the title says.
   const shortDescription = clean
-    ? `${clean}. Designed for everyday pet care with the features shown — check the live listing for full specifications, sizing and care details.`
+    ? `${clean}. Designed for the use shown by the product listing — check the live listing for full specifications, sizing and care details.`
     : '';
   const longDescription = clean
-    ? `${clean}. This pet essential is offered for the pet shown in the listing and ships with the included accessories listed by the supplier. Please verify sizing, materials and care instructions on the live product page before purchase.`
+    ? `${clean}. This product is offered as shown in the listing and ships with the included accessories listed by the supplier. Please verify sizing, materials and care instructions on the live product page before purchase.`
     : '';
 
   const slug = clean
