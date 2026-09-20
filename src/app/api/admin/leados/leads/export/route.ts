@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
 import { listSavedLeads } from '@/lib/leados/db';
+import { escapeLeadOSCsvCell as csvCell } from '@/lib/leados/csv';
 
 export async function GET(request: Request) {
   const auth = await verifyAdminRequest(request);
@@ -27,18 +28,18 @@ export async function GET(request: Request) {
     ];
 
     const rows = leads.map((l) => [
-      `"${(l.businessName || '').replace(/"/g, '""')}"`,
-      `"${(l.category || '').replace(/"/g, '""')}"`,
-      `"${(l.address || '').replace(/"/g, '""')}"`,
-      `"${(l.city || '').replace(/"/g, '""')}"`,
-      `"${(l.region || '').replace(/"/g, '""')}"`,
-      `"${(l.country || '').replace(/"/g, '""')}"`,
-      `"${(l.website || '').replace(/"/g, '""')}"`,
-      `"${(l.phone || '').replace(/"/g, '""')}"`,
-      `"${(l.email || '').replace(/"/g, '""')}"`,
-      l.opportunityScore ?? '',
-      `"${(l.status || 'new').replace(/"/g, '""')}"`,
-      `"${l.discoveredAt || l.createdAt}"`,
+      csvCell(l.businessName),
+      csvCell(l.category),
+      csvCell(l.address),
+      csvCell(l.city),
+      csvCell(l.region),
+      csvCell(l.country),
+      csvCell(l.website),
+      csvCell(l.phone),
+      csvCell(l.email),
+      csvCell(l.opportunityScore ?? ''),
+      csvCell(l.status || 'new'),
+      csvCell(l.discoveredAt || l.createdAt),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');

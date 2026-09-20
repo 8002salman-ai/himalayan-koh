@@ -35,13 +35,25 @@ export interface ProjectFitResult {
 }
 
 export interface OpportunityScoreResult {
+  /** Compatibility value: transparent commercial priority, not opportunity from missing data. */
   score: number;
   signals: string[];
+  icpFit: number;
+  reachability: number;
+  dataConfidence: number;
+  commercialPriority: number;
 }
 
 export interface ScoredLead extends NormalizedLead {
   opportunityScore: number;
   opportunitySignals: string[];
+  evidence?: {
+    icpFit: number;
+    reachability: number;
+    dataConfidence: number;
+    commercialPriority: number;
+    reasons: string[];
+  };
   projectFit?: ProjectFitResult;
   matchedCategories?: string[];
   locked?: boolean;
@@ -121,6 +133,13 @@ export interface SavedLeadRecord {
   emailSource?: 'discovered_osm' | 'manually_entered' | 'unverified';
   opportunityScore: number | null;
   opportunitySignals: string[] | null;
+  evidence?: {
+    icpFit: number;
+    reachability: number;
+    dataConfidence: number;
+    commercialPriority: number;
+    reasons: string[];
+  } | null;
   status: string;
   starred: boolean;
   tags: string[] | null;

@@ -47,14 +47,21 @@ export async function POST(request: Request) {
 
     // Score leads deterministically
     const scoredLeads: ScoredLead[] = rawLeads.map((lead) => {
-      const opp = calculateOpportunityScore(lead);
       const fit = project ? calculateDeterministicProjectFit(lead, project) : undefined;
+      const opp = calculateOpportunityScore(lead, undefined, fit?.score || 0);
       const alreadySaved = savedNames.has(lead.businessName.toLowerCase());
 
       return {
         ...lead,
         opportunityScore: opp.score,
         opportunitySignals: opp.signals,
+        evidence: {
+          icpFit: opp.icpFit,
+          reachability: opp.reachability,
+          dataConfidence: opp.dataConfidence,
+          commercialPriority: opp.commercialPriority,
+          reasons: opp.signals,
+        },
         projectFit: fit,
         alreadySaved,
       };

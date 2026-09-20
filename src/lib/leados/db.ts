@@ -17,7 +17,7 @@ export const HK_DEFAULT_PROJECT: LeadOSProject = {
   name: 'Himalayan Koh — B2B Salt & Minerals',
   website: 'https://preview.himalayankoh.com',
   shortDescription:
-    'Wholesale & B2B distribution of 100% natural Himalayan rock salt animal mineral licks and bulk culinary salt.',
+    'Wholesale & B2B distribution of Himalayan rock salt animal licks and bulk culinary salt.',
   productService:
     'Natural animal mineral salt licks (rope, carved, block), bulk organic pink salt, spa/bath minerals.',
   targetCustomerDescription:
@@ -35,7 +35,6 @@ export const HK_DEFAULT_PROJECT: LeadOSProject = {
     'Equestrian Store',
     'Veterinary',
     'Supermarket',
-    'Pet Shop',
   ],
   preferredLocations: [
     'Texas',
@@ -66,7 +65,7 @@ export const HK_DEFAULT_PROJECT: LeadOSProject = {
   ],
   negativeKeywords: ['fast food', 'convenience store', 'gas station', 'car repair', 'pharmacy'],
   idealCustomerProfile:
-    'Commercial feed mills, farm supply cooperatives, independent tack & feed shops, livestock ranches, and specialty grocery distributors looking for authentic, direct-imported Himalayan mineral salt products.',
+    'Commercial feed mills, farm supply cooperatives, independent tack & feed shops, livestock ranches, and specialty grocery distributors evaluating Himalayan mineral salt products.',
   notes: 'Authoritative Himalayan Koh B2B ICP project.',
   status: 'active',
   createdAt: new Date().toISOString(),
@@ -119,7 +118,7 @@ export async function ensureDefaultProject(): Promise<LeadOSProject> {
         productService: existing.product_service,
         targetCustomerDescription: existing.target_customer_description,
         industries: existing.industries || [],
-        businessCategories: existing.business_categories || [],
+        businessCategories: (existing.business_categories || []).filter((category: string) => !/pet\s*shop|pet\s*store/i.test(category)),
         preferredLocations: existing.preferred_locations || [],
         countries: existing.countries || [],
         targetBusinessSize: existing.target_business_size,
@@ -181,10 +180,10 @@ export async function ensureDefaultProject(): Promise<LeadOSProject> {
       };
     }
   } catch (err) {
-    // Falls through to in-memory fallback
+    throw new Error(`LeadOS persistence unavailable: ${err instanceof Error ? err.message : 'database error'}`);
   }
 
-  return HK_DEFAULT_PROJECT;
+  throw new Error('LeadOS default project could not be persisted.');
 }
 
 /**
@@ -222,11 +221,11 @@ export async function listProjects(): Promise<LeadOSProject[]> {
         leadCount: 0,
       }));
     }
-  } catch {
-    // Memory fallback
+  } catch (error) {
+    throw new Error(`LeadOS project read failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
-  return Array.from(inMemoryStore.projects.values());
+  throw new Error('LeadOS project read failed.');
 }
 
 /**
@@ -288,8 +287,8 @@ export async function saveProject(project: Partial<LeadOSProject> & { name: stri
       status: formatted.status,
       updated_at: formatted.updatedAt,
     });
-  } catch {
-    // Memory fallback
+  } catch (error) {
+    throw new Error(`LeadOS project save failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
   inMemoryStore.projects.set(id, formatted);
@@ -347,7 +346,51 @@ export async function saveLeadToLibrary(
 
   try {
     const supabase = getSupabaseAdmin();
-    await (supabase as any).from('leados_leads').insert({
+    const provider = record.osmUrl ? 'openstreetmap' : (lead.dataSource || 'unknown');
+    const providerRecordId = lead.osmType && lead.osmId ? `${lead.osmType}/${lead.osmId}` : null;
+    const existingQuery = providerRecordId
+      ? await (supabase as any)
+          .from('leados_leads')
+          .select('id, status, notes, starred, tags')
+          .eq('workspace_id', record.workspaceId)
+          .eq('data_source', provider)
+          .eq('osm_type', lead.osmType)
+          .eq('osm_id', lead.osmId)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (existingQuery.error) throw existingQuery.error;
+    const existing = existingQuery.data;
+    const leadPayload = {
+      workspace_id: record.workspaceId,
+      business_name: record.businessName,
+      category: record.category,
+      address: record.address,
+      city: record.city,
+      region: record.region,
+      country: record.country,
+      website: record.website,
+      phone: record.phone,
+      email: record.email,
+      email_source: record.emailSource || (record.email ? 'discovered_osm' : null),
+      latitude: lead.latitude,
+      longitude: lead.longitude,
+      osm_type: lead.osmType,
+      osm_id: lead.osmId,
+      osm_url: lead.osmUrl,
+      data_source: provider,
+      opportunity_score: record.opportunityScore,
+      opportunity_signals: record.opportunitySignals,
+      tags: record.tags,
+    };
+    if (existing) {
+      await (supabase as any).from('leados_leads').update(leadPayload).eq('id', existing.id).eq('workspace_id', record.workspaceId);
+      record.id = existing.id;
+      record.status = existing.status || record.status;
+      record.notes = existing.notes || record.notes;
+      record.starred = Boolean(existing.starred);
+      record.tags = existing.tags || record.tags;
+    } else {
+      await (supabase as any).from('leados_leads').insert({
       id: record.id,
       workspace_id: record.workspaceId,
       business_name: record.businessName,
@@ -372,22 +415,23 @@ export async function saveLeadToLibrary(
       starred: record.starred,
       tags: record.tags,
       notes: record.notes,
-    });
+      });
+    }
 
     if (projectId) {
-      await (supabase as any).from('leados_project_leads').insert({
+      await (supabase as any).from('leados_project_leads').upsert({
         project_id: projectId,
         lead_id: record.id,
         project_fit_score: lead.projectFitScore ?? null,
         project_fit_reasons: lead.projectFitReasons || null,
         outreach_angles: lead.outreachAngles || null,
-      });
+      }, { onConflict: 'project_id,lead_id' });
     }
-  } catch {
-    // Memory fallback
+  } catch (error) {
+    throw new Error(`LeadOS lead save failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
-  inMemoryStore.savedLeads.set(id, record);
+  inMemoryStore.savedLeads.set(record.id, record);
   if (projectId) {
     if (!inMemoryStore.projectLeads.has(projectId)) {
       inMemoryStore.projectLeads.set(projectId, new Set());
@@ -461,8 +505,8 @@ export async function listSavedLeads(options?: {
 
       return { leads: mapped, total: count || mapped.length };
     }
-  } catch {
-    // Memory fallback
+  } catch (error) {
+    throw new Error(`LeadOS lead read failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
   let list = Array.from(inMemoryStore.savedLeads.values());
@@ -507,9 +551,16 @@ export async function updateSavedLead(
     if (patch.phone !== undefined) updatePayload.phone = patch.phone;
     if (patch.website !== undefined) updatePayload.website = patch.website;
 
-    await (supabase as any).from('leados_leads').update(updatePayload).eq('id', id);
-  } catch {
-    // Memory fallback
+    const { data: updatedRows, error } = await (supabase as any)
+      .from('leados_leads')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('workspace_id', HK_DEFAULT_WORKSPACE_ID)
+      .select('*');
+    if (error) throw error;
+    if (!updatedRows?.length) return null;
+  } catch (error) {
+    throw new Error(`LeadOS lead update failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
   const existing = inMemoryStore.savedLeads.get(id);
@@ -527,9 +578,16 @@ export async function updateSavedLead(
 export async function deleteSavedLead(id: string): Promise<boolean> {
   try {
     const supabase = getSupabaseAdmin();
-    await (supabase as any).from('leados_leads').delete().eq('id', id);
-  } catch {
-    // Memory fallback
+    const { data: deletedRows, error } = await (supabase as any)
+      .from('leados_leads')
+      .delete()
+      .eq('id', id)
+      .eq('workspace_id', HK_DEFAULT_WORKSPACE_ID)
+      .select('id');
+    if (error) throw error;
+    if (!deletedRows?.length) return false;
+  } catch (error) {
+    throw new Error(`LeadOS lead delete failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
   inMemoryStore.savedLeads.delete(id);
@@ -561,8 +619,8 @@ export async function recordSearchExecution(entry: {
       query_location: record.location,
       results_count: record.resultsCount,
     });
-  } catch {
-    // Memory fallback
+  } catch (error) {
+    throw new Error(`LeadOS search history write failed: ${error instanceof Error ? error.message : 'database error'}`);
   }
 
   inMemoryStore.searches.unshift(record);
@@ -575,15 +633,28 @@ export async function recordSearchExecution(entry: {
  * Returns dashboard overview stats.
  */
 export async function getLeadOSOverviewStats() {
-  const { total: savedLeadsCount } = await listSavedLeads({ limit: 1 });
+  const supabase = getSupabaseAdmin();
+  const base = () => (supabase as any).from('leados_leads').select('id', { count: 'exact', head: true }).eq('workspace_id', HK_DEFAULT_WORKSPACE_ID);
+  const [total, high, contacted, pipeline, activity] = await Promise.all([
+    base(),
+    base().gte('opportunity_score', 70),
+    base().eq('status', 'contacted'),
+    base().in('status', ['shortlisted', 'qualified']),
+    (supabase as any).from('leados_audit_logs').select('action, details, created_at').eq('workspace_id', HK_DEFAULT_WORKSPACE_ID).order('created_at', { ascending: false }).limit(5),
+  ]);
+  for (const result of [total, high, contacted, pipeline, activity]) if (result.error) throw result.error;
   const projects = await listProjects();
-  const searchesCount = inMemoryStore.searches.length;
-
   return {
-    savedLeadsCount,
+    savedLeadsCount: total.count || 0,
+    highOpportunityCount: high.count || 0,
+    contactedCount: contacted.count || 0,
+    inPipelineCount: pipeline.count || 0,
     activeProjectsCount: projects.length,
-    searchesCount: Math.max(searchesCount, 12),
-    defaultProject: projects.find((p) => p.id === HK_DEFAULT_PROJECT_ID) || projects[0] || HK_DEFAULT_PROJECT,
-    recentSearches: inMemoryStore.searches.slice(0, 5),
+    searchesCount: 0,
+    defaultProject: projects.find((p) => p.id === HK_DEFAULT_PROJECT_ID) || projects[0] || null,
+    recentActivity: (activity.data || []).map((row: any) => ({
+      description: String(row.details?.action || row.action || 'LeadOS activity'),
+      time: row.created_at,
+    })),
   };
 }

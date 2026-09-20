@@ -41,8 +41,10 @@ import type {
   SavedLeadRecord,
   SearchDiagnostics,
 } from '@/lib/leados/types';
+import { parseLeadOSUrlState } from '@/lib/leados/urlState';
 
 type TabType = 'overview' | 'find' | 'library' | 'projects' | 'research' | 'scoring' | 'outreach' | 'ai' | 'settings';
+
 
 const PRESET_CATEGORIES = [
   { label: 'Feed Store (Livestock & animal feed)', value: 'Feed Store' },
@@ -50,7 +52,6 @@ const PRESET_CATEGORIES = [
   { label: 'Equestrian Store (Tack & equine stables)', value: 'Equestrian Store' },
   { label: 'Supermarket (Gourmet & organic grocery)', value: 'Supermarket' },
   { label: 'Veterinary (Animal health clinics)', value: 'Veterinary' },
-  { label: 'Pet Shop (Specialty animal retail)', value: 'Pet Shop' },
 ];
 
 const PRESET_LOCATIONS = [
@@ -83,13 +84,13 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
 
 I came across your store in {city} while researching premier agricultural and animal feed retailers in the region.
 
-At Himalayan Koh, we direct-import Himalayan pink rock salt animal licks with 84+ essential trace minerals, available in 2–3 lb blocks, 6 lb carved round licks on heavy-duty ropes, and 12–15 lb compressed blocks.
+At Himalayan Koh, we offer Himalayan salt products for livestock and equine use, including blocks and carved licks on ropes. Product details and availability can be shared for your review.
 
 Why our farm store and feed mill partners love working with us:
-• Unrefined Himalayan pink rock salt (free of fillers, plastics, or chemical binders).
-• Superior weather resistance compared to standard pressed mineral blocks.
-• Highly competitive dealer FOB margins directly out of our Houston, TX distribution center.
-• Fast pallet and case shipping across the US.
+• Himalayan salt products for livestock and equine customers.
+• Wholesale information available on request.
+• Product specifications and current availability shared before any order.
+• Sales support from the Himalayan Koh team.
 
 Would you be open to reviewing our wholesale price sheet and receiving a complimentary sample pack for your store?
 
@@ -109,12 +110,12 @@ https://preview.himalayankoh.com`,
 
 I am reaching out from Himalayan Koh regarding our signature equine salt block line.
 
-Our round carved Himalayan rock salt licks with hanging ropes are specifically crafted for horse stables and tack shops. Because they are carved from authentic ancient salt blocks, horses cannot chew large chunks off, preventing sodium overload while keeping them enriched and hydrated year-round.
+Our carved Himalayan rock salt licks with hanging ropes are listed for equine and livestock use. We can share current product specifications and wholesale information for your review.
 
 We supply tack shops and equestrian centers with:
-• 2.5–3.5 kg carved round licks with thick weather-proof hanging ropes.
-• Private retail-ready packaging with UPC barcodes and display cartons.
-• Low wholesale minimum order quantities (MOQs) with fast delivery.
+• Carved round licks with hanging ropes.
+• Retail and wholesale product information available on request.
+• Current packaging, minimums, and availability confirmed before an order.
 
 May I send you our quick dealer catalog and wholesale pricing for your equine customers?
 
@@ -135,7 +136,7 @@ We are a direct importer of food-grade Himalayan pink salt supplying organic gro
 Our product offerings include:
 • Fine and coarse grain culinary pink salt in 1 lb, 5 lb, and 25 lb bulk bags.
 • Handcrafted Himalayan salt cooking plates and bowls.
-• Third-party laboratory tested for purity and heavy metals compliance.
+• Product specifications and sourcing information available for review.
 
 We would love to introduce Himalayan Koh to your shoppers in {city}. Can I share our wholesale tier pricing with you this week?
 
@@ -154,7 +155,7 @@ sales@himalayankoh.com`,
 
 I noticed your active presence as a trusted merchant in the agricultural and specialty retail space.
 
-We supply verified regional distributors and retailers with direct-factory Himalayan salt inventory, including animal mineral licks and bulk culinary products, with full GS1 barcode readiness and drop-ship / bulk freight support out of Houston, TX.
+We speak with regional distributors and retailers about Himalayan salt products, including animal licks and culinary products. We can share current wholesale information and product specifications for review.
 
 If you are expanding your catalog with high-velocity mineral products, let's connect for 10 minutes to discuss bulk wholesale margins.
 
@@ -200,17 +201,47 @@ function StatusPill({ status }: { status: string }) {
 }
 
 /** Score badge */
-function ScoreBadge({ score }: { score: number }) {
+function ScoreBadge({ score, label = 'Priority' }: { score: number; label?: string }) {
   const color = score >= 75 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : score >= 50 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200';
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border ${color}`}>
-      {score}
+    <span title={`${label}: ${score}/100`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold border ${color}`}>
+      <span className="font-medium">{label}</span> {score}/100
     </span>
   );
 }
 
+function EvidenceSummary({ evidence }: { evidence?: ScoredLead['evidence'] }) {
+  if (!evidence) return <p className="text-[10px] text-slate-400">Evidence details unavailable.</p>;
+  return (
+    <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-2 text-[10px] text-slate-700 space-y-1" aria-label="Score explanation">
+      <div className="flex flex-wrap gap-2 font-semibold">
+        <span>ICP Fit: {evidence.icpFit}/100</span>
+        <span>Reachability: {evidence.reachability}/100</span>
+        <span>Data Confidence: {evidence.dataConfidence}/100</span>
+        <span>Priority: {evidence.commercialPriority}/100</span>
+      </div>
+      <p><strong>Why:</strong> {evidence.reasons.slice(0, 3).join(' ')}</p>
+    </div>
+  );
+}
+
 export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: TabType } = {}) {
-  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+  const [activeTab, setActiveTab] = useState<TabType>(() => typeof window === 'undefined' ? defaultTab : parseLeadOSUrlState(window.location.href).tab);
+
+  const changeTab = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.pushState({}, '', url);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => setActiveTab(parseLeadOSUrlState(window.location.href).tab);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [defaultTab]);
 
   // Stats & Projects
   const [loadingStats, setLoadingStats] = useState(false);
@@ -222,6 +253,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   const [category, setCategory] = useState('Feed Store');
   const [customCategory, setCustomCategory] = useState('');
   const [location, setLocation] = useState('Houston, TX');
+  const [researchRegion, setResearchRegion] = useState('Texas');
   const [maxResults, setMaxResults] = useState(15);
   const [requireWebsite, setRequireWebsite] = useState(false);
   const [requirePhone, setRequirePhone] = useState(false);
@@ -234,10 +266,19 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   // Library state
   const [libraryLeads, setLibraryLeads] = useState<SavedLeadRecord[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
-  const [librarySearch, setLibrarySearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [librarySearch, setLibrarySearch] = useState(() => typeof window !== 'undefined' ? parseLeadOSUrlState(window.location.href).search : '');
+  const [statusFilter, setStatusFilter] = useState(() => typeof window !== 'undefined' ? parseLeadOSUrlState(window.location.href).status : 'all');
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
   const [savedSuccessMsg, setSavedSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', activeTab);
+    if (librarySearch) url.searchParams.set('search', librarySearch); else url.searchParams.delete('search');
+    if (statusFilter !== 'all') url.searchParams.set('status', statusFilter); else url.searchParams.delete('status');
+    window.history.replaceState({}, '', url);
+  }, [activeTab, librarySearch, statusFilter]);
 
   // AI Analysis modal/state
   const [analyzingLeadName, setAnalyzingLeadName] = useState<string | null>(null);
@@ -537,7 +578,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
     setEmailSubject(t.subject.replace(/\{business_name\}/g, name).replace(/\{city\}/g, city));
     setEmailBody(t.body.replace(/\{business_name\}/g, name).replace(/\{city\}/g, city));
     setSendResultNotice(null);
-    setActiveTab('outreach');
+    changeTab('outreach');
   };
 
   const handleTemplateSelect = (template: OutreachTemplate) => {
@@ -578,6 +619,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
           subject: emailSubject.trim(),
           message: emailBody.trim(),
           templateId: selectedTemplate.id,
+          simulation: true,
         }),
       });
 
@@ -585,13 +627,13 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
       if (!res.ok) throw new Error(data.error || 'Failed to dispatch email');
 
       setSendResultNotice({
-        ok: true,
-        msg: data.message || (data.simulated ? '[SIMULATION] Staging preview logged to audit trail.' : 'Outreach delivered successfully.'),
-        simulated: data.simulated,
+        ok: data.ok === true,
+        msg: data.message || (data.state === 'simulated' ? '[SIMULATION] No external email was sent.' : 'Outreach delivered successfully.'),
+        simulated: data.state === 'simulated',
       });
 
-      // Refresh library to update status if live
-      if (!data.simulated && activeOutreachLeadId) {
+      // Refresh library only after a confirmed provider delivery.
+      if (data.state === 'delivered' && activeOutreachLeadId) {
         loadLibrary();
       }
     } catch (err: any) {
@@ -732,7 +774,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={() => { setActiveTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }}
+                onClick={() => { changeTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }}
                 className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#b86452] hover:bg-[#8d4133] text-white flex items-center gap-1.5 transition shadow-sm"
               >
                 <MagnifyingGlass className="w-3.5 h-3.5" />
@@ -753,14 +795,18 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
       {/* ── Tab Navigation ── */}
       <div className="bg-white border-b border-[#e0d6c8] sticky top-0 z-10">
         <div className="max-w-[1400px] mx-auto px-6">
-          <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar -mb-px">
+          <div role="tablist" aria-label="LeadOS sections" className="flex items-center gap-0.5 overflow-x-auto no-scrollbar -mb-px">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
+                  id={`leados-tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`leados-panel-${tab.id}`}
+                  onClick={() => changeTab(tab.id as TabType)}
                   className={`flex items-center gap-1.5 px-3.5 py-2.5 text-[11px] font-semibold whitespace-nowrap border-b-2 transition ${
                     isActive
                       ? 'border-[#b86452] text-[#b86452]'
@@ -796,7 +842,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
         {/* ══════════ OVERVIEW TAB ══════════ */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+          <div id="leados-panel-overview" role="tabpanel" aria-labelledby="leados-tab-overview" className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
             {/* Left: KPIs + Content */}
             <div className="space-y-6">
               {/* KPI Cards */}
@@ -817,7 +863,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">Targeted at farm supply cooperatives, feed distributors, livestock ranches, and mineral retail buyers.</p>
                   </div>
-                  <button onClick={() => setActiveTab('projects')} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => changeTab('projects')} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 flex-shrink-0">
                     Configure <CaretRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -844,7 +890,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <button onClick={() => { setActiveTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-sm transition text-left group">
+                <button onClick={() => { changeTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-sm transition text-left group">
                   <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2.5 group-hover:scale-105 transition">
                     <MagnifyingGlass className="w-4 h-4" />
                   </div>
@@ -852,7 +898,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                   <p className="text-[11px] text-slate-500 mt-0.5">Query verified OSM retailers in Houston, Fort Worth, or Montana.</p>
                 </button>
 
-                <button onClick={() => { setActiveTab('find'); setCategory('Equestrian Store'); setLocation('Lexington, KY'); }} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-violet-300 hover:shadow-sm transition text-left group">
+                <button onClick={() => { changeTab('find'); setCategory('Equestrian Store'); setLocation('Lexington, KY'); }} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-violet-300 hover:shadow-sm transition text-left group">
                   <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center mb-2.5 group-hover:scale-105 transition">
                     <Target className="w-4 h-4" />
                   </div>
@@ -860,7 +906,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                   <p className="text-[11px] text-slate-500 mt-0.5">Target horse stables, equestrian centers, and rope salt lick distributors.</p>
                 </button>
 
-                <button onClick={() => setActiveTab('library')} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition text-left group">
+                <button onClick={() => changeTab('library')} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition text-left group">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2.5 group-hover:scale-105 transition">
                     <BookBookmark className="w-4 h-4" />
                   </div>
@@ -876,7 +922,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
               <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl p-4 text-white">
                 <h4 className="text-xs font-bold mb-1">Find New Leads</h4>
                 <p className="text-[11px] text-white/80 mb-3">Discover verified B2B prospects from OpenStreetMap.</p>
-                <button onClick={() => { setActiveTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }} className="w-full py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition">
+                <button onClick={() => { changeTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }} className="w-full py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition">
                   Start Discovery
                 </button>
               </div>
@@ -892,7 +938,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                 ].map((item, i) => (
                   <button
                     key={i}
-                    onClick={() => item.action ? item.action() : item.tab && setActiveTab(item.tab)}
+                    onClick={() => item.action ? item.action() : item.tab && changeTab(item.tab)}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition text-left"
                   >
                     <item.icon className="w-3.5 h-3.5 text-slate-400" />
@@ -926,7 +972,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
         {/* ══════════ FIND LEADS TAB ══════════ */}
         {activeTab === 'find' && (
-          <div className="space-y-5">
+          <div id="leados-panel-find" role="tabpanel" aria-labelledby="leados-tab-find" className="space-y-5">
             <form onSubmit={handleSearch} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
@@ -1026,8 +1072,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {leads.map((lead, idx) => {
-                    const fitScore = lead.projectFit?.score ?? 50;
-                    const oppScore = lead.opportunityScore ?? 50;
+                    const oppScore = lead.opportunityScore ?? 0;
                     const isSaving = savingLeadId === lead.businessName;
                     return (
                       <div key={`${lead.businessName}-${idx}`} className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 hover:shadow-sm transition">
@@ -1040,20 +1085,21 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {lead.projectFit && <ScoreBadge score={fitScore} />}
-                            <ScoreBadge score={oppScore} />
+                            <ScoreBadge score={oppScore} label="Priority" />
                           </div>
                         </div>
 
                         <div className="p-2.5 bg-slate-50 rounded-lg text-[11px] space-y-1 border border-slate-100">
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-bold text-slate-500 uppercase text-[10px] tracking-wider">Verified Facts</span>
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Source: {lead.dataSource}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Source: {lead.dataSource === 'openstreetmap' ? 'OpenStreetMap' : lead.dataSource}</span>
                           </div>
                           {lead.address && <div className="flex items-center gap-1.5 text-slate-600"><MapPin className="w-3 h-3 text-slate-400" /> {lead.address}</div>}
                           {lead.phone && <div className="flex items-center gap-1.5 text-slate-700 font-medium"><Phone className="w-3 h-3 text-emerald-600" /> <a href={`tel:${lead.phone}`} className="hover:underline">{lead.phone}</a></div>}
                           {lead.website && <div className="flex items-center gap-1.5 text-indigo-600"><Globe className="w-3 h-3" /> <a href={lead.website} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">{lead.website}</a></div>}
                         </div>
+
+                        <EvidenceSummary evidence={lead.evidence} />
 
                         {lead.projectFit?.reasons && lead.projectFit.reasons.length > 0 && (
                           <div className="space-y-1">
@@ -1091,7 +1137,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                       <Robot className="w-4 h-4 text-indigo-600" />
                       <h4 className="font-bold text-slate-900 text-sm">AI Factual Assessment</h4>
                     </div>
-                    <button onClick={() => { setAnalyzingLeadName(null); setAiAnalysisResult(null); }} className="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+                    <button type="button" aria-label="Close AI factual assessment" onClick={() => { setAnalyzingLeadName(null); setAiAnalysisResult(null); }} className="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
                   </div>
                   <div className="text-[11px] text-slate-500">Business: <span className="text-slate-900 font-bold">{analyzingLeadName}</span></div>
                   {!aiAnalysisResult && !aiError && (
@@ -1119,7 +1165,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                       )}
                     </div>
                   )}
-                  <button onClick={() => { setAnalyzingLeadName(null); setAiAnalysisResult(null); }} className="w-full py-2 rounded-lg bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition">Close</button>
+                  <button type="button" onClick={() => { setAnalyzingLeadName(null); setAiAnalysisResult(null); }} className="w-full py-2 rounded-lg bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition">Close</button>
                 </div>
               </div>
             )}
@@ -1128,7 +1174,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
         {/* ══════════ LEAD LIBRARY TAB ══════════ */}
         {activeTab === 'library' && (
-          <div className="space-y-4">
+          <div id="leados-panel-library" role="tabpanel" aria-labelledby="leados-tab-library" className="space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
                 <div>
@@ -1165,7 +1211,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                   <BookBookmark className="w-7 h-7 text-slate-300 mx-auto" />
                   <h4 className="font-bold text-slate-800 text-xs">No Saved Leads Found</h4>
                   <p className="text-[11px] text-slate-500 max-w-xs mx-auto">Go to <b>Find Leads</b> and search for businesses, then click &quot;Save Lead&quot; to add them here.</p>
-                  <button onClick={() => setActiveTab('find')} className="mt-2 px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold text-[11px]">Discover Leads</button>
+                  <button onClick={() => changeTab('find')} className="mt-2 px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold text-[11px]">Discover Leads</button>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1204,7 +1250,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                           <td className="py-2.5 px-3">
                             {l.website ? <a href={l.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 max-w-[120px] truncate">{l.website.replace(/^https?:\/\//, '')} <ArrowSquareOut className="w-2.5 h-2.5" /></a> : <span className="text-slate-300">—</span>}
                           </td>
-                          <td className="py-2.5 px-3"><ScoreBadge score={l.opportunityScore ?? 50} /></td>
+                          <td className="py-2.5 px-3"><ScoreBadge score={l.opportunityScore ?? 0} label="Priority" /></td>
                           <td className="py-2.5 px-3">
                             <select value={l.status} onChange={(e) => handleUpdateLeadStatus(l.id, e.target.value)} className="px-1.5 py-0.5 rounded border border-slate-200 text-[10px] font-semibold bg-white focus:outline-none">
                               <option value="new">New</option>
@@ -1269,8 +1315,8 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
               <div className="flex flex-wrap gap-1">{['Feed Store', 'Farm Supply', 'Equestrian Store', 'Supermarket', 'Veterinary'].map((c) => (<span key={c} className="px-2 py-0.5 rounded bg-white font-medium text-slate-700 border border-indigo-200/70">{c}</span>))}</div>
             </div>
             <div className="flex items-center gap-2">
-              <input type="text" placeholder="Target Region (e.g. Texas, Montana, Kentucky)" defaultValue="Texas" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium" id="research-target-region" />
-              <button onClick={() => { const el = document.getElementById('research-target-region') as HTMLInputElement; setLocation(el?.value || 'Texas'); setActiveTab('find'); handleSearch(); }} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 shadow-sm transition">Launch Scan</button>
+              <input type="text" name="researchRegion" aria-label="Target research region" placeholder="Target Region (e.g. Texas, Montana, Kentucky)" value={researchRegion} onChange={(e) => setResearchRegion(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium" />
+              <button type="button" onClick={() => { setLocation(researchRegion || 'Texas'); changeTab('find'); }} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 shadow-sm transition">Launch Scan</button>
             </div>
           </div>
         )}

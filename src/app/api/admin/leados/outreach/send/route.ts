@@ -1,139 +1,82 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
-import { updateSavedLead } from '@/lib/leados/db';
+import { updateSavedLead, HK_DEFAULT_WORKSPACE_ID } from '@/lib/leados/db';
+import { validateOutboundCopy } from '@/lib/leados/claims';
+import { sendLeadOSMail } from '@/lib/leados/emailProvider';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 
 export async function POST(request: Request) {
   const auth = await verifyAdminRequest(request);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
     const body = await request.json();
-    const {
-      leadId,
-      recipientEmail,
-      recipientName,
-      subject,
-      message,
-      templateId,
-    } = body;
+    const leadId = typeof body.leadId === 'string' ? body.leadId.trim() : '';
+    const recipientEmail = typeof body.recipientEmail === 'string' ? body.recipientEmail.trim() : '';
+    const recipientName = typeof body.recipientName === 'string' ? body.recipientName.trim() : '';
+    const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    const templateId = typeof body.templateId === 'string' ? body.templateId : null;
+    const simulationRequested = body.simulation === true;
 
-    // Server-side email format validation
-    if (!recipientEmail || typeof recipientEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())) {
+    if (!leadId) return NextResponse.json({ error: 'A saved LeadOS lead is required.' }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
       return NextResponse.json({ error: 'A valid recipient email address is required.' }, { status: 400 });
     }
+    if (!subject) return NextResponse.json({ error: 'Email subject line is required.' }, { status: 400 });
+    if (!message) return NextResponse.json({ error: 'Email message body is required.' }, { status: 400 });
 
-    if (!subject || typeof subject !== 'string' || !subject.trim()) {
-      return NextResponse.json({ error: 'Email subject line is required.' }, { status: 400 });
+    const claimCheck = validateOutboundCopy(`${subject}\n${message}`);
+    if (!claimCheck.ok) {
+      return NextResponse.json({ error: 'Outbound copy contains claims that are not approved.', claims: claimCheck.claims }, { status: 400 });
     }
 
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      return NextResponse.json({ error: 'Email message body is required.' }, { status: 400 });
-    }
+    const supabase = getSupabaseAdmin();
+    const { data: rawLead, error: leadError } = await (supabase as any)
+      .from('leados_leads')
+      .select('id, workspace_id, email, email_source, status, notes')
+      .eq('id', leadId)
+      .eq('workspace_id', HK_DEFAULT_WORKSPACE_ID)
+      .maybeSingle();
+    const lead = rawLead as { id: string; notes: string | null } | null;
+    if (leadError) throw leadError;
+    if (!lead) return NextResponse.json({ error: 'Lead not found in the active workspace.' }, { status: 404 });
 
-    const resendKey = process.env.RESEND_API_KEY;
-    const resendFrom = process.env.RESEND_FROM || 'Himalayan Koh <sales@himalayankoh.com>';
-    
-    let isSimulated = false;
-    let providerSuccess = false;
-    let providerMessageId: string | null = null;
-    let providerError: string | null = null;
-
-    if (resendKey && resendKey.trim().startsWith('re_')) {
-      // Live delivery configured
-      try {
-        const resendRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${resendKey}`,
-          },
-          body: JSON.stringify({
-            from: resendFrom,
-            to: [recipientEmail.trim()],
-            subject: subject.trim(),
-            text: message.trim(),
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #1e293b;">
-                ${message.trim().replace(/\n/g, '<br/>')}
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-                <p style="font-size: 12px; color: #64748b;">
-                  <strong>Himalayan Koh</strong><br />
-                  12620 FM 1960 W Ste A-4, Houston, TX 77065<br />
-                  Direct B2B Inquiries: sales@himalayankoh.com | (832) 224-6466
-                </p>
-              </div>
-            `,
-          }),
-        });
-
-        if (resendRes.ok) {
-          const resendData = await resendRes.json();
-          providerSuccess = true;
-          providerMessageId = resendData.id || null;
-        } else {
-          providerError = `Provider HTTP ${resendRes.status}`;
-          isSimulated = true;
-        }
-      } catch (err: any) {
-        providerError = err.message || 'Provider connection failed';
-        isSimulated = true;
-      }
-    } else {
-      // Staging / preview simulation mode
-      isSimulated = true;
-    }
-
-    // STRICT STATUS UPDATE RULE:
-    // Only a confirmed successful provider response marks the lead as 'contacted'.
-    // Simulation or failure NEVER marks as contacted.
-    if (leadId) {
-      if (providerSuccess) {
-        await updateSavedLead(leadId, {
-          status: 'contacted',
-          notes: `[OUTREACH SENT] Dispatched on ${new Date().toLocaleDateString()} (ID: ${providerMessageId}): "${subject}"`,
-        });
-      } else if (isSimulated) {
-        await updateSavedLead(leadId, {
-          notes: `[SIMULATION] Outreach preview generated on ${new Date().toLocaleDateString()}: "${subject}" (RESEND_API_KEY unconfigured)`,
-        });
-      }
-    }
-
-    // Maintain comprehensive audit log
-    try {
-      const supabase = getSupabaseAdmin();
-      await (supabase as any).from('leados_audit_logs').insert({
-        action: providerSuccess ? 'outreach_email_delivered' : 'outreach_email_simulated',
-        entity_type: 'lead',
-        entity_id: leadId || null,
-        details: {
-          recipient: recipientEmail,
-          recipientName: recipientName || null,
-          subject,
-          templateId: templateId || null,
-          simulated: isSimulated,
-          providerSuccess,
-          providerMessageId,
-          providerError,
-          dispatchedAt: new Date().toISOString(),
-        },
-      });
-    } catch {
-      // Non-fatal
-    }
-
-    return NextResponse.json({
-      ok: true,
-      success: providerSuccess || isSimulated,
-      simulated: isSimulated,
-      label: isSimulated ? '[SIMULATION]' : '[DELIVERED]',
-      message: isSimulated
-        ? `[SIMULATION] Staging preview mode: Email was verified and logged to audit trail. To send live, configure RESEND_API_KEY.`
-        : `[DELIVERED] Outreach email successfully dispatched to ${recipientEmail} via Resend.`,
+    const result = await sendLeadOSMail({ to: recipientEmail, subject, text: message }, { simulationRequested });
+    const auditDetails = {
+      recipient: recipientEmail,
+      recipientName: recipientName || null,
+      subject,
+      templateId,
+      provider: result.provider,
+      state: result.state,
+      providerMessageId: result.providerMessageId,
+      sender: 'sales@himalayankoh.com',
+      createdAt: new Date().toISOString(),
+    };
+    const { error: auditError } = await (supabase as any).from('leados_audit_logs').insert({
+      workspace_id: HK_DEFAULT_WORKSPACE_ID,
+      action: `outreach_${result.state}`,
+      entity_type: 'lead',
+      entity_id: leadId,
+      details: auditDetails,
     });
+    if (auditError) throw auditError;
+
+    if (result.state === 'delivered') {
+      await updateSavedLead(leadId, {
+        status: 'contacted',
+        notes: `${lead.notes ? `${lead.notes}\n` : ''}[OUTREACH DELIVERED] ${new Date().toISOString()} provider=${result.provider} id=${result.providerMessageId || 'unavailable'} subject="${subject}"`,
+      });
+      return NextResponse.json({ ok: true, state: result.state, provider: result.provider, providerMessageId: result.providerMessageId, message: 'Outreach delivered successfully.' });
+    }
+    if (result.state === 'simulated') {
+      return NextResponse.json({ ok: true, state: result.state, simulated: true, provider: result.provider, message: '[SIMULATION] No external email was sent and the lead was not marked Contacted.' });
+    }
+    if (result.state === 'provider_unavailable') {
+      return NextResponse.json({ ok: false, state: result.state, error: result.error }, { status: 503 });
+    }
+    return NextResponse.json({ ok: false, state: result.state, error: result.error || 'Email provider failed.' }, { status: 502 });
   } catch (error) {
     console.error('LeadOS outreach send error:', error);
     return NextResponse.json({ error: 'Failed to process outreach email request.' }, { status: 500 });
