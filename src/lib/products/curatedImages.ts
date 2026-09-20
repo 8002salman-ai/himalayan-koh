@@ -5,32 +5,43 @@
  * has empty image arrays or low-resolution legacy assets.
  */
 
+const ROPE_SALT_LICK_IMAGES: readonly string[] = [
+  '/images/products/himalayan-salt-lick-rope-hero.webp',
+  '/images/products/himalayan-salt-lick-rope-front.webp',
+  '/images/products/himalayan-salt-lick-rope-horse.webp',
+  '/images/products/himalayan-salt-lick-rope-angle.webp',
+  '/images/products/himalayan-salt-lick-rope-label.webp',
+];
+
+const BLOCK_30LBS_IMAGES: readonly string[] = [
+  '/images/products/himalayan-salt-block-30lbs-hero.webp',
+  '/images/products/himalayan-salt-block-30lbs-horse.webp',
+  '/images/products/himalayan-salt-block-30lbs-cow.webp',
+  '/images/products/himalayan-salt-block-30lbs-livestock.webp',
+];
+
 export const CURATED_PRODUCT_IMAGES: Record<string, readonly string[]> = {
   // 30 lbs Himalayan Salt Block & Salt Lick
-  'himalayan-salt-block-30-lbs': [
-    '/images/products/himalayan-salt-block-30lbs-hero.webp',
-    '/images/products/himalayan-salt-block-30lbs-horse.webp',
-    '/images/products/himalayan-salt-block-30lbs-cow.webp',
-    '/images/products/himalayan-salt-block-30lbs-livestock.webp',
-  ],
-  'hk-lb-30lbs': [
-    '/images/products/himalayan-salt-block-30lbs-hero.webp',
-    '/images/products/himalayan-salt-block-30lbs-horse.webp',
-    '/images/products/himalayan-salt-block-30lbs-cow.webp',
-    '/images/products/himalayan-salt-block-30lbs-livestock.webp',
-  ],
-  'himalayan-salt-lick-30-lbs': [
-    '/images/products/himalayan-salt-block-30lbs-hero.webp',
-    '/images/products/himalayan-salt-block-30lbs-horse.webp',
-    '/images/products/himalayan-salt-block-30lbs-cow.webp',
-    '/images/products/himalayan-salt-block-30lbs-livestock.webp',
-  ],
-  'hk-lfh-30lbs': [
-    '/images/products/himalayan-salt-block-30lbs-hero.webp',
-    '/images/products/himalayan-salt-block-30lbs-horse.webp',
-    '/images/products/himalayan-salt-block-30lbs-cow.webp',
-    '/images/products/himalayan-salt-block-30lbs-livestock.webp',
-  ],
+  'himalayan-salt-block-30-lbs': BLOCK_30LBS_IMAGES,
+  'hk-lb-30lbs': BLOCK_30LBS_IMAGES,
+  'himalayan-salt-lick-30-lbs': BLOCK_30LBS_IMAGES,
+  'hk-lfh-30lbs': BLOCK_30LBS_IMAGES,
+
+  // 3 lbs / 3 to 4 lbs Himalayan Salt Lick with Rope
+  'himalayan-salt-lick-3-to-4-lbs': ROPE_SALT_LICK_IMAGES,
+  'hk-lfh-4lbs': ROPE_SALT_LICK_IMAGES,
+  'himalayan-salt-lick-3lbs': ROPE_SALT_LICK_IMAGES,
+  'hk-lfh-3lbs': ROPE_SALT_LICK_IMAGES,
+
+  // 6 lbs / 5 to 6 lbs Himalayan Salt Lick with Rope
+  'himalayan-salt-lick-5-to-6-lbs': ROPE_SALT_LICK_IMAGES,
+  'himalayan-salt-lick-5-6-lbs-4-pcs-box': ROPE_SALT_LICK_IMAGES,
+  'himalayan-6lb-salt-lick': ROPE_SALT_LICK_IMAGES,
+  'hk-lfh-6lbs': ROPE_SALT_LICK_IMAGES,
+
+  // 1 to 2 lbs Himalayan Salt Lick with Rope
+  'himalayan-salt-lick-1-to-2-lbs': ROPE_SALT_LICK_IMAGES,
+  'hk-lfh-2lbs': ROPE_SALT_LICK_IMAGES,
 };
 
 export function resolveCuratedProductImages(
