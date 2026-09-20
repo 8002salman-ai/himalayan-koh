@@ -68,10 +68,10 @@
   --color-admin-line-strong: #c8bba8;   /* Emphasised dividers                  */
   --color-admin-ink: #26211c;           /* Primary text (charcoal)              */
   --color-admin-muted: #6d6258;         /* Secondary text (charcoal-light)      */
-  --color-admin-rail: #13221c;          /* Deep mountain forest sidebar rail    */
-  --color-admin-rail-hover: #1e362c;    /* Rail hover row                       */
-  --color-admin-rail-active: #244135;   /* Rail active row                      */
-  --color-admin-rail-text: #b6c3bc;     /* Rail inactive label                  */
+  --color-admin-rail: #26211c;          /* Deep mountain charcoal sidebar rail  */
+  --color-admin-rail-hover: rgba(255, 255, 255, 0.05);    /* Rail hover row     */
+  --color-admin-rail-active: rgba(184, 100, 82, 0.15);   /* Rail active row    */
+  --color-admin-rail-text: #b6aba0;     /* Rail inactive label                  */
 
   /* ── Z-Index Scale ──────────────────────────────────── */
   /* Tailwind v4 generates z-* utilities from the --z-index-* namespace only.

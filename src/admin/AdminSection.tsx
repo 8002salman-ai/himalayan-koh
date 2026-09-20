@@ -1978,23 +1978,29 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
         </div>
       </Accordion>
 
-      {/* Integrations — optional external assistance (Hermes / Salman OS) */}
-      <Accordion id="integrations" title="Integrations" icon={<ShareNetwork size={18} className="text-purple-500" />} open={open} toggle={toggle}>
+      {/* Integrations — external research assistance (Hermes / Salman OS) */}
+      <Accordion id="integrations" title="Integrations" icon={<ShareNetwork size={18} className="text-[#3F6550]" />} open={open} toggle={toggle}>
         <div className="pt-5 space-y-3">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-purple-100 bg-purple-50/50">
+          <div className="flex items-center justify-between p-4 rounded-xl border border-[#E0D6C8] bg-[#FAF7F1]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center"><Robot size={20} className="text-purple-600" /></div>
+              <div className="w-10 h-10 rounded-xl bg-[#3F6550]/10 flex items-center justify-center"><Robot size={20} className="text-[#3F6550]" /></div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Hermes / Salman OS</p>
-                <p className="text-xs text-gray-500">Future external research assistance — optional, completely disconnected now.</p>
+                <p className="text-sm font-semibold text-[#26211C]">Hermes / Salman OS</p>
+                <p className="text-xs text-[#6D6258]">External AI market, competitor and product research evidence ingestion for project <span className="font-mono text-[#B86452]">himalayan-koh</span>.</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-gray-200 text-gray-600">DISCONNECTED · OPTIONAL</span>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/ai-intelligence')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#B86452] hover:bg-[#8D4133] text-white transition-colors"
+            >
+              Review Intel
+            </button>
           </div>
-          <ul className="text-xs text-gray-500 space-y-1 list-disc pl-5">
-            <li>Purpose: future external research assistance only.</li>
-            <li>Cannot write Luxedge data, control publishing, block the catalog, or access the repository through this feature.</li>
-            <li>Connection requires a future owner-approved setup — nothing to configure yet.</li>
+          <ul className="text-xs text-[#6D6258] space-y-1.5 list-disc pl-5">
+            <li><span className="font-medium text-[#26211C]">Data Contract:</span> Research evidence only via <code className="text-[11px] bg-white px-1.5 py-0.5 rounded border border-[#E0D6C8]">/api/hermes/ingest</code>.</li>
+            <li><span className="font-medium text-[#26211C]">Safety Guard:</span> Cannot write WooCommerce data, change pricing, alter inventory, or publish WordPress posts directly.</li>
+            <li><span className="font-medium text-[#26211C]">Active Staging:</span> Synchronized with Salman OS control plane for <code className="text-[11px] bg-white px-1.5 py-0.5 rounded border border-[#E0D6C8]">preview.himalayankoh.com</code>.</li>
           </ul>
         </div>
       </Accordion>

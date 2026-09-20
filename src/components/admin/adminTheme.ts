@@ -123,12 +123,12 @@ export const ICON_TILE =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br';
 
 export const ICON_TILE_TONES = {
-  brand: 'from-himalayan to-himalayan-dark text-white',
-  slate: 'from-slate-500 to-slate-700 text-white',
-  green: 'from-emerald-500 to-emerald-700 text-white',
-  amber: 'from-amber-400 to-amber-600 text-white',
-  violet: 'from-violet-500 to-violet-700 text-white',
-  sky: 'from-sky-500 to-sky-700 text-white',
+  brand: 'from-[#B86452] to-[#8D4133] text-white',
+  slate: 'from-[#453d36] to-[#2d2722] text-white',
+  green: 'from-[#3F6550] to-[#2a4435] text-white',
+  amber: 'from-[#C98745] to-[#9e632b] text-white',
+  violet: 'from-[#8D4133] to-[#26211C] text-white',
+  sky: 'from-[#3F6550] to-[#C98745] text-white',
 } as const;
 
 export type IconTone = keyof typeof ICON_TILE_TONES;
