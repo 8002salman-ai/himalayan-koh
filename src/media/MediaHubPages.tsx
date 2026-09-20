@@ -74,9 +74,9 @@ export function MediaHubPage() {
       <section className="relative bg-luxe-black text-luxe-white overflow-hidden">
         <div aria-hidden="true" className="absolute -top-28 right-0 w-[26rem] h-[26rem] rounded-full bg-luxe-gold/10 blur-[110px]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-10 sm:pt-16 sm:pb-14">
-          <p className="eyebrow text-luxe-gold-light">Luxedge Media</p>
+          <p className="eyebrow text-luxe-gold-light">Himalayan Koh Media</p>
           <h1 className="mt-2 font-serif text-3xl sm:text-5xl font-bold tracking-tight max-w-2xl">
-            Films, guides & stories from the Luxedge team
+            Films, guides & stories from the Himalayan Koh team
           </h1>
           <p className="mt-3 text-sm sm:text-base text-luxe-white/65 max-w-xl">
             How our products are made, how to care for the animals you love, and the honest
@@ -93,7 +93,7 @@ export function MediaHubPage() {
               <YoutubeLogo size={16} weight="fill" aria-hidden="true" /> Subscribe on YouTube
             </a>
             {videos === null && (
-              <span className="text-xs text-luxe-white/50">Videos load from the Luxedge Media library.</span>
+              <span className="text-xs text-luxe-white/50">Videos load from the Himalayan Koh Media library.</span>
             )}
           </div>
         </div>
@@ -599,7 +599,7 @@ export function MediaVideoPage() {
                       className="flex gap-3 items-center rounded-2xl border border-luxe-black/10 p-3 hover:border-luxe-gold-dark hover:shadow-sm transition-all group"
                     >
                       <img
-                        src={p.images.find((i) => i) || '/luxedge-mark.png'}
+                        src={p.images.find((i) => i) || '/logo.png'}
                         alt={p.name}
                         loading="lazy"
                         decoding="async"
@@ -663,5 +663,5 @@ export function MediaVideoPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Homepage widget — Latest from Luxedge Media
+// Homepage widget — Latest from Himalayan Koh Media
 // ---------------------------------------------------------------------------

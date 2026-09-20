@@ -200,7 +200,7 @@ export function SubscribeBand({ compact = false }: { compact?: boolean }) {
           <p className="eyebrow mb-1 text-luxe-gold-light">Never Miss a Video</p>
           <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Subscribe on YouTube</h2>
           <p className="mt-1.5 text-sm text-luxe-white/65 max-w-md">
-            New guides and stories go live on the official Luxedge channel first.
+            New guides and stories go live on the official Himalayan Koh channel first.
           </p>
         </div>
         <a
@@ -234,13 +234,13 @@ export function MediaLatestSection() {
   if (!videos || videos.length === 0) return null;
 
   return (
-    <section className="bg-luxe-black/5 py-10 sm:py-12" aria-label="Latest from Luxedge Media">
+    <section className="bg-luxe-black/5 py-10 sm:py-12" aria-label="Latest from Himalayan Koh Media">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow text-luxe-gold-dark">Watch & Learn</p>
             <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-luxe-black tracking-tight">
-              Latest from Luxedge Media
+              Latest from Himalayan Koh Media
             </h2>
           </div>
           <Link

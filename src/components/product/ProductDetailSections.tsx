@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, Gem, HelpCircle, Shield, Truck, UtensilsCrossed, ShieldAlert } from 'lucide-react';
 import type { Product } from '../../data/products';
 import { getProductContent } from '../../lib/products/productContent';
+import ProductVideoSection from './ProductVideoSection';
 
 interface Props {
   product: Product;
@@ -14,6 +15,9 @@ export default function ProductDetailSections({ product }: Props) {
 
   return (
     <div className="mt-10 space-y-8">
+      {/* Product Video — renders only when linked videos exist */}
+      <ProductVideoSection product={product} />
+
       <section className="bg-white rounded-2xl shadow-md shadow-black/5 p-6 md:p-8">
         <div className="flex items-center gap-2 mb-4">
           <Gem size={20} className="text-himalayan" />
