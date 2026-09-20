@@ -97,7 +97,7 @@ Best regards,
 
 Salman Basco
 Himalayan Koh Wholesale Team
-orders@himalayankoh.com | (832) 224-6466
+sales@himalayankoh.com | (832) 224-6466
 https://preview.himalayankoh.com`,
   },
   {
@@ -121,7 +121,7 @@ May I send you our quick dealer catalog and wholesale pricing for your equine cu
 Sincerely,
 
 Himalayan Koh Equine Division
-orders@himalayankoh.com | (832) 224-6466`,
+sales@himalayankoh.com | (832) 224-6466`,
   },
   {
     id: 'food_grocery',
@@ -143,7 +143,7 @@ Warm regards,
 
 Himalayan Koh Gourmet Line
 Houston, TX
-orders@himalayankoh.com`,
+sales@himalayankoh.com`,
   },
   {
     id: 'commercial_distribution',
@@ -161,7 +161,7 @@ If you are expanding your catalog with high-velocity mineral products, let's con
 Best regards,
 
 Himalayan Koh B2B Wholesale
-orders@himalayankoh.com | (832) 224-6466`,
+sales@himalayankoh.com | (832) 224-6466`,
   },
 ];
 
@@ -1359,7 +1359,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Subject Line</label><input type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-[11px] text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none" /></div>
                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Email Body</label><textarea rows={10} value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-[11px] text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono leading-relaxed" /></div>
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-slate-500">Sender: <span className="font-semibold text-slate-700">orders@himalayankoh.com</span></span>
+                    <span className="text-[10px] text-slate-500">Sender: <span className="font-semibold text-slate-700">sales@himalayankoh.com</span></span>
                     <button type="submit" disabled={sendingOutreach} className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
                       {sendingOutreach ? (<><ArrowsClockwise className="w-3.5 h-3.5 animate-spin" /> Sending...</>) : (<><PaperPlaneRight className="w-3.5 h-3.5" /> Send Outreach</>)}
                     </button>

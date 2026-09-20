@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     const resendKey = process.env.RESEND_API_KEY;
-    const resendFrom = process.env.RESEND_FROM || 'Himalayan Koh <orders@himalayankoh.com>';
+    const resendFrom = process.env.RESEND_FROM || 'Himalayan Koh <sales@himalayankoh.com>';
     
     let isSimulated = false;
     let providerSuccess = false;
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
                 <p style="font-size: 12px; color: #64748b;">
                   <strong>Himalayan Koh</strong><br />
                   12620 FM 1960 W Ste A-4, Houston, TX 77065<br />
-                  Direct B2B Inquiries: orders@himalayankoh.com | (832) 224-6466
+                  Direct B2B Inquiries: sales@himalayankoh.com | (832) 224-6466
                 </p>
               </div>
             `,
