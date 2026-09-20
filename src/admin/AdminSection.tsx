@@ -6047,7 +6047,7 @@ class AdminErrorBoundary extends Component<{ children: ReactNode }, { err: strin
             <Warning size={32} className="mx-auto mb-4 text-red-500" />
             <h1 className="text-lg font-bold text-gray-900 mb-2">Something went wrong in the admin area</h1>
             <p className="text-sm text-gray-500 mb-4">{this.state.err}</p>
-            <a href="/admin" className="inline-block px-5 py-2.5 bg-[#1E4636] hover:bg-[#143023] text-white text-sm font-semibold rounded-xl transition-colors">Retry</a>
+            <a href="/admin" className="inline-block px-5 py-2.5 bg-[#B86452] hover:bg-[#8D4133] text-white text-sm font-semibold rounded-xl transition-colors">Retry</a>
           </div>
         </div>
       );
