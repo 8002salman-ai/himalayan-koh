@@ -72,13 +72,22 @@ function parseEnvFile(path) {
  * Variables whose values are public by intent, so finding one proves nothing.
  *
  * - `NEXT_PUBLIC_*` is inlined into the browser bundle on purpose.
+ * - `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are the legacy browser
+ *   aliases for the same public Supabase configuration; the anon key is public
+ *   by design and RLS protects the data.
  * - `SHIPPO_FROM_*` is the shipping-from business address, which the storefront
  *   publishes on Contact, Shipping, Privacy and the FAQ. Flagging it would make this
  *   check fail on every build for a value the shop advertises, which is the failure
  *   mode that turns a guard into noise. (It was in fact the only thing this check
  *   flagged the first time it ran.)
  */
-const PUBLIC_BY_INTENT = [/^NEXT_PUBLIC_/, /^SHIPPO_FROM_/, /_MODEL$/];
+const PUBLIC_BY_INTENT = [
+  /^NEXT_PUBLIC_/,
+  /^VITE_SUPABASE_URL$/,
+  /^VITE_SUPABASE_ANON_KEY$/,
+  /^SHIPPO_FROM_/,
+  /_MODEL$/,
+];
 
 /** Server-only variables whose value must not appear in the build output. */
 function collectSecrets() {

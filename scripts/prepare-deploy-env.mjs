@@ -90,6 +90,15 @@ function readPublicSupabaseEnv() {
       if (match && match[2]) result[match[1]] = match[2].replace(/^['\"]|['\"]$/g, '');
     }
   }
+  // Vinext exposes VITE_* values to the browser bundle. Keep NEXT_PUBLIC_*
+  // support for server/runtime consumers, but mirror the public values under
+  // VITE_* so the client resolver sees the same configuration at build time.
+  if (!result.VITE_SUPABASE_URL && result.NEXT_PUBLIC_SUPABASE_URL) {
+    result.VITE_SUPABASE_URL = result.NEXT_PUBLIC_SUPABASE_URL;
+  }
+  if (!result.VITE_SUPABASE_ANON_KEY && result.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    result.VITE_SUPABASE_ANON_KEY = result.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
   return result;
 }
 

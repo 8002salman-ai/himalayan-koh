@@ -18,4 +18,9 @@ describe('Supabase SDK client configuration', () => {
     expect(source).not.toContain("import { publicEnv } from '@/lib/env';");
     expect(source).not.toContain('Boolean(supabaseUrl && supabaseAnonKey)');
   });
+
+  it('keeps missing-config detection enabled for an actually empty resolver result', () => {
+    expect(source).toContain('Supabase is not configured.');
+    expect(source).toContain('const hasSupabaseConfig = supabaseConfig !== null;');
+  });
 });
