@@ -675,37 +675,58 @@ export function invalidateCatalogCache(updatedProduct?: CatalogProduct | null) {
   catalogMemoryCache = null;
 }
 
-/** The browser-side read: authenticated admin route first, public route second. */
-async function readBrowserCatalog(): Promise<CatalogProduct[] | null> {
-  // 1. Try authenticated /api/admin/catalog first (reads all products including drafts from WooCommerce)
+export class CatalogLoadError extends Error {
+  constructor(message = 'The product catalog could not be loaded.') {
+    super(message);
+    this.name = 'CatalogLoadError';
+  }
+}
+
+export function parseAdminCatalogRows(payload: unknown): Record<string, unknown>[] | null {
+  const rows = (payload as { page?: { rows?: unknown } } | null)?.page?.rows;
+  return Array.isArray(rows) ? rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === 'object')) : null;
+}
+
+export function parsePublicCatalogRows(payload: unknown): Record<string, unknown>[] | null {
+  const rows = (payload as { products?: unknown } | null)?.products;
+  return Array.isArray(rows) ? rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === 'object')) : null;
+}
+
+/** The browser-side read: authenticated admin route first, public route second.
+ * A failed read is an error, never an empty catalog. An explicitly empty valid
+ * response remains empty so the UI can distinguish zero products from failure. */
+async function readBrowserCatalog(): Promise<CatalogProduct[]> {
+  const failures: string[] = [];
+
   try {
     const token = await getFreshAccessToken().catch(() => null);
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const res = await fetch('/api/admin/catalog', { headers });
     if (res.ok) {
-      const data = (await res.json()) as { page?: { rows?: Record<string, unknown>[] } };
-      if (data && Array.isArray(data.page?.rows) && data.page.rows.length > 0) {
-        return data.page.rows.map(adminCatalogRowToProduct);
-      }
+      const rows = parseAdminCatalogRows(await res.json());
+      if (rows) return rows.map(adminCatalogRowToProduct);
+      failures.push('admin catalog returned an invalid response');
+    } else {
+      failures.push(`admin catalog HTTP ${res.status}`);
     }
-  } catch {
-    // Continue to /api/catalog fallback
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : 'admin catalog request failed');
   }
 
-  // 2. Fallback to /api/catalog (storefront public read - always serves the 18 WooCommerce products)
   try {
     const res = await fetch('/api/catalog');
     if (res.ok) {
-      const data = (await res.json()) as { products?: Record<string, unknown>[] };
-      if (data && Array.isArray(data.products) && data.products.length > 0) {
-        return data.products.map(adminCatalogRowToProduct);
-      }
+      const rows = parsePublicCatalogRows(await res.json());
+      if (rows) return rows.map(adminCatalogRowToProduct);
+      failures.push('public catalog returned an invalid response');
+    } else {
+      failures.push(`public catalog HTTP ${res.status}`);
     }
-  } catch {
-    // Continue to db fallback
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : 'public catalog request failed');
   }
 
-  return null;
+  throw new CatalogLoadError(failures.length ? failures.join('; ') : undefined);
 }
 
 /** All products (any status) with images/variants — admin view. */
@@ -714,10 +735,8 @@ export async function listProducts(forceFresh = false): Promise<CatalogProduct[]
     if (!forceFresh && catalogMemoryCache && (Date.now() - catalogMemoryCache.timestamp < CATALOG_CACHE_TTL_MS)) {
       return catalogMemoryCache.products;
     }
-    const res = await shareBrowserCatalogRead(async () => (await readBrowserCatalog()) ?? readFromDb());
-    if (res && res.length > 0) {
-      catalogMemoryCache = { products: res, timestamp: Date.now() };
-    }
+    const res = await shareBrowserCatalogRead(() => readBrowserCatalog());
+    catalogMemoryCache = { products: res, timestamp: Date.now() };
     return res;
   }
 

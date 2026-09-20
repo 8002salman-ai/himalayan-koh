@@ -166,11 +166,11 @@ function timeLabel(iso: string | undefined | null): string {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function ageLabel(iso: string | undefined | null): string {
-  if (!iso) return '—';
+function ageLabel(iso: string | undefined | null, nowMs: number | null): string {
+  if (!iso || nowMs === null) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  const days = Math.floor((nowMs - d.getTime()) / 86400000);
   if (days <= 0) return 'Today';
   if (days < 7) return `${days}d`;
   if (days < 30) return `${Math.floor(days / 7)}w`;
@@ -178,11 +178,11 @@ function ageLabel(iso: string | undefined | null): string {
   return `${Math.floor(days / 365)}y`;
 }
 
-function endsInLabel(iso: string | null | undefined): string | null {
-  if (!iso) return null;
+function endsInLabel(iso: string | null | undefined, nowMs: number | null): string | null {
+  if (!iso || nowMs === null) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+  const days = Math.ceil((d.getTime() - nowMs) / 86400000);
   if (days < 0) return 'Ended';
   return days === 0 ? 'Ends today' : `Ends in ${days}d`;
 }
@@ -229,15 +229,26 @@ export function CatalogProductsPage() {
   const [autoPublishBusy, setAutoPublishBusy] = useState(false);
   // Background Auto-SEO job - lives in a module store so it survives navigation.
   const seo = useSeoJobStore();
-  // Seller-chosen column order (drag column headers) - per-device, survives reloads.
-  const [colOrder, setColOrder] = useState<CatalogColumnKey[]>(() =>
-    loadCatalogColumns(typeof localStorage !== 'undefined' ? localStorage : null),
-  );
+  // Keep the first render deterministic: browser storage is applied after
+  // hydration so a saved column order cannot change the server HTML.
+  const [colOrder, setColOrder] = useState<CatalogColumnKey[]>(() => loadCatalogColumns(null));
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [renderNowMs, setRenderNowMs] = useState<number | null>(null);
   const [dragCol, setDragCol] = useState<CatalogColumnKey | null>(null);
   useEffect(() => {
     let cancelled = false;
     void getAutoPublishEnabled().then((v) => { if (!cancelled) setAutoPublish(v); });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    // localStorage is client-only and must never participate in the hydration
+    // render. The server-side order, when present, is applied afterward too.
+    setColOrder(loadCatalogColumns(window.localStorage));
+    // Client-only state is applied only after the SSR/client first render agrees.
+    setRenderNowMs(Date.now());
+    setHydrated(true);
   }, []);
   // Guard for the store's onFinished callback: skip the reload if we've unmounted.
   const mountedRef = useRef(true);
@@ -264,19 +275,36 @@ export function CatalogProductsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const [ps, cs, os] = await Promise.all([listProducts(), listCategories(), listOffers()]);
-      setProducts(ps);
-      setCats(cs);
-      setOffers(os);
+      const [productResult, categoryResult, offerResult] = await Promise.allSettled([
+        listProducts(true),
+        listCategories(),
+        listOffers(),
+      ]);
+      if (productResult.status === 'rejected') {
+        throw productResult.reason instanceof Error
+          ? productResult.reason
+          : new Error('The product catalog could not be loaded.');
+      }
+      setProducts(productResult.value);
+      // Auxiliary data must not turn a successful product read into a fake
+      // empty catalog. Filters simply remain at their deterministic defaults.
+      setCats(categoryResult.status === 'fulfilled' ? categoryResult.value : []);
+      setOffers(offerResult.status === 'fulfilled' ? offerResult.value : []);
     } catch (e) {
-      notify(`Could not load catalog: ${(e as Error).message}`, 'error');
+      const message = e instanceof Error ? e.message : 'The product catalog could not be loaded.';
+      setLoadError(message);
+      notify(`Could not load catalog: ${message}`, 'error');
     } finally {
       setLoading(false);
     }
   }, [notify]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!hydrated) return;
+    void load();
+  }, [hydrated, load]);
 
   // Real first-party views/interest from the server endpoint (one request,
   // aggregated server-side — never N+1, never a raw analytics download).
@@ -430,7 +458,7 @@ export function CatalogProductsPage() {
     void loadServerColumns().then((server) => {
       if (cancelled || !server) return;
       setColOrder(server);
-      saveCatalogColumns(server, typeof localStorage !== 'undefined' ? localStorage : null);
+      saveCatalogColumns(server, window.localStorage);
     });
     return () => { cancelled = true; };
   }, []);
@@ -727,6 +755,22 @@ export function CatalogProductsPage() {
 
   if (loading) return <div className="text-center py-20 text-gray-400">Loading catalog…</div>;
 
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-xl rounded-xl border border-red-200 bg-red-50 px-5 py-8 text-center">
+        <h1 className="text-lg font-semibold text-red-900">Products could not be loaded</h1>
+        <p className="mt-2 text-sm text-red-700">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2 py-0.5">
@@ -813,7 +857,7 @@ export function CatalogProductsPage() {
       {/* Interrupted-run offer - a full page reload killed a running Auto SEO
           job; the store restored its checkpoint from localStorage, so the
           remaining products can be resumed instead of lost. */}
-      {seo.interrupted && !seo.running && (
+      {hydrated && seo.interrupted && !seo.running && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="text-amber-900 font-semibold flex items-center gap-2">
             <Warning size={16} />Auto SEO was interrupted
@@ -1014,7 +1058,7 @@ export function CatalogProductsPage() {
               {sorted.map((p) => {
                 const st = stats?.[p.id];
                 const ageIso = p.publishedAt || p.createdAt;
-                const endsIn = p.listingEndsAt ? endsInLabel(p.listingEndsAt) : null;
+                const endsIn = p.listingEndsAt ? endsInLabel(p.listingEndsAt, renderNowMs) : null;
                 const myOffers = offersFor(p);
                 const seoState = seoStatus(p);
                 const justSeoed = seo.running && seo.doneIds.includes(p.id);
@@ -1166,12 +1210,12 @@ export function CatalogProductsPage() {
                   age: (
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className="relative inline-block group cursor-help">
-                        <span className="text-xs font-semibold text-gray-700">{ageLabel(ageIso)}</span>
+                        <span className="text-xs font-semibold text-gray-700">{ageLabel(ageIso, renderNowMs)}</span>
                         {ageIso && <span className="ml-1 text-[10px] text-gray-400">{timeLabel(ageIso)}</span>}
                         {endsIn && <span className="ml-1 text-[10px] text-amber-600">· {endsIn}</span>}
                         <span className="pointer-events-none absolute left-0 top-full mt-1 z-30 hidden whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-600 shadow-lg group-hover:block">
                           <span className="block">Listed: {ageIso ? new Date(ageIso).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</span>
-                          <span className="block">Age: {ageIso ? `${Math.max(0, Math.floor((Date.now() - new Date(ageIso).getTime()) / 86400000))} days · ${timeLabel(ageIso)}` : '—'}</span>
+                          <span className="block">Age: {ageIso ? `${renderNowMs === null ? '—' : Math.max(0, Math.floor((renderNowMs - new Date(ageIso).getTime()) / 86400000))} days · ${timeLabel(ageIso)}` : '—'}</span>
                           {p.publishedAt && <span className="block text-gray-400">First live: {new Date(p.publishedAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
                           {p.createdAt && p.createdAt !== p.publishedAt && <span className="block text-gray-400">Created: {new Date(p.createdAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
                           {!p.publishedAt && <span className="block text-gray-400">Never published — age from created date ({p.createdAt ? new Date(p.createdAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'})</span>}
@@ -1420,7 +1464,7 @@ export function CatalogProductsPage() {
               </label>
             </div>
             {listingModal.listingEndsAt && (
-              <p className="text-xs text-amber-600">Currently ends {new Date(listingModal.listingEndsAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} ({endsInLabel(listingModal.listingEndsAt) || '—'}).</p>
+              <p className="text-xs text-amber-600">Currently ends {new Date(listingModal.listingEndsAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} ({endsInLabel(listingModal.listingEndsAt, renderNowMs) || '—'}).</p>
             )}
             <button onClick={() => setListingModal(null)} className="w-full py-2.5 border rounded-lg">Close</button>
           </div>
