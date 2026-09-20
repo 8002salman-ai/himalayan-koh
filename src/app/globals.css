@@ -59,19 +59,19 @@
   --color-warm-white: #faf7f1;          /* Page background       */
   --color-cream: #fffdf8;               /* Card / panel surface  */
 
-  /* ── Admin console ──────────────────────────────────── */
-  /* The admin is its own application surface: a light console
-     with a dark rail, hairline borders and its own text scale.
-     These names are additive so no storefront utility changes. */
-  --color-admin-canvas: #f2f3f5;        /* Console page background */
-  --color-admin-surface: #ffffff;       /* Panels, cards, tables   */
-  --color-admin-line: #e6e8ec;          /* Hairline borders        */
-  --color-admin-line-strong: #d5d9e0;   /* Emphasised dividers     */
-  --color-admin-ink: #1c1f23;           /* Console primary text    */
-  --color-admin-muted: #6b7280;         /* Console secondary text  */
-  --color-admin-rail: #16181c;          /* Sidebar rail            */
-  --color-admin-rail-hover: #24272e;    /* Rail hover row          */
-  --color-admin-rail-text: #a4abb6;     /* Rail inactive label     */
+  /* ── Admin console (Himalayan Koh Brand Design System) ── */
+  --color-admin-canvas: #faf7f1;        /* Console page background (warm-white) */
+  --color-admin-surface: #ffffff;       /* Panels, cards, tables                */
+  --color-admin-surface-cream: #fffdf8; /* Warm panel surface (cream)           */
+  --color-admin-line: #e0d6c8;          /* Brand hairline border                */
+  --color-admin-line-subtle: #eee7dc;   /* Very light divider                   */
+  --color-admin-line-strong: #c8bba8;   /* Emphasised dividers                  */
+  --color-admin-ink: #26211c;           /* Primary text (charcoal)              */
+  --color-admin-muted: #6d6258;         /* Secondary text (charcoal-light)      */
+  --color-admin-rail: #13221c;          /* Deep mountain forest sidebar rail    */
+  --color-admin-rail-hover: #1e362c;    /* Rail hover row                       */
+  --color-admin-rail-active: #244135;   /* Rail active row                      */
+  --color-admin-rail-text: #b6c3bc;     /* Rail inactive label                  */
 
   /* ── Z-Index Scale ──────────────────────────────────── */
   /* Tailwind v4 generates z-* utilities from the --z-index-* namespace only.
@@ -99,6 +99,31 @@
 /* ── Runtime CSS vars (set by JS, not @theme) ────────── */
 :root {
   --header-height: 102px; /* fallback; overwritten by ResizeObserver in Layout.tsx */
+
+  /* Semantic Himalayan Koh Theme Variables */
+  --hk-primary: #b86452;
+  --hk-primary-dark: #8d4133;
+  --hk-primary-soft: #f3e4de;
+  --hk-primary-subtle: #faf0eb;
+  --hk-accent: #3f6550;
+  --hk-accent-soft: #e8f0eb;
+  --hk-salt-pink: #e8988a;
+  --hk-mineral-gold: #c98745;
+  --hk-mineral-gold-soft: #fdf5ea;
+  --hk-canvas: #faf7f1;
+  --hk-surface: #ffffff;
+  --hk-surface-cream: #fffdf8;
+  --hk-surface-muted: #f4efe6;
+  --hk-border: #e0d6c8;
+  --hk-border-subtle: #eee7dc;
+  --hk-text: #26211c;
+  --hk-text-muted: #6d6258;
+  --hk-success: #3f6550;
+  --hk-warning: #c98745;
+  --hk-danger: #b91c1c;
+
+  /* Easing curve */
+  --hk-ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ── Reset ─────────────────────────────────────────────── */
@@ -239,4 +264,116 @@ img {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ── Admin Himalayan Koh Design System Polish ────────────── */
+
+/* Admin card polish */
+.admin-card {
+  background: #ffffff;
+  border: 1px solid var(--color-admin-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(38, 33, 28, 0.04), 0 4px 12px rgba(38, 33, 28, 0.02);
+  transition: border-color 0.2s var(--hk-ease-spring), box-shadow 0.2s var(--hk-ease-spring), transform 0.2s var(--hk-ease-spring);
+}
+
+.admin-card-hover:hover {
+  border-color: rgba(184, 100, 82, 0.35);
+  box-shadow: 0 4px 16px rgba(184, 100, 82, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Admin button system */
+.admin-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--color-himalayan);
+  border: 1px solid var(--color-himalayan);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s var(--hk-ease-spring);
+}
+.admin-btn-primary:hover:not(:disabled) {
+  background: var(--color-himalayan-dark);
+  border-color: var(--color-himalayan-dark);
+}
+.admin-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgba(184, 100, 82, 0.4);
+}
+.admin-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-charcoal);
+  background: #ffffff;
+  border: 1px solid var(--color-admin-line);
+  transition: all 0.2s var(--hk-ease-spring);
+}
+.admin-btn-secondary:hover:not(:disabled) {
+  background: var(--color-warm-white);
+  border-color: rgba(184, 100, 82, 0.4);
+  color: var(--color-himalayan-dark);
+}
+
+/* Admin input styling */
+.admin-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-admin-line);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-charcoal);
+  background-color: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.admin-input:focus {
+  outline: none;
+  border-color: var(--color-himalayan);
+  box-shadow: 0 0 0 3px rgba(184, 100, 82, 0.15);
+}
+
+/* Admin subtle motion & page transitions */
+@keyframes adminRevealUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-page-reveal {
+  animation: adminRevealUp 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .admin-page-reveal,
+  .admin-card,
+  .admin-card-hover,
+  .admin-btn-primary,
+  .admin-btn-secondary {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }

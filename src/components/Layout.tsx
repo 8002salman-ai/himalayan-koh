@@ -53,8 +53,7 @@ export default function Layout({ children }: LayoutProps) {
    */
   const accountMenuItems = isAdmin
     ? [
-        { label: 'Admin Dashboard', to: '/admin' },
-        { label: 'Store Settings', to: '/admin/settings' },
+        { label: 'Admin Console', to: '/admin' },
       ]
     : [
         { label: 'My Account', to: '/account' },
@@ -296,6 +295,25 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 </motion.div>
               ))}
+              {isAuthenticated && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="pt-2 border-t border-himalayan-line/40"
+                >
+                  {accountMenuItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-4 py-3 rounded-lg text-sm font-semibold text-charcoal hover:bg-warm-white transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </motion.div>
+              )}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}

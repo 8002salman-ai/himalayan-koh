@@ -156,21 +156,21 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   const Sidebar = ({ mobile }: { mobile?: boolean }) => (
     <aside className={`flex flex-col shrink-0 ${mobile ? 'w-full h-full' : 'w-60 fixed inset-y-0 left-0 z-40 hidden lg:flex'}`}
-      style={{ background: 'linear-gradient(180deg, #0f231b 0%, #173629 55%, #0f231b 100%)', boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.05)' }}>
+      style={{ background: 'linear-gradient(180deg, #13221c 0%, #1a2f26 55%, #101c17 100%)', boxShadow: 'inset -1px 0 0 rgba(224,214,200,0.12)' }}>
       {/* Brand */}
-      <div className="px-3.5 py-4 border-b border-white/[0.06] flex items-center gap-2.5">
-        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-950/40 border border-white/10" style={{ background: 'linear-gradient(135deg, #1E4636, #C5A880)' }}>HK</span>
+      <div className="px-3.5 py-4 border-b border-white/[0.08] flex items-center gap-2.5">
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md shadow-black/40 border border-white/10" style={{ background: 'linear-gradient(135deg, #b86452, #c98745)' }}>HK</span>
         <div className="leading-tight">
           <span className="font-bold text-sm text-white tracking-tight block">Himalayan Koh</span>
-          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-medium">Admin Console</span>
+          <span className="text-[9px] uppercase tracking-[0.2em] text-[#b6c3bc] font-medium">Admin Console</span>
         </div>
         {mobile && <button onClick={() => setMobSide(false)} className="ml-auto p-1.5 hover:bg-white/10 rounded-lg"><X size={14} className="text-slate-400" /></button>}
       </div>
 
-      <nav className="flex-1 p-2 space-y-4 overflow-y-auto">
+      <nav className="flex-1 p-2 space-y-4 overflow-y-auto scrollbar-thin">
         {sections.map(sec => (
           <div key={sec.title}>
-            <p className="px-2.5 mb-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">{sec.title}</p>
+            <p className="px-2.5 mb-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[#86958d]">{sec.title}</p>
             <div className="space-y-0.5">
               {sec.items.map(l => {
                 const isActive = loc.pathname === l.to;
@@ -178,10 +178,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 return (
                   <Link key={l.to} to={l.to}
                     className={`group relative flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[12px] font-medium transition-all duration-200 ${
-                      isActive ? 'text-white' : 'text-slate-400 hover:text-white'
+                      isActive ? 'text-white' : 'text-[#b6c3bc] hover:text-white'
                     }`}
-                    style={isActive ? { background: 'linear-gradient(90deg, rgba(30,70,54,0.55), rgba(46,95,73,0.30))', boxShadow: 'inset 0 0 0 1px rgba(197,168,128,0.35)' } : undefined}>
-                    {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: 'linear-gradient(180deg,#34d399,#C5A880)' }} />}
+                    style={isActive ? { background: 'linear-gradient(90deg, rgba(184,100,82,0.30), rgba(201,135,69,0.15))', boxShadow: 'inset 0 0 0 1px rgba(201,135,69,0.35)' } : undefined}>
+                    {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: 'linear-gradient(180deg,#b86452,#c98745)' }} />}
                     <span className={`w-6.5 h-6.5 min-w-[26px] min-h-[26px] w-[26px] h-[26px] rounded-md flex items-center justify-center text-white transition-all duration-200 ${isActive ? 'scale-105' : 'opacity-90 group-hover:scale-105 group-hover:opacity-100'}`}
                       style={{ background: l.g, boxShadow: isActive ? `0 2px 10px ${l.dot}40` : '0 1px 4px rgba(0,0,0,0.3)' }}>
                       <Icon size={13} weight="bold" />
@@ -195,49 +195,49 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         ))}
       </nav>
 
-      <div className="p-2 border-t border-white/[0.06] space-y-0.5">
-        <Link to="/" className="flex items-center gap-2 text-[11px] text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+      <div className="p-2 border-t border-white/[0.08] space-y-0.5">
+        <Link to="/" className="flex items-center gap-2 text-[11px] text-[#b6c3bc] hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
           <span className="w-[26px] h-[26px] rounded-md bg-white/5 flex items-center justify-center"><ArrowLeft size={12} /></span>Storefront
         </Link>
         <button onClick={() => { void signOut().then(() => nav('/admin/login')); }}
-          className="flex items-center gap-2 text-[11px] text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg hover:bg-red-500/10 w-full transition-colors">
-          <span className="w-[26px] h-[26px] rounded-md bg-red-500/10 flex items-center justify-center"><SignOut size={12} /></span>Logout
+          className="flex items-center gap-2 text-[11px] text-rose-300 hover:text-rose-200 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/10 w-full transition-colors">
+          <span className="w-[26px] h-[26px] rounded-md bg-rose-500/10 flex items-center justify-center"><SignOut size={12} /></span>Logout
         </button>
       </div>
     </aside>
   );
 
   return (
-    <div className="h-screen w-full bg-gray-100 flex overflow-hidden">
+    <div className="h-screen w-full flex overflow-hidden" style={{ background: 'var(--color-warm-white)' }}>
 
       <Sidebar />
       {mobSide && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/50" onClick={() => setMobSide(false)} /><div className="absolute left-0 top-0 h-full w-64"><Sidebar mobile /></div></div>}
       <div className="flex-1 flex flex-col min-w-0 lg:pl-60 h-screen overflow-hidden">
-        <header className="h-14 shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between gap-3 px-4 lg:px-6 z-30">
+        <header className="h-14 shrink-0 bg-white/90 backdrop-blur-md border-b border-[#e0d6c8] flex items-center justify-between gap-3 px-4 lg:px-6 z-30">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => setMobSide(true)} className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg"><List size={18} /></button>
-            <div className="hidden md:flex items-center gap-2 bg-gray-100/80 border border-gray-200 rounded-lg px-3 py-1.5 w-64">
-              <MagnifyingGlass size={13} className="text-gray-400" />
-              <input placeholder="Search…" className="bg-transparent text-xs outline-none w-full placeholder:text-gray-400" />
-              <span className="text-[9px] text-gray-400 border border-gray-300 rounded px-1 py-px font-medium">⌘K</span>
+            <button onClick={() => setMobSide(true)} className="lg:hidden p-1.5 hover:bg-[#faf7f1] rounded-lg text-[#26211c]"><List size={18} /></button>
+            <div className="hidden md:flex items-center gap-2 bg-[#faf7f1] border border-[#e0d6c8] rounded-lg px-3 py-1.5 w-64 focus-within:border-[#b86452] focus-within:ring-2 focus-within:ring-[#b86452]/20 transition-all">
+              <MagnifyingGlass size={13} className="text-[#6d6258]" />
+              <input placeholder="Search…" className="bg-transparent text-xs outline-none w-full placeholder:text-[#6d6258] text-[#26211c]" />
+              <span className="text-[9px] text-[#6d6258] border border-[#e0d6c8] rounded px-1 py-px font-medium bg-white">⌘K</span>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Live
+            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-semibold text-[#3f6550] bg-[#e8f0eb] border border-[#3f6550]/20 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#3f6550] animate-pulse" />Live
             </span>
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors">
+            <button className="relative p-2 hover:bg-[#faf7f1] rounded-lg text-[#6d6258] hover:text-[#26211c] transition-colors">
               <ShieldCheck size={16} />
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ background: 'linear-gradient(135deg,#1E4636,#C5A880)' }} />
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ background: 'linear-gradient(135deg,#b86452,#c98745)' }} />
             </button>
-            <div className="flex items-center gap-2 pl-1.5 border-l border-gray-200">
-              <span className="text-xs font-medium text-gray-700 hidden sm:block">{user?.name || 'Admin'}</span>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md shadow-emerald-950/20 ring-2 ring-white"
-                style={{ background: 'linear-gradient(135deg, #1E4636, #2d634d)' }}>{String(user?.name || 'A').charAt(0).toUpperCase()}</div>
+            <div className="flex items-center gap-2 pl-1.5 border-l border-[#e0d6c8]">
+              <span className="text-xs font-semibold text-[#26211c] hidden sm:block">{user?.name || 'Admin'}</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white"
+                style={{ background: 'linear-gradient(135deg, #b86452, #8d4133)' }}>{String(user?.name || 'A').charAt(0).toUpperCase()}</div>
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto min-w-0 p-3 pb-24 lg:p-5" style={{ background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EC 100%)' }}>{children}</main>
+        <main className="flex-1 overflow-y-auto min-w-0 p-3 pb-24 lg:p-5 admin-page-reveal" style={{ background: 'linear-gradient(180deg, #faf7f1 0%, #f5efe6 100%)' }}>{children}</main>
 
         {/* Mobile bottom navigation — the everyday seller tasks stay one tap
             away; the full menu lives behind "More" (drawer). ≥52px tap
@@ -389,11 +389,11 @@ export function ADashboard() {
   const statusTotal = statusCounts.reduce((a, b) => a + b.n, 0);
 
   const kpis = [
-    { l: 'Revenue (7 days)', v: `$${weekRev.toFixed(2)}`, sub: weekRev > 0 ? (revTrend === null ? '— vs prior week' : `${revTrend >= 0 ? '▲' : '▼'} ${Math.abs(revTrend).toFixed(0)}% vs prior week`) : 'No paid orders yet', i: CurrencyDollar, to: '/admin/orders', iconCls: 'bg-[#f6efdd] text-[#9a6f16]' },
-    { l: 'Orders', v: paidCount, sub: paidCount ? `${rev.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })} all-time` : 'No paid orders yet', i: ShoppingCart, to: '/admin/orders', iconCls: 'bg-[#f6efdd] text-[#9a6f16]' },
-    { l: 'Avg order value', v: paidCount ? `$${aov.toFixed(2)}` : '—', sub: paidCount ? 'per paid order' : 'No paid orders yet', i: TrendUp, to: '/admin/orders', iconCls: 'bg-[#f6efdd] text-[#9a6f16]' },
-    { l: 'Customers', v: users.length, sub: users.length ? 'registered accounts' : 'No customers yet', i: UsersIcon, to: '/admin/users', iconCls: 'bg-[#f6efdd] text-[#9a6f16]' },
-    { l: 'Active products', v: activeProducts, sub: `${totalProducts} total · ${commerceReady} commerce-ready`, i: Package, to: '/admin/products', iconCls: 'bg-[#f6efdd] text-[#9a6f16]' },
+    { l: 'Revenue (7 days)', v: `$${weekRev.toFixed(2)}`, sub: weekRev > 0 ? (revTrend === null ? '— vs prior week' : `${revTrend >= 0 ? '▲' : '▼'} ${Math.abs(revTrend).toFixed(0)}% vs prior week`) : 'No paid orders yet', i: CurrencyDollar, to: '/admin/orders', iconCls: 'bg-[#faf0eb] text-[#b86452]' },
+    { l: 'Orders', v: paidCount, sub: paidCount ? `${rev.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })} all-time` : 'No paid orders yet', i: ShoppingCart, to: '/admin/orders', iconCls: 'bg-[#fdf5ea] text-[#c98745]' },
+    { l: 'Avg order value', v: paidCount ? `$${aov.toFixed(2)}` : '—', sub: paidCount ? 'per paid order' : 'No paid orders yet', i: TrendUp, to: '/admin/orders', iconCls: 'bg-[#e8f0eb] text-[#3f6550]' },
+    { l: 'Customers', v: users.length, sub: users.length ? 'registered accounts' : 'No customers yet', i: UsersIcon, to: '/admin/users', iconCls: 'bg-[#faf0eb] text-[#b86452]' },
+    { l: 'Active products', v: activeProducts, sub: `${totalProducts} total · ${commerceReady} commerce-ready`, i: Package, to: '/admin/products', iconCls: 'bg-[#fdf5ea] text-[#c98745]' },
     { l: 'Low-stock products', v: lowStock, sub: lowStock ? 'need restock' : 'All stocked', i: Warning, to: '/admin/products', iconCls: 'bg-amber-50 text-amber-600' },
   ];
 
@@ -411,37 +411,42 @@ export function ADashboard() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-semibold">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              </span>
-              Live
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block w-10 h-10 rounded-xl overflow-hidden shadow-xs border border-[#e0d6c8] shrink-0">
+            <img src="/images/hk_salt_crystal.webp" alt="Himalayan Koh" className="w-full h-full object-cover" />
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Store performance and catalog overview.
-            {loadedAt && <span className="text-gray-400"> · Updated {loadedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>}
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-[#26211c] tracking-tight">Dashboard</h1>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#e8f0eb] border border-[#3f6550]/20 text-[#3f6550] text-[10px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3f6550] opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#3f6550]" />
+                </span>
+                Live
+              </span>
+            </div>
+            <p className="text-xs text-[#6d6258] mt-0.5">
+              Store performance and catalog overview.
+              {loadedAt && <span className="text-[#8d8276]"> · Updated {loadedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center gap-1.5 transition-colors"><Eye size={13} /> View store</Link>
-          <Link to="/admin/ai-import" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 border border-gray-200 flex items-center gap-1.5 transition-colors"><MagicWand size={13} /> AI Import</Link>
-          <Link to="/admin/products/new?mode=detail" className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#1b1f27] hover:bg-[#2b3140] flex items-center gap-1.5 shadow-sm transition-colors"><Plus size={13} weight="bold" /> Add to Catalog</Link>
+          <Link to="/" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#26211c] hover:bg-white border border-[#e0d6c8] flex items-center gap-1.5 transition-colors shadow-2xs"><Eye size={13} /> View store</Link>
+          <Link to="/admin/ai-import" className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#26211c] hover:bg-white border border-[#e0d6c8] flex items-center gap-1.5 transition-colors shadow-2xs"><MagicWand size={13} /> AI Import</Link>
+          <Link to="/admin/products/new?mode=detail" className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#b86452] hover:bg-[#8d4133] border border-[#b86452] flex items-center gap-1.5 shadow-sm transition-colors"><Plus size={13} weight="bold" /> Add to Catalog</Link>
         </div>
       </div>
 
       {/* KPI row — real dashboard data only */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
         {kpis.map((k, i) => (
-          <Link key={i} to={k.to} className="group bg-white rounded-xl border border-gray-100 p-3.5 hover:shadow-md hover:border-gray-200 transition-all">
+          <Link key={i} to={k.to} className="group bg-white rounded-xl border border-[#e0d6c8] p-3.5 hover:shadow-md hover:border-[#b86452]/40 transition-all">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${k.iconCls}`}><k.i size={15} /></div>
-            <p className="mt-2.5 text-lg font-bold text-gray-900 leading-none truncate">{k.v}</p>
-            <p className="text-[10px] font-medium text-gray-500 mt-1">{k.l}</p>
-            <p className="text-[9px] text-gray-400 mt-0.5 truncate">{k.sub}</p>
+            <p className="mt-2.5 text-lg font-bold text-[#26211c] leading-none truncate">{k.v}</p>
+            <p className="text-[10px] font-medium text-[#6d6258] mt-1">{k.l}</p>
+            <p className="text-[9px] text-[#8d8276] mt-0.5 truncate">{k.sub}</p>
           </Link>
         ))}
       </div>

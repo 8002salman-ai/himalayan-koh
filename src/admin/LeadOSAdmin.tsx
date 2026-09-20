@@ -716,16 +716,16 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                  <Target className="w-4.5 h-4.5 text-indigo-600" />
+              <h1 className="text-xl font-bold text-[#26211c] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#faf0eb] flex items-center justify-center">
+                  <Target className="w-4.5 h-4.5 text-[#b86452]" />
                 </div>
                 LeadOS Intelligence
               </h1>
-              <p className="text-sm text-slate-500 mt-1 max-w-xl">
+              <p className="text-sm text-[#6d6258] mt-1 max-w-xl">
                 B2B Lead Discovery, ICP Opportunity Scoring, and Verified Prospect Library for Himalayan Koh.
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[#8d8276] mt-0.5">
                 Find and connect with farm stores, feed suppliers, livestock businesses, mineral buyers, distributors, and other B2B prospects.
               </p>
             </div>
@@ -733,14 +733,14 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => { setActiveTab('find'); setCategory('Feed Store'); setLocation('Houston, TX'); }}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 transition shadow-sm"
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#b86452] hover:bg-[#8d4133] text-white flex items-center gap-1.5 transition shadow-sm"
               >
                 <MagnifyingGlass className="w-3.5 h-3.5" />
                 Find New Leads
               </button>
               <button
                 onClick={handleExportCSV}
-                className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition"
+                className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#e0d6c8] text-[#26211c] hover:bg-[#faf7f1] flex items-center gap-1.5 transition"
               >
                 <DownloadSimple className="w-3.5 h-3.5" />
                 Export CSV
@@ -751,7 +751,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-[#e0d6c8] sticky top-0 z-10">
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar -mb-px">
             {tabs.map((tab) => {
@@ -763,14 +763,14 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
                   onClick={() => setActiveTab(tab.id as TabType)}
                   className={`flex items-center gap-1.5 px-3.5 py-2.5 text-[11px] font-semibold whitespace-nowrap border-b-2 transition ${
                     isActive
-                      ? 'border-indigo-600 text-indigo-700'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                      ? 'border-[#b86452] text-[#b86452]'
+                      : 'border-transparent text-[#6d6258] hover:text-[#26211c] hover:border-[#e0d6c8]'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#b86452]' : 'text-[#8d8276]'}`} />
                   {tab.label}
                   {tab.id === 'library' && libraryLeads.length > 0 && (
-                    <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] bg-indigo-100 text-indigo-700 font-bold">
+                    <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] bg-[#faf0eb] text-[#b86452] font-bold">
                       {libraryLeads.length}
                     </span>
                   )}
