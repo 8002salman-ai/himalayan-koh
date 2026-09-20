@@ -212,7 +212,7 @@ export function ListingTaskAdmin() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setShowCmd((s) => !s)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50">Paste command</button>
-          <button onClick={() => window.open('/admin/settings/listing-playbook', '_self')} className="px-3 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-xs text-blue-700 hover:bg-blue-100 flex items-center gap-1"><BookBookmark size={13} /> Playbook</button>
+          <button onClick={() => window.open('/admin/listing-playbook', '_self')} className="px-3 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-xs text-blue-700 hover:bg-blue-100 flex items-center gap-1"><BookBookmark size={13} /> Playbook</button>
           <button onClick={run} disabled={running} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5">
             <Play size={14} />{running ? 'Running…' : 'Run Listing Task'}
           </button>

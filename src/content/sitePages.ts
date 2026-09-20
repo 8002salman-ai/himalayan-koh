@@ -44,10 +44,10 @@ export interface SiteFaqItem {
 
 export const HOME_SECTIONS: SiteSection[] = [
   {
-    heading: 'What Luxedge sells',
+    heading: 'What Himalayan Koh offers',
     paragraphs: [
-      'Luxedge is an animal-care store for dogs, cats, birds, horses and livestock. The catalogue is kept deliberately small and is organised by the animal and the everyday job you are shopping for — walking and training, sleeping and resting, feeding and water, grooming, travel and enrichment.',
-      'Every listing states what the item is, the size or capacity the listing itself names, the price and whether it is currently available. Where a detail has not been confirmed, the product page says so rather than filling the gap with guesswork — you will see that noted as something to check before ordering.',
+      'Himalayan Koh specializes in authentic Himalayan pink rock salt, salt licks, and mineral blocks for horses, cattle, livestock, deer, and household wellness. Dispatched directly from Houston, Texas.',
+      'Every listing states what the item is, the size or capacity the listing itself names, the price and whether it is currently available.',
     ],
     links: [
       { label: 'Shop all products', href: '/shop' },
@@ -99,7 +99,7 @@ export const HOME_SECTIONS: SiteSection[] = [
   {
     heading: 'Support, by email or phone',
     paragraphs: [
-      'Support runs on email and phone: sales@himalayankoh.com or (440) 941-8002, Monday to Friday, 9AM\u20136PM CT, with email replies within 24 hours. Include your order number if you have one, the product name, what went wrong, and photos if anything arrived damaged — that is usually everything needed to act on the first reply.',
+      'Support runs on email and phone: sales@himalayankoh.com or (832) 224-6466, Monday to Friday, 9AM–6PM CT, with email replies within 24 hours. Include your order number if you have one, the product name, what went wrong, and photos if anything arrived damaged — that is usually everything needed to act on the first reply.',
     ],
     links: [
       { label: 'Contact us', href: '/contact' },
@@ -109,8 +109,8 @@ export const HOME_SECTIONS: SiteSection[] = [
   {
     heading: 'Before you buy',
     paragraphs: [
-      'Our guides explain how to measure and fit walking gear, how to check and clean equipment, and what to compare when two listings look similar. They are written by the Luxedge Editorial Team from the product information we hold and from published animal-care guidance, and they flag the details only an owner or a vet can confirm.',
-      'The guides cover the questions that come up before a purchase: how to fit walking gear so it does not rub, how to clean a feeder properly, where to site a livestock trough, and what to compare between two similar listings. If a guide does not cover something you need to know, email us — the answer usually helps the next buyer too.',
+      'Our guides explain mineral salt sizing, proper lick placement for horses and cattle, and storage conditions. They are prepared by the Himalayan Koh team from verified product specifications.',
+      'If a guide does not cover something you need to know, email us at sales@himalayankoh.com — our team is glad to help.',
     ],
     links: [
       { label: 'All guides', href: '/blog' },
@@ -123,7 +123,7 @@ export const CONTACT_SECTIONS: SiteSection[] = [
   {
     heading: 'Email or phone — both reach us',
     paragraphs: [
-      'Send support requests to sales@himalayankoh.com or call (440) 941-8002. We monitor both Monday to Friday, 9AM\u20136PM CT, and reply to email within 24 hours. The form on this page reaches the same inbox, so either route works — use whichever is easier.',
+      'Send support requests to sales@himalayankoh.com or call (832) 224-6466. We monitor both Monday to Friday, 9AM–6PM CT, and reply to email within 24 hours. The form on this page reaches the same inbox, so either route works — use whichever is easier.',
       'If your message is about an order, sign in before you write. It lets us see the order next to your message, which usually removes a round trip.',
     ],
     links: [
@@ -156,7 +156,7 @@ export const CONTACT_SECTIONS: SiteSection[] = [
   {
     heading: 'Business details',
     paragraphs: [
-      'Luxedge is operated by Embani LLC, 1500 N Grant St, Denver, CO 80203, United States. Our policies explain how we handle orders, returns, privacy and site content, and they are written to match how we actually operate.',
+      'Himalayan Koh is operated from 12620 FM 1960 W Ste A-4, Houston, TX 77065, United States. Our policies explain how we handle orders, returns, privacy and site content, and they are written to match how we actually operate.',
     ],
     links: [
       { label: 'FAQ', href: '/faq' },

@@ -52,8 +52,8 @@ export const useSettingsStore = create<SettingsStore>()(
       storeConfig: {
         storeName: 'Himalayan Koh',
         contactEmail: 'sales@himalayankoh.com',
-        phone: '(440) 941-8002',
-        address: '1500 N Grant St, Denver, CO 80203, USA',
+        phone: '(832) 224-6466',
+        address: '12620 FM 1960 W Ste A-4, Houston, TX 77065, USA',
         freeShippingThreshold: 50,
         shippingFee: 4.99,
       },

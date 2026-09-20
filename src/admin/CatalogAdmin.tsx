@@ -2033,7 +2033,7 @@ export function CatalogProductEditor() {
             <button onClick={() => setMode('ai')} className={`btn-glow px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${mode === 'ai' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} title="AI Import — research any product URL and save as a draft">✨ AI Import</button>
           </div>
         )}
-        <button onClick={() => nav('/admin/settings/listing-playbook')} className="px-2.5 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-[11px] font-semibold text-blue-700 hover:bg-blue-100 flex items-center gap-1 shrink-0" title="Listing Playbook — listing rules applied on save">
+        <button onClick={() => nav('/admin/listing-playbook')} className="px-2.5 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-[11px] font-semibold text-blue-700 hover:bg-blue-100 flex items-center gap-1 shrink-0" title="Listing Playbook — listing rules applied on save">
           <BookBookmark size={13} /> Playbook
         </button>
         <div className="flex-1" />

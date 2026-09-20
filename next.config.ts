@@ -23,6 +23,21 @@ const nextConfig: NextConfig = {
         destination: '/admin/products',
         permanent: false,
       },
+      {
+        source: '/admin/blogs',
+        destination: '/admin/blog',
+        permanent: false,
+      },
+      {
+        source: '/admin/cj-setup',
+        destination: '/admin/suppliers',
+        permanent: false,
+      },
+      {
+        source: '/admin/settings/listing-playbook',
+        destination: '/admin/listing-playbook',
+        permanent: false,
+      },
       // Both pouch products were renamed to fix a typo ("Eidible" ->
       // "Edible") and correct their weight labeling — old slugs redirect so
       // existing links/bookmarks/search rankings aren't lost.

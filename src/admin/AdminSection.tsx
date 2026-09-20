@@ -100,7 +100,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         { to: '/admin/users', icon: UsersIcon, label: 'Users', g: 'linear-gradient(135deg,#6366f1,#3b82f6)', dot: '#818cf8' },
         { to: '/admin/categories', icon: TreeStructure, label: 'Categories', g: 'linear-gradient(135deg,#f59e0b,#f97316)', dot: '#fbbf24' },
         { to: '/admin/reviews', icon: Star, label: 'Reviews', g: 'linear-gradient(135deg,#eab308,#f59e0b)', dot: '#facc15' },
-        { to: '/admin/blogs', icon: FileText, label: 'Blog Posts', g: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', dot: '#38bdf8' },
+        { to: '/admin/blog', icon: FileText, label: 'Blog Posts', g: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', dot: '#38bdf8' },
       ],
     },
     {
@@ -135,10 +135,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     {
       title: 'System',
       items: [
-        { to: '/admin/cj-setup', icon: Package, label: 'CJ Supplier', g: 'linear-gradient(135deg,#10b981,#06b6d4)', dot: '#34d399' },
+        { to: '/admin/suppliers', icon: Package, label: 'Suppliers', g: 'linear-gradient(135deg,#10b981,#06b6d4)', dot: '#34d399' },
         { to: '/admin/payments', icon: CreditCard, label: 'Payments', g: 'linear-gradient(135deg,#635bff,#8b5cf6)', dot: '#a78bfa' },
         { to: '/admin/settings', icon: GearSix, label: 'Settings', g: 'linear-gradient(135deg,#94a3b8,#64748b)', dot: '#cbd5e1' },
-        { to: '/admin/settings/listing-playbook', icon: BookBookmark, label: 'Listing Playbook', g: 'linear-gradient(135deg,#0ea5e9,#6366f1)', dot: '#60a5fa' },
+        { to: '/admin/listing-playbook', icon: BookBookmark, label: 'Listing Playbook', g: 'linear-gradient(135deg,#0ea5e9,#6366f1)', dot: '#60a5fa' },
       ],
     },
   ];
@@ -770,7 +770,7 @@ export function _AProductEdit() { // superseded by CatalogAdmin.CatalogProductEd
         </div>
         <div className="flex gap-3">
           <button onClick={() => nav('/admin/products')} className="px-4 py-2.5 border rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSave} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"><FloppyDisk size={16} />{isNew ? 'Create Product' : 'FloppyDisk Changes'}</button>
+          <button onClick={handleSave} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"><FloppyDisk size={16} />{isNew ? 'Create Product' : 'Save Changes'}</button>
         </div>
       </div>
 
@@ -822,7 +822,7 @@ export function _AProductEdit() { // superseded by CatalogAdmin.CatalogProductEd
           {/* IMAGES TAB */}
           {tab === 'images' && (
             <div className="space-y-5 max-w-3xl">
-              <p className="text-sm text-gray-500">UploadSimple up to 5 images. First image is the main product image. Click to set as main.</p>
+              <p className="text-sm text-gray-500">Upload up to 5 images. First image is the main product image. Click to set as main.</p>
               {p.images.length > 0 && <div className="grid grid-cols-5 gap-4">{p.images.map((img, i) => (
                 <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer" onClick={() => setMainImg(i)}>
                   <img src={img} alt="" className="w-full h-full object-cover" />
@@ -925,7 +925,7 @@ export function _AProductEdit() { // superseded by CatalogAdmin.CatalogProductEd
         </p>
         <div className="flex gap-3">
           <button onClick={() => nav('/admin/products')} className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50">Discard</button>
-          <button onClick={handleSave} className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"><FloppyDisk size={16} />{isNew ? 'Create Product' : 'FloppyDisk Changes'}</button>
+          <button onClick={handleSave} className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"><FloppyDisk size={16} />{isNew ? 'Create Product' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -1138,7 +1138,7 @@ export function AOrders() {
     a.href = URL.createObjectURL(blob); a.download = `luxedge-orders-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(a.href);
-    notify(`CSV exported — ${stripeOrders.length} order(s). Import it into the Embani ERP workbook.`);
+    notify(`CSV exported — ${stripeOrders.length} order(s). Import it into the Himalayan Koh ERP workbook.`);
   };
 
   // DEMO order — clearly marked, only shown for UI preview until the first
@@ -1324,7 +1324,7 @@ export function AOrders() {
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-[#f6efdd] flex items-center justify-center shrink-0"><CloudArrowUp size={15} className="text-[#9a6f16]" /></div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-tight">ERP Sync — Embani LLC</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">ERP Sync — Himalayan Koh</p>
             <p className="text-[11px] text-gray-500">Not connected on this deployment — no server-side ERP endpoint is configured, so no order is pushed anywhere. Exporting the CSV and importing it into the ERP workbook still works.</p>
           </div>
         </div>
@@ -1520,13 +1520,13 @@ export function AOrders() {
         <div className="space-y-4">
           <div className="border border-gray-300 rounded-xl p-5 bg-white text-sm">
             <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-3">
-              <p className="font-bold text-gray-900 text-base">LUXEDGE</p>
+              <p className="font-bold text-gray-900 text-base">HIMALAYAN KOH</p>
               <span className="text-[10px] text-gray-400">USPS PRIORITY · PREVIEW</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">From</p>
-                <p className="text-xs font-medium text-gray-800">Luxedge Fulfillment<br />Houston, TX 77001<br />US</p>
+                <p className="text-xs font-medium text-gray-800">Himalayan Koh Fulfillment<br />12620 FM 1960 W Ste A-4<br />Houston, TX 77065<br />US</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Ship To</p>
@@ -1802,7 +1802,7 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <h1 className="text-2xl font-bold">GearSix</h1>
+      <h1 className="text-2xl font-bold">Settings</h1>
 
       {/* ── AI Providers ── */}
       <Accordion id="ai" title="AI Providers" icon={<Robot size={18} className="text-purple-600" />} borderClass="border-purple-300" open={open} toggle={toggle}>
@@ -1888,7 +1888,7 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
             <p className="font-semibold mb-1">🔒 Luxedge V2: keys live on the server, never in the browser</p>
             <p>AI provider keys and scraping tokens are read from environment variables by the /api serverless functions. They are never stored in localStorage, never shipped in the bundle, and never logged.</p>
           </div>
-          <p className="text-sm text-gray-500">Set these env vars in your hosting dashboard (Vercel → Project → GearSix → Environment Variables) and redeploy. Variable names: <code className="font-mono text-xs">OPENAI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, SCRAPE_DO_TOKEN</code> — see <code className="font-mono text-xs">.env.example</code>.</p>
+          <p className="text-sm text-gray-500">Set these env vars in your hosting dashboard (Vercel → Project → Settings → Environment Variables) and redeploy. Variable names: <code className="font-mono text-xs">OPENAI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, SCRAPE_DO_TOKEN</code> — see <code className="font-mono text-xs">.env.example</code>.</p>
           {envStatus ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Server status</p>
@@ -1914,11 +1914,11 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
           <form onSubmit={e => { e.preventDefault(); notify('Store settings saved!'); }} className="grid sm:grid-cols-2 gap-4">
             <div><label className={L}>Store Name</label><input defaultValue="Himalayan Koh" className={I} /></div>
             <div><label className={L}>Contact Email</label><input defaultValue="sales@himalayankoh.com" className={I} /></div>
-            <div><label className={L}>Phone</label><input defaultValue="(440) 941-8002" className={I} /></div>
-            <div><label className={L}>Address</label><input defaultValue="1500 N Grant St, Denver, CO 80203" className={I} /></div>
+            <div><label className={L}>Phone</label><input defaultValue="(832) 224-6466" className={I} /></div>
+            <div><label className={L}>Address</label><input defaultValue="12620 FM 1960 W Ste A-4, Houston, TX 77065" className={I} /></div>
             <div className="sm:col-span-2">
               <button type="submit" className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
-                <FloppyDisk size={16} />FloppyDisk Store GearSix
+                <FloppyDisk size={16} />Save Store Settings
               </button>
             </div>
           </form>
@@ -1931,7 +1931,7 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
           <form onSubmit={handleProfile} className="space-y-4">
             <div><label className={L}>Name</label><input value={profName} onChange={e => setProfName(e.target.value)} className={I} placeholder="Admin name" /></div>
             <div><label className={L}>Email</label><input type="email" value={profEmail} onChange={e => setProfEmail(e.target.value)} className={I} placeholder="admin email" /></div>
-            <button type="submit" className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"><FloppyDisk size={16} />FloppyDisk Profile</button>
+            <button type="submit" className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"><FloppyDisk size={16} />Save Profile</button>
           </form>
         </div>
       </Accordion>
@@ -2242,22 +2242,22 @@ export function AMarketingGen() {
   }
 
     async function callAI(prompt: string): Promise<string> {
-    const prov = activeProviders.find(p => p.id === aiProvider) || activeProviders[0];
-    if (!prov) throw new Error('No AI provider enabled. Enable one in AI Hub → AI Provider Configuration.');
-    return callAIProvider(prompt, [{ ...prov, defaultModel: aiModel || prov.defaultModel }], undefined, 'You are an expert luxury e-commerce marketing copywriter. Return only valid JSON.');
-  }
+      const prov = activeProviders.find(p => p.id === aiProvider) || activeProviders[0];
+      if (!prov) throw new Error('No AI provider enabled. Enable one in AI Hub → AI Provider Configuration.');
+      return callAIProvider(prompt, [{ ...prov, defaultModel: aiModel || prov.defaultModel }], undefined, 'You are an expert marketing copywriter for Himalayan Koh authentic rock salt. Return only valid JSON.');
+    }
 
-function parseJ<T>(raw: string, fb: T): T {
-    try { const m = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/(\{[\s\S]*\})/); return JSON.parse(m ? m[1] : raw); }
-    catch { return fb; }
-  }
+    function parseJ<T>(raw: string, fb: T): T {
+      try { const m = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/(\{[\s\S]*\})/); return JSON.parse(m ? m[1] : raw); }
+      catch { return fb; }
+    }
 
-  function buildPrompt(section: string): string {
-    const p = selectedProduct;
-    if (!p) return '';
-    const base = `Product: "${p.name}" | Price: $${p.price} | Category: ${p.category||'Luxury'} | Tone: ${tone.toUpperCase()}\nDescription: ${p.description?.slice(0,300)||'Premium luxury product'}`;
-    if (section === 'all') return `${base}\n\nGenerate comprehensive marketing copy. Return ONLY valid JSON:\n{\n  "google": {\n    "headlines": ["h1 ≤30ch","h2","h3","h4","h5","h6"],\n    "descriptions": ["desc1 ≤90ch","desc2"],\n    "displayUrl": "luxedge.com/shop",\n    "finalUrl": "https://luxedge.com/products/${p.name.toLowerCase().replace(/\s+/g,'-')}",\n    "callouts": ["Eligible Shipping Promotions","Luxury Quality","See Return Policy","Payment Options Shown at Checkout"],\n    "sitelinks": [{"title":"Shop Now","desc":"View all luxury items","url":"/products"},{"title":"About Us","desc":"Our story","url":"/about"}]\n  },\n  "meta": {\n    "primaryText": "compelling 125-char primary ad text with emoji; avoid unsupported shipping, return, payment, or safety claims",\n    "headline": "40-char headline",\n    "description": "30-char description",\n    "cta": "Shop Now",\n    "audience": "US adults 25-55 interested in luxury goods, high income",\n    "interests": ["Luxury Brands","Premium Shopping","Interior Design","High-End Fashion"]\n  },\n  "social": {\n    "instagram": "engaging Instagram caption with emojis 2200 chars max",\n    "hashtags": ["luxuryliving","premiumquality","luxedge","shopnow","luxury"],\n    "facebook": "Facebook post 400-500 chars",\n    "twitter": ["tweet1 ≤280ch","tweet2 continuation","tweet3 CTA"],\n    "linkedin": "professional LinkedIn post 500-700 chars",\n    "pinterest": "Pinterest pin description 500 chars",\n    "tiktokScript": "30-second TikTok script with hook/body/CTA"\n  },\n  "email": {\n    "subjectA": "email subject A ≤50ch",\n    "subjectB": "A/B variant subject ≤50ch",\n    "preheader": "preheader text ≤90ch",\n    "heroHeadline": "bold hero headline",\n    "body": "email body with benefit paragraphs",\n    "ctaText": "Shop Now →",\n    "urgency": "limited time urgency line"\n  },\n  "video": {\n    "youtubeTitle": "YouTube title ≤60ch",\n    "youtubeDesc": "YouTube description with timestamps",\n    "youtubeTags": ["luxury","premium","review","unboxing"],\n    "tiktokScript": "60-sec TikTok script with hook/demo/CTA",\n    "reelHook": "First 3-second Reels hook line"\n  }\n}`;
-    if (section === 'google') return `${base}\n\nGenerate Google RSA ad copy. Return ONLY valid JSON:\n{"headlines":["h1 ≤30ch","h2","h3","h4","h5","h6"],"descriptions":["desc1 ≤90ch","desc2"],"displayUrl":"luxedge.com/shop","finalUrl":"https://luxedge.com/products/slug","callouts":["Eligible Shipping Promotions","See Return Policy"],"sitelinks":[{"title":"Shop Now","desc":"All products","url":"/products"}]}`;
+    function buildPrompt(section: string): string {
+      const p = selectedProduct;
+      if (!p) return '';
+      const base = `Product: "${p.name}" | Price: $${p.price} | Category: ${p.category||'Himalayan Salt'} | Tone: ${tone.toUpperCase()}\nDescription: ${p.description?.slice(0,300)||'Authentic Himalayan pink salt product'}`;
+      if (section === 'all') return `${base}\n\nGenerate comprehensive marketing copy. Return ONLY valid JSON:\n{\n  "google": {\n    "headlines": ["h1 ≤30ch","h2","h3","h4","h5","h6"],\n    "descriptions": ["desc1 ≤90ch","desc2"],\n    "displayUrl": "himalayankoh.com/products",\n    "finalUrl": "https://himalayankoh.com/products/${p.name.toLowerCase().replace(/\\s+/g,'-')}",\n    "callouts": ["Eligible Shipping Promotions","Natural Quality","See Return Policy","Payment Options Shown at Checkout"],\n    "sitelinks": [{"title":"Shop Now","desc":"View all products","url":"/products"},{"title":"About Us","desc":"Our story","url":"/about"}]\n  },\n  "meta": {\n    "primaryText": "compelling 125-char primary ad text with emoji; avoid unsupported shipping, return, payment, or safety claims",\n    "headline": "40-char headline",\n    "description": "30-char description",\n    "cta": "Shop Now",\n    "audience": "US horse, cattle, livestock owners, ranchers, wellness shoppers",\n    "interests": ["Equestrian","Livestock Farming","Ranching","Organic Living"]\n  },\n  "social": {\n    "instagram": "engaging Instagram caption with emojis 2200 chars max",\n    "hashtags": ["himalayansalt","saltlick","mineralsalt","himalayankoh","livestock"],\n    "facebook": "Facebook post 400-500 chars",\n    "twitter": ["tweet1 ≤280ch","tweet2 continuation","tweet3 CTA"],\n    "linkedin": "professional LinkedIn post 500-700 chars",\n    "pinterest": "Pinterest pin description 500 chars",\n    "tiktokScript": "30-second TikTok script with hook/body/CTA"\n  },\n  "email": {\n    "subjectA": "email subject A ≤50ch",\n    "subjectB": "A/B variant subject ≤50ch",\n    "preheader": "preheader text ≤90ch",\n    "heroHeadline": "bold hero headline",\n    "body": "email body with benefit paragraphs",\n    "ctaText": "Shop Now →",\n    "urgency": "limited time urgency line"\n  },\n  "video": {\n    "youtubeTitle": "YouTube title ≤60ch",\n    "youtubeDesc": "YouTube description with timestamps",\n    "youtubeTags": ["himalayan salt","salt block","animal lick","unboxing"],\n    "tiktokScript": "60-sec TikTok script with hook/demo/CTA",\n    "reelHook": "First 3-second Reels hook line"\n  }\n}`;
+      if (section === 'google') return `${base}\n\nGenerate Google RSA ad copy. Return ONLY valid JSON:\n{"headlines":["h1 ≤30ch","h2","h3","h4","h5","h6"],"descriptions":["desc1 ≤90ch","desc2"],"displayUrl":"himalayankoh.com/products","finalUrl":"https://himalayankoh.com/products/slug","callouts":["Eligible Shipping Promotions","See Return Policy"],"sitelinks":[{"title":"Shop Now","desc":"All products","url":"/products"}]}`;
     if (section === 'meta') return `${base}\n\nGenerate Meta/Facebook ad copy. Return ONLY valid JSON:\n{"primaryText":"125ch primary text","headline":"40ch headline","description":"30ch description","cta":"Shop Now","audience":"target audience description","interests":["interest1","interest2"]}`;
     if (section === 'social') return `${base}\n\nGenerate social media posts. Return ONLY valid JSON:\n{"instagram":"caption","hashtags":["tag1","tag2"],"facebook":"fb post","twitter":["tweet1","tweet2"],"linkedin":"linkedin post","pinterest":"pin desc","tiktokScript":"script"}`;
     if (section === 'email') return `${base}\n\nGenerate email marketing copy. Return ONLY valid JSON:\n{"subjectA":"subject A","subjectB":"subject B","preheader":"preheader","heroHeadline":"hero","body":"body text","ctaText":"Shop Now →","urgency":"urgency line"}`;
@@ -2406,9 +2406,9 @@ function parseJ<T>(raw: string, fb: T): T {
       {tab === 'google' && (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><MagnifyingGlass size={18} className="text-blue-600" /> Google MagnifyingGlass Ads (RSA)</h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><MagnifyingGlass size={18} className="text-blue-600" /> Google Search Ads (RSA)</h2>
             <div className="flex gap-2">
-              <button onClick={() => { saveVault('google', JSON.stringify(googleAd, null, 2)); }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> FloppyDisk</button>
+              <button onClick={() => { saveVault('google', JSON.stringify(googleAd, null, 2)); }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> Save</button>
               <RegenBtn section="google" loading={generating && genSection === 'google'} />
             </div>
           </div>
@@ -2516,7 +2516,7 @@ function parseJ<T>(raw: string, fb: T): T {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><Target size={18} className="text-blue-700" /> Meta Ads (Facebook &amp; Instagram)</h2>
             <div className="flex gap-2">
-              <button onClick={() => saveVault('meta', JSON.stringify(metaAd, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> FloppyDisk</button>
+              <button onClick={() => saveVault('meta', JSON.stringify(metaAd, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> Save</button>
               <RegenBtn section="meta" loading={generating && genSection === 'meta'} />
             </div>
           </div>
@@ -2605,7 +2605,7 @@ function parseJ<T>(raw: string, fb: T): T {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><ShareNetwork size={18} className="text-pink-600" /> Social Media Posts</h2>
             <div className="flex gap-2">
-              <button onClick={() => saveVault('social', JSON.stringify(social, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> FloppyDisk</button>
+              <button onClick={() => saveVault('social', JSON.stringify(social, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> Save</button>
               <RegenBtn section="social" loading={generating && genSection === 'social'} />
             </div>
           </div>
@@ -2706,7 +2706,7 @@ function parseJ<T>(raw: string, fb: T): T {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><PaperPlaneRight size={18} className="text-green-600" /> Email Marketing</h2>
             <div className="flex gap-2">
-              <button onClick={() => saveVault('email', JSON.stringify(email, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> FloppyDisk</button>
+              <button onClick={() => saveVault('email', JSON.stringify(email, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> Save</button>
               <RegenBtn section="email" loading={generating && genSection === 'email'} />
             </div>
           </div>
@@ -2860,7 +2860,7 @@ function parseJ<T>(raw: string, fb: T): T {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><Lightning size={18} className="text-red-600" /> Video Scripts &amp; YouTube</h2>
             <div className="flex gap-2">
-              <button onClick={() => saveVault('video', JSON.stringify(video, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> FloppyDisk</button>
+              <button onClick={() => saveVault('video', JSON.stringify(video, null, 2))} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><FloppyDisk size={12} /> Save</button>
               <RegenBtn section="video" loading={generating && genSection === 'video'} />
             </div>
           </div>
@@ -3017,8 +3017,8 @@ function parseJ<T>(raw: string, fb: T): T {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><MagicWand size={18} className="text-gray-600" /> Copy Vault ({vault.length})</h2>
             <div className="flex gap-2">
-              <button onClick={() => { const blob = new Blob([JSON.stringify(vault, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'luxedge-marketing-vault.json'; a.click(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><UploadSimple size={12} /> Export JSON</button>
-              {vault.length > 0 && <button onClick={() => { if (confirm('Clear all saved copies?')) { setVault([]); localStorage.removeItem('luxedge_mkt_vault'); } }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium"><Trash size={12} /> Clear All</button>}
+              <button onClick={() => { const blob = new Blob([JSON.stringify(vault, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'himalayankoh-marketing-vault.json'; a.click(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"><UploadSimple size={12} /> Export JSON</button>
+              {vault.length > 0 && <button onClick={() => { if (confirm('Clear all saved copies?')) { setVault([]); localStorage.removeItem('hk_mkt_vault'); localStorage.removeItem('luxedge_mkt_vault'); } }} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium"><Trash size={12} /> Clear All</button>}
             </div>
           </div>
 
@@ -3026,7 +3026,7 @@ function parseJ<T>(raw: string, fb: T): T {
             <div className="text-center py-16 bg-white border border-dashed border-gray-200 rounded-xl">
               <Megaphone size={40} className="text-gray-200 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">No saved copies yet</p>
-              <p className="text-gray-400 text-sm">Click FloppyDisk on any tab — or Save to Vault in Media Studio — to keep your best work here</p>
+              <p className="text-gray-400 text-sm">Click Save on any tab — or Save to Vault in Media Studio — to keep your best work here</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -3519,7 +3519,7 @@ Example: {"${fieldHint}": "your content here"}`;
         <div className="flex items-center gap-2">
           <button onClick={saveToProduct} disabled={!selId}
             className="px-5 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
-            <FloppyDisk size={15} /> FloppyDisk to Product
+            <FloppyDisk size={15} /> Save to Product
           </button>
           <button onClick={() => navigate('/admin/products')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 px-3 py-2 border border-gray-200 rounded-xl transition-colors">
             <ArrowLeft size={15} /> Back
@@ -3938,7 +3938,7 @@ Example: {"${fieldHint}": "your content here"}`;
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Monitor size={16} className="text-gray-400" />
-                <span className="text-sm font-medium text-gray-500">Google MagnifyingGlass — Desktop</span>
+                <span className="text-sm font-medium text-gray-500">Google Search — Desktop</span>
               </div>
               <div className="border border-gray-200 rounded-xl p-5 max-w-2xl bg-white font-sans">
                 <p className="text-xs text-gray-500 mb-1">https://himalayankoh.com › product › {seo.slug || 'product'}</p>
@@ -3954,7 +3954,7 @@ Example: {"${fieldHint}": "your content here"}`;
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <DeviceMobile size={16} className="text-gray-400" />
-                <span className="text-sm font-medium text-gray-500">Google MagnifyingGlass — Mobile</span>
+                <span className="text-sm font-medium text-gray-500">Google Search — Mobile</span>
               </div>
               <div className="max-w-sm mx-auto">
                 <div className="border border-gray-200 rounded-2xl p-4 bg-white font-sans shadow-sm">
@@ -4699,7 +4699,7 @@ Rules:
               {selId ? (
                 <button onClick={saveToProduct} disabled={!!dupCount || !variants.length}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
-                  <FloppyDisk size={16} /> FloppyDisk All to Product
+                  <FloppyDisk size={16} /> Save All to Product
                 </button>
               ) : (
                 <button onClick={() => { notify('Select a product to save variants', 'error'); setStep('product'); }}
@@ -5077,7 +5077,7 @@ const providerIcons: Record<string, string> = {
         )}
         <button type="button" onClick={() => save(aiProviders)}
           className="mt-4 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors w-full sm:w-auto justify-center">
-          <FloppyDisk size={16} /> FloppyDisk All AI Providers
+          <FloppyDisk size={16} /> Save All AI Providers
         </button>
       </div>
 
@@ -5982,7 +5982,7 @@ export function AMarketingTraffic() {
       {/* Actions */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={handleSave} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
-          <FloppyDisk size={16} /> FloppyDisk GearSix
+          <FloppyDisk size={16} /> Save Settings
         </button>
         <button onClick={handleTest} className="px-6 py-2.5 bg-white border border-gray-200 hover:border-blue-300 text-gray-700 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
           <ArrowClockwise size={16} /> Test Configuration
@@ -5999,7 +5999,7 @@ export function AMarketingTraffic() {
 
       {saved && (
         <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">
-          <CheckCircle size={16} /> GearSix saved as a preview for this browser. Download site-config.json and commit it to the repo to make these settings global for all visitors.
+          <CheckCircle size={16} /> Settings saved as a preview for this browser. Download site-config.json and commit it to the repo to make these settings global for all visitors.
         </div>
       )}
       {testResult && (

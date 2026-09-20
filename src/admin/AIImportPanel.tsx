@@ -500,7 +500,7 @@ export function AIImportPanel() {
           <button onClick={() => setStep('history')} className="ml-auto flex items-center gap-2 px-4 py-2 border rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
             <ClockCounterClockwise size={16} /> History ({history.length})
           </button>
-          <button onClick={() => navigate('/admin/settings/listing-playbook')} className="flex items-center gap-2 px-4 py-2 border border-blue-200 bg-blue-50 rounded-xl text-sm text-blue-700 hover:bg-blue-100 transition-colors" title="Listing Playbook — rules applied to every import">
+          <button onClick={() => navigate('/admin/listing-playbook')} className="flex items-center gap-2 px-4 py-2 border border-blue-200 bg-blue-50 rounded-xl text-sm text-blue-700 hover:bg-blue-100 transition-colors" title="Listing Playbook — rules applied to every import">
             <BookBookmark size={16} /> Listing Playbook
           </button>
         </div>
@@ -534,9 +534,9 @@ export function AIImportPanel() {
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('source')} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ArrowLeft size={20}/></button>
           <h1 className="text-xl font-bold">
-            {source==='url'?'URL Import':source==='html'?'HTML Import':source==='clipboard'?'Clipboard Import':source==='image'?'Image UploadSimple':'Text Import'}
+            {source==='url'?'URL Import':source==='html'?'HTML Import':source==='clipboard'?'Clipboard Import':source==='image'?'Image Upload':'Text Import'}
           </h1>
-          <button onClick={() => navigate('/admin/settings/listing-playbook')} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-xs text-blue-700 hover:bg-blue-100 transition-colors" title="Listing Playbook — rules applied to this import">
+          <button onClick={() => navigate('/admin/listing-playbook')} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-xs text-blue-700 hover:bg-blue-100 transition-colors" title="Listing Playbook — rules applied to this import">
             <BookBookmark size={14} /> Playbook rules
           </button>
         </div>
@@ -717,7 +717,7 @@ export function AIImportPanel() {
             <p className="text-sm text-gray-500">AI extracted {Object.keys(extracted).length} fields — edit any before saving</p>
           </div>
           <button onClick={handleSave} disabled={saving} className="ml-auto px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-green-200">
-            <CheckCircle size={16}/> {saving ? 'Saving…' : 'FloppyDisk as Draft Product'}
+            <CheckCircle size={16}/> {saving ? 'Saving…' : 'Save as Draft Product'}
           </button>
         </div>
 
@@ -882,7 +882,7 @@ export function AIImportPanel() {
         <div className="sticky bottom-0 bg-white border-t p-4 -mx-6 flex items-center justify-between gap-4">
           <p className="text-sm text-gray-500">Product will be saved as <span className="font-semibold text-gray-700">Draft</span> — you can publish it from Products page.</p>
           <button onClick={handleSave} disabled={saving} className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-green-200">
-            <CheckCircle size={18}/> {saving ? 'Saving…' : 'FloppyDisk Product'}
+            <CheckCircle size={18}/> {saving ? 'Saving…' : 'Save Product'}
           </button>
         </div>
       </div>
