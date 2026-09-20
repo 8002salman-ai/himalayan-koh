@@ -9,7 +9,12 @@ function parseEnvText(text) {
   const values = {};
   for (const line of text.split(/\r?\n/)) {
     const match = line.match(/^\s*(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY)\s*=\s*(.*?)\s*$/);
-    if (match?.[2]) values[match[1]] = match[2].replace(/^['\"]|['\"]$/g, '');
+    if (match?.[2]) {
+      const raw = match[2].trim();
+      const quoted = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
+      const value = quoted ? raw.slice(1, -1) : raw;
+      if (value) values[match[1]] = value;
+    }
   }
   return values;
 }
@@ -35,14 +40,16 @@ export function resolvePublicSupabaseEnv({ processEnv = {}, fileContents = [] } 
 }
 
 export function missingPublicSupabaseKeys(config) {
+  // The deploy contract requires the canonical NEXT_PUBLIC_* names. VITE_*
+  // values are generated aliases, not an alternate way to bypass the preflight.
   return ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY']
-    .filter((key) => !config[key] && !(key === 'NEXT_PUBLIC_SUPABASE_URL' ? config.VITE_SUPABASE_URL : config.VITE_SUPABASE_ANON_KEY));
+    .filter((key) => !config[key]);
 }
 
 export function publicSupabasePresence(config) {
   return {
-    url: Boolean(config.NEXT_PUBLIC_SUPABASE_URL || config.VITE_SUPABASE_URL),
-    anonKey: Boolean(config.NEXT_PUBLIC_SUPABASE_ANON_KEY || config.VITE_SUPABASE_ANON_KEY),
+    url: Boolean(config.NEXT_PUBLIC_SUPABASE_URL),
+    anonKey: Boolean(config.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   };
 }
 

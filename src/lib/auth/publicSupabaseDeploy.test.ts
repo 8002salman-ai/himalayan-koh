@@ -19,11 +19,23 @@ describe('public Supabase deploy configuration', () => {
     expect(config.SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
   });
 
-  it('fails closed when either public value is missing', () => {
+  it('fails closed when either canonical public value is missing', () => {
     expect(missingPublicSupabaseKeys({ NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }))
       .toEqual(['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
     expect(missingPublicSupabaseKeys({ NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public-test-key' }))
       .toEqual(['NEXT_PUBLIC_SUPABASE_URL']);
+    expect(missingPublicSupabaseKeys({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'legacy-key' }))
+      .toEqual(['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+  });
+
+  it('parses normally quoted public values without leaking quote characters into the build', () => {
+    const config = resolvePublicSupabaseEnv({
+      fileContents: [
+        'NEXT_PUBLIC_SUPABASE_URL="https://example.supabase.co"\nNEXT_PUBLIC_SUPABASE_ANON_KEY=\'quoted-key\'',
+      ],
+    }) as unknown as Record<string, string | undefined>;
+    expect(config.NEXT_PUBLIC_SUPABASE_URL).toBe('https://example.supabase.co');
+    expect(config.NEXT_PUBLIC_SUPABASE_ANON_KEY).toBe('quoted-key');
   });
 
   it('uses explicit process environment values without exposing unrelated secrets', () => {
