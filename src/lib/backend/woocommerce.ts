@@ -21,6 +21,7 @@
 
 import type { Product, StockStatus } from '../../data/products';
 import { collectMissingCatalogFields, priceDisplayFromRange } from '../products/price';
+import { resolveCuratedProductImages } from '../products/curatedImages';
 import { variationPriceRange, type WooVariationLike } from '../woo/productPayload';
 import { backendConfig } from './config';
 import { hasWooCommerceCredentials } from './credentials';
@@ -221,6 +222,7 @@ function buildProduct(input: {
   updatedAt: string | null;
 }): Product {
   const price = priceDisplayFromRange(input.priceMin, input.priceMax);
+  const images = resolveCuratedProductImages(input.slug, input.sku, input.images);
   return {
     id: input.id,
     slug: input.slug,
@@ -229,8 +231,8 @@ function buildProduct(input: {
     priceRange: Boolean(input.priceMax),
     priceMin: input.priceMin,
     priceMax: input.priceMax,
-    image: input.images[0] ?? '',
-    images: input.images,
+    image: images[0] ?? '',
+    images,
     category: input.category || UNCATEGORIZED_CATEGORY,
     description: input.description || undefined,
     inStock: isPurchasable(input.stockStatus),
@@ -243,7 +245,7 @@ function buildProduct(input: {
       priceMin: input.priceMin,
       sku: input.sku,
       stockStatus: input.stockStatus,
-      images: input.images,
+      images,
     }),
   };
 }
