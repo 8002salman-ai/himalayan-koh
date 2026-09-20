@@ -5,7 +5,6 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import { authApi, SignUpData, SignInData } from '../lib/supabase/api';
 import type { Profile } from '../lib/supabase/database.types';
-import { readStoredSession } from '../services/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -65,68 +64,14 @@ function roleFromUser(user: User | null): 'admin' | 'customer' | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const stored = readStoredSession();
-      if (stored?.user) {
-        return {
-          id: stored.user.id,
-          app_metadata: { role: stored.user.role },
-          user_metadata: { role: stored.user.role, full_name: stored.user.name },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: stored.user.email,
-          phone: '',
-          role: stored.user.role,
-          updated_at: new Date().toISOString(),
-        } as User;
-      }
-    } catch {
-      /* ignore */
-    }
-    return null;
-  });
+  // Keep SSR and the browser's first render identical. Supabase's persisted
+  // session is read by the effect below; reading localStorage in these
+  // initializers made a signed-in browser render a different tree than SSR and
+  // caused hydration error #418 on admin routes.
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const stored = readStoredSession();
-      if (stored?.accessToken && stored.user) {
-        return {
-          access_token: stored.accessToken,
-          refresh_token: stored.refreshToken,
-          expires_in: Math.max(0, Math.floor((stored.expiresAt - Date.now()) / 1000)),
-          expires_at: Math.floor(stored.expiresAt / 1000),
-          token_type: 'bearer',
-          user: {
-            id: stored.user.id,
-            app_metadata: { role: stored.user.role },
-            user_metadata: { role: stored.user.role, full_name: stored.user.name },
-            aud: 'authenticated',
-            created_at: new Date().toISOString(),
-            email: stored.user.email,
-            phone: '',
-            role: stored.user.role,
-            updated_at: new Date().toISOString(),
-          } as User,
-        };
-      }
-    } catch {
-      /* ignore */
-    }
-    return null;
-  });
-  const [loading, setLoading] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      const stored = readStoredSession();
-      if (stored?.user) return false;
-    } catch {
-      /* ignore */
-    }
-    return true;
-  });
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
