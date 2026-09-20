@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
-import { publicEnv } from '@/lib/env';
+import { getSupabaseConfig } from '@/services/supabase';
 
-const supabaseUrl = publicEnv.supabaseUrl;
-const supabaseAnonKey = publicEnv.supabaseAnonKey;
-const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
+// Use the same public config resolver as the working auth client. The old
+// process.env-only check was compiled to an empty object in the browser bundle,
+// so it logged a false warning even while Supabase auth was configured.
+const supabaseConfig = getSupabaseConfig();
+const supabaseUrl = supabaseConfig?.url || '';
+const supabaseAnonKey = supabaseConfig?.anonKey || '';
+const hasSupabaseConfig = supabaseConfig !== null;
 
 if (!hasSupabaseConfig) {
   console.warn(

@@ -78,6 +78,9 @@ const builtAt = new Date().toISOString();
 // secret from .dev.vars/.env.local (especially SUPABASE_SERVICE_ROLE_KEY).
 function readPublicSupabaseEnv() {
   const result = {};
+  for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']) {
+    if (process.env[key]) result[key] = process.env[key];
+  }
   for (const filename of ['.dev.vars', '.env.local']) {
     const path = join(ROOT, filename);
     if (!existsSync(path)) continue;
