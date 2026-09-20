@@ -30,11 +30,12 @@ import BlogManager from './BlogManager';
 import MediaManager from './MediaManager';
 import LeadOSAdmin from './LeadOSAdmin';
 import type {
-  Product, ProductVariant, AdminCategory,
+  Product, ProductVariant, AdminCategory, AppUser,
   AIProvider, EnterpriseVariant, VariantAttribute,
   SEOData, SocialSEO, ContentData, SEOScore, StructuredSchemas,
   ProviderStatus, ProviderStatusMap,
 } from '../App';
+import { clearSupabaseSession } from '../lib/supabase/client';
 import {
   activeModeLabel, AD_SLOT_RE, clearPreviewConfig, CLIENT_ID_RE, fetchGlobalConfig,
   getCachedPreview, hasPreviewConfig, PLACEMENT_KEYS, PLACEMENT_LABELS,
@@ -1555,18 +1556,276 @@ export function AOrders() {
 export function AUsers() {
   const { users, setUsers, notify } = useApp();
   const [delId, setDelId] = useState<string | null>(null);
-  const toggleBlock = (id: string) => { setUsers(prev => prev.map(u => u.id === id ? { ...u, isBlocked: !u.isBlocked } : u)); notify('User updated!'); };
-  const del = () => { if (delId) { setUsers(prev => prev.filter(u => u.id !== delId)); notify('User deleted!'); setDelId(null); } };
+  const [addModal, setAddModal] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'buyer'>('admin');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'buyer'>('all');
 
-  return <div className="space-y-6">
-    <h1 className="text-2xl font-bold">Users</h1>
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{users.map(u => <div key={u.id} className={`bg-white rounded-xl border p-5 ${u.isBlocked ? 'border-red-200 bg-red-50/30' : ''}`}>
-      <div className="flex items-center gap-3 mb-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${u.isBlocked ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{u.name[0]}</div><div><p className="font-semibold">{u.name}</p><p className="text-xs text-gray-500">{u.email}</p></div>{u.isBlocked && <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Blocked</span>}</div>
-      {u.joined && <p className="text-xs text-gray-400 mb-4">Joined: {u.joined}</p>}
-      <div className="flex gap-2"><button onClick={() => toggleBlock(u.id)} className={`flex-1 py-2 rounded-lg text-xs font-medium ${u.isBlocked ? 'bg-green-50 text-green-600' : 'bg-sky-50 text-blue-600'}`}>{u.isBlocked ? 'Unblock' : 'Block'}</button><button onClick={() => setDelId(u.id)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium">Delete</button></div>
-    </div>)}</div>
-    <Modal open={!!delId} onClose={() => setDelId(null)} title="Delete User"><p className="text-gray-600 mb-6">Delete this user?</p><div className="flex gap-3"><button onClick={del} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-medium">Delete</button><button onClick={() => setDelId(null)} className="flex-1 py-2.5 border rounded-lg">Cancel</button></div></Modal>
-  </div>;
+  const toggleBlock = (id: string) => {
+    setUsers(prev => prev.map(u => (u.id === id ? { ...u, isBlocked: !u.isBlocked } : u)));
+    notify('User status updated!');
+  };
+
+  const toggleRole = (id: string) => {
+    setUsers(prev =>
+      prev.map(u => (u.id === id ? { ...u, role: u.role === 'admin' ? 'buyer' : 'admin' } : u))
+    );
+    notify('User role updated!');
+  };
+
+  const del = () => {
+    if (delId) {
+      setUsers(prev => prev.filter(u => u.id !== delId));
+      notify('User removed!');
+      setDelId(null);
+    }
+  };
+
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim() || !newUserEmail.trim()) {
+      notify('Name and email required', 'error');
+      return;
+    }
+    const newUser: AppUser = {
+      id: `usr-${Date.now()}`,
+      name: newUserName.trim(),
+      email: newUserEmail.trim(),
+      role: newUserRole,
+      joined: new Date().toLocaleDateString(),
+      isBlocked: false,
+    };
+    setUsers(prev => [newUser, ...prev]);
+    notify(`Team member ${newUser.name} added!`, 'success');
+    setNewUserName('');
+    setNewUserEmail('');
+    setNewUserRole('admin');
+    setAddModal(false);
+  };
+
+  const filteredUsers = users.filter(u => {
+    const matchesSearch =
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const activeCount = users.filter(u => !u.isBlocked).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[#26211C]">Team & User Management</h1>
+          <p className="text-xs text-[#6D6258] mt-0.5">
+            Manage administrators, store operators, and customer accounts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAddModal(true)}
+          className="px-4 py-2 bg-[#26211C] hover:bg-[#3F6550] text-[#FAF7F1] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
+        >
+          <Plus size={15} weight="bold" />
+          Add Team Member
+        </button>
+      </div>
+
+      {/* Metric Cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-3.5 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl">
+          <p className="text-[10px] uppercase font-bold tracking-wider text-[#6D6258]">Total Accounts</p>
+          <p className="text-xl font-bold text-[#26211C] mt-1">{users.length}</p>
+        </div>
+        <div className="p-3.5 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl">
+          <p className="text-[10px] uppercase font-bold tracking-wider text-[#3F6550]">Administrators</p>
+          <p className="text-xl font-bold text-[#3F6550] mt-1">{adminCount}</p>
+        </div>
+        <div className="p-3.5 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl">
+          <p className="text-[10px] uppercase font-bold tracking-wider text-[#C98745]">Active Access</p>
+          <p className="text-xl font-bold text-[#C98745] mt-1">{activeCount}</p>
+        </div>
+      </div>
+
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="flex items-center gap-2 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl px-3 py-2 sm:w-72">
+          <MagnifyingGlass size={15} className="text-[#6D6258] shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            className="bg-transparent text-xs outline-none w-full text-[#26211C] placeholder:text-[#6D6258]"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 p-1 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl self-start">
+          {(['all', 'admin', 'buyer'] as const).map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setRoleFilter(tab)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                roleFilter === tab
+                  ? 'bg-[#26211C] text-[#FAF7F1]'
+                  : 'text-[#6D6258] hover:text-[#26211C]'
+              }`}
+            >
+              {tab === 'all' ? 'All Users' : tab === 'admin' ? 'Admins' : 'Staff / Buyers'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Users Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredUsers.map(u => (
+          <div
+            key={u.id}
+            className={`bg-[#FFFDF8] rounded-xl border p-4 transition-shadow hover:shadow-md flex flex-col justify-between ${
+              u.isBlocked ? 'border-rose-200 bg-rose-50/20' : 'border-[#E0D6C8]'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0"
+                    style={{
+                      background:
+                        u.role === 'admin'
+                          ? 'linear-gradient(135deg, #B86452, #E25726)'
+                          : 'linear-gradient(135deg, #3F6550, #2a4435)',
+                    }}
+                  >
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-[#26211C] truncate">{u.name}</p>
+                    <p className="text-xs text-[#6D6258] truncate">{u.email}</p>
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                    u.role === 'admin'
+                      ? 'bg-[#3F6550]/10 text-[#3F6550] border border-[#3F6550]/20'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}
+                >
+                  {u.role === 'admin' ? 'Admin' : 'Staff'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-[#6D6258] pt-2 border-t border-[#E0D6C8]/60 mb-3">
+                <span>Joined: {u.joined || 'Active'}</span>
+                <span className={u.isBlocked ? 'text-rose-600 font-semibold' : 'text-[#3F6550] font-semibold'}>
+                  {u.isBlocked ? 'Blocked' : 'Active'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => toggleRole(u.id)}
+                className="flex-1 py-1.5 px-2 bg-[#FAF7F1] hover:bg-[#E0D6C8]/40 border border-[#E0D6C8] rounded-lg text-xs font-medium text-[#26211C] transition-colors cursor-pointer"
+                title="Switch between Admin and Staff role"
+              >
+                {u.role === 'admin' ? 'Set Staff' : 'Set Admin'}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleBlock(u.id)}
+                className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  u.isBlocked
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                {u.isBlocked ? 'Unblock' : 'Block'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDelId(u.id)}
+                className="py-1.5 px-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                title="Remove account"
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filteredUsers.length === 0 && (
+          <div className="col-span-full text-center py-12 bg-[#FFFDF8] border border-dashed border-[#E0D6C8] rounded-xl">
+            <p className="text-sm font-semibold text-[#26211C]">No matching users found</p>
+            <p className="text-xs text-[#6D6258] mt-1">Try changing your search query or role filter.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Delete User Modal */}
+      <Modal open={!!delId} onClose={() => setDelId(null)} title="Delete User">
+        <p className="text-[#26211C] text-sm mb-4">Are you sure you want to remove this account? This user will no longer be able to log in.</p>
+        <div className="flex gap-3">
+          <button type="button" onClick={del} className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer">
+            Confirm Delete
+          </button>
+          <button type="button" onClick={() => setDelId(null)} className="flex-1 py-2.5 border border-[#E0D6C8] rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add User Modal */}
+      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Team Member">
+        <form onSubmit={handleAddUser} className="space-y-4 pt-2">
+          <div>
+            <label className="block text-xs font-semibold text-[#26211C] mb-1">Full Name *</label>
+            <input
+              value={newUserName}
+              onChange={e => setNewUserName(e.target.value)}
+              placeholder="e.g. Ayaz Bashir"
+              required
+              className="w-full bg-[#FAF7F1] border border-[#E0D6C8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#B86452]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#26211C] mb-1">Email Address *</label>
+            <input
+              type="email"
+              value={newUserEmail}
+              onChange={e => setNewUserEmail(e.target.value)}
+              placeholder="name@himalayankoh.com"
+              required
+              className="w-full bg-[#FAF7F1] border border-[#E0D6C8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#B86452]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#26211C] mb-1">Role</label>
+            <select
+              value={newUserRole}
+              onChange={e => setNewUserRole(e.target.value as 'admin' | 'buyer')}
+              className="w-full bg-[#FAF7F1] border border-[#E0D6C8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#B86452]"
+            >
+              <option value="admin">Administrator (Full Admin Access)</option>
+              <option value="buyer">Staff / Store Operator</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="submit" className="flex-1 py-2.5 bg-[#26211C] hover:bg-[#3F6550] text-[#FAF7F1] rounded-xl text-xs font-semibold transition-colors cursor-pointer">
+              Add Member
+            </button>
+            <button type="button" onClick={() => setAddModal(false)} className="flex-1 py-2.5 border border-[#E0D6C8] rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
 }
 
 export function ACategories() {
@@ -1728,7 +1987,7 @@ function Accordion({ id, title, icon, borderClass, children, open, toggle }: {
 }
 
 export function ASettings() {
-  const { user, changePassword, updateAdminProfile, notify } = useApp();
+  const { user, users, changePassword, updateAdminProfile, notify } = useApp();
   const navigate = useNavigate();
   const L = SETTINGS_LABEL;
   const I = SETTINGS_INPUT;
@@ -1763,7 +2022,17 @@ export function ASettings() {
     catch { notify('Copy failed — select the text manually', 'error'); }
   };
 
-const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: false, api: true, store: false, profile: false, password: false, adsense: true, integrations: false });
+const [open, setOpen] = useState<Record<string, boolean>>({
+  ai: false,
+  pricing: false,
+  api: true,
+  store: false,
+  profile: true,
+  team: true,
+  password: false,
+  adsense: true,
+  integrations: false,
+});
   const toggle = (k: string) => setOpen(s => ({ ...s, [k]: !s[k] }));
 
   const [pricingRules, setPricingRules] = useState(loadPricingRules());
@@ -1772,6 +2041,12 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
 
   const [profName, setProfName] = useState(user?.name || '');
   const [profEmail, setProfEmail] = useState(user?.email || '');
+  const [profSaved, setProfSaved] = useState(false);
+
+  useEffect(() => {
+    if (user?.name) setProfName(user.name);
+    if (user?.email) setProfEmail(user.email);
+  }, [user?.name, user?.email]);
 
   const [curPass, setCurPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -1781,8 +2056,10 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
 
   const handleProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profName.trim() || !profEmail.trim()) { notify('Name and email required'); return; }
-    await updateAdminProfile(profName.trim(), profEmail.trim());
+    if (!profName.trim() || !profEmail.trim()) { notify('Name and email required', 'error'); return; }
+    updateAdminProfile(profName.trim(), profEmail.trim());
+    setProfSaved(true);
+    setTimeout(() => setProfSaved(false), 4000);
   };
 
   const handlePassword = async (e: React.FormEvent) => {
@@ -1926,13 +2203,138 @@ const [open, setOpen] = useState<Record<string, boolean>>({ ai: false, pricing: 
       </Accordion>
 
       {/* ── Admin Profile ── */}
-      <Accordion id="profile" title="Admin Profile" icon={<UserIcon size={18} className="text-blue-500" />} open={open} toggle={toggle}>
-        <div className="pt-5">
+      <Accordion id="profile" title="Admin Profile & Current Account" icon={<UserIcon size={18} className="text-[#B86452]" />} open={open} toggle={toggle}>
+        <div className="pt-5 space-y-4">
+          <div className="flex items-center justify-between p-3.5 bg-[#FAF7F1] border border-[#E0D6C8] rounded-xl">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm"
+                style={{ background: 'linear-gradient(135deg, #B86452, #E25726)' }}
+              >
+                {profName ? profName.charAt(0).toUpperCase() : 'H'}
+              </div>
+              <div>
+                <p className="font-semibold text-xs text-[#26211C]">{profName || 'Super Admin'}</p>
+                <p className="text-[11px] text-[#6D6258]">{profEmail || 'admin@himalayankoh.com'}</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#3F6550]/10 text-[#3F6550] border border-[#3F6550]/20">
+              Super Admin
+            </span>
+          </div>
+
+          {profSaved && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+              <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+              Profile updated successfully! Welcome, {profName}.
+            </div>
+          )}
+
           <form onSubmit={handleProfile} className="space-y-4">
-            <div><label className={L}>Name</label><input value={profName} onChange={e => setProfName(e.target.value)} className={I} placeholder="Admin name" /></div>
-            <div><label className={L}>Email</label><input type="email" value={profEmail} onChange={e => setProfEmail(e.target.value)} className={I} placeholder="admin email" /></div>
-            <button type="submit" className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"><FloppyDisk size={16} />Save Profile</button>
+            <div>
+              <label className={L}>Full Name</label>
+              <input
+                value={profName}
+                onChange={e => setProfName(e.target.value)}
+                className={I}
+                placeholder="Admin name"
+              />
+            </div>
+            <div>
+              <label className={L}>Email Address</label>
+              <input
+                type="email"
+                value={profEmail}
+                onChange={e => setProfEmail(e.target.value)}
+                className={I}
+                placeholder="admin@himalayankoh.com"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-[#26211C] hover:bg-[#3F6550] text-[#FAF7F1] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+              >
+                <FloppyDisk size={15} />
+                Save Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearSupabaseSession();
+                  window.location.assign('/login');
+                }}
+                className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <SignOut size={15} />
+                Switch User / Logout
+              </button>
+            </div>
           </form>
+        </div>
+      </Accordion>
+
+      {/* ── Team & All Users ── */}
+      <Accordion id="team" title="Team & All Users" icon={<UsersIcon size={18} className="text-[#3F6550]" />} open={open} toggle={toggle}>
+        <div className="pt-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Team Accounts & Roles</p>
+              <p className="text-xs text-gray-500">All registered store administrators and staff with access to the console.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/users')}
+              className="px-3.5 py-1.5 bg-[#26211C] hover:bg-[#3F6550] text-[#FAF7F1] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+            >
+              <UsersIcon size={13} />
+              Manage All Users →
+            </button>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {users.map((u) => (
+              <div key={u.id} className="p-3 bg-[#FAF7F1] border border-[#E0D6C8] rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ background: u.role === 'admin' ? 'linear-gradient(135deg, #B86452, #E25726)' : 'linear-gradient(135deg, #3F6550, #2a4435)' }}
+                  >
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#26211C] truncate">{u.name}</p>
+                    <p className="text-[11px] text-[#6D6258] truncate">{u.email}</p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-1.5">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    u.role === 'admin'
+                      ? 'bg-[#3F6550]/10 text-[#3F6550] border border-[#3F6550]/20'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}>
+                    {u.role === 'admin' ? 'Admin' : 'Staff'}
+                  </span>
+                  {u.isBlocked && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                      Blocked
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {users.length} registered accounts</span>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/users')}
+              className="text-[#B86452] hover:text-[#8D4133] font-semibold underline cursor-pointer"
+            >
+              Add, edit or delete users in User Management →
+            </button>
+          </div>
         </div>
       </Accordion>
 

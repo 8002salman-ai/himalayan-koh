@@ -185,9 +185,25 @@ export function useApp(): Ctx {
   return c || defaultAppContext;
 }
 
+const INITIAL_USERS: AppUser[] = [
+  { id: 'usr-1', name: 'Himalayan Koh Super Admin', email: 'admin@himalayankoh.com', role: 'admin', joined: '2025-01-01', isBlocked: false },
+  { id: 'usr-2', name: 'Ayaz Bashir', email: 'ayaz@himalayankoh.com', role: 'admin', joined: '2025-01-10', isBlocked: false },
+  { id: 'usr-3', name: 'Himalayan Support Desk', email: 'support@himalayankoh.com', role: 'buyer', joined: '2025-02-01', isBlocked: false },
+  { id: 'usr-4', name: 'Wholesale Sales Desk', email: 'sales@himalayankoh.com', role: 'buyer', joined: '2025-02-15', isBlocked: false },
+];
+
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AppUser>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('hk_admin_profile');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return defaultAppContext.user!;
+  });
   const [products, setProducts] = useState<Product[]>([]);
-  const [users, setUsers] = useState<AppUser[]>([]);
+  const [users, setUsers] = useState<AppUser[]>(INITIAL_USERS);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -198,15 +214,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setNotif(null), 4000);
   }, []);
 
+  const updateAdminProfile = useCallback((name: string, email: string) => {
+    setCurrentUser(prev => {
+      const updated: AppUser = { ...prev, name, email };
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('hk_admin_profile', JSON.stringify(updated)); } catch {}
+      }
+      return updated;
+    });
+    setUsers(prev =>
+      prev.map(u => (u.id === 'usr-1' || u.email === 'admin@himalayankoh.com' ? { ...u, name, email } : u))
+    );
+    notify('Profile updated successfully!', 'success');
+  }, [notify]);
+
   const value: Ctx = useMemo(() => ({
     ...defaultAppContext,
+    user: currentUser,
+    updateAdminProfile,
     products, setProducts,
     users, setUsers,
     reviews, setReviews,
     categories, setCategories,
     blogs, setBlogs,
     notif, notify,
-  }), [products, users, reviews, categories, blogs, notif, notify]);
+  }), [currentUser, updateAdminProfile, products, users, reviews, categories, blogs, notif, notify]);
 
   return (
     <AC.Provider value={value}>

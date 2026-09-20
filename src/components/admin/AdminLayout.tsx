@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   SquaresFour,
@@ -33,9 +33,11 @@ import {
   ShieldCheck,
   Plus,
   X,
+  CaretDown,
 } from '@phosphor-icons/react';
 import { useAuthContext } from '../../context/AuthContext';
 import { clearSupabaseSession } from '../../lib/supabase/client';
+import { useApp } from '@/App';
 
 export interface AdminLayoutProps {
   children: ReactNode;
@@ -136,14 +138,33 @@ const MOBILE_NAV: { key: string; label: string; to?: string; icon: NavIcon }[] =
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, profile } = useAuthContext();
+  const { user: appUser } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobSide, setMobSide] = useState(false);
   const [searchVal, setSearchVal] = useState('');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMobSide(false);
+    setUserMenuOpen(false);
   }, [location.pathname]);
+
+  // Click outside listener for user dropdown menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userMenuOpen]);
 
   const handleSignOut = () => {
     clearSupabaseSession();
@@ -157,7 +178,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     navigate(`/admin/products?search=${encodeURIComponent(q)}`);
   };
 
-  const adminName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Super Admin';
+  const adminName =
+    profile?.full_name ||
+    appUser?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split('@')[0] ||
+    'Super Admin';
+  const adminEmail = user?.email || appUser?.email || 'admin@himalayankoh.com';
   const adminInitial = String(adminName).charAt(0).toUpperCase() || 'H';
 
   const Sidebar = ({ mobile }: { mobile?: boolean }) => (
@@ -328,14 +355,131 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#C98745]"
               />
             </button>
-            <div className="flex items-center gap-2 pl-1.5 border-l border-[#E0D6C8]">
-              <span className="text-xs font-medium text-[#26211C] hidden sm:block">{adminName}</span>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md ring-2 ring-[#E0D6C8]"
-                style={{ background: 'linear-gradient(135deg, #B86452, #E25726)' }}
+            <div className="relative pl-1.5 border-l border-[#E0D6C8]" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 p-1 rounded-lg hover:bg-[#FAF7F1] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#B86452]/20"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                aria-label="Admin account menu"
               >
-                {adminInitial}
-              </div>
+                <div className="hidden sm:block text-right leading-tight">
+                  <span className="text-xs font-semibold text-[#26211C] block">{adminName}</span>
+                  <span className="text-[10px] text-[#8e8276] font-medium">Super Admin</span>
+                </div>
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md ring-2 ring-[#E0D6C8] shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #B86452, #E25726)' }}
+                >
+                  {adminInitial}
+                </div>
+                <CaretDown
+                  size={12}
+                  weight="bold"
+                  className={`text-[#6D6258] transition-transform duration-200 hidden sm:block ${
+                    userMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-64 bg-[#FFFDF8] border border-[#E0D6C8] rounded-xl shadow-2xl z-50 overflow-hidden"
+                  style={{
+                    boxShadow: '0 12px 32px -4px rgba(38, 33, 28, 0.18), 0 4px 12px -2px rgba(38, 33, 28, 0.08)',
+                  }}
+                  role="menu"
+                >
+                  {/* Account Header */}
+                  <div className="p-3 bg-[#FAF7F1] border-b border-[#E0D6C8]">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #B86452, #E25726)' }}
+                      >
+                        {adminInitial}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#26211C] truncate">{adminName}</p>
+                        <p className="text-[11px] text-[#6D6258] truncate">{adminEmail}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-[#E0D6C8]/60">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#3F6550] bg-[#3F6550]/10 border border-[#3F6550]/20 rounded-full px-2.5 py-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#3F6550]" />
+                        Super Admin
+                      </span>
+                      <span className="text-[10px] font-medium text-[#8e8276]">Himalayan Koh</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Navigation Links */}
+                  <div className="p-1.5 space-y-0.5">
+                    <Link
+                      to="/admin/users"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#26211C] hover:bg-[#FAF7F1] transition-colors group"
+                    >
+                      <span className="w-7 h-7 rounded-md bg-[#3F6550]/10 text-[#3F6550] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <UsersIcon size={14} weight="bold" />
+                      </span>
+                      <div className="leading-tight">
+                        <span className="block font-semibold">Manage Team & Users</span>
+                        <span className="text-[10px] text-[#8e8276]">View all users & roles</span>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to="/admin/settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#26211C] hover:bg-[#FAF7F1] transition-colors group"
+                    >
+                      <span className="w-7 h-7 rounded-md bg-[#C98745]/10 text-[#C98745] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <GearSix size={14} weight="bold" />
+                      </span>
+                      <div className="leading-tight">
+                        <span className="block font-semibold">Store Settings</span>
+                        <span className="text-[10px] text-[#8e8276]">Profile, AI & integrations</span>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to="/"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#26211C] hover:bg-[#FAF7F1] transition-colors group"
+                    >
+                      <span className="w-7 h-7 rounded-md bg-[#B86452]/10 text-[#B86452] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <ArrowLeft size={14} weight="bold" />
+                      </span>
+                      <div className="leading-tight">
+                        <span className="block font-semibold">Storefront</span>
+                        <span className="text-[10px] text-[#8e8276]">Open customer website</span>
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* Logout / Sign Out Button */}
+                  <div className="p-1.5 border-t border-[#E0D6C8] bg-[#FFFDF8]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors text-left group cursor-pointer"
+                    >
+                      <span className="w-7 h-7 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <SignOut size={14} weight="bold" />
+                      </span>
+                      <div className="leading-tight">
+                        <span className="block font-semibold">Sign Out / Logout</span>
+                        <span className="text-[10px] text-rose-500/80">End current admin session</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
