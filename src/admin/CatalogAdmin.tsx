@@ -49,6 +49,7 @@ import {
 import { parseHtmlPage } from '../features/ai/importer';
 import { prepareImageForUpload } from '../lib/image-upload';
 import { getListingPlaybook, validateListingAgainstPlaybook, supplierBrandForUrl } from '../features/catalog/listingPlaybook';
+import { hasCatalogImageUrl } from '../features/catalog/imageUrl';
 import { AIImportPanel } from './AIImportPanel';
 import {
   parseCsvImport, classifyDuplicates,
@@ -1893,34 +1894,36 @@ export function CatalogProductEditor() {
     setP((prev) => (prev ? { ...prev, [k]: v } : prev));
   };
 
-  const handleSave = async () => {
-    if (!p) return;
-    if (!p.name.trim()) { notify('Product name is required', 'error'); return; }
-    if (!(p.price > 0)) { notify('Price must be greater than 0', 'error'); return; }
+  const handleSave = async (productOverride?: CatalogProduct) => {
+    const productToSave = productOverride ?? p;
+    if (!productToSave) return;
+    if (!productToSave.name.trim()) { notify('Product name is required', 'error'); return; }
+    if (!(productToSave.price > 0)) { notify('Price must be greater than 0', 'error'); return; }
+    const currentProduct = productToSave;
     // Already-live listing: edits (price, inventory, status, copy…) must save.
     // Playbook gaps become loud warnings instead of hard blockers.
     const wasLive = originStatus === 'active';
-    if (p.images.length === 0 && !wasLive) { notify('At least one image is required before activating a premium listing', 'error'); setTab('images'); return; }
+    if (currentProduct.images.length === 0 && !wasLive) { notify('At least one image is required before activating a premium listing', 'error'); setTab('images'); return; }
     // Listing Playbook gate — publishing a listing as Live needs verified
     // images (no placeholders / inline base64) and supplier data. Draft
     // saves and edits of already-live products get non-blocking warnings;
     // only the transition into Live is blocked, with the exact reason.
     const pb = await getListingPlaybook();
     const verdict = validateListingAgainstPlaybook(pb, {
-      name: p.name,
-      status: p.status,
-      categoryName: p.categoryName,
-      images: p.images,
-      supplierUrl: p.supplierUrl,
-      supplierName: p.supplierSource,
-      supplierSku: p.supplierProductRef,
+      name: currentProduct.name,
+      status: currentProduct.status,
+      categoryName: currentProduct.categoryName,
+      images: currentProduct.images,
+      supplierUrl: currentProduct.supplierUrl,
+      supplierName: currentProduct.supplierSource,
+      supplierSku: currentProduct.supplierProductRef,
     });
-    if (p.status === 'active' && !verdict.ok && !wasLive) {
+    if (currentProduct.status === 'active' && !verdict.ok && !wasLive) {
       notify(`Cannot save as Live: ${verdict.errors.join(' ')}`, 'error');
       setTab('images');
       return;
     }
-    if (p.status === 'active' && !verdict.ok && wasLive) {
+    if (currentProduct.status === 'active' && !verdict.ok && wasLive) {
       notify(`Saved (already live). Playbook gaps: ${verdict.errors.join(' ')}`, 'error');
     }
     if (verdict.warnings.length) notify(verdict.warnings.join(' '), 'error');
@@ -1930,63 +1933,64 @@ export function CatalogProductEditor() {
       // 1h JWT expiry must not fail the save with Supabase 401 "JWT expired".
       setDbToken(await getFreshAccessToken());
       const input = {
-        name: p.name.trim(),
-        shortTitle: p.shortTitle,
-        subtitle: p.subtitle,
-        shortDescription: p.shortDescription,
-        description: p.description,
-        features: p.features,
-        specifications: p.specifications,
-        categoryId: p.categoryId,
-        brand: p.brand,
-        status: p.status,
-        price: p.price,
-        compareAtPrice: p.compareAtPrice,
-        costPrice: p.costPrice,
-        landedCost: p.landedCost,
-        currency: p.currency,
-        sku: p.sku,
-        inventoryQty: p.inventoryQty,
-        stockStatus: p.stockStatus,
-        lowStockThreshold: p.lowStockThreshold,
-        shippingCost: p.shippingCost,
-        freeShipping: p.freeShipping,
-        deliveryMinDays: p.deliveryMinDays,
-        deliveryMaxDays: p.deliveryMaxDays,
-        shippingNote: p.shippingNote,
-        usInventory: p.usInventory,
-        supplierSource: p.supplierSource,
-        supplierProductRef: p.supplierProductRef,
-        commerceReadiness: p.commerceReadiness,
-        sourceType: p.sourceType,
-        inventorySource: p.inventorySource,
-        fulfillmentMethod: p.fulfillmentMethod,
-        supplierUrl: p.supplierUrl,
-        supplierStockStatus: p.supplierStockStatus,
-        riskFlags: p.riskFlags,
-        tags: p.tags,
-        featured: p.featured,
-        newArrival: p.newArrival,
-        trending: p.trending,
-        bestRated: p.bestRated,
-        bestSeller: p.bestSeller,
-        promoted: p.promoted,
-        saleEnabled: p.saleEnabled,
-        discountType: p.discountType,
-        discountValue: p.discountValue,
-        seoTitle: p.seoTitle,
-        seoDescription: p.seoDescription,
-        seoKeywords: p.seoKeywords,
-        canonicalSlug: p.canonicalSlug,
-        ogImage: p.ogImage,
-        ownerNotes: p.ownerNotes,
-        evidenceNotes: p.evidenceNotes,
+        name: currentProduct.name.trim(),
+        shortTitle: currentProduct.shortTitle,
+        subtitle: currentProduct.subtitle,
+        shortDescription: currentProduct.shortDescription,
+        description: currentProduct.description,
+        features: currentProduct.features,
+        specifications: currentProduct.specifications,
+        categoryId: currentProduct.categoryId,
+        brand: currentProduct.brand,
+        status: currentProduct.status,
+        price: currentProduct.price,
+        compareAtPrice: currentProduct.compareAtPrice,
+        costPrice: currentProduct.costPrice,
+        landedCost: currentProduct.landedCost,
+        currency: currentProduct.currency,
+        sku: currentProduct.sku,
+        inventoryQty: currentProduct.inventoryQty,
+        stockStatus: currentProduct.stockStatus,
+        lowStockThreshold: currentProduct.lowStockThreshold,
+        shippingCost: currentProduct.shippingCost,
+        freeShipping: currentProduct.freeShipping,
+        deliveryMinDays: currentProduct.deliveryMinDays,
+        deliveryMaxDays: currentProduct.deliveryMaxDays,
+        shippingNote: currentProduct.shippingNote,
+        usInventory: currentProduct.usInventory,
+        supplierSource: currentProduct.supplierSource,
+        supplierProductRef: currentProduct.supplierProductRef,
+        commerceReadiness: currentProduct.commerceReadiness,
+        sourceType: currentProduct.sourceType,
+        inventorySource: currentProduct.inventorySource,
+        fulfillmentMethod: currentProduct.fulfillmentMethod,
+        supplierUrl: currentProduct.supplierUrl,
+        supplierStockStatus: currentProduct.supplierStockStatus,
+        riskFlags: currentProduct.riskFlags,
+        tags: currentProduct.tags,
+        featured: currentProduct.featured,
+        newArrival: currentProduct.newArrival,
+        trending: currentProduct.trending,
+        bestRated: currentProduct.bestRated,
+        bestSeller: currentProduct.bestSeller,
+        promoted: currentProduct.promoted,
+        saleEnabled: currentProduct.saleEnabled,
+        discountType: currentProduct.discountType,
+        discountValue: currentProduct.discountValue,
+        seoTitle: currentProduct.seoTitle,
+        seoDescription: currentProduct.seoDescription,
+        seoKeywords: currentProduct.seoKeywords,
+        canonicalSlug: currentProduct.canonicalSlug,
+        ogImage: currentProduct.ogImage,
+        ownerNotes: currentProduct.ownerNotes,
+        evidenceNotes: currentProduct.evidenceNotes,
       };
-      const isWoo = isWooId(p.id);
+      const isWoo = isWooId(currentProduct.id);
       const saved = isNew
         ? await createProduct(input)
-        : (await updateProduct(p.id, isWoo ? ({ ...input, images: p.images } as unknown as Partial<ProductInput>) : input))!;
-      const imagePayload = p.images.map((img, i) => ({
+        : (await updateProduct(currentProduct.id, isWoo ? ({ ...input, images: currentProduct.images } as unknown as Partial<ProductInput>) : input))!;
+      if (!saved) throw new Error('The backend did not return the saved product.');
+      const imagePayload = currentProduct.images.map((img, i) => ({
         id: img.id || undefined,
         url: img.url,
         altText: img.altText,
@@ -1995,7 +1999,7 @@ export function CatalogProductEditor() {
         sortOrder: i,
         variantId: img.variantId || null,
       }));
-      const variantPayload = p.variants.map((v) => ({
+      const variantPayload = currentProduct.variants.map((v) => ({
         id: v.id || undefined,
         attributes: v.attributes,
         sku: v.sku,
@@ -2033,7 +2037,7 @@ export function CatalogProductEditor() {
       if (isNew) {
         nav(`/admin/products/edit/${saved.id}`);
       } else {
-        setP(refreshed ?? { ...saved, images: p.images, variants: p.variants });
+        setP(refreshed ?? { ...saved, images: currentProduct.images, variants: currentProduct.variants });
       }
     } catch (e) {
       setSaveStatus('idle');
@@ -2117,7 +2121,7 @@ export function CatalogProductEditor() {
                 Saving…
               </span>
             )}
-            <button onClick={handleSave} disabled={saving} className="btn-glow px-4 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <button onClick={() => void handleSave()} disabled={saving} className="btn-glow px-4 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0">
               <FloppyDisk size={14} />{saving ? 'Saving…' : 'Save'}
             </button>
           </>
@@ -2475,7 +2479,7 @@ Return ONLY valid JSON with EXACTLY these keys:
 No other text.`;
 }
 
-function SeoTab({ product, cats, set, onSave }: { product: CatalogProduct; cats: CatalogCategory[]; set: <K extends keyof CatalogProduct>(k: K, v: CatalogProduct[K]) => void; onSave?: () => Promise<void> }) {
+function SeoTab({ product, cats, set, onSave }: { product: CatalogProduct; cats: CatalogCategory[]; set: <K extends keyof CatalogProduct>(k: K, v: CatalogProduct[K]) => void; onSave?: (product?: CatalogProduct) => Promise<void> }) {
   const { notify } = useApp();
   const [busy, setBusy] = useState(false);
 
@@ -2490,13 +2494,22 @@ function SeoTab({ product, cats, set, onSave }: { product: CatalogProduct; cats:
       const parsed = await generateSeoJson(buildProductSeoPrompt(product, category));
       const kw = Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords.map(String).slice(0, 8) : [];
       const slug = String(parsed.slug || product.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 90);
-      set('seoTitle', String(parsed.seoTitle || '').trim());
-      set('seoDescription', String(parsed.metaDescription || '').trim());
-      set('seoKeywords', kw);
+      const nextKeywords = parsed.focusKeyword
+        ? (kw.includes(String(parsed.focusKeyword)) ? kw : [String(parsed.focusKeyword), ...kw])
+        : kw;
+      const nextProduct: CatalogProduct = {
+        ...product,
+        seoTitle: String(parsed.seoTitle || '').trim(),
+        seoDescription: String(parsed.metaDescription || '').trim(),
+        seoKeywords: nextKeywords,
+        ...(slug ? { canonicalSlug: slug } : {}),
+      };
+      set('seoTitle', nextProduct.seoTitle);
+      set('seoDescription', nextProduct.seoDescription);
+      set('seoKeywords', nextProduct.seoKeywords);
       if (slug) set('canonicalSlug', slug);
-      if (parsed.focusKeyword) set('seoKeywords', kw.includes(String(parsed.focusKeyword)) ? kw : [String(parsed.focusKeyword), ...kw]);
       if (saveNow && onSave) {
-        await onSave();
+        await onSave(nextProduct);
         notify('SEO generated and saved');
       } else {
         notify('SEO generated — review before saving');
@@ -3270,7 +3283,7 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
       }
       const existing = new Set(product.images.map((i) => i.url));
       const room = Math.max(0, 5 - product.images.length);
-      const fresh = found.filter((u) => !existing.has(u)).slice(0, room);
+      const fresh = found.filter((u) => !hasCatalogImageUrl([...existing], u)).slice(0, room);
       if (!fresh.length) { notify('Everything found for this name is already added (max 5 images).', 'error'); return; }
 
       const startLen = product.images.length;
@@ -3296,6 +3309,10 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
     if (!u) return;
     if (!/^https?:\/\//i.test(u)) { notify('Enter a valid image URL (https://…)', 'error'); return; }
     if (product.images.length >= 5) { notify('Max 5 images total', 'error'); return; }
+    if (hasCatalogImageUrl(product.images.map((image) => image.url), u)) {
+      notify('This image URL is already attached to the product.', 'error');
+      return;
+    }
     setUploading(true);
     try {
       const token = await getFreshAccessToken();
@@ -3415,7 +3432,7 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
       const found = parsed.images.filter((i) => i.startsWith('http'));
       if (!found.length) { notify('No product images found on that page.', 'error'); return; }
       const existing = new Set(product.images.map((i) => i.url));
-      const fresh = found.filter((i) => !existing.has(i)).slice(0, 5 - product.images.length);
+      const fresh = found.filter((i) => !hasCatalogImageUrl([...existing], i)).slice(0, 5 - product.images.length);
       if (!fresh.length) { notify('All images from that page are already added (max 5).', 'error'); return; }
       const startLen = product.images.length;
       onProduct({
@@ -3483,7 +3500,7 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
             <Download size={15} />Fetch all from page
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Up to 5 images. Uploads are stored in Supabase Storage (durable). “Find by name” searches the store for this product and pulls its images (AI drops the ones that are not it); paste a product page URL + “Fetch all from page” to pull every image from a page you already know. Then ✕ the ones you do not want.</p>
+        <p className="text-xs text-gray-400 mt-2">Up to 5 images. Images are attached through the configured staging media backend and keep their durable public URL. “Find by name” searches the store for this product and pulls its images (AI drops the ones that are not it); paste a product page URL + “Fetch all from page” to pull every image from a page you already know. Then ✕ the ones you do not want.</p>
       </div>
 
       {/* Image grid with thumbnail picker */}

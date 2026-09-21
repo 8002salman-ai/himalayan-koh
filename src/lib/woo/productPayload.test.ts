@@ -119,6 +119,32 @@ describe('toWooProductBody', () => {
       { key: '_yoast_wpseo_metadesc', value: 'Fine grain' },
     ]);
   });
+
+  it('includes pricing, shipping, custom economics, and generated SEO in one payload', () => {
+    const body = toWooProductBody({
+      price: 99,
+      costPrice: 25,
+      landedCost: 25,
+      weight: 45,
+      dimensions: { length: 40, width: 30, height: 20 },
+      packagePreset: 'custom',
+      canonicalSlug: 'himalayan-rock-salt-45-lbs-2-3-large-chunks',
+      seoKeywords: ['himalayan rock salt', 'salt block'],
+      seo: { title: 'Himalayan Rock Salt 45 lbs', description: 'A factual product description.' },
+    });
+    expect(body.regular_price).toBe('99.00');
+    expect(body.weight).toBe('45');
+    expect(body.dimensions).toEqual({ length: '40', width: '30', height: '20' });
+    expect(body.meta_data).toEqual([
+      { key: '_himalayan_koh_cost_price', value: '25' },
+      { key: '_himalayan_koh_landed_cost', value: '25' },
+      { key: '_himalayan_koh_package_preset', value: 'custom' },
+      { key: '_himalayan_koh_seo_keywords', value: '["himalayan rock salt","salt block"]' },
+      { key: '_himalayan_koh_canonical_slug', value: 'himalayan-rock-salt-45-lbs-2-3-large-chunks' },
+      { key: '_yoast_wpseo_title', value: 'Himalayan Rock Salt 45 lbs' },
+      { key: '_yoast_wpseo_metadesc', value: 'A factual product description.' },
+    ]);
+  });
 });
 
 describe('sellingPrice', () => {
@@ -171,6 +197,27 @@ describe('fromWooProduct', () => {
     expect(fromWooProduct({ id: 1, stock_status: 'outofstock' }).stockStatus).toBe('outofstock');
     expect(fromWooProduct({ id: 1, stock_status: 'nonsense' }).stockStatus).toBe('unknown');
     expect(fromWooProduct({ id: 1 }).stockStatus).toBe('unknown');
+  });
+
+  it('reads persisted admin metadata and dimensions without inventing values', () => {
+    const record = fromWooProduct({
+      id: 2497,
+      dimensions: { length: '40', width: '30', height: '20' },
+      weight: '45',
+      meta_data: [
+        { key: '_himalayan_koh_cost_price', value: '25' },
+        { key: '_himalayan_koh_landed_cost', value: '25' },
+        { key: '_himalayan_koh_package_preset', value: 'custom' },
+        { key: '_himalayan_koh_seo_keywords', value: '["rock salt"]' },
+        { key: '_himalayan_koh_canonical_slug', value: 'himalayan-rock-salt-45-lbs-2-3-large-chunks' },
+      ],
+    });
+    expect(record.costPrice).toBe(25);
+    expect(record.landedCost).toBe(25);
+    expect(record.packagePreset).toBe('custom');
+    expect(record.dimensions).toEqual({ length: 40, width: 30, height: 20 });
+    expect(record.seoKeywords).toEqual(['rock salt']);
+    expect(record.canonicalSlug).toBe('himalayan-rock-salt-45-lbs-2-3-large-chunks');
   });
 
   it('treats a non-publish status as not listed', () => {

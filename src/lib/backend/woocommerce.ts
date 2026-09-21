@@ -21,6 +21,7 @@
 
 import type { Product, StockStatus } from '../../data/products';
 import { collectMissingCatalogFields, priceDisplayFromRange } from '../products/price';
+import { productSlugFromName } from '../products/slug';
 import { resolveCuratedProductImages } from '../products/curatedImages';
 import { variationPriceRange, type WooVariationLike } from '../woo/productPayload';
 import { backendConfig } from './config';
@@ -417,17 +418,31 @@ export async function fetchAdminProductBySlug(
   slug: string,
   signal?: AbortSignal
 ): Promise<Product | null> {
-  if (hasWooCommerceCredentials()) {
-    const raw = await wordpressRequest<RestV3Product[]>(`${REST_V3}/products`, {
-      params: { slug, status: 'publish', per_page: 1 },
+  if (!hasWooCommerceCredentials()) return null;
+
+  const exact = await wordpressRequest<RestV3Product[]>(`${REST_V3}/products`, {
+    params: { slug, status: 'publish', per_page: 1 },
+    useCredentials: true,
+    signal,
+  });
+  let rows = Array.isArray(exact) ? exact : [];
+
+  // Admin-generated slugs historically used the product title while Woo kept a
+  // shorter legacy slug. Resolve that safe alias server-side instead of making
+  // every admin View link land on a false 404.
+  if (rows.length === 0) {
+    const candidates = await wordpressRequest<RestV3Product[]>(`${REST_V3}/products`, {
+      params: { search: slug, status: 'publish', per_page: 100 },
       useCredentials: true,
       signal,
     });
-    const rows = Array.isArray(raw) ? raw : [];
-    const [product] = await withVariationPricing(rows, rows.map(mapRestV3Product), signal);
-    if (product) return product;
+    rows = (Array.isArray(candidates) ? candidates : []).filter((row) =>
+      row.slug === slug || productSlugFromName(String(row.name ?? ''), row.slug) === slug
+    ).slice(0, 1);
   }
-  return null;
+
+  const [product] = await withVariationPricing(rows, rows.map(mapRestV3Product), signal);
+  return product ?? null;
 }
 
 /**
@@ -450,7 +465,7 @@ async function withVariationPricing(
       (entry): entry is { row: RestV3Product; product: Product } =>
         Boolean(entry.product) &&
         entry.row.type === 'variable' &&
-        entry.product.priceMin === null &&
+        (entry.product.priceMin === null || entry.product.priceMin <= 0) &&
         (entry.row.variations?.length ?? 0) > 0
     );
 

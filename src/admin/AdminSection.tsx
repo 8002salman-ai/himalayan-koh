@@ -3604,7 +3604,7 @@ function _genBreadcrumbSchema(p: Product, seo: SEOData): string {
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": SITE_ORIGIN },
       { "@type": "ListItem", "position": 2, "name": p.category, "item": `${SITE_ORIGIN}/#/category/${p.category.toLowerCase().replace(/\s+/g,'-')}` },
-      { "@type": "ListItem", "position": 3, "name": seo.title || p.name, "item": `${SITE_ORIGIN}/#/products/${seo.slug || p.id}` }
+      { "@type": "ListItem", "position": 3, "name": seo.title || p.name, "item": `${SITE_ORIGIN}/products/${seo.slug || p.id}` }
     ]
   }, null, 2);
 }
@@ -3707,7 +3707,7 @@ export function ASEOEngine() {
       ...prev,
       title: prev.title || p.name,
       slug: prev.slug || slug,
-      canonicalUrl: `https://himalayankoh.com/product/${slug}`,
+      canonicalUrl: `${SITE_ORIGIN}/products/${slug}`,
       imageAlt: prev.imageAlt || (p.name + ' product image'),
       imageTitle: prev.imageTitle || p.name,
     }));
@@ -3829,7 +3829,7 @@ Rules:
         imageAlt: str('imageAlt') || prev.imageAlt,
         imageTitle: str('imageTitle') || prev.imageTitle,
         imageCaption: str('imageCaption') || prev.imageCaption,
-        canonicalUrl: `https://himalayankoh.com/product/${str('slug') || prev.slug}`,
+        canonicalUrl: `${SITE_ORIGIN}/products/${str('slug') || prev.slug}`,
       }));
       setSocial(prev => ({
         ...prev,

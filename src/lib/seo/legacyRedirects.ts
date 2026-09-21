@@ -154,7 +154,7 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   // --- Catch-alls (must stay last) ------------------------------------------
   // Any WooCommerce URL not mapped above still lands somewhere relevant
   // instead of returning 404 and shedding the link.
-  { source: '/product/:slug', destination: '/products', permanent: true },
+  { source: '/product/:slug', destination: '/products/:slug', permanent: true },
   { source: '/product-category/:slug*', destination: '/products', permanent: true },
   { source: '/shop/:slug*', destination: '/products', permanent: true },
   { source: '/services/:slug*', destination: '/products', permanent: true },

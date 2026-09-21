@@ -55,7 +55,7 @@ export function categoryLabel(id: string): string {
 }
 
 export function productPath(p: Pick<Product, 'id' | 'slug'>): string {
-  return `/product/${p.slug || p.id}`;
+  return `/products/${p.slug || p.id}`;
 }
 
 export function formatDate(iso: string | null): string {

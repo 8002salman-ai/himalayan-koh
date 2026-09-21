@@ -577,6 +577,14 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
   const id = String(r.id);
   const slug = String(r.slug || id);
   const catName = (r.categoryName as string) || (r.category as string) || 'Edible Salt';
+  const dimensions = r.dimensions && typeof r.dimensions === 'object' ? r.dimensions as { length?: number | null; width?: number | null; height?: number | null } : {};
+  const specifications = {
+    ...(typeof r.weight === 'number' ? { weightLbs: r.weight } : {}),
+    ...(typeof dimensions.length === 'number' ? { lengthIn: dimensions.length } : {}),
+    ...(typeof dimensions.width === 'number' ? { widthIn: dimensions.width } : {}),
+    ...(typeof dimensions.height === 'number' ? { heightIn: dimensions.height } : {}),
+    ...(typeof r.packagePreset === 'string' ? { packagePreset: r.packagePreset } : {}),
+  };
   const catId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   const stockQty = typeof r.stockQuantity === 'number' ? r.stockQuantity : (r.stockStatus === 'instock' || r.inStock ? 50 : 0);
   const stockStat = r.stockStatus === 'instock' || r.inStock ? 'in_stock' : (r.stockStatus === 'outofstock' ? 'out_of_stock' : 'in_stock');
@@ -595,15 +603,15 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     shortDescription: shortDesc,
     description: desc,
     features: [],
-    specifications: {},
+    specifications,
     categoryId: catId,
     categoryName: catName,
     brand: 'Himalayan Koh',
     status: isListed ? 'active' : 'inactive',
     price: priceNum,
     compareAtPrice: compareAt,
-    costPrice: 0,
-    landedCost: 0,
+    costPrice: typeof r.costPrice === 'number' ? r.costPrice : 0,
+    landedCost: typeof r.landedCost === 'number' ? r.landedCost : 0,
     marginPercent: 55,
     currency: 'USD',
     sku: (r.sku as string) || '',
@@ -635,13 +643,12 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
     bestSeller: false,
     promoted: false,
     saleEnabled: compareAt > priceNum,
-    seoTitle: `${name} | Himalayan Koh`,
-    seoDescription: `${name} - 100% pure authentic Himalayan Pink Salt directly from the Khewra Salt Mines.`,
-    // Stored values are null until actually persisted — displaying a
-    // generated value as "stored" misreports the Woo record.
-    seoTitleStored: null,
-    seoDescriptionStored: null,
-    seoKeywords: ['himalayan salt', 'pink salt', 'khewra mines'],
+    seoTitle: typeof r.seoTitle === 'string' && r.seoTitle ? r.seoTitle : `${name} | Himalayan Koh`,
+    seoDescription: typeof r.seoDescription === 'string' && r.seoDescription ? r.seoDescription : `${name} - Himalayan Koh product details.`,
+    seoTitleStored: typeof r.seoTitle === 'string' && r.seoTitle ? r.seoTitle : null,
+    seoDescriptionStored: typeof r.seoDescription === 'string' && r.seoDescription ? r.seoDescription : null,
+    seoKeywords: Array.isArray(r.seoKeywords) ? r.seoKeywords.filter((x): x is string => typeof x === 'string') : [],
+    canonicalSlug: typeof r.canonicalSlug === 'string' && r.canonicalSlug ? r.canonicalSlug : slug,
     images: imagesList.map((url, i) => ({
       id: `img-${id}-${i}`,
       productId: id,
@@ -762,21 +769,8 @@ async function readFromDb(): Promise<CatalogProduct[]> {
 }
 
 export async function getProduct(id: string): Promise<CatalogProduct | null> {
-  if (typeof window !== 'undefined') {
-    // Fast in-memory cache hit (<1ms) so clicking product title renders immediately
-    if (catalogMemoryCache && (Date.now() - catalogMemoryCache.timestamp < CATALOG_CACHE_TTL_MS)) {
-      const found = catalogMemoryCache.products.find((p) => p.id === id || p.slug === id);
-      if (found) return found;
-    }
-    try {
-      const prods = await listProducts();
-      const found = prods.find((p) => p.id === id || p.slug === id);
-      if (found) return found;
-    } catch {
-      // fallback to db adapter
-    }
-  }
-
+  // Numeric ids belong to WooCommerce. Always read them directly after a save;
+  // the browser catalog cache may still contain the pre-save projection.
   if (isWooId(id)) {
     try {
       const token = await getFreshAccessToken().catch(() => null);
@@ -793,6 +787,21 @@ export async function getProduct(id: string): Promise<CatalogProduct | null> {
       // ignore
     }
     return null;
+  }
+
+  if (typeof window !== 'undefined') {
+    // Fast in-memory cache hit for UUID-backed catalog products.
+    if (catalogMemoryCache && (Date.now() - catalogMemoryCache.timestamp < CATALOG_CACHE_TTL_MS)) {
+      const found = catalogMemoryCache.products.find((p) => p.id === id || p.slug === id);
+      if (found) return found;
+    }
+    try {
+      const prods = await listProducts();
+      const found = prods.find((p) => p.id === id || p.slug === id);
+      if (found) return found;
+    } catch {
+      // fallback to db adapter
+    }
   }
 
   const db = getDb();
@@ -1168,6 +1177,23 @@ async function updateWooProductViaApi(id: string, input: Partial<ProductInput>):
   if (input.sku !== undefined) body.sku = input.sku;
   if (input.price !== undefined) body.price = input.price;
   if (input.compareAtPrice !== undefined) body.compareAtPrice = input.compareAtPrice;
+  if (input.costPrice !== undefined) body.costPrice = input.costPrice;
+  if (input.landedCost !== undefined) body.landedCost = input.landedCost;
+  if (input.specifications !== undefined) {
+    const specs = input.specifications as Record<string, unknown>;
+    body.weight = typeof specs.weightLbs === 'number' ? specs.weightLbs : undefined;
+    body.dimensions = {
+      length: typeof specs.lengthIn === 'number' ? specs.lengthIn : undefined,
+      width: typeof specs.widthIn === 'number' ? specs.widthIn : undefined,
+      height: typeof specs.heightIn === 'number' ? specs.heightIn : undefined,
+    };
+    body.packagePreset = typeof specs.packagePreset === 'string' ? specs.packagePreset : undefined;
+  }
+  if (input.seoKeywords !== undefined) body.seoKeywords = input.seoKeywords;
+  if (input.canonicalSlug !== undefined) {
+    body.canonicalSlug = input.canonicalSlug;
+    body.slug = input.canonicalSlug;
+  }
   if (input.featured !== undefined) body.featured = input.featured;
   if (input.tags !== undefined) body.tags = input.tags;
   if (input.status !== undefined) {
@@ -1196,6 +1222,7 @@ async function updateWooProductViaApi(id: string, input: Partial<ProductInput>):
       ...(input.seoDescription !== undefined ? { description: input.seoDescription } : {}),
     };
   }
+  for (const key of Object.keys(body)) if (body[key] === undefined) delete body[key];
   if (!Object.keys(body).length) return getProduct(id);
 
   const token = await getFreshAccessToken().catch(() => null);
@@ -1212,6 +1239,10 @@ async function updateWooProductViaApi(id: string, input: Partial<ProductInput>):
     throw new Error(`Woo save failed (${res.status}): ${detail.slice(0, 160)}`);
   }
   const json = await res.json().catch(() => null);
+  if (Array.isArray(json?.ignored) && json.ignored.length > 0) {
+    const details = json.ignored.map((item: { field?: string; reason?: string }) => `${item.field || 'field'}: ${item.reason || 'not applied'}`).join(' ');
+    throw new Error(`WooCommerce did not apply this save. ${details}`);
+  }
   const updated = json?.product ? adminCatalogRowToProduct(json.product) : null;
   invalidateCatalogCache(updated);
   return updated ?? getProduct(id);

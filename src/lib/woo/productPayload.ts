@@ -62,6 +62,13 @@ export interface AdminProductPatch {
   backorders?: 'no' | 'notify' | 'yes';
   lowStockAmount?: number | null;
   weight?: number | null;
+  dimensions?: { length?: number | null; width?: number | null; height?: number | null };
+  /** Admin economics stored as explicit Himalayan Koh metadata. */
+  costPrice?: number | null;
+  landedCost?: number | null;
+  packagePreset?: string | null;
+  seoKeywords?: string[];
+  canonicalSlug?: string | null;
   featured?: boolean;
   /** SEO fields, written to the store's SEO plugin (Yoast) keys. */
   seo?: { title?: string | null; description?: string | null };
@@ -81,7 +88,37 @@ export interface AdminVariationPatch {
 export const SEO_META_KEYS = {
   title: '_yoast_wpseo_title',
   description: '_yoast_wpseo_metadesc',
+  keywords: '_himalayan_koh_seo_keywords',
+  canonicalSlug: '_himalayan_koh_canonical_slug',
+  costPrice: '_himalayan_koh_cost_price',
+  landedCost: '_himalayan_koh_landed_cost',
+  packagePreset: '_himalayan_koh_package_preset',
 } as const;
+
+function metaValue(row: WooProductLike, key: string): string | null {
+  const entry = row.meta_data?.find((item) => item.key === key);
+  if (!entry || entry.value === undefined || entry.value === null) return null;
+  const value = String(entry.value).trim();
+  return value || null;
+}
+
+function numberMetaValue(row: WooProductLike, key: string): number | null {
+  const value = metaValue(row, key);
+  if (value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function stringListMetaValue(row: WooProductLike, key: string): string[] {
+  const value = metaValue(row, key);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+}
 
 /** Serialises a number for Woo, which expects decimal strings. `null` clears. */
 export function toWooDecimal(value: number | null | undefined): string | undefined {
@@ -223,17 +260,30 @@ export function toWooProductBody(
   if (patch.weight !== undefined) {
     body.weight = patch.weight === null ? '' : String(patch.weight);
   }
+  if (patch.dimensions !== undefined) {
+    body.dimensions = {
+      ...(patch.dimensions.length !== undefined ? { length: patch.dimensions.length === null ? '' : String(patch.dimensions.length) } : {}),
+      ...(patch.dimensions.width !== undefined ? { width: patch.dimensions.width === null ? '' : String(patch.dimensions.width) } : {}),
+      ...(patch.dimensions.height !== undefined ? { height: patch.dimensions.height === null ? '' : String(patch.dimensions.height) } : {}),
+    };
+  }
+
+  const meta: Array<{ key: string; value: string }> = [];
+  if (patch.costPrice !== undefined) meta.push({ key: SEO_META_KEYS.costPrice, value: patch.costPrice == null ? '' : String(patch.costPrice) });
+  if (patch.landedCost !== undefined) meta.push({ key: SEO_META_KEYS.landedCost, value: patch.landedCost == null ? '' : String(patch.landedCost) });
+  if (patch.packagePreset !== undefined) meta.push({ key: SEO_META_KEYS.packagePreset, value: patch.packagePreset ?? '' });
+  if (patch.seoKeywords !== undefined) meta.push({ key: SEO_META_KEYS.keywords, value: JSON.stringify(patch.seoKeywords) });
+  if (patch.canonicalSlug !== undefined) meta.push({ key: SEO_META_KEYS.canonicalSlug, value: patch.canonicalSlug ?? '' });
 
   if (patch.seo !== undefined) {
-    const meta: Array<{ key: string; value: string }> = [];
     if (patch.seo.title !== undefined) {
       meta.push({ key: SEO_META_KEYS.title, value: patch.seo.title ?? '' });
     }
     if (patch.seo.description !== undefined) {
       meta.push({ key: SEO_META_KEYS.description, value: patch.seo.description ?? '' });
     }
-    if (meta.length) body.meta_data = meta;
   }
+  if (meta.length) body.meta_data = meta;
 
   return body;
 }
@@ -274,6 +324,7 @@ export interface WooProductLike {
   manage_stock?: boolean;
   low_stock_amount?: number | null;
   weight?: string;
+  dimensions?: { length?: string; width?: string; height?: string };
   featured?: boolean;
   images?: Array<{ id?: number; src?: string; alt?: string }>;
   categories?: Array<{ id?: number; name?: string; slug?: string }>;
@@ -319,8 +370,14 @@ export interface AdminProductRecord {
   stockQuantity: number | null;
   manageStock: boolean;
   weight: number | null;
+  dimensions: { length: number | null; width: number | null; height: number | null };
+  costPrice: number | null;
+  landedCost: number | null;
+  packagePreset: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  seoKeywords: string[];
+  canonicalSlug: string | null;
   permalink: string | null;
   dateModified: string | null;
 }
@@ -377,8 +434,18 @@ export function fromWooProduct(row: WooProductLike): AdminProductRecord {
     stockQuantity: typeof row.stock_quantity === 'number' ? row.stock_quantity : null,
     manageStock: Boolean(row.manage_stock),
     weight: parseWooDecimal(row.weight),
+    dimensions: {
+      length: parseWooDecimal(row.dimensions?.length),
+      width: parseWooDecimal(row.dimensions?.width),
+      height: parseWooDecimal(row.dimensions?.height),
+    },
+    costPrice: numberMetaValue(row, SEO_META_KEYS.costPrice),
+    landedCost: numberMetaValue(row, SEO_META_KEYS.landedCost),
+    packagePreset: metaValue(row, SEO_META_KEYS.packagePreset),
     seoTitle: seoMeta(row, SEO_META_KEYS.title),
     seoDescription: seoMeta(row, SEO_META_KEYS.description),
+    seoKeywords: stringListMetaValue(row, SEO_META_KEYS.keywords),
+    canonicalSlug: metaValue(row, SEO_META_KEYS.canonicalSlug),
     permalink: row.permalink ? String(row.permalink) : null,
     dateModified: row.date_modified_gmt ? String(row.date_modified_gmt) : null,
   };

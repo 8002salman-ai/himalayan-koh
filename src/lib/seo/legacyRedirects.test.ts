@@ -38,6 +38,7 @@ const LIVE_PRODUCT_SLUGS = new Set([
   'chef-himalayan-pink-salt',
   'himalayan-chef-himalayan-pink-salt-coarse-grain-jar-1-lbs',
   'himalayan-crystal-rock-salt-lamp-ionizer-air-purifier-with-dimmable-control',
+  'himalayan-rock-salt-45-lbs-2-3-large-chunks',
   'salt-licks',
 ]);
 
@@ -108,6 +109,7 @@ describe('legacy redirect map', () => {
         const key = new URLSearchParams(query).get('category');
         return !key || !SHELF_KEYS.has(key);
       }
+      if (path === '/products/:slug') return false;
       if (path.startsWith('/products/')) {
         return !LIVE_PRODUCT_SLUGS.has(path.replace('/products/', ''));
       }

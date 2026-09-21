@@ -21,7 +21,7 @@ import {
   updateWooVariation,
   WooWriteError,
 } from '@/lib/woo/productWrite';
-import { fromWooProduct, isUnusablePrice, type AdminVariationPatch } from '@/lib/woo/productPayload';
+import { fromWooProduct, isUnusablePrice, variationPriceRange, type AdminVariationPatch } from '@/lib/woo/productPayload';
 
 const PATCH_FIELDS = [
   'name',
@@ -42,6 +42,12 @@ const PATCH_FIELDS = [
   'backorders',
   'lowStockAmount',
   'weight',
+  'dimensions',
+  'costPrice',
+  'landedCost',
+  'packagePreset',
+  'seoKeywords',
+  'canonicalSlug',
   'featured',
   'seo',
 ] as const;
@@ -110,8 +116,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const product = await getWooProduct(id);
     const variations = product.type === 'variable' ? await listWooVariations(id) : [];
+    const record = fromWooProduct(product);
+    if ((record.price === null || record.price <= 0) && variations.length > 0) {
+      const range = variationPriceRange(variations);
+      if (range) {
+        record.price = range.min;
+        record.compareAtPrice = range.max > range.min ? range.max : null;
+      }
+    }
     return NextResponse.json({
-      product: fromWooProduct(product),
+      product: record,
       variations,
     });
   } catch (error) {

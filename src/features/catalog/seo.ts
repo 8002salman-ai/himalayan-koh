@@ -17,7 +17,7 @@ export const SITE_URL = SITE_ORIGIN;
  * (the worker emits full Product JSON-LD/canonical only for slug URLs); id is
  * a safety fallback when a slug is missing. */
 export function productPath(p: { id: string; slug?: string | null }): string {
-  return `/product/${p.slug || p.id}`;
+  return `/products/${p.slug || p.id}`;
 }
 
 export function productUrl(p: { id: string; slug?: string | null }): string {
