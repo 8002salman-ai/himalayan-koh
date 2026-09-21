@@ -12,7 +12,7 @@ import {
   Plus, PencilSimple, Trash, ArrowLeft, Copy, Eye,
   MagnifyingGlass, FloppyDisk, Image as ImageIcon, Stack, Tag, Globe, Truck, Package, CurrencyDollar,
   GearSix, X, Download, List, Megaphone, Warning, Brain, UploadSimple, Sparkle, CaretDown, CaretUp, ArrowSquareOut, Rocket, BookBookmark,
-  DotsThreeVertical, Clock, CheckCircle, DotsSixVertical,
+  DotsThreeVertical, Clock, CheckCircle, DotsSixVertical, ArrowsClockwise, ArrowsHorizontal, Sun,
 } from '@phosphor-icons/react';
 import Modal from '../components/common/Modal';
 import Popover from '../components/common/Popover';
@@ -237,6 +237,40 @@ export function CatalogProductsPage() {
   const [hydrated, setHydrated] = useState(false);
   const [renderNowMs, setRenderNowMs] = useState<number | null>(null);
   const [dragCol, setDragCol] = useState<CatalogColumnKey | null>(null);
+  // Row height resize state: tracks which row is being resized and the drag offset.
+  const [rowHeight, setRowHeight] = useState<number>(48);
+  const rowResizeRef = useRef<{ startY: number; startH: number } | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [tableMaxH, setTableMaxH] = useState(600);
+  // Dynamic table height: fill available space in the viewport.
+  useEffect(() => {
+    const updateHeight = () => {
+      if (!tableContainerRef.current) return;
+      const rect = tableContainerRef.current.getBoundingClientRect();
+      const available = window.innerHeight - rect.top - 16; // 16px bottom padding
+      setTableMaxH(Math.max(300, available));
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+  const onRowResizeStart = useCallback((e: React.MouseEvent, productId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    rowResizeRef.current = { startY: e.clientY, startH: rowHeight };
+    const onMove = (ev: MouseEvent) => {
+      if (!rowResizeRef.current) return;
+      const dy = ev.clientY - rowResizeRef.current.startY;
+      setRowHeight(Math.max(32, Math.min(200, rowResizeRef.current.startH + dy)));
+    };
+    const onUp = () => {
+      rowResizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [rowHeight]);
   useEffect(() => {
     let cancelled = false;
     void getAutoPublishEnabled().then((v) => { if (!cancelled) setAutoPublish(v); });
@@ -1006,12 +1040,10 @@ export function CatalogProductsPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {/* Bounded height + overflow-auto on BOTH axes: the table is wider than
-            the viewport, so the horizontal scrollbar must live in a container
-            whose height is capped — otherwise it sits thousands of pixels
-            below the fold and "side scroll" appears broken. */}
-        <div className="overflow-auto overscroll-contain" style={{ maxHeight: 'calc(100vh - 170px)' }}>
+      <div ref={tableContainerRef} className="bg-white rounded-xl shadow-sm overflow-hidden">
+        {/* Dynamic height: fills remaining viewport space. Table scrolls when
+            content overflows; otherwise uses all available vertical space. */}
+        <div className="overflow-auto overscroll-contain" style={{ maxHeight: tableMaxH }}>
           <table className="w-full min-w-[1240px]">
             <thead className="bg-gray-50 text-left text-[11px] text-gray-500 uppercase tracking-wider shadow-xs">
               <tr>
@@ -1064,15 +1096,37 @@ export function CatalogProductsPage() {
                 const justSeoed = seo.running && seo.doneIds.includes(p.id);
                 const cells: Record<CatalogColumnKey, ReactNode> = {
                   product: (
-                    <td className="px-3 py-1.5 max-w-[280px]">
+                    <td className="px-3 py-1.5 max-w-[400px]">
                       <div className="flex items-center gap-2.5">
-                        <div className="relative w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
+                        <div className="relative group w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
                           <Package size={16} className="shrink-0" />
                           {p.images[0]?.url?.trim() ? (
                             <img src={p.images[0].url} alt="" loading="lazy"
                               className="absolute inset-0 w-full h-full object-cover"
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                           ) : null}
+                          {p.images.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!window.confirm(`Remove ${p.images.length === 1 ? 'the image' : `${p.images.length} images`} from "${p.name}"?`)) return;
+                                try {
+                                  setDbToken(await getFreshAccessToken());
+                                  const remaining = p.images.filter((_, i) => i !== 0);
+                                  const upd = await saveProductImages(p.id, remaining.map((img) => ({ url: img.url, alt: img.altText || '' })));
+                                  if (upd) patchLocal(upd);
+                                  notify('Image removed');
+                                } catch (err) {
+                                  notify(`Could not remove image: ${(err as Error).message}`, 'error');
+                                }
+                              }}
+                              className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                              title="Remove image"
+                            >
+                              <X size={8} weight="bold" />
+                            </button>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -1080,8 +1134,8 @@ export function CatalogProductsPage() {
                           title={`Edit ${p.name}`}
                           className="min-w-0 text-left cursor-pointer group"
                         >
-                          <p className="font-medium text-xs truncate group-hover:text-blue-600 group-hover:underline max-w-[220px]" title={p.name}>{p.name}</p>
-                          <p className="text-[10px] text-gray-400 truncate max-w-[220px]">{p.brand}{p.sku ? ` · ${p.sku}` : ''}</p>
+                          <p className="font-medium text-xs group-hover:text-blue-600 group-hover:underline break-words leading-tight" style={{ minWidth: 0 }}>{p.name}</p>
+                          <p className="text-[10px] text-gray-400 break-words leading-tight">{p.brand}{p.sku ? ` · ${p.sku}` : ''}</p>
                         </button>
                       </div>
                     </td>
@@ -1334,9 +1388,15 @@ export function CatalogProductsPage() {
                   ),
                 };
                 return (
-                  <tr key={p.id} className="border-t hover:bg-blue-50/40 transition-colors">
-                    <td className="px-3 py-1.5">
+                  <tr key={p.id} className="border-t hover:bg-blue-50/40 transition-colors group/row" style={{ height: rowHeight }}>
+                    <td className="px-3 py-1.5 relative">
                       <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} aria-label={`Select ${p.name}`} />
+                      {/* Row resize handle */}
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize opacity-0 group-hover/row:opacity-100 transition-opacity"
+                        onMouseDown={(e) => onRowResizeStart(e, p.id)}
+                        title="Drag to resize row height"
+                      />
                     </td>
                     {colOrder.map((k) => <Fragment key={k}>{cells[k]}</Fragment>)}
                   </tr>
@@ -3177,11 +3237,26 @@ async function uploadImageToStorage(dataUrl: string, filename: string, contentTy
  * busy scenes. Returns a PNG data URL.
  */
 async function removeImageBackground(dataUrl: string): Promise<string> {
+  // External HTTP images must be fetched as a blob first to avoid canvas
+  // cross-origin tainting, which prevents getImageData() from working.
+  let safeUrl = dataUrl;
+  if (/^https?:\/\//i.test(dataUrl)) {
+    try {
+      const resp = await fetch(dataUrl);
+      if (!resp.ok) throw new Error(`Image fetch failed (HTTP ${resp.status})`);
+      const blob = await resp.blob();
+      safeUrl = URL.createObjectURL(blob);
+    } catch {
+      // Fall through — the direct load may still work for same-origin or
+      // CORS-enabled servers; if it taints the canvas the catch below
+      // provides a user-friendly error.
+    }
+  }
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
     i.onload = () => resolve(i);
     i.onerror = () => reject(new Error('Could not load image'));
-    i.src = dataUrl;
+    i.src = safeUrl;
   });
   const maxDim = 1200;
   const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
@@ -3229,8 +3304,96 @@ async function removeImageBackground(dataUrl: string): Promise<string> {
     if (y < height - 1) stack.push(p + width);
   }
   ctx.putImageData(imageData, 0, 0);
+  if (safeUrl !== dataUrl) URL.revokeObjectURL(safeUrl);
   return canvas.toDataURL('image/png');
 }
+
+/**
+ * Load an image URL into a canvas, apply a transformation, and return a data URL.
+ * Handles cross-origin images by fetching as blob first.
+ */
+async function transformImage(dataUrl: string, transform: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): Promise<string> {
+  let safeUrl = dataUrl;
+  if (/^https?:\/\//i.test(dataUrl)) {
+    try {
+      const resp = await fetch(dataUrl);
+      if (!resp.ok) throw new Error(`Image fetch failed (HTTP ${resp.status})`);
+      safeUrl = URL.createObjectURL(await resp.blob());
+    } catch { /* fall through */ }
+  }
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('Could not load image'));
+    i.src = safeUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) { if (safeUrl !== dataUrl) URL.revokeObjectURL(safeUrl); return dataUrl; }
+  ctx.drawImage(img, 0, 0);
+  transform(ctx, canvas.width, canvas.height);
+  if (safeUrl !== dataUrl) URL.revokeObjectURL(safeUrl);
+  return canvas.toDataURL('image/png');
+}
+
+/** Rotate image by 90 degrees clockwise. */
+async function rotateImage90(dataUrl: string): Promise<string> {
+  let safeUrl = dataUrl;
+  if (/^https?:\/\//i.test(dataUrl)) {
+    try {
+      const resp = await fetch(dataUrl);
+      if (resp.ok) safeUrl = URL.createObjectURL(await resp.blob());
+    } catch { /* fall through */ }
+  }
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('Could not load image'));
+    i.src = safeUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalHeight; // swapped
+  canvas.height = img.naturalWidth;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) { if (safeUrl !== dataUrl) URL.revokeObjectURL(safeUrl); return dataUrl; }
+  ctx.translate(canvas.width, 0);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(img, 0, 0);
+  if (safeUrl !== dataUrl) URL.revokeObjectURL(safeUrl);
+  return canvas.toDataURL('image/png');
+}
+
+/** Flip image horizontally. */
+async function flipImageH(dataUrl: string): Promise<string> {
+  return transformImage(dataUrl, (ctx, w, h) => {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(ctx.canvas, -w, 0);
+    ctx.restore();
+  });
+}
+
+/** Adjust brightness (-100 to +100) and contrast (-100 to +100). */
+async function adjustBrightness(dataUrl: string, brightness: number, contrast: number): Promise<string> {
+  return transformImage(dataUrl, (ctx, w, h) => {
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const b = brightness * 2.55; // -255 to 255
+    const c = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = clamp(c * (data[i] - 128 + b) + 128);
+      data[i + 1] = clamp(c * (data[i + 1] - 128 + b) + 128);
+      data[i + 2] = clamp(c * (data[i + 2] - 128 + b) + 128);
+    }
+    ctx.putImageData(imageData, 0, 0);
+  });
+}
+
+function clamp(v: number) { return Math.max(0, Math.min(255, Math.round(v))); }
 
 // ============================================================================
 // IMAGE MANAGER
@@ -3242,6 +3405,10 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState<number | null>(null);
   const [finding, setFinding] = useState(false);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [editBusy, setEditBusy] = useState(false);
 
   /**
    * Find this product's images on the store BY NAME.
@@ -3429,7 +3596,16 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
         return;
       }
       const parsed = parseHtmlPage(await r.text());
-      const found = parsed.images.filter((i) => i.startsWith('http'));
+      const found = parsed.images.filter((i) => {
+        if (!i.startsWith('http')) return false;
+        // Exclude SVGs (WooCommerce cannot import them as product images)
+        // and common placeholder/icon/logo/spinner images.
+        if (/\.svg(\?|$)/i.test(i)) return false;
+        if (/(placeholder|favicon|icon|badge|sprite|loader|spinner|logo|pixel|transparent|1x1)/i.test(i)) return false;
+        // Only keep raster product images
+        if (!/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(i)) return false;
+        return true;
+      });
       if (!found.length) { notify('No product images found on that page.', 'error'); return; }
       const existing = new Set(product.images.map((i) => i.url));
       const fresh = found.filter((i) => !hasCatalogImageUrl([...existing], i)).slice(0, 5 - product.images.length);
@@ -3479,6 +3655,57 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
     }
   };
 
+  const onRotate = async (idx: number) => {
+    const img = product.images[idx];
+    if (!img) return;
+    setProcessing(idx);
+    try {
+      const rotated = await rotateImage90(img.url);
+      const stored = await uploadImageToStorage(rotated, `rotated-${idx}.png`, 'image/png');
+      onProduct({ ...product, images: product.images.map((x, i) => (i === idx ? { ...x, url: stored } : x)) });
+      notify('Image rotated 90° and saved.');
+    } catch (e) {
+      notify(`Rotation failed: ${(e as Error).message}`, 'error');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const onFlipH = async (idx: number) => {
+    const img = product.images[idx];
+    if (!img) return;
+    setProcessing(idx);
+    try {
+      const flipped = await flipImageH(img.url);
+      const stored = await uploadImageToStorage(flipped, `flipped-${idx}.png`, 'image/png');
+      onProduct({ ...product, images: product.images.map((x, i) => (i === idx ? { ...x, url: stored } : x)) });
+      notify('Image flipped horizontally and saved.');
+    } catch (e) {
+      notify(`Flip failed: ${(e as Error).message}`, 'error');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const onAdjust = async (idx: number) => {
+    const img = product.images[idx];
+    if (!img) return;
+    setEditBusy(true);
+    try {
+      const adjusted = await adjustBrightness(img.url, brightness, contrast);
+      const stored = await uploadImageToStorage(adjusted, `adjusted-${idx}.png`, 'image/png');
+      onProduct({ ...product, images: product.images.map((x, i) => (i === idx ? { ...x, url: stored } : x)) });
+      notify('Brightness/contrast applied and saved.');
+      setEditIdx(null);
+      setBrightness(0);
+      setContrast(0);
+    } catch (e) {
+      notify(`Adjustment failed: ${(e as Error).message}`, 'error');
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Add bar: upload from PC + URL + alt */}
@@ -3507,9 +3734,10 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
       {product.images.length === 0 ? (
         <div className="text-center py-10 text-gray-400 border border-dashed rounded-xl"><ImageIcon size={28} className="mx-auto mb-2 text-gray-300" />No images yet — upload or add at least one.</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {product.images.map((img, idx) => (
             <div key={img.id || idx} className={`relative group rounded-xl overflow-hidden border-2 transition-all ${img.isPrimary ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'}`}>
+              {/* Image preview */}
               <button type="button" onClick={() => setPrimary(idx)} className="block w-full relative aspect-square bg-gray-100" title="Click to make this the main thumbnail">
                 <span className="absolute inset-0 flex items-center justify-center text-gray-300"><ImageIcon size={24} className="shrink-0" /></span>
                 {img.url?.trim() ? (
@@ -3518,24 +3746,69 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
               </button>
               {img.isPrimary && <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded">MAIN</span>}
               <button type="button" onClick={() => remove(idx)} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 hover:bg-red-600 shadow" title="Remove image">✕</button>
-              <div className="p-1.5 space-y-1.5 bg-white">
-                <input value={img.altText} onChange={(e) => update(idx, { altText: e.target.value })} className="w-full px-1.5 py-1 border border-gray-200 rounded text-[11px]" placeholder="Alt text" />
-                <div className="flex gap-1 flex-wrap">
-                  <select value={img.kind} onChange={(e) => update(idx, { kind: e.target.value as CatalogImage['kind'] })} className="text-[10px] px-1 py-0.5 border border-gray-200 rounded" aria-label="Image kind">
+
+              {/* Editing toolbar — always visible, not hidden behind hover */}
+              <div className="flex items-center gap-1 px-2 py-1.5 bg-gray-50 border-t border-gray-100">
+                <button type="button" onClick={() => onRemoveBackground(idx)} disabled={processing === idx}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 transition-colors"
+                  title="Remove solid background (client-side)">
+                  {processing === idx ? '⟳ Processing…' : '✂ Remove bg'}
+                </button>
+                <button type="button" onClick={() => onRotate(idx)} disabled={processing === idx}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                  title="Rotate 90° clockwise">
+                  <ArrowsClockwise size={11} /> Rotate
+                </button>
+                <button type="button" onClick={() => onFlipH(idx)} disabled={processing === idx}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-green-200 text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+                  title="Flip horizontally">
+                  <ArrowsHorizontal size={11} /> Flip
+                </button>
+                <button type="button" onClick={() => setEditIdx(editIdx === idx ? null : idx)}
+                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border transition-colors ${editIdx === idx ? 'bg-amber-100 border-amber-300 text-amber-800' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}`}
+                  title="Adjust brightness and contrast">
+                  <Sun size={11} /> Adjust
+                </button>
+              </div>
+
+              {/* Brightness/contrast editor (expandable) */}
+              {editIdx === idx && (
+                <div className="px-3 py-2 bg-amber-50 border-t border-amber-100 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-medium text-amber-700 w-16">Bright</label>
+                    <input type="range" min={-50} max={50} value={brightness} onChange={(e) => setBrightness(+e.target.value)} className="flex-1 h-1 accent-amber-500" />
+                    <span className="text-[10px] text-amber-600 w-6 text-right">{brightness > 0 ? '+' : ''}{brightness}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-medium text-amber-700 w-16">Contrast</label>
+                    <input type="range" min={-50} max={50} value={contrast} onChange={(e) => setContrast(+e.target.value)} className="flex-1 h-1 accent-amber-500" />
+                    <span className="text-[10px] text-amber-600 w-6 text-right">{contrast > 0 ? '+' : ''}{contrast}</span>
+                  </div>
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => onAdjust(idx)} disabled={editBusy}
+                      className="px-3 py-1 text-[11px] font-semibold rounded-md bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50">
+                      {editBusy ? 'Applying…' : 'Apply'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Metadata fields */}
+              <div className="p-2 space-y-1.5 bg-white">
+                <input value={img.altText} onChange={(e) => update(idx, { altText: e.target.value })} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" placeholder="Alt text" />
+                <div className="flex gap-1.5">
+                  <select value={img.kind} onChange={(e) => update(idx, { kind: e.target.value as CatalogImage['kind'] })} className="text-[11px] px-2 py-1 border border-gray-200 rounded flex-1" aria-label="Image kind">
                     <option value="product">Product</option>
                     <option value="lifestyle">Lifestyle</option>
                     <option value="creative">Creative</option>
                     <option value="video">Video</option>
                   </select>
-                  <select value={img.variantId || ''} onChange={(e) => update(idx, { variantId: e.target.value || null })} className="text-[10px] px-1 py-0.5 border border-gray-200 rounded max-w-[110px]" aria-label="Variant image link">
+                  <select value={img.variantId || ''} onChange={(e) => update(idx, { variantId: e.target.value || null })} className="text-[11px] px-2 py-1 border border-gray-200 rounded flex-1" aria-label="Variant image link">
                     <option value="">No variant</option>
                     {product.variants.map((v) => (
                       <option key={v.id} value={v.id}>{Object.entries(v.attributes).map(([k, val]) => `${k}: ${val}`).join(' · ') || v.sku || v.id}</option>
                     ))}
                   </select>
-                  <button type="button" onClick={() => onRemoveBackground(idx)} disabled={processing === idx} className="text-[10px] px-1.5 py-0.5 rounded border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50" title="Remove solid background (client-side)">
-                    {processing === idx ? 'Removing…' : 'Remove bg'}
-                  </button>
                 </div>
               </div>
             </div>

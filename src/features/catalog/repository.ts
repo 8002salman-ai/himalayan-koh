@@ -1348,8 +1348,22 @@ export interface SaveRefsOptions {
 /** Replace the full image set of a product (admin image manager). */
 export async function saveProductImages(productId: string, images: CatalogImageInput[], opts: SaveRefsOptions = {}): Promise<CatalogProduct | null> {
   if (isWooId(productId)) {
+    // Filter out invalid image URLs before sending to WooCommerce — relative
+    // paths, SVGs, and placeholder images cause Woo to reject the entire save
+    // with woocommerce_product_image_upload_error.
+    const validImages = images
+      .map((i) => ({ url: i.url } as { url: string }))
+      .filter((i) => {
+        if (!i.url || !/^https?:\/\//i.test(i.url)) return false;
+        if (/\.svg(\?|$)/i.test(i.url)) return false;
+        if (/(placeholder|favicon|icon|badge|sprite|loader|spinner|pixel)/i.test(i.url)) return false;
+        return true;
+      });
+    if (validImages.length === 0 && images.length > 0) {
+      throw new Error('None of the attached image URLs are valid for WooCommerce. Add at least one valid image URL (JPEG, PNG, or WebP).');
+    }
     const updated = await updateWooProductViaApi(productId, {
-      images: images.map((i) => ({ url: i.url })),
+      images: validImages,
     } as unknown as Partial<ProductInput>);
     return opts.reload === false ? null : (updated ?? getProduct(productId));
   }
