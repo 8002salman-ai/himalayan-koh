@@ -1030,7 +1030,7 @@ export function CatalogProductsPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Dynamic height: fills remaining viewport space. Table scrolls when
             content overflows; otherwise uses all available vertical space. */}
-        <div className="overflow-auto overscroll-contain">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[1240px]">
             <thead className="bg-gray-50 text-left text-[11px] text-gray-500 uppercase tracking-wider shadow-xs">
               <tr>
