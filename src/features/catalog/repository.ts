@@ -167,6 +167,10 @@ export function uid(): string {
   }
 }
 
+export function isWooId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+
 /** Point the shared db adapter at the signed-in user's JWT (admin). */
 export function setDbToken(token: string | null): void {
   const d = getDb() as DbAdapter & { setAccessToken?: (t: string | null) => void };
@@ -770,6 +774,24 @@ export async function getProduct(id: string): Promise<CatalogProduct | null> {
     }
   }
 
+  if (isWooId(id)) {
+    try {
+      const token = await getFreshAccessToken().catch(() => null);
+      const res = await fetch(`/api/admin/products/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.product) {
+          return adminCatalogRowToProduct(json.product);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
   const db = getDb();
   // Single-product read: fetch ONLY this product's images/variants plus the
   // category list. rowToProduct filters images/variants by product_id anyway,
@@ -1043,16 +1065,14 @@ const INPUT_FIELD_TO_COLUMNS: Record<keyof ProductInput, string[]> = {
 };
 
 export async function updateProduct(id: string, input: Partial<ProductInput>): Promise<CatalogProduct | null> {
-  const db = getDb();
-  const existing = await db.get<ProductRow>('products', id);
   // Woo-sourced product (numeric WooCommerce id, no row in the local catalog
-  // table): route the edit through the server Woo write API. The client db
-  // adapter only knows rows it created itself, so a Woo product edit used to
-  // crash with `saved.id of null` after making zero network requests.
-  if (!existing) {
-    if (!/^\d+$/.test(id)) return null; // unknown local id — genuine miss
+  // table): route the edit through the server Woo write API directly.
+  if (isWooId(id)) {
     return updateWooProductViaApi(id, input);
   }
+  const db = getDb();
+  const existing = await db.get<ProductRow>('products', id);
+  if (!existing) return null;
   // Only fields present in the partial input are read below (field in input).
   const full = productToRow(input as ProductInput);
   const patch: Record<string, unknown> = {};
@@ -1077,11 +1097,11 @@ export async function updateProduct(id: string, input: Partial<ProductInput>): P
 }
 
 export async function setProductStatus(id: string, status: CatalogStatus): Promise<CatalogProduct | null> {
-  const db = getDb();
-  const existing = await db.get<ProductRow>('products', id);
-  if (!existing && isWooId(id)) {
+  if (isWooId(id)) {
     return updateWooProductViaApi(id, { status });
   }
+  const db = getDb();
+  const existing = await db.get<ProductRow>('products', id);
   if (!existing) return null;
   const effective = await effectiveStatus(status);
   const patch: Record<string, unknown> = { status: effective };
@@ -1093,17 +1113,27 @@ export async function setProductStatus(id: string, status: CatalogStatus): Promi
 
 /** Archive keeps history (preferred over hard delete). Woo-aware: drafts the Woo record. */
 export async function archiveProduct(id: string): Promise<boolean> {
-  const db = getDb();
-  const existing = await db.get<ProductRow>('products', id);
-  if (!existing && isWooId(id)) {
+  if (isWooId(id)) {
     const updated = await updateWooProductViaApi(id, { status: 'draft' });
     return !!updated;
   }
+  const db = getDb();
+  const existing = await db.get<ProductRow>('products', id);
+  if (!existing) return false;
   const updated = await setProductStatus(id, 'archived');
   return !!updated;
 }
 
 export async function hardDeleteProduct(id: string): Promise<void> {
+  if (isWooId(id)) {
+    const token = await getFreshAccessToken().catch(() => null);
+    await fetch(`/api/admin/products/${id}?action=trash`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    invalidateCatalogCache();
+    return;
+  }
   const db = getDb();
   // Images/variants cascade via FK (product_images, product_variants).
   await db.remove('products', id);
@@ -1121,10 +1151,6 @@ const WOO_STATUS_BY_LOCAL: Record<string, string> = {
   archived: 'draft',
 };
 
-function isWooId(id: string): boolean {
-  return /^\d+$/.test(id);
-}
-
 /**
  * PATCH the WooCommerce product through the authenticated server route and
  * return the refreshed catalog view of it. Only fields the caller supplied
@@ -1138,14 +1164,18 @@ async function updateWooProductViaApi(id: string, input: Partial<ProductInput>):
   if (input.shortDescription !== undefined) body.shortDescription = input.shortDescription;
   if (input.sku !== undefined) body.sku = input.sku;
   if (input.price !== undefined) body.price = input.price;
-  if (input.compareAtPrice !== undefined && input.compareAtPrice > 0) body.compareAtPrice = input.compareAtPrice;
+  if (input.compareAtPrice !== undefined) body.compareAtPrice = input.compareAtPrice;
   if (input.featured !== undefined) body.featured = input.featured;
   if (input.tags !== undefined) body.tags = input.tags;
   if (input.status !== undefined) {
     body.status = WOO_STATUS_BY_LOCAL[input.status] ?? (input.status === 'draft' ? 'draft' : 'publish');
   }
-  const imgInput = input as { images?: Array<{ url?: string | null }> };
-  if (imgInput.images !== undefined) body.images = imgInput.images.map((i) => String(i.url || '')).filter(Boolean);
+  const imgInput = input as { images?: Array<{ url?: string | null } | string> };
+  if (imgInput.images !== undefined) {
+    body.images = imgInput.images
+      .map((i) => (typeof i === 'string' ? i : String(i.url || '')))
+      .filter(Boolean);
+  }
   if (input.inventoryQty !== undefined || input.stockStatus !== undefined || input.lowStockThreshold !== undefined) {
     // Woo requires manage_stock=true for stock_quantity to take effect; the
     // editor's Own Stock model is “internal quantity is authoritative”, so an
@@ -1178,8 +1208,10 @@ async function updateWooProductViaApi(id: string, input: Partial<ProductInput>):
     const detail = await res.text().catch(() => '');
     throw new Error(`Woo save failed (${res.status}): ${detail.slice(0, 160)}`);
   }
-  invalidateCatalogCache();
-  return getProduct(id);
+  const json = await res.json().catch(() => null);
+  const updated = json?.product ? adminCatalogRowToProduct(json.product) : null;
+  invalidateCatalogCache(updated);
+  return updated ?? getProduct(id);
 }
 
 export async function duplicateProduct(id: string): Promise<CatalogProduct | null> {
@@ -1281,6 +1313,12 @@ export interface SaveRefsOptions {
 
 /** Replace the full image set of a product (admin image manager). */
 export async function saveProductImages(productId: string, images: CatalogImageInput[], opts: SaveRefsOptions = {}): Promise<CatalogProduct | null> {
+  if (isWooId(productId)) {
+    const updated = await updateWooProductViaApi(productId, {
+      images: images.map((i) => ({ url: i.url })),
+    } as unknown as Partial<ProductInput>);
+    return opts.reload === false ? null : (updated ?? getProduct(productId));
+  }
   const db = getDb();
   const legacy = await legacyImageColumns();
   // Only this product's rows (was: the entire product_images table, then a
@@ -1349,6 +1387,31 @@ async function legacyVariantColumns(): Promise<{ title?: boolean; priceAmount?: 
 
 /** Replace the full variant set of a product (admin variant manager). */
 export async function saveProductVariants(productId: string, variants: CatalogVariantInput[], opts: SaveRefsOptions = {}): Promise<CatalogProduct | null> {
+  if (isWooId(productId)) {
+    const wooVariations = variants
+      .filter((v) => v.id && /^\d+$/.test(v.id))
+      .map((v) => ({
+        id: Number(v.id),
+        regularPrice: v.price != null ? String(v.price) : undefined,
+        salePrice: v.compareAtPrice != null ? String(v.price) : undefined,
+        sku: v.sku || undefined,
+        manageStock: v.inventoryQty !== undefined,
+        stockQuantity: v.inventoryQty,
+        stockStatus: v.status === 'inactive' ? 'outofstock' : 'instock',
+      }));
+    if (wooVariations.length > 0) {
+      const token = await getFreshAccessToken().catch(() => null);
+      await fetch(`/api/admin/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ variations: wooVariations }),
+      });
+    }
+    return opts.reload === false ? null : getProduct(productId);
+  }
   const db = getDb();
   const legacy = await legacyVariantColumns();
   // Only this product's rows (was: the entire product_variants table).

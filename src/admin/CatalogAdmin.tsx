@@ -24,7 +24,7 @@ import {
   createCategory,
   listCategories, listCoupons, createCoupon, updateCoupon, deleteCoupon,
   listOffers, createOffer, updateOffer, deleteOffer, getStoreSettings, saveStoreSettings,
-  uid,
+  uid, isWooId,
   type ProductInput,
 } from '../features/catalog/repository';
 import { listRecommendations } from '../features/hermes/repository';
@@ -243,9 +243,8 @@ export function CatalogProductsPage() {
   }, []);
 
   useEffect(() => {
-    // localStorage is client-only and must never participate in the hydration
-    // render. The server-side order, when present, is applied afterward too.
     setColOrder(loadCatalogColumns(window.localStorage));
+    useSeoJobStore.getState().hydrate();
     // Client-only state is applied only after the SSR/client first render agrees.
     setRenderNowMs(Date.now());
     setHydrated(true);
@@ -1983,7 +1982,10 @@ export function CatalogProductEditor() {
         ownerNotes: p.ownerNotes,
         evidenceNotes: p.evidenceNotes,
       };
-      const saved = isNew ? await createProduct(input) : (await updateProduct(p.id, input))!;
+      const isWoo = isWooId(p.id);
+      const saved = isNew
+        ? await createProduct(input)
+        : (await updateProduct(p.id, isWoo ? ({ ...input, images: p.images } as unknown as Partial<ProductInput>) : input))!;
       const imagePayload = p.images.map((img, i) => ({
         id: img.id || undefined,
         url: img.url,
@@ -2005,11 +2007,13 @@ export function CatalogProductEditor() {
         lowStockThreshold: v.lowStockThreshold,
       }));
 
-      // Parallelize image and variant DB writes
-      await Promise.all([
-        saveProductImages(saved.id, imagePayload, { reload: false }),
-        saveProductVariants(saved.id, variantPayload, { reload: false }),
-      ]);
+      // Parallelize image and variant DB writes (for local products; Woo images are updated atomically above)
+      if (!isWoo) {
+        await Promise.all([
+          saveProductImages(saved.id, imagePayload, { reload: false }),
+          saveProductVariants(saved.id, variantPayload, { reload: false }),
+        ]);
+      }
       // Auto-list: if enabled and this save made the product commerce-ready
       // while it was still a draft, publish it (status → active) so it shows
       // on the storefront without a second manual step. The playbook gate
@@ -2022,10 +2026,14 @@ export function CatalogProductEditor() {
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2500);
       notify(isNew ? 'Product created' : 'Product saved');
+      // The product row response predates the image/variant writes above. Do
+      // not replace local state with that stale row or a newly imported image
+      // appears briefly and then vanishes from the editor.
+      const refreshed = await getProduct(saved.id);
       if (isNew) {
         nav(`/admin/products/edit/${saved.id}`);
       } else {
-        setP(saved);
+        setP(refreshed ?? { ...saved, images: p.images, variants: p.variants });
       }
     } catch (e) {
       setSaveStatus('idle');
@@ -3301,25 +3309,40 @@ function ImageManager({ product, onProduct }: { product: CatalogProduct; onProdu
         throw new Error(data?.error || `Import failed (HTTP ${res.status})`);
       }
       const isFirst = product.images.length === 0;
-      onProduct({
-        ...product,
-        images: [
-          ...product.images,
-          {
-            id: uid(),
-            productId: product.id,
-            url: String(data.publicUrl),
-            altText: alt.trim() || product.name,
-            kind: 'product',
-            isPrimary: isFirst,
-            sortOrder: product.images.length,
-            variantId: null,
-          },
-        ],
-      });
+      const nextImages = [
+        ...product.images,
+        {
+          id: uid(),
+          productId: product.id,
+          url: String(data.publicUrl),
+          altText: alt.trim() || product.name,
+          kind: 'product' as const,
+          isPrimary: isFirst,
+          sortOrder: product.images.length,
+          variantId: null,
+        },
+      ];
+      onProduct({ ...product, images: nextImages });
+      // Existing products persist URL imports immediately. This prevents a
+      // later editor refresh/save response from replacing the local image list
+      // before the user has another chance to click Save. New products still
+      // defer until they receive an id from their first product save.
+      if (product.id) {
+        await saveProductImages(product.id, nextImages.map((img) => ({
+          id: img.id,
+          url: img.url,
+          altText: img.altText,
+          kind: img.kind,
+          isPrimary: img.isPrimary,
+          sortOrder: img.sortOrder,
+          variantId: img.variantId,
+        })), { reload: false });
+      }
       setUrl('');
       setAlt('');
-      notify('Image imported and uploaded to storage — save product to persist');
+      notify(product.id
+        ? 'Image imported, uploaded, and attached to this product'
+        : 'Image imported and uploaded to storage — save product to persist');
     } catch (err) {
       notify(`Could not import image: ${(err as Error).message}`, 'error');
     } finally {

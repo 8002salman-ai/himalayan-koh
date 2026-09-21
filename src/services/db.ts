@@ -236,6 +236,14 @@ export class SupabaseAdapter implements DbAdapter {
     return res;
   }
 
+  private async isTypeSyntaxError(res: Response): Promise<boolean> {
+    if (res.status === 400) {
+      const text = await res.clone().text().catch(() => '');
+      return text.includes('22P02');
+    }
+    return false;
+  }
+
   async list<T>(
     table: string,
     opts?: { select?: string; orderBy?: string; limit?: number; filters?: Record<string, string>; rawFilters?: Record<string, string> },
@@ -251,12 +259,14 @@ export class SupabaseAdapter implements DbAdapter {
       for (const [key, expr] of Object.entries(opts.rawFilters)) url.searchParams.append(key, expr);
     }
     const res = await this.request(url.toString());
+    if (await this.isTypeSyntaxError(res)) return [];
     const rows = await this.handle<T[]>(res);
     return Array.isArray(rows) ? rows : [];
   }
 
   async get<T>(table: string, id: string): Promise<T | null> {
     const res = await this.request(this.endpoint(table, id));
+    if (await this.isTypeSyntaxError(res)) return null;
     const rows = await this.handle<T[]>(res);
     return Array.isArray(rows) && rows.length ? rows[0] : null;
   }
@@ -265,6 +275,7 @@ export class SupabaseAdapter implements DbAdapter {
     const url = new URL(this.endpoint(table));
     url.searchParams.append(column, `eq.${value}`);
     const res = await this.request(url.toString());
+    if (await this.isTypeSyntaxError(res)) return null;
     const rows = await this.handle<T[]>(res);
     return Array.isArray(rows) && rows.length ? rows[0] : null;
   }
@@ -289,12 +300,18 @@ export class SupabaseAdapter implements DbAdapter {
     const url = new URL(this.endpoint(table));
     url.searchParams.append(column, `eq.${value}`);
     const res = await this.request(url.toString(), { method: 'PATCH', body: JSON.stringify(patch) });
+    if (await this.isTypeSyntaxError(res)) return null;
     const rows = await this.handle<T[]>(res);
     return Array.isArray(rows) && rows.length ? rows[0] : null;
   }
 
   async remove(table: string, id: string): Promise<void> {
-    await this.request(this.endpoint(table, id), { method: 'DELETE' });
+    const res = await this.request(this.endpoint(table, id), { method: 'DELETE' });
+    if (await this.isTypeSyntaxError(res)) return;
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Supabase ${res.status}: ${text.slice(0, 200)}`);
+    }
   }
 
   /**
