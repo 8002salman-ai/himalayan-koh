@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { BookOpen, Search, ArrowRight, ShieldCheck } from 'lucide-react';
+import { YouTubeVideosSection } from '@/components/YouTubeVideosSection';
 import { RESOURCE_ARTICLES } from '@/data/resources';
 import { AUTHORS } from '@/data/authors';
 
@@ -164,6 +165,9 @@ export default function ResourcesPage() {
             </p>
           </div>
         )}
+
+        {/* ── YouTube Videos Section ── */}
+        <YouTubeVideosSection />
 
         {/* Editorial Standards Notice */}
         <div className="bg-gradient-to-br from-cream to-himalayan/10 rounded-3xl p-8 border border-himalayan/20 flex flex-col md:flex-row items-center justify-between gap-6">

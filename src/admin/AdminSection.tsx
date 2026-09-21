@@ -28,6 +28,7 @@ import { CatalogProductsPage, CatalogProductEditor, CatalogPromotionsPage } from
 import HermesIntel from './HermesIntel';
 import BlogManager from './BlogManager';
 import MediaManager from './MediaManager';
+import { YouTubeMediaPage } from './YouTubeMedia';
 import LeadOSAdmin from './LeadOSAdmin';
 import type {
   Product, ProductVariant, AdminCategory, AppUser,
@@ -108,6 +109,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       title: 'Media',
       items: [
         { to: '/admin/media', icon: YoutubeLogo, label: 'Media Hub', g: 'linear-gradient(135deg,#ef4444,#f97316)', dot: '#f87171' },
+        { to: '/admin/youtube-media', icon: YoutubeLogo, label: 'YouTube Media', g: 'linear-gradient(135deg,#ff0000,#cc0000)', dot: '#ff4444' },
       ],
     },
     {
@@ -6488,6 +6490,7 @@ export default function AdminSection() {
       <Route path="reviews" element={<AdminLayout><AReviews /></AdminLayout>} />
       <Route path="blogs" element={<AdminLayout><BlogManager /></AdminLayout>} />
       <Route path="media" element={<AdminLayout><MediaManager /></AdminLayout>} />
+      <Route path="youtube-media" element={<AdminLayout><YouTubeMediaPage /></AdminLayout>} />
       <Route path="seo-engine" element={<AdminLayout><ASEOEngine /></AdminLayout>} />
       <Route path="marketing" element={<AdminLayout><AMarketingGen /></AdminLayout>} />
       <Route path="variant-gen" element={<AdminLayout><AVariantGen /></AdminLayout>} />
