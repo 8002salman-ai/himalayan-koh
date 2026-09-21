@@ -186,7 +186,7 @@ export function useApp(): Ctx {
 }
 
 const INITIAL_USERS: AppUser[] = [
-  { id: 'usr-1', name: 'Himalayan Koh Super Admin', email: 'admin@himalayankoh.com', role: 'admin', joined: '2025-01-01', isBlocked: false },
+  { id: 'usr-1', name: 'Salman Bashir', email: 'admin@himalayankoh.com', role: 'admin', joined: '2025-01-01', isBlocked: false },
   { id: 'usr-2', name: 'Ayaz Bashir', email: 'ayaz@himalayankoh.com', role: 'admin', joined: '2025-01-10', isBlocked: false },
   { id: 'usr-3', name: 'Himalayan Support Desk', email: 'support@himalayankoh.com', role: 'buyer', joined: '2025-02-01', isBlocked: false },
   { id: 'usr-4', name: 'Wholesale Sales Desk', email: 'sales@himalayankoh.com', role: 'buyer', joined: '2025-02-15', isBlocked: false },

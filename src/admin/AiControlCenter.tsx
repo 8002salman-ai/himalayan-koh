@@ -56,7 +56,7 @@ export default function AiControlCenter() {
   };
 
   // Emergency Pause must also write the canonical pause key
-  // (luxedge_scout_emergency_pause) that the runtime AI gate reads via
+  // (hk_scout_emergency_pause) that the runtime AI gate reads via
   // isEmergencyPaused() — writing only the control config left the gate
   // unpaused and made the toggle an illusion. Under pause the AI gate
   // (aiGate) denies every AI provider call and every autonomous mutation;

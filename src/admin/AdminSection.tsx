@@ -2217,12 +2217,12 @@ const [open, setOpen] = useState<Record<string, boolean>>({
                 {profName ? profName.charAt(0).toUpperCase() : 'H'}
               </div>
               <div>
-                <p className="font-semibold text-xs text-[#26211C]">{profName || 'Super Admin'}</p>
+                <p className="font-semibold text-xs text-[#26211C]">{profName || user?.name || 'Himalayan Koh Admin'}</p>
                 <p className="text-[11px] text-[#6D6258]">{profEmail || 'admin@himalayankoh.com'}</p>
               </div>
             </div>
             <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#3F6550]/10 text-[#3F6550] border border-[#3F6550]/20">
-              Super Admin
+              {user?.role === 'admin' ? 'Admin' : 'Super Admin'}
             </span>
           </div>
 
@@ -2358,7 +2358,17 @@ const [open, setOpen] = useState<Record<string, boolean>>({
       {/* ── AdSense & ads.txt ── */}
       <Accordion id="adsense" title="Google AdSense & ads.txt" icon={<Megaphone size={18} className="text-blue-500" />} borderClass="border-blue-300" open={open} toggle={toggle}>
         <div className="pt-5 space-y-4">
-          <p className="text-sm text-gray-500">AdSense is already configured for this site. ads.txt tells Google who is authorized to sell your ad inventory — it is served at <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">/ads.txt</code>.</p>
+          <p className="text-sm text-gray-500">
+            {adsenseOk
+              ? <>Google AdSense is <b className="text-green-700">configured</b> for this site.</>
+              : cfg.adsenseEnabled
+                ? <><span className="text-amber-700 font-semibold">AdSense is enabled but the client ID is missing or invalid.</span> Configure it in Marketing &amp; Traffic.</>
+                : <><span className="text-gray-600 font-semibold">Google AdSense is disabled.</span> Enable it in Marketing &amp; Traffic when you are ready.</>}
+            {' '}ads.txt tells Google who is authorised to sell your ad inventory — it must be served at{' '}
+            <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">/ads.txt</code>.
+            {adsTxtStatus === 'missing' && <span className="ml-1 text-amber-700 font-semibold">(Not yet deployed — upload the line below to your domain root.)</span>}
+            {adsTxtStatus === 'invalid' && <span className="ml-1 text-amber-700 font-semibold">(Present but publisher ID does not match config.)</span>}
+          </p>
 
           {/* Live status */}
           <div className="grid sm:grid-cols-2 gap-3">
@@ -5623,7 +5633,7 @@ export function ACRM() {
       const blob = new Blob([text], { type: 'text/csv' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `luxedge-crm-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `hk-crm-leads-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(a.href);
       notify('CSV downloaded — ready for Excel / HubSpot import', 'success');
@@ -5697,7 +5707,7 @@ export function ACRM() {
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
           <UsersIcon size={36} className="mx-auto text-gray-200 mb-3" />
           <p className="text-sm text-gray-500 font-medium">No leads yet</p>
-          <p className="text-xs text-gray-400 mt-1">They appear here when visitors claim the welcome coupon, click WhatsApp or chat with Luxie.</p>
+          <p className="text-xs text-gray-400 mt-1">They appear here when visitors claim the welcome coupon, click WhatsApp or chat with the AI assistant. No backend error — the table is simply empty.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">

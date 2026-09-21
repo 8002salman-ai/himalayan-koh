@@ -1,18 +1,16 @@
 // ============================================================================
-// LUXEDGE V2 — SALMAN OS ADAPTER · CONTRACT-GATED CLIENT (SERVER ONLY)
+// HIMALAYAN KOH — SALMAN OS ADAPTER · CONTRACT-GATED CLIENT (SERVER ONLY)
 //
-// Aligned to the FROZEN Salman OS contract v1.0 — vendored (non-secret) at
-// docs/SALMAN_OS_LUXEDGE_AI_CONTRACT.md, source commit
-// 4ef7e62ce8277f30d5e36439ecc1b34bc719045a. Salman OS is the PRIMARY AI
-// intelligence backend for Luxedge; this module is the ONLY place that talks
-// to it.
+// Aligned to the FROZEN Salman OS contract v1.0. Salman OS is the PRIMARY AI
+// intelligence backend for Himalayan Koh; this module is the ONLY place that
+// talks to it.
 //
 // RUNTIME READINESS does NOT depend on the presence of the contract file.
 // Live calls happen ONLY when ALL hold (owner direction, Phase F):
 //   1. SALMAN_OS_BASE_URL configured (server env only)
 //   2. SALMAN_OS_TOKEN configured (server env only)
 //   3. a remote status handshake succeeds
-//   4. project "luxedge" is registered on the backend
+//   4. project "himalayan-koh" is registered on the backend
 //   5. the backend contract_version matches CONTRACT_VERSION
 //   6. the environment (PREVIEW) is supported
 //

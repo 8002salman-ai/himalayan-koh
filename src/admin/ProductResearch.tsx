@@ -1,5 +1,5 @@
 // ============================================================================
-// LUXEDGE — PRODUCT RESEARCH (Product Market Intelligence Engine)
+// HIMALAYAN KOH — PRODUCT RESEARCH (Product Market Intelligence Engine)
 //
 // PET-ONLY. Input a product/keyword → honest multi-source research:
 // Google Trends | Amazon demand | eBay demand | Competition | Supplier cost
@@ -271,6 +271,22 @@ export default function ProductResearch() {
               )}
             </div>
           </div>
+
+          {/* Low-confidence / sources-unavailable warning */}
+          {result.confidence < 30 && result.partial && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+              <span className="text-amber-500 shrink-0 mt-0.5">&#9888;</span>
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold mb-1">Low data confidence ({result.confidence}%) — external sources unavailable</p>
+                <p className="text-xs text-amber-700">
+                  eBay and Amazon public pages are frequently blocked by bot-protection on server-side fetches.
+                  The score and verdict above are calculated from whatever partial signals were captured.
+                  <span className="font-medium"> This reflects a source availability issue, not a product failure.</span>
+                  {queuedForHermes && <span> Google Trends has been queued for Hermes browser collection — re-run this keyword after the job completes to get a trend score.</span>}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Verdict note + score breakdown */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">

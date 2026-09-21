@@ -144,9 +144,10 @@ export default function SalmanOsPanel() {
           </button>
         </div>
         {waiting && (
-          <p className="mt-3 text-[11px] font-semibold text-amber-700 flex items-center gap-1.5">
-            <Warning size={12} /> AI BACKEND — WAITING FOR SALMAN OS. Commerce continues normally; this is an optional intelligence enhancement.
-          </p>
+          <div className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5"><Warning size={12} /> AI BACKEND — WAITING FOR SALMAN OS. Commerce continues normally; this is an optional intelligence enhancement.</p>
+            <p className="text-amber-600">To connect: set <code className="font-mono bg-amber-100 px-1 rounded">SALMAN_OS_BASE_URL</code> and <code className="font-mono bg-amber-100 px-1 rounded">SALMAN_OS_TOKEN</code> as Cloudflare Worker secrets, then redeploy. Contact Salman OS to obtain your credentials and register the <b>himalayan-koh</b> project.</p>
+          </div>
         )}
       </div>
 
