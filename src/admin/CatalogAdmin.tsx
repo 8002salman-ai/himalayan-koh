@@ -240,20 +240,7 @@ export function CatalogProductsPage() {
   // Row height resize state: tracks which row is being resized and the drag offset.
   const [rowHeight, setRowHeight] = useState<number>(48);
   const rowResizeRef = useRef<{ startY: number; startH: number } | null>(null);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [tableMaxH, setTableMaxH] = useState(600);
-  // Dynamic table height: fill available space in the viewport.
-  useEffect(() => {
-    const updateHeight = () => {
-      if (!tableContainerRef.current) return;
-      const rect = tableContainerRef.current.getBoundingClientRect();
-      const available = window.innerHeight - rect.top - 16; // 16px bottom padding
-      setTableMaxH(Math.max(300, available));
-    };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
+
   const onRowResizeStart = useCallback((e: React.MouseEvent, productId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1040,10 +1027,10 @@ export function CatalogProductsPage() {
         </div>
       )}
 
-      <div ref={tableContainerRef} className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Dynamic height: fills remaining viewport space. Table scrolls when
             content overflows; otherwise uses all available vertical space. */}
-        <div className="overflow-auto overscroll-contain" style={{ maxHeight: tableMaxH }}>
+        <div className="overflow-auto overscroll-contain">
           <table className="w-full min-w-[1240px]">
             <thead className="bg-gray-50 text-left text-[11px] text-gray-500 uppercase tracking-wider shadow-xs">
               <tr>
