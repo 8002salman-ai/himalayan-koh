@@ -53,6 +53,29 @@ function env(name: string): string {
   return (process.env[name] || '').trim();
 }
 
+let cachedCreds: { baseUrl: string; token: string } | null = null;
+let credsCachedAt = 0;
+
+export async function resolveCredentials(): Promise<{ baseUrl: string; token: string }> {
+  if (cachedCreds && Date.now() - credsCachedAt < 60_000) {
+    return cachedCreds;
+  }
+  let baseUrl = env('SALMAN_OS_BASE_URL');
+  let token = env('SALMAN_OS_TOKEN');
+  if (!baseUrl || !token) {
+    try {
+      const { getSetting } = await import('../../lib/settings/serverSettings.js');
+      if (!baseUrl) baseUrl = (await getSetting('salman_os', 'base_url'))?.trim() || '';
+      if (!token) token = (await getSetting('salman_os', 'token'))?.trim() || '';
+    } catch {
+      // fallback
+    }
+  }
+  cachedCreds = { baseUrl, token };
+  credsCachedAt = Date.now();
+  return cachedCreds;
+}
+
 function configReady(): boolean {
   return Boolean(env('SALMAN_OS_BASE_URL') && env('SALMAN_OS_TOKEN'));
 }
@@ -62,15 +85,19 @@ function costClass(raw: unknown): 'FREE' | 'PAID' | 'UNKNOWN' {
   return s === 'FREE' || s === 'PAID' ? s : 'UNKNOWN';
 }
 
-function endpoint(path: string, project = PROJECT_SLUG): string {
-  const base = env('SALMAN_OS_BASE_URL').replace(/\/$/, '');
+function endpoint(baseUrl: string, path: string, project = PROJECT_SLUG): string {
+  const base = baseUrl.replace(/\/$/, '');
   return `${base}${path.replace(':project', project)}`;
 }
 
 /** Generic server-to-server fetch. Never logs credentials or the token. */
 async function sFetch(path: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const token = env('SALMAN_OS_TOKEN');
-  const res = await fetch(endpoint(path), {
+  const { baseUrl, token } = await resolveCredentials();
+  if (!baseUrl || !token) {
+    return { ok: false, status: 503, data: { error: 'Credentials not configured' } };
+  }
+  const url = endpoint(baseUrl, path);
+  const res = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -86,14 +113,17 @@ async function sFetch(path: string, init?: RequestInit): Promise<{ ok: boolean; 
 }
 
 /** Safe structured status — never contains credentials. */
-export function salmanOsStatus(): SalmanOsStatus {
-  const reason = !env('SALMAN_OS_BASE_URL')
+export function salmanOsStatus(creds?: { baseUrl?: string; token?: string }): SalmanOsStatus {
+  const baseUrl = creds?.baseUrl !== undefined ? creds.baseUrl : env('SALMAN_OS_BASE_URL');
+  const token = creds?.token !== undefined ? creds.token : env('SALMAN_OS_TOKEN');
+  const ready = Boolean(baseUrl && token);
+  const reason = !baseUrl
     ? 'SALMAN OS BASE URL REQUIRED — SALMAN_OS_BASE_URL is not configured in the server environment. The public HTTPS base URL from the Salman OS contract is required for the Vercel runtime.'
-    : !env('SALMAN_OS_TOKEN')
+    : !token
       ? 'SALMAN OS AUTH PENDING — SALMAN_OS_TOKEN is not configured in the server environment (server-side only).'
       : 'CONFIGURED — awaiting live handshake with Salman OS.';
   return {
-    state: configReady() ? 'OFFLINE' : 'WAITING',
+    state: ready ? 'OFFLINE' : 'WAITING',
     project: { project: PROJECT_SLUG, environment: DISPLAY_ENV, freeFirst: true },
     reason,
     live: null,
@@ -145,7 +175,8 @@ function mapLive(statusData: unknown, overviewData: unknown): SalmanOsLiveState 
 // ---------------------------------------------------------------------------
 
 export async function getProjectStatus(): Promise<SalmanOsStatus> {
-  const base = salmanOsStatus();
+  const creds = await resolveCredentials();
+  const base = salmanOsStatus(creds);
   if (base.state === 'WAITING') return base;
   try {
     const [statusRes, overviewRes] = await Promise.all([
@@ -254,7 +285,8 @@ function kindFromTaskType(taskType: unknown, fallback?: SalmanOsJobKind): Salman
 }
 
 export async function getIntelligence(kind?: SalmanOsIntelligenceKind): Promise<SalmanOsIntelligenceItem[]> {
-  const base = salmanOsStatus();
+  const creds = await resolveCredentials();
+  const base = salmanOsStatus(creds);
   if (base.state === 'WAITING') return [];
   try {
     const res = await sFetch(ENDPOINTS.intelligence);
@@ -331,7 +363,8 @@ function safeJobs(data: unknown): SalmanOsJob[] {
 }
 
 export async function getJobs(): Promise<SalmanOsJob[]> {
-  const base = salmanOsStatus();
+  const creds = await resolveCredentials();
+  const base = salmanOsStatus(creds);
   if (base.state === 'WAITING') return [];
   try {
     const [jobsRes, statusRes] = await Promise.all([sFetch(ENDPOINTS.jobs), sFetch(ENDPOINTS.status)]);
