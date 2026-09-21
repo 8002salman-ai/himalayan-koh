@@ -61,6 +61,20 @@ export async function POST(request: Request) {
   const { cartSessionId, ...orderData } = parsed.data;
   const userId = await resolveUserId(request, (parsed.data as { userId?: string }).userId);
 
+  // Public checkout must never create an order before Stripe confirms payment.
+  // The signed Stripe webhook calls serverCreateOrder directly after payment;
+  // this endpoint is deliberately not an unpaid-order shortcut.
+  if (
+    orderData.paymentProvider !== 'stripe' ||
+    orderData.paymentStatus !== 'paid' ||
+    !orderData.paymentIntentId
+  ) {
+    return NextResponse.json(
+      { error: 'Payment must succeed before an order can be created.' },
+      { status: 402 },
+    );
+  }
+
   if (!userId && !cartSessionId?.trim()) {
     return NextResponse.json(
       { error: 'Cart session missing. Refresh the page and try again.' },

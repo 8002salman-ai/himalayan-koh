@@ -275,15 +275,33 @@ export async function readIntegrationStatuses(options: { probe?: boolean } = {})
   const salmanToken = await effective('salman_os', 'token', 'SALMAN_OS_TOKEN');
   const salmanSlug = await effective('salman_os', 'project_slug', 'SALMAN_OS_PROJECT_SLUG');
   const hasSalman = Boolean(salmanUrl.value && salmanToken.value);
+  let salmanState: IntegrationState = 'NOT CONFIGURED';
+  let salmanDetail = 'SALMAN_OS_BASE_URL / SALMAN_OS_TOKEN not set in server environment. Commerce and local AI operate normally.';
+
+  if (hasSalman) {
+    if (options.probe) {
+      try {
+        const { getProjectStatus } = await import('../../services/salmanOs/contract.js');
+        const live = await getProjectStatus();
+        salmanState = live.state === 'CONNECTED' ? 'CONNECTED' : 'OWNER ACTION REQUIRED';
+        salmanDetail = live.reason;
+      } catch (err) {
+        salmanState = 'INVALID';
+        salmanDetail = `Handshake error: ${(err as Error).message}`;
+      }
+    } else {
+      salmanState = 'OWNER ACTION REQUIRED';
+      salmanDetail = `Configured for project "${salmanSlug.value || 'himalayan-koh'}". Awaiting handshake.`;
+    }
+  }
+
   integrations.push({
     id: 'salman_os',
     label: 'Salman OS Bridge',
-    state: hasSalman ? 'CONNECTED' : 'NOT CONFIGURED',
+    state: salmanState,
     mode: null,
     source: salmanToken.source,
-    detail: hasSalman
-      ? `Connected to Salman OS for project "${salmanSlug.value || 'himalayan-koh'}". Serves as external research evidence bridge.`
-      : 'SALMAN_OS_BASE_URL / SALMAN_OS_TOKEN not set in server environment. Commerce and local AI operate normally.',
+    detail: salmanDetail,
     overridden: salmanToken.overridden,
   });
 

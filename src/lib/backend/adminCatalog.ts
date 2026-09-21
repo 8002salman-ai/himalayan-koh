@@ -74,6 +74,8 @@ export interface AdminCatalogRow {
   /** Live but withheld from the storefront (the Supabase packing-profile rule). */
   isHiddenFromStorefront: boolean | null;
   isFeatured: boolean;
+  description?: string | null;
+  shortDescription?: string | null;
   /**
    * True when the product falls outside the store's niche (Himalayan pink salt).
    * Such a row stays visible here on purpose — it is the owner who has to archive
@@ -202,6 +204,8 @@ export function rowFromCatalogProduct(product: CatalogProduct): AdminCatalogRow 
     isListed: true,
     isHiddenFromStorefront: null,
     isFeatured: product.isFeatured === true,
+    description: product.description ?? null,
+    shortDescription: (product as { shortDescription?: string }).shortDescription ?? product.description ?? null,
     isOffNiche: !isNicheProduct(product),
     missing: product.missing ?? [],
     record: null,
@@ -235,6 +239,8 @@ export function rowFromSupabaseProduct(record: AdminEditableRecord): AdminCatalo
     isListed: Boolean(record.is_active),
     isHiddenFromStorefront: isWithheldFromStorefront(record),
     isFeatured: Boolean(record.is_featured),
+    description: record.description ?? null,
+    shortDescription: record.short_description ?? null,
     isOffNiche: !isNicheProduct({
       name: record.name,
       category: record.category?.name ?? null,

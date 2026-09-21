@@ -38,6 +38,15 @@ const STATUS_META: Record<CmsMediaRow['status'], { label: string; cls: string }>
   archived: { label: 'Archived', cls: 'bg-red-100 text-red-600' },
 };
 
+export function getMediaStatusMeta(status: string | null | undefined): { label: string; cls: string } {
+  if (!status) return { label: 'Draft', cls: 'bg-gray-100 text-gray-600' };
+  const s = String(status).toLowerCase().trim();
+  if (s === 'published' || s === 'publish') return STATUS_META.published;
+  if (s === 'draft') return STATUS_META.draft;
+  if (s === 'archived' || s === 'trash') return STATUS_META.archived;
+  return STATUS_META[status as CmsMediaRow['status']] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+}
+
 const label = 'block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1';
 const input =
   'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxe-gold/40 bg-white';
@@ -106,6 +115,7 @@ export default function MediaManager() {
       setRows(await adminMediaListAll());
       setLoadError(null);
     } catch (e) {
+      setRows([]);
       setLoadError((e as Error).message || 'Could not load media.');
     }
     void loadStatus();
@@ -332,6 +342,15 @@ export default function MediaManager() {
         </div>
       </div>
 
+      {loadError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 flex items-center justify-between">
+          <span>Failed to load media: {loadError}</span>
+          <button onClick={() => void load()} className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-xs font-semibold">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Manual YouTube URL quick-add (the fallback when sync is not configured) */}
       {!creating && !editing && (
         <div className="flex gap-2 items-center bg-white rounded-xl border p-3">
@@ -532,7 +551,10 @@ export default function MediaManager() {
                       </>
                     )}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_META[r.status].cls}`}>{STATUS_META[r.status].label}</span>
+                  {(() => {
+                    const meta = getMediaStatusMeta(r.status);
+                    return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${meta.cls}`}>{meta.label}</span>;
+                  })()}
                   <div className="flex items-center gap-1">
                     {r.youtube_video_id && (
                       <a href={`https://www.youtube.com/watch?v=${r.youtube_video_id}`} target="_blank" rel="noopener noreferrer"

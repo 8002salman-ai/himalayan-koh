@@ -85,8 +85,8 @@ export default function ProductDetailView({
       );
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
-    } catch {
-      toast.error('Failed to add item to cart. Please try again.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add item to cart. Please try again.');
     }
   };
 

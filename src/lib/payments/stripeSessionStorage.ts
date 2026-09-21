@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'himalayan_koh_stripe_checkout';
 
 export interface PendingStripeCheckout {
-  orderId: string;
+  checkoutSessionId: string;
   paymentIntentId: string;
 }
 
@@ -18,7 +18,7 @@ export function loadPendingStripeCheckout(): PendingStripeCheckout | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingStripeCheckout;
-    if (!parsed?.orderId || !parsed?.paymentIntentId) return null;
+    if (!parsed?.checkoutSessionId || !parsed?.paymentIntentId) return null;
     return parsed;
   } catch {
     return null;

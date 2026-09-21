@@ -63,6 +63,58 @@ export interface ResearchDeps {
   readTrends?: (keyword: string) => Promise<IngestedTrend | null>;
   /** Override for tests; default PACING_MS. */
   pacingMs?: number;
+  /** Bounded timeout per network fetch in ms (default: 6000ms). */
+  timeoutMs?: number;
+  /** AbortSignal for user cancellation. */
+  signal?: AbortSignal;
+  /** Progress callback reporting granular step updates. */
+  onProgress?: (step: { source: string; status: 'pending' | 'done' | 'failed'; message: string }) => void;
+}
+
+async function fetchWithTimeout(
+  fetcher: (url: string) => Promise<string>,
+  url: string,
+  timeoutMs = 6000,
+  signal?: AbortSignal
+): Promise<string> {
+  if (signal?.aborted) throw new Error('Research aborted');
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(new Error(`Timeout after ${timeoutMs}ms`));
+      }
+    }, timeoutMs);
+
+    const onAbort = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error('Research cancelled'));
+      }
+    };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+
+    fetcher(url).then(
+      (res) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          if (signal) signal.removeEventListener('abort', onAbort);
+          resolve(res);
+        }
+      },
+      (err) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          if (signal) signal.removeEventListener('abort', onAbort);
+          reject(err);
+        }
+      }
+    );
+  });
 }
 
 export interface ResearchOutcome {
@@ -170,17 +222,22 @@ export async function researchKeyword(keyword: string, deps: ResearchDeps): Prom
   }
 
   const pacing = deps.pacingMs ?? PACING_MS;
+  const timeoutMs = deps.timeoutMs ?? 6000;
   const ebayUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&_sop=15`;
   const amzUrl = `https://www.amazon.com/s?k=${encodeURIComponent(q)}`;
 
-  // ---- eBay market signal (best-effort) ----
+  // ---- eBay market signal (best-effort, bounded timeout) ----
   let ebayStatus: SourceStatus = 'FAILED';
   let ebayParsed: ReturnType<typeof parseEbaySearchPage> | null = null;
+  deps.onProgress?.({ source: 'ebay', status: 'pending', message: 'Checking eBay market signals...' });
   try {
-    ebayParsed = parseEbaySearchPage(pageText(await deps.fetchPage(ebayUrl)));
+    const raw = await fetchWithTimeout(deps.fetchPage, ebayUrl, timeoutMs, deps.signal);
+    ebayParsed = parseEbaySearchPage(pageText(raw));
     ebayStatus = 'AVAILABLE';
-  } catch {
-    ebayStatus = 'FAILED';
+    deps.onProgress?.({ source: 'ebay', status: 'done', message: 'eBay market signals received' });
+  } catch (err) {
+    ebayStatus = (err as Error).message?.includes('Timeout') ? 'LIMIT_REACHED' : 'FAILED';
+    deps.onProgress?.({ source: 'ebay', status: 'failed', message: `eBay unavailable: ${(err as Error).message}` });
   }
   const ebay = ebayParsed ?? {
     activeListings: null,
@@ -196,18 +253,22 @@ export async function researchKeyword(keyword: string, deps: ResearchDeps): Prom
       ? Math.round(((ebay.priceRange.min + ebay.priceRange.max) / 2) * 100) / 100
       : null;
 
-  // Pacing: never hit two marketplaces back to back (also applies after a
-  // failed attempt — the request was still made).
+  if (deps.signal?.aborted) throw new Error('Research cancelled by user');
   await delay(pacing);
+  if (deps.signal?.aborted) throw new Error('Research cancelled by user');
 
-  // ---- Amazon public market signals (best-effort) ----
+  // ---- Amazon public market signals (best-effort, bounded timeout) ----
   let amazonStatus: SourceStatus = 'FAILED';
   let amazonParsed: ReturnType<typeof parseAmazonPublicPage> | null = null;
+  deps.onProgress?.({ source: 'amazon', status: 'pending', message: 'Checking Amazon public demand...' });
   try {
-    amazonParsed = parseAmazonPublicPage(pageText(await deps.fetchPage(amzUrl)), amzUrl);
+    const raw = await fetchWithTimeout(deps.fetchPage, amzUrl, timeoutMs, deps.signal);
+    amazonParsed = parseAmazonPublicPage(pageText(raw), amzUrl);
     amazonStatus = 'AVAILABLE';
-  } catch {
-    amazonStatus = 'FAILED';
+    deps.onProgress?.({ source: 'amazon', status: 'done', message: 'Amazon public demand received' });
+  } catch (err) {
+    amazonStatus = (err as Error).message?.includes('Timeout') ? 'LIMIT_REACHED' : 'FAILED';
+    deps.onProgress?.({ source: 'amazon', status: 'failed', message: `Amazon unavailable: ${(err as Error).message}` });
   }
 
   // ---- Supplier economics (real numbers only; absent data stays absent) ----

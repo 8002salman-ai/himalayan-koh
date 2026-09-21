@@ -14,6 +14,7 @@ import type { OrderWithItems } from '../lib/supabase/database.types';
 import { isSupabaseConfigured } from '../lib/supabase/client';
 import { publicEnv } from '../lib/env';
 import { useCart } from '../store/cartStore';
+import { getCartSessionId } from '../lib/supabase/api/cart';
 import { getStripeClientConfig, type StripePublicConfig } from '../lib/stripe/clientConfig';
 import { getShippoClientConfig } from '../lib/shippo/clientConfig';
 import {
@@ -177,7 +178,27 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
   }, []);
 
   useEffect(() => {
-    if (retailOnly && stripeEnabled) setPaymentMethod('stripe');
+    const onCartWarning = (event: Event) => {
+      const detail = (event as CustomEvent<Array<{ message: string }>>).detail || [];
+      if (detail.length > 0) setError(detail.map((item) => `${item.message} It has been removed from your cart.`).join(' '));
+    };
+    window.addEventListener('cart-validation-warning', onCartWarning);
+    return () => window.removeEventListener('cart-validation-warning', onCartWarning);
+  }, []);
+
+  useEffect(() => {
+    getStripeClientConfig()
+      .then((config) => setStripeConfig(config))
+      .catch((error) => {
+        console.error('Unable to load Stripe config:', error);
+        setStripeConfig(null);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (retailOnly) {
+      setPaymentMethod(stripeEnabled ? 'stripe' : 'invoice');
+    }
   }, [retailOnly, stripeEnabled]);
 
   useEffect(() => {
@@ -443,38 +464,34 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
       const billingAddress = billingSameAsShipping
         ? shippingAddress
         : buildBillingAddress(form);
-      const order = await ordersApi.createOrder({
+      const paymentIntent = await createStripePaymentIntent({
         email: form.email,
         phone: form.phone || undefined,
         shippingAddress,
         billingAddress,
         couponCode,
         shippingMethod,
-        shippingCostOverride: useLiveShippoRates ? selectedShippoRate?.amount : undefined,
         shippoRateId: useLiveShippoRates ? selectedShippoRate?.objectId : undefined,
         shippingCarrier: useLiveShippoRates ? selectedShippoRate?.provider : undefined,
         shippingService: useLiveShippoRates ? selectedShippoRate?.serviceName : undefined,
         notes: form.notes || undefined,
-        paymentProvider: 'stripe',
-        paymentMethod: 'stripe_card',
-        paymentStatus: 'pending',
-        clearCart: false,
-      }, user?.id);
-      const paymentIntent = await createStripePaymentIntent({
-        email: form.email,
-        orderId: order.id,
-        couponCode,
-        shippingMethod,
+        userId: user?.id,
+        cartSessionId: getCartSessionId(),
         items,
       });
 
+      const pendingOrder = {
+        id: paymentIntent.checkoutSessionId,
+        order_number: paymentIntent.checkoutSessionId,
+        total: paymentIntent.amount / 100,
+      } as OrderWithItems;
       setStripeSession({
-        order,
+        order: pendingOrder,
         clientSecret: paymentIntent.clientSecret,
         paymentIntentId: paymentIntent.paymentIntentId,
       });
       savePendingStripeCheckout({
-        orderId: order.id,
+        checkoutSessionId: paymentIntent.checkoutSessionId,
         paymentIntentId: paymentIntent.paymentIntentId,
       });
       requestAnimationFrame(() => {
@@ -525,7 +542,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
       return;
     }
 
-    if (retailOnly) return;
+    if (retailOnly && stripeEnabled) return;
 
     setSubmitting(true);
     try {
@@ -579,16 +596,22 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
     setSubmitting(true);
     setError(null);
     try {
-      await verifyStripeOrderPayment({
-        orderId: stripeSession.order.id,
+      let verification = await verifyStripeOrderPayment({
         paymentIntentId: stripeSession.paymentIntentId,
       });
-
-      const paidOrder: OrderWithItems = {
+      for (let attempt = 0; attempt < 5 && !verification.orderId; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        verification = await verifyStripeOrderPayment({ paymentIntentId: stripeSession.paymentIntentId });
+      }
+      if (!verification.orderId) {
+        throw new Error('Payment succeeded. Your order is being finalized; your cart and checkout details are preserved. Refresh shortly to see confirmation.');
+      }
+      const paidOrder = {
         ...stripeSession.order,
-        payment_status: 'paid',
+        id: verification.orderId,
+        payment_status: verification.paymentStatus === 'paid' ? 'paid' : 'pending',
         payment_method: 'stripe_card',
-      };
+      } as OrderWithItems;
 
       clearPendingStripeCheckout();
       navigate(orderConfirmationUrl(paidOrder.id), { state: { order: paidOrder } });
@@ -902,11 +925,21 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                   </div>
                 ) : (
                   <div className="mt-5 rounded-2xl border border-himalayan/30 bg-himalayan/5 p-5 text-sm text-charcoal-light">
-                    {submitting
-                      ? <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Preparing secure payment…</span>
-                      : !stripeEnabled
-                        ? 'Card payments are not configured on this site. Add your Stripe keys to enable secure checkout.'
-                        : 'Complete your shipping address and select a shipping method to load payment options.'}
+                    {submitting ? (
+                      <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Preparing secure payment…</span>
+                    ) : !stripeEnabled ? (
+                      <div className="space-y-1.5">
+                        <p className="font-semibold text-charcoal flex items-center gap-2">
+                          <CreditCard size={18} className="text-himalayan" />
+                          Online card payment is being configured on staging
+                        </p>
+                        <p className="text-xs text-charcoal-light">
+                          Checkout fail-safe is active: click <strong>Place order (invoice)</strong> below to place your order with invoice/bank transfer. We will email you payment details.
+                        </p>
+                      </div>
+                    ) : (
+                      'Complete your shipping address and select a shipping method to load payment options.'
+                    )}
                   </div>
                 )
               ) : (
@@ -1042,9 +1075,11 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
                 <ShieldCheck size={16} className="text-himalayan flex-shrink-0 mt-0.5" />
                 <p>
                   {retailOnly
-                    ? stripeSession
-                      ? 'Enter your payment details in the Payment section to confirm your order.'
-                      : 'Choose Enter secure payment details in the Payment section to continue.'
+                    ? stripeEnabled
+                      ? stripeSession
+                        ? 'Enter your payment details in the Payment section to confirm your order.'
+                        : 'Choose Enter secure payment details in the Payment section to continue.'
+                      : 'Invoice checkout fail-safe active — submit order without upfront card.'
                     : paymentMethod === 'stripe' && stripeEnabled
                     ? stripeSession
                       ? 'Complete card payment below to confirm your order.'
@@ -1055,7 +1090,7 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
 
               {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-              {!retailOnly && (
+              {(!retailOnly || !stripeEnabled) && (
               <button
                 type="submit"
                 disabled={submitting || (paymentMethod === 'stripe' && Boolean(stripeSession))}
@@ -1063,11 +1098,11 @@ export default function CheckoutPage({ retailOnly = false }: { retailOnly?: bool
               >
                 {submitting && <Loader2 size={18} className="animate-spin" />}
                 {submitting
-                  ? paymentMethod === 'stripe' ? 'Preparing payment...' : 'Placing Order...'
+                  ? paymentMethod === 'stripe' ? 'Preparing payment…' : 'Placing order…'
                   : paymentMethod === 'stripe'
                     ? stripeSession
                       ? 'Enter card details above'
-                      : retailOnly ? 'Proceed to secure payment' : 'Continue to payment'
+                      : retailOnly ? `Pay $${totals.total.toFixed(2)}` : 'Continue to payment'
                     : 'Place order (invoice)'}
               </button>
               )}

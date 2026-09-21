@@ -1,4 +1,5 @@
 import { isWooCommerceDataSource } from '@/lib/backend/dataSource';
+import { isRealCatalogProduct } from '@/lib/supabase/api/products';
 import { HK_META, createWooOrder, orderWithItemsFromWoo } from '@/lib/woo/orders';
 import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import {
@@ -22,7 +23,7 @@ import type { CheckoutShippingAddress, RatesLineItem } from '@/lib/shippo/types'
  * returns no rates, we fall back to the flat-rate table in calculateOrderTotals
  * (which ignores the override when we pass undefined).
  */
-async function resolveServerShippingCost(params: {
+export async function resolveServerShippingCost(params: {
   shippingAddress: CreateOrderData['shippingAddress'];
   email: string;
   shippingMethod: ShippingMethod;
@@ -63,7 +64,45 @@ async function resolveServerShippingCost(params: {
  * and must never be trusted for money math — this is the single source of
  * truth for what a customer actually gets charged.
  */
+export function checkoutCartIssues(
+  cartItems: CartWithItems['cart_items'],
+): Array<{ cartItemId: string; message: string }> {
+  const issues: Array<{ cartItemId: string; message: string }> = [];
+  for (const item of cartItems) {
+    const product = item.product as any;
+    if (!product) {
+      issues.push({ cartItemId: item.id, message: 'This product is no longer available.' });
+      continue;
+    }
+    if (!product.is_active || (!isWooCommerceDataSource() && !isRealCatalogProduct(product))) {
+      issues.push({ cartItemId: item.id, message: `${product.name || 'This product'} is unavailable.` });
+      continue;
+    }
+    const inventory = Array.isArray(product.inventory) ? product.inventory[0] : product.inventory;
+    if (inventory?.track_inventory && !inventory.allow_backorder) {
+      const available = Math.max(0, Number(inventory.quantity || 0) - Number(inventory.reserved_quantity || 0));
+      if (Number(item.quantity) > available) {
+        issues.push({ cartItemId: item.id, message: `${product.name || 'This product'} has only ${available} available.` });
+      }
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      issues.push({ cartItemId: item.id, message: 'Cart quantities must be positive whole numbers.' });
+    }
+  }
+  return issues;
+}
+
+export function validateCheckoutCartItems(
+  cartItems: CartWithItems['cart_items'],
+): void {
+  const issues = checkoutCartIssues(cartItems);
+  if (issues.length > 0) {
+    throw new Error(`${issues[0].message} Remove it or adjust the quantity and try again.`);
+  }
+}
+
 export function priceCartItems(cartItems: CartWithItems['cart_items']) {
+  validateCheckoutCartItems(cartItems);
   return cartItems.map((item) => {
     const product = item.product;
     if (!product) {
@@ -71,6 +110,13 @@ export function priceCartItems(cartItems: CartWithItems['cart_items']) {
     }
     return { ...item, unitPrice: Number(product.price) };
   });
+}
+
+export function cartFingerprint(cartItems: CartWithItems['cart_items']): string {
+  return cartItems
+    .map((item) => `${item.product_id}:${item.grain_size || ''}:${item.quantity}`)
+    .sort()
+    .join('|');
 }
 
 export async function loadCartForCheckout(
@@ -83,7 +129,7 @@ export async function loadCartForCheckout(
     *,
     cart_items(
       *,
-      product:products(*)
+      product:products(*, inventory(*))
     )
   `);
 
@@ -224,6 +270,7 @@ export async function serverCreateOrder(
       shipping_carrier: resolvedCarrier,
       shipping_service: resolvedService,
       payment_method: data.paymentMethod || data.paymentProvider || null,
+      stripe_payment_intent_id: data.paymentIntentId || null,
       notes: [
         data.notes,
         normalizedCoupon && supportedCoupons[normalizedCoupon] ? `Coupon: ${normalizedCoupon}` : null,

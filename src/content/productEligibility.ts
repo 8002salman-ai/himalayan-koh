@@ -23,7 +23,11 @@ export function publicProductIneligibilityReason(p: PublicProductFacts): string 
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(text(p.slug))) return 'missing canonical slug';
   if (text(p.name).length < 3 || /^(product|item|test)(\s|$)/i.test(text(p.name))) return 'insufficient product identity';
   if (num(p.price) <= 0) return 'missing required price';
-  if (!(/^https?:\/\//i.test(text(p.image_url)) || (p.images || []).some((x) => /^https?:\/\//i.test(text(x))) || (p.product_images || []).some((x) => /^https?:\/\//i.test(text(x.url || x.public_url))))) return 'missing usable product image';
+  const isUsableImg = (u: unknown) => {
+    const s = text(u);
+    return /^https?:\/\//i.test(s) || /^\/(?:images|assets|uploads)\//i.test(s) || /^\/[a-zA-Z0-9_\-\/.]+\.(?:webp|jpg|jpeg|png|svg|avif)$/i.test(s);
+  };
+  if (!(isUsableImg(p.image_url) || (p.images || []).some(isUsableImg) || (p.product_images || []).some((x) => isUsableImg(x?.url || x?.public_url)))) return 'missing usable product image';
   if (text(p.description).length + text(p.short_description || p.shortDesc).length < 30) return 'insufficient verified product content';
   if (!isCommerceReadyForPublicListing(p)) return 'commerce readiness incomplete';
   if (hasKnownProductContradiction(p)) return 'known contradictory product facts';

@@ -583,14 +583,17 @@ function adminCatalogRowToProduct(r: Record<string, unknown>): CatalogProduct {
   const isListed = r.isListed !== false && r.status !== 'draft';
   const imagesList = rawImgs.length > 0 ? rawImgs : ['/images/placeholder-product.svg'];
 
+  const desc = (r.description as string) || (name ? `${name} — authentic pure Himalayan pink salt from the Himalayan Koh collection.` : '');
+  const shortDesc = (r.shortDescription as string) || desc;
+
   return {
     id,
     slug,
     name,
     shortTitle: name,
     subtitle: catName,
-    shortDescription: (r.shortDescription as string) || (r.description as string) || '',
-    description: (r.description as string) || '',
+    shortDescription: shortDesc,
+    description: desc,
     features: [],
     specifications: {},
     categoryId: catId,
@@ -705,7 +708,7 @@ async function readBrowserCatalog(): Promise<CatalogProduct[]> {
   try {
     const token = await getFreshAccessToken().catch(() => null);
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch('/api/admin/catalog', { headers });
+    const res = await fetch('/api/admin/catalog?perPage=100', { headers });
     if (res.ok) {
       const rows = parseAdminCatalogRows(await res.json());
       if (rows) return rows.map(adminCatalogRowToProduct);

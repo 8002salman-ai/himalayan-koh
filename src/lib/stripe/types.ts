@@ -2,6 +2,7 @@
 export interface StripePaymentMetadata {
   email: string;
   order_id?: string;
+  checkout_session_id?: string;
   coupon_code?: string;
   shipping_method?: 'standard' | 'expedited';
   cart_item_count?: string;
@@ -14,11 +15,12 @@ export interface StripePaymentIntentResult {
   amount: number;
   currency: 'usd';
   mode: 'test' | 'live';
+  checkoutSessionId: string;
 }
 
 export interface StripeVerifyPaymentResult {
   ok: boolean;
-  orderId: string;
+  orderId?: string;
   paymentIntentId: string;
   // 'paid' for cards/synchronous methods; 'pending' for async BNPL (Klarna,
   // Afterpay/Clearpay, Affirm) where the webhook finalizes the order shortly after.

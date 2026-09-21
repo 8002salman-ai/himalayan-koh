@@ -1,4 +1,5 @@
 import type { CartItem } from '../../store/cartStore';
+import { supabase } from '../supabase/client';
 import { readApiError, toPaymentError } from './errors';
 import type { StripePaymentIntentResult, StripeVerifyPaymentResult } from './types';
 
@@ -6,25 +7,51 @@ export { stripePublishableKey, isStripeConfigured, isStripeTestMode } from './co
 
 export interface CreatePaymentIntentPayload {
   email: string;
-  // Required — the server derives the charge amount solely from
-  // orders.total for this order, never from client-supplied item prices.
-  orderId: string;
+  phone?: string;
+  shippingAddress: {
+    fullName: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  billingAddress?: CreatePaymentIntentPayload['shippingAddress'];
   couponCode?: string;
   shippingMethod?: 'standard' | 'expedited';
+  shippoRateId?: string;
+  shippingCarrier?: string;
+  shippingService?: string;
+  notes?: string;
+  userId?: string;
+  cartSessionId?: string;
   items: Pick<CartItem, 'id' | 'name' | 'quantity' | 'price' | 'grainSize'>[];
 }
 
 export async function createStripePaymentIntent(
   payload: CreatePaymentIntentPayload
 ): Promise<StripePaymentIntentResult> {
+  const { data: sessionData } = await supabase.auth.getSession();
   const response = await fetch('/api/stripe/create-payment-intent', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+    },
     body: JSON.stringify({
       email: payload.email,
-      orderId: payload.orderId,
+      phone: payload.phone,
+      shippingAddress: payload.shippingAddress,
+      billingAddress: payload.billingAddress,
       couponCode: payload.couponCode,
       shippingMethod: payload.shippingMethod,
+      shippoRateId: payload.shippoRateId,
+      shippingCarrier: payload.shippingCarrier,
+      shippingService: payload.shippingService,
+      notes: payload.notes,
+      userId: payload.userId,
+      cartSessionId: payload.cartSessionId,
       items: payload.items.map((item) => ({
         id: item.id,
         name: item.name,
@@ -43,7 +70,6 @@ export async function createStripePaymentIntent(
 }
 
 export async function verifyStripeOrderPayment(payload: {
-  orderId: string;
   paymentIntentId: string;
 }): Promise<StripeVerifyPaymentResult> {
   const response = await fetch('/api/stripe/verify-payment', {

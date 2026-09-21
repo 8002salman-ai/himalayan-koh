@@ -214,11 +214,29 @@ function revisionRow(
   return { blog_id, revision, action, previous, next, actor, actor_email: actor_email || null };
 }
 
+/** Normalize arbitrary or malformed rows from the database. */
+export function normalizeBlogRow(r: CmsBlogRow): CmsBlogRow {
+  let status: CmsBlogRow['status'] = 'draft';
+  const rawStatus = String(r.status || '').toLowerCase().trim();
+  if (rawStatus === 'published' || rawStatus === 'publish') status = 'published';
+  else if (rawStatus === 'scheduled') status = 'scheduled';
+  else if (rawStatus === 'archived' || rawStatus === 'trash') status = 'archived';
+  else status = 'draft';
+
+  return {
+    ...r,
+    status,
+    title: r.title || 'Untitled Post',
+    slug: r.slug || r.id,
+    tags: Array.isArray(r.tags) ? r.tags : [],
+  };
+}
+
 /** All posts for the manager (admins see drafts/scheduled/archived too). */
 export async function adminListAll(): Promise<CmsBlogRow[]> {
   return withAdmin(async (db) => {
     const rows = await db.list<CmsBlogRow>('blog_posts', { orderBy: 'updated_at.desc' });
-    return Array.isArray(rows) ? rows : [];
+    return (Array.isArray(rows) ? rows : []).map(normalizeBlogRow);
   });
 }
 

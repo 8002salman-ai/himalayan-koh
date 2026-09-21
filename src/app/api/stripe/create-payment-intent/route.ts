@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 import { getStripeClient, getStripeMode, stripeConfigError } from '@/lib/stripe/server/stripe';
 import { validateCreatePaymentIntentBody } from '@/lib/stripe/server/validation';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { createCheckoutSession, attachPaymentIntent } from '@/lib/stripe/server/checkoutSessions';
+import { cartFingerprint, loadCartForCheckout, resolveServerShippingCost, validateCheckoutCartItems } from '@/lib/orders/serverCreateOrder';
+import { calculateOrderTotals, type CreateOrderData } from '@/lib/supabase/api/orders';
+import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
 
 const MIN_AMOUNT_CENTS = 50;
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const rl = checkRateLimit(`payment:${ip}`, { limit: 5, windowMs: 60_000 });
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429 }
-    );
-  }
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
 
   const configError = await stripeConfigError();
   if (configError) return configError;
@@ -27,46 +25,69 @@ export async function POST(request: Request) {
   }
 
   const validated = validateCreatePaymentIntentBody(body);
-  if (!validated.ok) {
-    return NextResponse.json({ error: validated.error }, { status: validated.status });
+  if (!validated.ok) return NextResponse.json({ error: validated.error }, { status: validated.status });
+
+  const { data } = validated;
+  let verifiedUserId = data.userId || null;
+  if (verifiedUserId) {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    const supabase = getSupabaseAdmin();
+    const { data: userData, error: userError } = await supabase.auth.getUser(authHeader.slice(7).trim());
+    if (userError || userData.user?.id !== verifiedUserId) return NextResponse.json({ error: 'Invalid checkout owner.' }, { status: 403 });
   }
-
-  const { email, orderId, couponCode, shippingMethod, itemCount } = validated.data;
-
-  const supabase = getSupabaseAdmin();
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .select('total')
-    .eq('id', orderId)
-    .maybeSingle();
-
-  if (orderError) throw orderError;
-  if (!order) {
-    return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
-  }
-
-  const amountCents = Math.round(Number((order as { total: number }).total) * 100);
-
-  if (amountCents < MIN_AMOUNT_CENTS) {
-    return NextResponse.json({ error: 'Order total is below the minimum charge amount.' }, { status: 400 });
-  }
+  const cart = await loadCartForCheckout(verifiedUserId, data.cartSessionId);
+  if (!cart?.cart_items?.length) return NextResponse.json({ error: 'Cart is empty.' }, { status: 409 });
 
   try {
+    validateCheckoutCartItems(cart.cart_items);
+    const pricedItems = cart.cart_items.map((item) => ({ quantity: item.quantity, unitPrice: Number(item.product?.price || 0) }));
+    const resolvedShipping = await resolveServerShippingCost({
+      shippingAddress: data.shippingAddress,
+      email: data.email,
+      shippingMethod: data.shippingMethod,
+      shippoRateId: data.shippoRateId,
+      lineItems: cart.cart_items.map((item) => ({ productId: item.product_id, quantity: item.quantity })),
+    });
+    const totals = calculateOrderTotals(pricedItems, {
+      couponCode: data.couponCode,
+      shippingMethod: data.shippingMethod,
+      shippingCostOverride: resolvedShipping.shippingCostOverride,
+    });
+    const amountCents = Math.round(totals.total * 100);
+    if (amountCents < MIN_AMOUNT_CENTS) {
+      return NextResponse.json({ error: 'Order total is below the minimum charge amount.' }, { status: 400 });
+    }
+
+    const checkoutData: CreateOrderData & { userId?: string | null; cartSessionId?: string | null } = {
+      ...data,
+      userId: verifiedUserId,
+      paymentProvider: 'stripe',
+      paymentMethod: 'stripe_card',
+      paymentStatus: 'pending',
+      clearCart: true,
+    };
+    const session = await createCheckoutSession({
+      data: checkoutData,
+      cartFingerprint: cartFingerprint(cart.cart_items),
+    });
+
     const stripe = await getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
-      receipt_email: email,
+      receipt_email: data.email,
       automatic_payment_methods: { enabled: true },
       metadata: {
-        email,
-        ...(orderId ? { order_id: orderId } : {}),
-        coupon_code: couponCode.trim().toUpperCase(),
-        shipping_method: shippingMethod,
-        cart_item_count: String(itemCount),
-        integration: 'himalayan_koh_checkout_v1',
+        checkout_session_id: session.id,
+        email: data.email,
+        coupon_code: data.couponCode.trim().toUpperCase(),
+        shipping_method: data.shippingMethod,
+        cart_item_count: String(cart.cart_items.length),
+        integration: 'himalayan_koh_checkout_v2',
       },
     });
+    await attachPaymentIntent(session.id, paymentIntent.id);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
@@ -74,10 +95,10 @@ export async function POST(request: Request) {
       amount: amountCents,
       currency: 'usd',
       mode: await getStripeMode(),
+      checkoutSessionId: session.id,
     });
   } catch (error) {
-    console.error('Stripe PaymentIntent creation failed:', error);
     const message = error instanceof Error ? error.message : 'Unable to create payment intent.';
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: message }, { status: 409 });
   }
 }

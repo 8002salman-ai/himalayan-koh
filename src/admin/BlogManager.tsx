@@ -35,6 +35,16 @@ const STATUS_META: Record<CmsBlogRow['status'], { label: string; cls: string }> 
   archived: { label: 'Archived', cls: 'bg-red-100 text-red-600' },
 };
 
+export function getBlogStatusMeta(status: string | null | undefined): { label: string; cls: string } {
+  if (!status) return { label: 'Draft', cls: 'bg-gray-100 text-gray-600' };
+  const s = String(status).toLowerCase().trim();
+  if (s === 'published' || s === 'publish') return STATUS_META.published;
+  if (s === 'scheduled') return STATUS_META.scheduled;
+  if (s === 'draft' || s === 'pending') return STATUS_META.draft;
+  if (s === 'archived' || s === 'trash' || s === 'deleted') return STATUS_META.archived;
+  return STATUS_META[status as CmsBlogRow['status']] || { label: status, cls: 'bg-gray-100 text-gray-600' };
+}
+
 const slugify = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 /** Factual blog SEO prompt shared by the per-post button and the bulk run. */
@@ -741,7 +751,12 @@ export default function BlogManager() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4"><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_META[r.status].cls}`}>{STATUS_META[r.status].label}</span></td>
+                      <td className="px-6 py-4">
+                        {(() => {
+                          const meta = getBlogStatusMeta(r.status);
+                          return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${meta.cls}`}>{meta.label}</span>;
+                        })()}
+                      </td>
                       <td className="px-6 py-4 text-xs text-gray-500">{r.generated_by || 'manual'}</td>
                       <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">{new Date(r.updated_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                       <td className="px-6 py-4 whitespace-nowrap">

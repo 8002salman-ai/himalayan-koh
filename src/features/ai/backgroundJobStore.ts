@@ -68,6 +68,8 @@ export interface BackgroundJobState<T> {
   resume: (opts: BackgroundJobOptions<T>) => Promise<boolean>;
   /** Dismiss the interrupted-run offer without resuming (clears the saved checkpoint). */
   dismissInterrupted: () => void;
+  /** Restore a reload-resume checkpoint after client hydration. */
+  hydrate: () => void;
   /** Clear the last-run summary. */
   clear: () => void;
   __resetForTests: () => void;
@@ -200,7 +202,11 @@ export function createBackgroundJobStore<T extends { id: string }>(storageKey: s
     errors: 0,
     doneIds: [],
     report: null,
-    interrupted: loadCheckpoint(),
+    // localStorage is intentionally read only through hydrate(), after the
+    // first client render, so SSR and hydration begin with identical markup.
+    interrupted: null,
+
+    hydrate: () => set((state) => state.running ? state : { interrupted: loadCheckpoint() }),
 
     start: async (opts) => {
       if (useStore.getState().running) return false;

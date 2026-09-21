@@ -248,7 +248,7 @@ export function ListingTaskAdmin() {
           <div><label className={L}>Number of products</label>
             <input type="number" min={1} max={500} value={task.productCount} onChange={(e) => set('productCount', parseInt(e.target.value, 10) || 1)} className={I} />
           </div>
-          <div><label className={L}>LuxEdge category</label>
+          <div><label className={L}>Himalayan Koh category</label>
             <select value={task.category} onChange={(e) => set('category', e.target.value)} className={I}>
               {LISTING_TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>

@@ -12,8 +12,8 @@ export async function getStripeClient(): Promise<Stripe> {
   if (!secretKey) {
     throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
-  if (secretKey.startsWith('sk_live_') && process.env.STRIPE_ALLOW_LIVE !== 'true') {
-    throw new Error('Live Stripe keys require STRIPE_ALLOW_LIVE=true on the server.');
+  if (secretKey.startsWith('sk_live_') && (process.env.STRIPE_TEST_MODE_ONLY === 'true' || process.env.STRIPE_ALLOW_LIVE !== 'true')) {
+    throw new Error('Live Stripe keys are disabled in this environment; configure a sk_test_ key.');
   }
   return new Stripe(secretKey, { apiVersion: '2025-02-24.acacia' });
 }
@@ -36,9 +36,9 @@ export async function stripeConfigError(): Promise<NextResponse | null> {
       { status: 503 },
     );
   }
-  if (secretKey.startsWith('sk_live_') && process.env.STRIPE_ALLOW_LIVE !== 'true') {
+  if (secretKey.startsWith('sk_live_') && (process.env.STRIPE_TEST_MODE_ONLY === 'true' || process.env.STRIPE_ALLOW_LIVE !== 'true')) {
     return NextResponse.json(
-      { error: 'Live Stripe keys require STRIPE_ALLOW_LIVE=true in Vercel environment variables.' },
+      { error: 'Live Stripe keys are disabled in this environment; configure a sk_test_ key.' },
       { status: 503 },
     );
   }

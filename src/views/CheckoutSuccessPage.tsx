@@ -37,10 +37,9 @@ export default function CheckoutSuccessPage() {
       }
 
       const pending = loadPendingStripeCheckout();
-      const orderId = pending?.orderId;
       const intentId = paymentIntentId || pending?.paymentIntentId;
 
-      if (!orderId || !intentId) {
+      if (!intentId) {
         if (!cancelled) {
           setStatus('error');
           setMessage('We could not match this payment to an order. Return to checkout or contact support.');
@@ -57,24 +56,23 @@ export default function CheckoutSuccessPage() {
       }
 
       try {
-        const verifyResult = await verifyStripeOrderPayment({ orderId, paymentIntentId: intentId });
+        const verifyResult = await verifyStripeOrderPayment({ paymentIntentId: intentId });
+        if (!verifyResult.orderId) {
+          throw new Error('Payment succeeded, but the order is still being finalized. Please return to checkout shortly.');
+        }
         clearPendingStripeCheckout();
         await clearCart();
 
         if (cancelled) return;
 
-        // Async BNPL (Klarna/Afterpay/Affirm) returns paymentStatus 'pending' — the
-        // order is placed and the webhook will flip it to paid once the provider
-        // settles. Reflect that instead of falsely showing it as paid.
-        const isPending = verifyResult.paymentStatus === 'pending';
-        const order = await ordersApi.getOrderById(orderId, user?.id);
-        navigate(orderConfirmationUrl(orderId), {
+        const order = await ordersApi.getOrderById(verifyResult.orderId, user?.id);
+        navigate(orderConfirmationUrl(verifyResult.orderId), {
           replace: true,
           state: {
             order: order
               ? {
                   ...order,
-                  payment_status: isPending ? ('pending' as const) : ('paid' as const),
+                  payment_status: verifyResult.paymentStatus === 'pending' ? ('pending' as const) : ('paid' as const),
                 }
               : undefined,
           },

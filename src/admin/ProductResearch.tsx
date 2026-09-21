@@ -64,6 +64,8 @@ export default function ProductResearch() {
   const [queuedForHermes, setQueuedForHermes] = useState(false);
   const [cached, setCached] = useState(false);
   const [trendsJobs, setTrendsJobs] = useState<TrendsJobView[]>([]);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
 
   /** Load the Hermes trends job queue (provider=hermes, intent=google_trends_browser). */
   const refreshTrendsJobs = async () => {
@@ -79,6 +81,16 @@ export default function ProductResearch() {
   };
   useEffect(() => { void refreshTrendsJobs(); }, []);
 
+  const cancelResearch = () => {
+    if (abortCtrl) {
+      abortCtrl.abort();
+      setAbortCtrl(null);
+      setRunning(false);
+      setProgressMsg('Research cancelled by user');
+      notify('Research cancelled');
+    }
+  };
+
   /**
    * Run one research pass via the injectable pipeline — every provider
    * failure degrades to PARTIAL (never stops the job), live fetches are
@@ -88,7 +100,10 @@ export default function ProductResearch() {
   const research = async () => {
     const q = keyword.trim();
     if (!q) { notify('Enter a product or keyword (e.g. “dog poop scooper”)'); return; }
+    const controller = new AbortController();
+    setAbortCtrl(controller);
     setRunning(true);
+    setProgressMsg('Initiating market research…');
     setResult(null);
     setQueuedForHermes(false);
     setCached(false);
@@ -101,6 +116,9 @@ export default function ProductResearch() {
       }
       const outcome = await researchKeyword(q, {
         fetchPage: fetchPageContent,
+        signal: controller.signal,
+        timeoutMs: 6000,
+        onProgress: (step) => setProgressMsg(step.message),
         queueHermes: (payload) => queueHermesFallback(d, 'search', payload),
         // §2 loop feedback: fresh, keyword-matching ingested Hermes trends
         // evidence feeds this run's TREND_SCORE and skips a redundant queue.
@@ -129,9 +147,15 @@ export default function ProductResearch() {
       ]));
       notify('Research complete');
     } catch (e) {
-      notify(`Research failed: ${(e as Error).message}`);
+      if ((e as Error).name === 'AbortError' || (e as Error).message.includes('cancelled')) {
+        notify('Research cancelled');
+      } else {
+        notify(`Research failed: ${(e as Error).message}`);
+      }
     } finally {
       setRunning(false);
+      setAbortCtrl(null);
+      setProgressMsg('');
     }
   };
 
@@ -187,6 +211,14 @@ export default function ProductResearch() {
           >
             {running ? 'Researching…' : <><MagnifyingGlass size={16} /> RESEARCH PRODUCT</>}
           </button>
+          {running && (
+            <button
+              onClick={cancelResearch}
+              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           {keyword.trim() && (
             <a href={googleTrendsExploreUrl(keyword)} target="_blank" rel="noopener noreferrer" className="self-center text-xs text-blue-600 hover:underline whitespace-nowrap">
               Google Trends ↗
@@ -196,6 +228,12 @@ export default function ProductResearch() {
             <span className="self-center text-xs text-gray-400">cached result · refetches within 15 min are skipped</span>
           )}
         </div>
+        {running && progressMsg && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 p-2.5 rounded-xl">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+            <span className="font-medium">{progressMsg}</span>
+          </div>
+        )}
       </div>
 
       {/* Result cards */}

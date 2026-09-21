@@ -118,7 +118,7 @@ export default function SalmanOsPanel() {
                 {status ? stateBadge(status) : <span className="text-[10px] text-gray-400">loading…</span>}
               </div>
               <p className="text-[11px] text-gray-600 mt-1.5">
-                Project: <b>luxedge</b> · Environment: <b>{status?.project.environment ?? 'PREVIEW'}</b> · Free-first: <b>{status?.project.freeFirst ? 'ON' : 'OFF'}</b> · Contract: <b>v{status?.contractVersion ?? '1.0'}</b>
+                Project: <b>{status?.project?.project || 'himalayan-koh'}</b> · Environment: <b>{status?.project?.environment ?? 'PREVIEW'}</b> · Free-first: <b>{status?.project?.freeFirst ? 'ON' : 'OFF'}</b> · Contract: <b>v{status?.contractVersion ?? '1.0'}</b>
               </p>
               <p className="text-[11px] text-gray-500 mt-1">{status?.reason ?? 'Checking…'}</p>
 

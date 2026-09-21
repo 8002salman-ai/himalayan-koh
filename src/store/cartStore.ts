@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { cartApi } from '../lib/supabase/api';
-import { isSupabaseConfigured } from '../lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import type { CartWithItems } from '../lib/supabase/database.types';
+import { getCartSessionId } from '../lib/supabase/api/cart';
 
 export interface CartItem {
   id: string;
@@ -79,6 +80,30 @@ function mapSupabaseCart(cart: CartWithItems | null): CartItem[] {
   }));
 }
 
+async function validateCartOnServer(userId?: string): Promise<void> {
+  if (!isSupabaseConfigured() || typeof window === 'undefined') return;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const response = await fetch('/api/cart/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ userId: userId || undefined, cartSessionId: getCartSessionId() }),
+    });
+    if (!response.ok) return;
+    const result = await response.json() as { invalidItems?: Array<{ cartItemId: string; message: string }> };
+    if (!result.invalidItems?.length) return;
+    const invalidIds = new Set(result.invalidItems.map((item) => item.cartItemId));
+    cartItems = cartItems.filter((item) => !item.cartItemId || !invalidIds.has(item.cartItemId));
+    emitChange();
+    window.dispatchEvent(new CustomEvent('cart-validation-warning', { detail: result.invalidItems }));
+  } catch (error) {
+    console.error('Failed to validate cart:', error);
+  }
+}
+
 async function loadCart(userId?: string) {
   if (loadedForUserId === userId) return;
   pendingLoadForUserId = userId;
@@ -104,6 +129,7 @@ async function loadCart(userId?: string) {
       loadedForUserId = target;
     } while (pendingLoadForUserId !== loadedForUserId);
     emitChange();
+    await validateCartOnServer(userId);
   } catch (err) {
     console.error('Failed to load cart:', err);
   } finally {

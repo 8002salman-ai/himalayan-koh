@@ -2009,9 +2009,12 @@ export function ASettings() {
         const r = await fetch('/ads.txt');
         if (!r.ok) { setAdsTxtStatus('missing'); return; }
         const txt = (await r.text()).trim();
+        const uncommented = txt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
         const expected = (cfg.adsTxtRecord || DEFAULT_CONFIG.adsTxtRecord).trim();
-        if (txt === expected) setAdsTxtStatus('configured');
-        else if (txt.includes('pub-')) setAdsTxtStatus('invalid');
+        const expectedPub = (expected.match(/pub-\d+/) || [])[0];
+        const actualPub = (uncommented.join(' ').match(/pub-\d+/) || [])[0];
+        if (actualPub && expectedPub && actualPub === expectedPub) setAdsTxtStatus('configured');
+        else if (uncommented.some(l => l.includes('pub-'))) setAdsTxtStatus('invalid');
         else setAdsTxtStatus('missing');
       } catch { setAdsTxtStatus('missing'); }
     })();
@@ -2162,7 +2165,7 @@ const [open, setOpen] = useState<Record<string, boolean>>({
       <Accordion id="api" title="API Keys — Server-Side" icon={<Globe size={18} className="text-green-600" />} borderClass="border-green-300" open={open} toggle={toggle}>
         <div className="pt-5 space-y-4">
           <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800">
-            <p className="font-semibold mb-1">🔒 Luxedge V2: keys live on the server, never in the browser</p>
+            <p className="font-semibold mb-1">🔒 Himalayan Koh: keys live on the server, never in the browser</p>
             <p>AI provider keys and scraping tokens are read from environment variables by the /api serverless functions. They are never stored in localStorage, never shipped in the bundle, and never logged.</p>
           </div>
           <p className="text-sm text-gray-500">Set these env vars in your hosting dashboard (Vercel → Project → Settings → Environment Variables) and redeploy. Variable names: <code className="font-mono text-xs">OPENAI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, SCRAPE_DO_TOKEN</code> — see <code className="font-mono text-xs">.env.example</code>.</p>
@@ -2858,7 +2861,7 @@ export function AMarketingGen() {
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Display URL</h3>
               <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                 <Globe size={14} className="text-gray-400 flex-shrink-0" />
-                <input value={googleAd.displayUrl} onChange={e => setGoogleAd({...googleAd, displayUrl: e.target.value})} placeholder="luxedge.com/shop/product-name" className="flex-1 text-sm bg-transparent focus:outline-none" />
+                <input value={googleAd.displayUrl} onChange={e => setGoogleAd({...googleAd, displayUrl: e.target.value})} placeholder="himalayankoh.com/shop/product-name" className="flex-1 text-sm bg-transparent focus:outline-none" />
                 <CopyBtn text={googleAd.displayUrl} k="gdurl" />
               </div>
               <p className="text-xs text-gray-400 mt-1">Shown in ad — must match final URL domain</p>
@@ -2867,7 +2870,7 @@ export function AMarketingGen() {
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Final URL</h3>
               <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                 <LinkSimple size={14} className="text-gray-400 flex-shrink-0" />
-                <input value={googleAd.finalUrl} onChange={e => setGoogleAd({...googleAd, finalUrl: e.target.value})} placeholder="https://luxedge.com/products/..." className="flex-1 text-sm bg-transparent focus:outline-none" />
+                <input value={googleAd.finalUrl} onChange={e => setGoogleAd({...googleAd, finalUrl: e.target.value})} placeholder="https://himalayankoh.com/products/..." className="flex-1 text-sm bg-transparent focus:outline-none" />
                 <CopyBtn text={googleAd.finalUrl} k="gfurl" />
               </div>
             </div>
@@ -2910,7 +2913,7 @@ export function AMarketingGen() {
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2"><Monitor size={14} /> Ad Preview</h3>
             <div className="border border-gray-100 rounded-lg p-4 bg-gray-50 max-w-lg">
-              <div className="flex items-center gap-1 mb-1"><span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-medium">Ad</span><span className="text-xs text-gray-500 truncate">{googleAd.displayUrl || 'luxedge.com'}</span></div>
+              <div className="flex items-center gap-1 mb-1"><span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-medium">Ad</span><span className="text-xs text-gray-500 truncate">{googleAd.displayUrl || 'himalayankoh.com'}</span></div>
               <p className="text-blue-600 text-base font-medium leading-tight mb-0.5">{[googleAd.headlines[0], googleAd.headlines[1], googleAd.headlines[2]].filter(Boolean).join(' | ') || 'Your Ad Headlines Here'}</p>
               <p className="text-sm text-gray-700 leading-snug">{googleAd.descriptions[0] || 'Your compelling description that drives clicks and conversions.'}</p>
             </div>
@@ -2990,8 +2993,8 @@ export function AMarketingGen() {
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2"><ShareNetwork size={14} /> Facebook Ad Preview</h3>
               <div className="border border-gray-200 rounded-xl overflow-hidden max-w-sm">
                 <div className="p-3 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">L</div>
-                  <div><p className="text-xs font-semibold text-gray-900">Luxedge</p><p className="text-xs text-gray-400">Sponsored · <Globe size={10} className="inline" /></p></div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-rose-600 flex items-center justify-center text-white text-xs font-bold">HK</div>
+                  <div><p className="text-xs font-semibold text-gray-900">Himalayan Koh</p><p className="text-xs text-gray-400">Sponsored · <Globe size={10} className="inline" /></p></div>
                 </div>
                 <p className="px-3 pb-3 text-xs text-gray-800 leading-relaxed">{metaAd.primaryText || 'Your primary ad text will appear here.'}</p>
                 <div className="bg-gray-100 h-32 flex items-center justify-center text-gray-400 text-xs">
@@ -3188,7 +3191,7 @@ export function AMarketingGen() {
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2"><Monitor size={14} /> Email Preview</h3>
               <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
                 <div className="bg-gray-50 p-3 border-b border-gray-200">
-                  <p className="text-gray-600"><span className="font-semibold text-gray-800">From:</span> Luxedge &lt;hello@luxedge.com&gt;</p>
+                  <p className="text-gray-600"><span className="font-semibold text-gray-800">From:</span> Himalayan Koh &lt;support@himalayankoh.com&gt;</p>
                   <p className="text-gray-600"><span className="font-semibold text-gray-800">Subject:</span> {email.subjectA || '(no subject yet)'}</p>
                   <p className="text-gray-400 text-xs italic">{email.preheader || '(preheader)'}</p>
                 </div>
@@ -5365,8 +5368,7 @@ const providerIcons: Record<string, string> = {
         <p className="text-sm text-gray-500 mb-5">Add API keys and select models for each provider. The default provider is used for all AI operations.</p>
         {/* First-run connection status */}
         {(() => {
-          const known = Object.entries(keyStatus);
-          const connected = known.filter(([, k]) => k.configured);
+          const connected = aiProviders.filter(p => Boolean(serverStatus?.[p.id]?.configured || keyStatus[p.id]?.configured));
           if (connected.length === 0) {
             return (
               <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm flex items-start gap-3">
@@ -5381,9 +5383,9 @@ const providerIcons: Record<string, string> = {
           return (
             <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 flex-wrap text-xs">
               <CheckCircle size={14} className="text-green-600 shrink-0" />
-              <span className="font-medium text-green-700">{connected.length} of {known.length} providers connected</span>
-              {connected.map(([id]) => (
-                <span key={id} className="px-2 py-0.5 bg-white border border-green-200 text-green-700 rounded-full font-medium">{aiProviders.find(p => p.id === id)?.name || id} ✓</span>
+              <span className="font-medium text-green-700">{connected.length} of {aiProviders.length} providers connected</span>
+              {connected.map((p) => (
+                <span key={p.id} className="px-2 py-0.5 bg-white border border-green-200 text-green-700 rounded-full font-medium">{p.name} ✓</span>
               ))}
             </div>
           );
@@ -5549,7 +5551,7 @@ const providerIcons: Record<string, string> = {
             <li>Credential-backed scraping then runs through /api/fetch-page — the token never ships to the browser</li>
           </ol>
           <div className="p-3 bg-white/60 border border-green-200 rounded-xl text-xs text-green-800">
-            🔒 Luxedge V2: scraping tokens are server-side only. Without a server token, URL import falls back to public proxies.
+            🔒 Himalayan Koh: scraping tokens are server-side only. Without a server token, URL import falls back to public proxies.
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={testScraping} disabled={scrapeTest.status === 'testing'}
@@ -6335,7 +6337,7 @@ export function AMarketingTraffic() {
             <select className={I} value={cfg.density} onChange={e => set({ density: e.target.value as MarketingConfig['density'] })}>
               <option value="low">Low</option><option value="balanced">Balanced</option><option value="high">High</option>
             </select>
-            <p className="text-xs text-gray-400 mt-1">Controls how many Luxedge-managed manual units render per page. Does not override Google Auto Ads.</p>
+            <p className="text-xs text-gray-400 mt-1">Controls how many Himalayan Koh manual units render per page. Does not override Google Auto Ads.</p>
           </div>
           <div>
             <label className={L}>Mobile Manual Ad Density</label>

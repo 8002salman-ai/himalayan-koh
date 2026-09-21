@@ -85,7 +85,23 @@ export const cartApi = {
     return data as CartWithItems | null;
   },
 
-  // Add item to cart
+  async assertProductEligible(productId: string, quantity: number): Promise<void> {
+    const response = await fetch('/api/cart/check-eligibility', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [CART_SESSION_HEADER]: getCartSessionId(),
+      },
+      body: JSON.stringify({ productId, quantity }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error || 'This product is not available for purchase.');
+    }
+  },
+
+  // Add item to cart. The server eligibility check runs before the mutation;
+  // checkout repeats the same check because stock can change after this call.
   async addToCart(
     productId: string,
     quantity: number,
@@ -93,6 +109,7 @@ export const cartApi = {
     grainSize?: string,
     userId?: string
   ): Promise<CartItem> {
+    await this.assertProductEligible(productId, quantity);
     const cart = await this.getOrCreateCart(userId);
 
     // Check if item already exists
@@ -148,6 +165,15 @@ export const cartApi = {
       await this.removeFromCart(itemId);
       return null;
     }
+
+    const current = await supabase
+      .from('cart_items')
+      .select('product_id')
+      .eq('id', itemId)
+      .setHeader(CART_SESSION_HEADER, getCartSessionId())
+      .single();
+    if (current.error) throw current.error;
+    await this.assertProductEligible(String((current.data as { product_id: string }).product_id), quantity);
 
     const { data, error } = await supabase
       .from('cart_items')
