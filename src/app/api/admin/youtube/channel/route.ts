@@ -1,28 +1,19 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth/verifyAdminRequest';
-import { getSupabaseAdmin } from '@/lib/stripe/server/supabaseAdmin';
+import { getChannel, saveChannel, deleteChannel } from '@/lib/youtube/store';
+import type { YouTubeChannel } from '@/lib/youtube/store';
 
 export const dynamic = 'force-dynamic';
 
 // YouTube Data API v3 — fetch channel metadata
-async function fetchChannelInfo(channelUrl: string, apiKey?: string): Promise<{
-  channelId: string;
-  channelUrl: string;
-  channelTitle: string;
-  channelThumbnail: string;
-  subscriberCount: string;
-  videoCount: string;
-}> {
-  // Try to extract channel handle or ID from URL
+async function fetchChannelInfo(channelUrl: string, apiKey?: string): Promise<YouTubeChannel> {
   const handleMatch = channelUrl.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
   const channelMatch = channelUrl.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
 
   if (apiKey) {
-    // Use YouTube Data API if key is provided
     let channelId = channelMatch?.[1] || '';
 
     if (!channelId && handleMatch) {
-      // Resolve handle to channel ID
       const searchRes = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${handleMatch[1]}&key=${apiKey}`
       );
@@ -51,7 +42,6 @@ async function fetchChannelInfo(channelUrl: string, apiKey?: string): Promise<{
     }
   }
 
-  // Fallback: extract what we can from the URL without API
   const handle = handleMatch?.[1] || channelMatch?.[1] || 'unknown';
   return {
     channelId: handle,
@@ -70,25 +60,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const supabase = getSupabaseAdmin();
-  const { data } = await (supabase as any)
-    .from('youtube_settings')
-    .select('*')
-    .eq('id', 'channel')
-    .single();
-
-  // Never expose the API key to the client
-  return NextResponse.json({
-    channel: data ? {
-      channelId: data.channel_id || '',
-      channelUrl: data.channel_url || '',
-      channelTitle: data.channel_title || '',
-      channelThumbnail: data.channel_thumbnail || '',
-      subscriberCount: data.subscriber_count || '',
-      videoCount: data.video_count || '',
-    } : null,
-    apiKey: data?.api_key ? '••••••' : '',
-  });
+  const channel = await getChannel();
+  return NextResponse.json({ channel, apiKey: channel ? '••••••' : '' });
 }
 
 // POST — connect a channel
@@ -110,25 +83,7 @@ export async function POST(request: Request) {
   }
 
   const channelInfo = await fetchChannelInfo(body.channelUrl.trim(), body.apiKey?.trim());
-
-  const supabase = getSupabaseAdmin();
-  const { error } = await (supabase as any)
-    .from('youtube_settings')
-    .upsert({
-      id: 'channel',
-      channel_id: channelInfo.channelId,
-      channel_url: channelInfo.channelUrl,
-      channel_title: channelInfo.channelTitle,
-      channel_thumbnail: channelInfo.channelThumbnail,
-      subscriber_count: channelInfo.subscriberCount,
-      video_count: channelInfo.videoCount,
-      api_key: body.apiKey?.trim() || null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
-
-  if (error) {
-    return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
-  }
+  await saveChannel(channelInfo, body.apiKey?.trim() || undefined);
 
   return NextResponse.json({ channel: channelInfo });
 }
@@ -140,15 +95,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const supabase = getSupabaseAdmin();
-  const { error } = await (supabase as any)
-    .from('youtube_settings')
-    .delete()
-    .eq('id', 'channel');
-
-  if (error) {
-    return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
-  }
-
+  await deleteChannel();
   return NextResponse.json({ ok: true });
 }
