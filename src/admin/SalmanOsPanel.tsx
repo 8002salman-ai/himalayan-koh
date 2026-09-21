@@ -17,6 +17,7 @@ import {
   Robot, Warning, CheckCircle, XCircle, ArrowClockwise, Play, Eye, Hourglass, Pause, PlayCircle,
 } from '@phosphor-icons/react';
 import { useApp } from '../App';
+import { useAuthContext } from '../context/AuthContext';
 import {
   fetchSalmanOsStatus, fetchSalmanOsJobs, runSalmanOsJob, pauseSalmanOsJob, resumeSalmanOsJob,
 } from '../services/salmanOs/browserClient';
@@ -42,7 +43,14 @@ const JOB_STATUS_STYLE: Record<string, string> = {
   PAUSED: 'bg-gray-100 text-gray-600',
 };
 
-function stateBadge(s: SalmanOsStatus) {
+function stateBadge(s: SalmanOsStatus | null, restoring: boolean) {
+  if (restoring || !s) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">
+        <Hourglass size={13} className="animate-spin" />Restoring admin session…
+      </span>
+    );
+  }
   if (s.state === 'CONNECTED') {
     return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 text-green-700"><CheckCircle size={13} />CONNECTED</span>;
   }
@@ -54,6 +62,7 @@ function stateBadge(s: SalmanOsStatus) {
 
 export default function SalmanOsPanel() {
   const { notify } = useApp();
+  const { session, loading: authLoading } = useAuthContext();
   const [status, setStatus] = useState<SalmanOsStatus | null>(null);
   const [jobs, setJobs] = useState<SalmanOsJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,32 +80,37 @@ export default function SalmanOsPanel() {
   useEffect(() => {
     let alive = true;
 
-    const loadInitial = async () => {
+    const runFetch = async () => {
       const s = await refresh();
-      // On a browser hard reload, Supabase auth session might still be restoring.
-      // If the initial fetch returned null or WAITING, retry automatically without user interaction.
-      if (alive && (!s || s.state === 'WAITING')) {
-        setTimeout(async () => {
-          if (!alive) return;
-          const s2 = await refresh();
-          if (alive && (!s2 || s2.state === 'WAITING')) {
-            setTimeout(async () => {
-              if (alive) void refresh();
-            }, 1000);
-          }
-        }, 500);
-      }
+      return s;
     };
 
-    void loadInitial();
+    void runFetch().then((s) => {
+      // If not yet connected on initial mount (e.g. token hydrating),
+      // retry rapidly (250ms, 600ms, 1200ms, 2500ms) until CONNECTED
+      if (alive && s?.state !== 'CONNECTED') {
+        const delays = [250, 600, 1200, 2500];
+        const attemptRetry = (idx: number) => {
+          if (!alive || idx >= delays.length) return;
+          setTimeout(async () => {
+            if (!alive) return;
+            const res = await refresh();
+            if (alive && res?.state !== 'CONNECTED') {
+              attemptRetry(idx + 1);
+            }
+          }, delays[idx]);
+        };
+        attemptRetry(0);
+      }
+    });
 
     // Subscribe to auth state changes so as soon as session hydrates/restores, re-poll immediately
     let unsubscribe: (() => void) | undefined;
     import('../lib/supabase/client')
       .then(({ supabase }) => {
         if (!alive) return;
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (alive && session?.access_token) {
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          if (alive && nextSession?.access_token) {
             void refresh();
           }
         });
@@ -109,6 +123,13 @@ export default function SalmanOsPanel() {
       if (unsubscribe) unsubscribe();
     };
   }, []);
+
+  // Re-check as soon as session access_token is present in AuthContext
+  useEffect(() => {
+    if (session?.access_token && status?.state !== 'CONNECTED') {
+      void refresh();
+    }
+  }, [session?.access_token]);
 
   const run = async (kind: SalmanOsJobKind) => {
     setBusy({ kind });
@@ -135,8 +156,10 @@ export default function SalmanOsPanel() {
     await refresh();
   };
 
-  const waiting = !status || status.state === 'WAITING';
-  const connected = status?.state === 'CONNECTED';
+  const isConnected = status?.state === 'CONNECTED';
+  const isOffline = status?.state === 'OFFLINE';
+  const isRestoring = !isConnected && !isOffline && (authLoading || (!status && loading));
+  const isWaiting = !isRestoring && status?.state === 'WAITING';
   const pausedModules = new Set(status?.live?.pausedModules ?? []);
 
   const moduleState = (kind: SalmanOsJobKind): { status?: string; paused: boolean } => {
@@ -149,19 +172,40 @@ export default function SalmanOsPanel() {
   return (
     <div className="space-y-4">
       {/* Status card */}
-      <div className={`rounded-xl border p-4 ${waiting ? 'bg-amber-50/60 border-amber-200' : status?.state === 'CONNECTED' ? 'bg-green-50/60 border-green-200' : 'bg-red-50/60 border-red-200'}`}>
+      <div className={`rounded-xl border p-4 ${
+        isConnected
+          ? 'bg-green-50/60 border-green-200'
+          : isRestoring
+          ? 'bg-blue-50/40 border-blue-200'
+          : isOffline
+          ? 'bg-red-50/60 border-red-200'
+          : 'bg-amber-50/60 border-amber-200'
+      }`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            <Robot size={18} className={waiting ? 'text-amber-600 mt-0.5' : 'text-blue-600 mt-0.5'} />
+            <Robot
+              size={18}
+              className={
+                isConnected
+                  ? 'text-green-600 mt-0.5'
+                  : isRestoring
+                  ? 'text-blue-600 mt-0.5'
+                  : isOffline
+                  ? 'text-red-600 mt-0.5'
+                  : 'text-amber-600 mt-0.5'
+              }
+            />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-bold text-sm text-gray-900">SALMAN OS / HERMES</h2>
-                {status ? stateBadge(status) : <span className="text-[10px] text-gray-400">loading…</span>}
+                {stateBadge(status, isRestoring)}
               </div>
               <p className="text-[11px] text-gray-600 mt-1.5">
                 Project: <b>{status?.project?.project || 'himalayan-koh'}</b> · Environment: <b>{status?.project?.environment ?? 'PREVIEW'}</b> · Free-first: <b>{status?.project?.freeFirst ? 'ON' : 'OFF'}</b> · Contract: <b>v{status?.contractVersion ?? '1.0'}</b>
               </p>
-              <p className="text-[11px] text-gray-500 mt-1">{status?.reason ?? 'Checking…'}</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {isRestoring ? 'Restoring admin session and establishing connection…' : (status?.reason ?? 'Checking…')}
+              </p>
 
               {status?.live && (
                 <div className="mt-3 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-[11px] text-gray-700">
@@ -184,7 +228,16 @@ export default function SalmanOsPanel() {
             <ArrowClockwise size={12} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
-        {waiting && (
+        {isRestoring && (
+          <div className="mt-3 text-[11px] text-blue-700 bg-blue-50/80 border border-blue-200 rounded-lg p-3 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <Hourglass size={13} className="animate-spin text-blue-600 shrink-0" />
+              Restoring admin session…
+            </p>
+            <p className="text-blue-600">Hydrating admin authentication and establishing Salman OS connection.</p>
+          </div>
+        )}
+        {isWaiting && (
           <div className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
             <p className="font-semibold flex items-center gap-1.5"><Warning size={12} /> AI BACKEND — WAITING FOR SALMAN OS. Commerce continues normally; this is an optional intelligence enhancement.</p>
             <p className="text-amber-600">To connect: set <code className="font-mono bg-amber-100 px-1 rounded">SALMAN_OS_BASE_URL</code> and <code className="font-mono bg-amber-100 px-1 rounded">SALMAN_OS_TOKEN</code> as Cloudflare Worker secrets, then redeploy. Contact Salman OS to obtain your credentials and register the <b>himalayan-koh</b> project.</p>
@@ -209,9 +262,9 @@ export default function SalmanOsPanel() {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => void run(m.kind)}
-                    disabled={waiting || busyHere}
+                    disabled={isRestoring || isWaiting || busyHere}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={waiting ? 'AI backend not ready yet' : `Run ${m.label}`}
+                    title={isRestoring ? 'Restoring admin session…' : isWaiting ? 'AI backend not ready yet' : `Run ${m.label}`}
                   >
                     <Play size={10} /> {busyHere && !busy?.toggle ? 'Queuing…' : 'RUN NOW'}
                   </button>
@@ -221,7 +274,7 @@ export default function SalmanOsPanel() {
                   >
                     <Eye size={10} /> VIEW RESULTS
                   </button>
-                  {connected && (
+                  {isConnected && (
                     st.paused ? (
                       <button
                         onClick={() => void toggle(m.kind, 'resume')}

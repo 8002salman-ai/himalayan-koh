@@ -20,39 +20,61 @@ import { getAccessToken } from '../supabase';
 
 const API_BASE = '/api/salman-os';
 
+export function getStoredSupabaseToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && (k.startsWith('sb-') || k.startsWith('supabase.')) && k.includes('token')) {
+        let val = window.localStorage.getItem(k);
+        if (!val && window.localStorage.getItem(`${k}.0`)) {
+          let combined = '';
+          let idx = 0;
+          while (true) {
+            const chunk = window.localStorage.getItem(`${k}.${idx}`);
+            if (!chunk) break;
+            combined += chunk;
+            idx++;
+          }
+          val = combined;
+        }
+        if (val) {
+          try {
+            const parsed = JSON.parse(val);
+            const tok = parsed.access_token || parsed.currentSession?.access_token;
+            const exp = parsed.expires_at || parsed.currentSession?.expires_at;
+            if (tok && (!exp || exp * 1000 > Date.now())) {
+              return tok;
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export async function getValidAccessToken(): Promise<string | null> {
-  // 1. Synchronous read from services/supabase
+  // 1. FAST PATH: Synchronous read from window.localStorage (instant on hard reload)
+  const stored = getStoredSupabaseToken();
+  if (stored) return stored;
+
+  // 2. Synchronous read from services/supabase
   const direct = getAccessToken();
   if (direct) return direct;
 
-  // 2. Asynchronous read from @supabase/supabase-js client
+  // 3. Fallback: supabase.auth.getSession() with a 2-second timeout
   try {
     const { supabase } = await import('@/lib/supabase/client');
-    const { data } = await supabase.auth.getSession();
-    if (data?.session?.access_token) {
-      return data.session.access_token;
+    const res = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>((r) => setTimeout(() => r(null), 2000)),
+    ]);
+    if (res && 'data' in res && res.data?.session?.access_token) {
+      return res.data.session.access_token;
     }
   } catch {
     // ignore
-  }
-
-  // 3. Scan localStorage for any standard Supabase auth token
-  if (typeof window !== 'undefined') {
-    try {
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (k && (k.startsWith('sb-') || k.startsWith('supabase.')) && k.includes('token')) {
-          const val = window.localStorage.getItem(k);
-          if (val) {
-            try {
-              const parsed = JSON.parse(val);
-              const tok = parsed.access_token || parsed.currentSession?.access_token;
-              if (tok) return tok;
-            } catch {}
-          }
-        }
-      }
-    } catch {}
   }
 
   return null;
@@ -68,11 +90,16 @@ async function getJson<T>(path: string): Promise<T | null> {
     let headers = await authHeaders();
     let res = await fetch(`${API_BASE}${path}`, { headers });
     // On hard reload, Supabase session may still be hydrating during the very first tick.
-    // If 401, wait 350ms and retry once automatically.
+    // If 401, retry quickly with fresh headers.
     if (res.status === 401) {
-      await new Promise((r) => setTimeout(r, 350));
-      headers = await authHeaders();
-      res = await fetch(`${API_BASE}${path}`, { headers });
+      for (const delay of [200, 500]) {
+        await new Promise((r) => setTimeout(r, delay));
+        headers = await authHeaders();
+        if (headers.Authorization) {
+          res = await fetch(`${API_BASE}${path}`, { headers });
+          if (res.ok) break;
+        }
+      }
     }
     if (!res.ok) return null;
     const data = await res.json();
@@ -91,13 +118,18 @@ async function postJson<T>(path: string, body: unknown): Promise<T | null> {
       body: JSON.stringify(body),
     });
     if (res.status === 401) {
-      await new Promise((r) => setTimeout(r, 350));
-      headers = await authHeaders();
-      res = await fetch(`${API_BASE}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify(body),
-      });
+      for (const delay of [200, 500]) {
+        await new Promise((r) => setTimeout(r, delay));
+        headers = await authHeaders();
+        if (headers.Authorization) {
+          res = await fetch(`${API_BASE}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify(body),
+          });
+          if (res.ok) break;
+        }
+      }
     }
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
