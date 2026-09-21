@@ -178,14 +178,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     navigate(`/admin/products?search=${encodeURIComponent(q)}`);
   };
 
+  // Priority: saved profile from localStorage ('hk_admin_profile'), then profile, appUser, user metadata, default 'Salman Bashir'
+  let savedName = '';
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('hk_admin_profile');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name) savedName = parsed.name;
+      }
+    } catch {}
+  }
+
+  const candidateProfileName = profile?.full_name?.trim();
+  const validProfileName = (candidateProfileName && candidateProfileName !== 'Himalayan Koh Super Admin')
+    ? candidateProfileName
+    : '';
+
   const adminName =
-    profile?.full_name ||
+    savedName ||
+    validProfileName ||
     appUser?.name ||
     user?.user_metadata?.full_name ||
-    user?.email?.split('@')[0] ||
-    'Super Admin';
+    'Salman Bashir';
   const adminEmail = user?.email || appUser?.email || 'admin@himalayankoh.com';
-  const adminInitial = String(adminName).charAt(0).toUpperCase() || 'H';
+  const adminInitial = String(adminName).charAt(0).toUpperCase() || 'S';
 
   const Sidebar = ({ mobile }: { mobile?: boolean }) => (
     <aside

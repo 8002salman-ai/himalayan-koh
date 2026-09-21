@@ -138,7 +138,7 @@ export interface Ctx {
 }
 
 const defaultAppContext: Ctx = {
-  user: { id: 'admin-hk', email: 'admin@himalayankoh.com', name: 'Himalayan Koh Admin', role: 'admin' },
+  user: { id: 'admin-hk', email: 'admin@himalayankoh.com', name: 'Salman Bashir', role: 'admin' },
   cart: [],
   products: [],
   users: [],

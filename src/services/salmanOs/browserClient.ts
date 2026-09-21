@@ -20,14 +20,60 @@ import { getAccessToken } from '../supabase';
 
 const API_BASE = '/api/salman-os';
 
-function authHeaders(): Record<string, string> {
-  const token = getAccessToken();
+export async function getValidAccessToken(): Promise<string | null> {
+  // 1. Synchronous read from services/supabase
+  const direct = getAccessToken();
+  if (direct) return direct;
+
+  // 2. Asynchronous read from @supabase/supabase-js client
+  try {
+    const { supabase } = await import('@/lib/supabase/client');
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      return data.session.access_token;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Scan localStorage for any standard Supabase auth token
+  if (typeof window !== 'undefined') {
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && (k.startsWith('sb-') || k.startsWith('supabase.')) && k.includes('token')) {
+          const val = window.localStorage.getItem(k);
+          if (val) {
+            try {
+              const parsed = JSON.parse(val);
+              const tok = parsed.access_token || parsed.currentSession?.access_token;
+              if (tok) return tok;
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getValidAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function getJson<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${path}`, { headers: { ...authHeaders() } });
+    let headers = await authHeaders();
+    let res = await fetch(`${API_BASE}${path}`, { headers });
+    // On hard reload, Supabase session may still be hydrating during the very first tick.
+    // If 401, wait 350ms and retry once automatically.
+    if (res.status === 401) {
+      await new Promise((r) => setTimeout(r, 350));
+      headers = await authHeaders();
+      res = await fetch(`${API_BASE}${path}`, { headers });
+    }
     if (!res.ok) return null;
     const data = await res.json();
     return data as T;
@@ -38,11 +84,21 @@ async function getJson<T>(path: string): Promise<T | null> {
 
 async function postJson<T>(path: string, body: unknown): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    let headers = await authHeaders();
+    let res = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify(body),
     });
+    if (res.status === 401) {
+      await new Promise((r) => setTimeout(r, 350));
+      headers = await authHeaders();
+      res = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+    }
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       throw new Error(data?.error || `Salman OS request failed (HTTP ${res.status})`);

@@ -65,9 +65,50 @@ export default function SalmanOsPanel() {
     setStatus(s);
     setJobs(j);
     setLoading(false);
+    return s;
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    let alive = true;
+
+    const loadInitial = async () => {
+      const s = await refresh();
+      // On a browser hard reload, Supabase auth session might still be restoring.
+      // If the initial fetch returned null or WAITING, retry automatically without user interaction.
+      if (alive && (!s || s.state === 'WAITING')) {
+        setTimeout(async () => {
+          if (!alive) return;
+          const s2 = await refresh();
+          if (alive && (!s2 || s2.state === 'WAITING')) {
+            setTimeout(async () => {
+              if (alive) void refresh();
+            }, 1000);
+          }
+        }, 500);
+      }
+    };
+
+    void loadInitial();
+
+    // Subscribe to auth state changes so as soon as session hydrates/restores, re-poll immediately
+    let unsubscribe: (() => void) | undefined;
+    import('../lib/supabase/client')
+      .then(({ supabase }) => {
+        if (!alive) return;
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (alive && session?.access_token) {
+            void refresh();
+          }
+        });
+        unsubscribe = () => listener.subscription.unsubscribe();
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const run = async (kind: SalmanOsJobKind) => {
     setBusy({ kind });
