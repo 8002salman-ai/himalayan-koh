@@ -15,11 +15,17 @@ export const LEADOS_CLAIMS: LeadOSClaim[] = [
   { key: 'natural', text: '100% natural', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'essential_minerals', text: '84+ essential trace minerals', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'lab_tested', text: 'Third-party laboratory tested', status: 'unverified', source: null, allowedInOutbound: false },
-  { key: 'direct_import', text: 'Direct import/direct factory inventory', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'direct_import', text: 'Direct import', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'direct_importer', text: 'Direct importer', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'direct_factory_inventory', text: 'Direct factory inventory', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'food_grade', text: 'Food-grade', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'food_grade_spaced', text: 'Food grade', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'gs1_ready', text: 'GS1 barcode readiness', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'fast_shipping', text: 'Fast shipping', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'warehouse_origin', text: 'Packed or shipped from Houston', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'purity', text: 'Purity/compliance claim', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'certified', text: 'Certified', status: 'unverified', source: null, allowedInOutbound: false },
+  { key: 'health_benefits', text: 'Health benefits', status: 'unverified', source: null, allowedInOutbound: false },
   { key: 'fda', text: 'FDA/certification claim', status: 'disabled', source: null, allowedInOutbound: false },
 ];
 

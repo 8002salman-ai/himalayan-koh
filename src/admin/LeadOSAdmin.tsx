@@ -167,6 +167,10 @@ sales@himalayankoh.com | (832) 224-6466`,
 ];
 
 /** Compact KPI card */
+function metricValue(value: unknown): string | number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : '—';
+}
+
 function KpiCard({ icon: Icon, label, value, sub, accent }: { icon: any; label: string; value: string | number; sub: string; accent: string }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-3">
@@ -246,6 +250,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   // Stats & Projects
   const [loadingStats, setLoadingStats] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [projects, setProjects] = useState<LeadOSProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
@@ -266,6 +271,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   // Library state
   const [libraryLeads, setLibraryLeads] = useState<SavedLeadRecord[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [librarySearch, setLibrarySearch] = useState(() => typeof window !== 'undefined' ? parseLeadOSUrlState(window.location.href).search : '');
   const [statusFilter, setStatusFilter] = useState(() => typeof window !== 'undefined' ? parseLeadOSUrlState(window.location.href).status : 'all');
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
@@ -324,35 +330,36 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   // Load stats and projects
   const loadStatsAndProjects = useCallback(async () => {
     setLoadingStats(true);
+    setStatsError(null);
     try {
       const headers = await getAuthHeaders();
       const [resStats, resProj] = await Promise.all([
         fetch('/api/admin/leados/stats', { headers }),
         fetch('/api/admin/leados/projects', { headers }),
       ]);
+      if (!resStats.ok) throw new Error(`Stats request failed (${resStats.status})`);
+      if (!resProj.ok) throw new Error(`Projects request failed (${resProj.status})`);
 
-      if (resStats.ok) {
-        const s = await resStats.json();
-        setStats(s.stats);
-      }
-      if (resProj.ok) {
-        const p = await resProj.json();
-        setProjects(p.projects || []);
-        if (p.projects?.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(p.projects[0].id);
-          setActiveProject(p.projects[0]);
-        }
+      const [s, p] = await Promise.all([resStats.json(), resProj.json()]);
+      setStats(s.stats && typeof s.stats === 'object' ? s.stats : null);
+      setProjects(Array.isArray(p.projects) ? p.projects : []);
+      if (Array.isArray(p.projects) && p.projects.length > 0) {
+        setSelectedProjectId((current) => current || p.projects[0].id);
+        setActiveProject((current) => current || p.projects[0]);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'LeadOS initialization failed.';
+      setStatsError(message);
       console.error('LeadOS initialization error:', err);
     } finally {
       setLoadingStats(false);
     }
-  }, [getAuthHeaders, selectedProjectId]);
+  }, [getAuthHeaders]);
 
   // Load saved library
   const loadLibrary = useCallback(async () => {
     setLoadingLibrary(true);
+    setLibraryError(null);
     try {
       const headers = await getAuthHeaders();
       const params = new URLSearchParams();
@@ -360,11 +367,13 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
       const res = await fetch(`/api/admin/leados/leads?${params.toString()}`, { headers });
-      if (res.ok) {
-        const d = await res.json();
-        setLibraryLeads(d.leads || []);
-      }
+      if (!res.ok) throw new Error(`Lead Library request failed (${res.status})`);
+      const d = await res.json();
+      if (!Array.isArray(d.leads)) throw new Error('Lead Library returned an invalid response.');
+      setLibraryLeads(d.leads);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Lead Library failed to load.';
+      setLibraryError(message);
       console.error('Failed to load library:', err);
     } finally {
       setLoadingLibrary(false);
@@ -468,15 +477,18 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
         }),
       });
 
-      if (res.ok) {
-        setLeads((prev) =>
-          prev.map((l) => (l.businessName === lead.businessName ? { ...l, alreadySaved: true } : l))
-        );
-        setSavedSuccessMsg(`Saved "${lead.businessName}" to Lead Library`);
-        setTimeout(() => setSavedSuccessMsg(null), 3000);
-        loadStatsAndProjects();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Save lead failed (${res.status})`);
       }
+      setLeads((prev) =>
+        prev.map((l) => (l.businessName === lead.businessName ? { ...l, alreadySaved: true } : l))
+      );
+      setSavedSuccessMsg(`Saved "${lead.businessName}" to Lead Library`);
+      setTimeout(() => setSavedSuccessMsg(null), 3000);
+      loadStatsAndProjects();
     } catch (err) {
+      setSavedSuccessMsg(err instanceof Error ? `Unable to save lead: ${err.message}` : 'Unable to save lead.');
       console.error('Failed to save lead:', err);
     } finally {
       setSavingLeadId(null);
@@ -517,7 +529,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
   const handleUpdateLeadStatus = async (id: string, newStatus: string) => {
     try {
       const headers = await getAuthHeaders();
-      await fetch('/api/admin/leados/leads', {
+      const res = await fetch('/api/admin/leados/leads', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -525,9 +537,11 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
         },
         body: JSON.stringify({ id, status: newStatus }),
       });
+      if (!res.ok) throw new Error(`Status update failed (${res.status})`);
       setLibraryLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status: newStatus } : l)));
     } catch (err) {
       console.error('Update lead status error:', err);
+      setLibraryError(err instanceof Error ? err.message : 'Unable to update lead status.');
     }
   };
 
@@ -536,14 +550,16 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
     if (!confirm('Remove this lead from your library?')) return;
     try {
       const headers = await getAuthHeaders();
-      await fetch(`/api/admin/leados/leads?id=${id}`, {
+      const res = await fetch(`/api/admin/leados/leads?id=${id}`, {
         method: 'DELETE',
         headers,
       });
+      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       setLibraryLeads((prev) => prev.filter((l) => l.id !== id));
       loadStatsAndProjects();
     } catch (err) {
       console.error('Delete lead error:', err);
+      setLibraryError(err instanceof Error ? err.message : 'Unable to delete lead.');
     }
   };
 
@@ -718,13 +734,15 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
         },
         body: JSON.stringify(activeProject),
       });
-      if (res.ok) {
-        setProjectSavedMsg('Himalayan Koh ICP settings saved successfully.');
-        setTimeout(() => setProjectSavedMsg(null), 3000);
-        loadStatsAndProjects();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Project save failed (${res.status})`);
       }
+      setProjectSavedMsg('Himalayan Koh ICP settings saved successfully.');
+      setTimeout(() => setProjectSavedMsg(null), 3000);
+      loadStatsAndProjects();
     } catch (err) {
-      alert('Failed to save project');
+      setProjectSavedMsg(err instanceof Error ? err.message : 'Failed to save project.');
     } finally {
       setSavingProject(false);
     }
@@ -837,8 +855,7 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
         </div>
       )}
 
-      {/* ── Main Content ── */}
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      {/* ── Main Content ── */}          <div className="max-w-[1400px] mx-auto px-6 py-6">
 
         {/* ══════════ OVERVIEW TAB ══════════ */}
         {activeTab === 'overview' && (
@@ -847,11 +864,16 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
             <div className="space-y-6">
               {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <KpiCard icon={BookBookmark} label="Total Leads" value={stats?.savedLeadsCount || 0} sub="In Lead Library" accent="bg-indigo-50 text-indigo-600" />
-                <KpiCard icon={Star} label="High Opportunity" value={stats?.highOpportunityCount || 0} sub="Score ≥ 70" accent="bg-emerald-50 text-emerald-600" />
-                <KpiCard icon={PaperPlaneRight} label="Contacted" value={stats?.contactedCount || 0} sub="Outreach sent" accent="bg-amber-50 text-amber-600" />
-                <KpiCard icon={TrendUp} label="In Pipeline" value={stats?.inPipelineCount || 0} sub="Qualified leads" accent="bg-violet-50 text-violet-600" />
+                <KpiCard icon={BookBookmark} label="Total Leads" value={metricValue(stats?.savedLeadsCount)} sub="In Lead Library" accent="bg-indigo-50 text-indigo-600" />
+                <KpiCard icon={Star} label="High Opportunity" value={metricValue(stats?.highOpportunityCount)} sub="Score ≥ 70" accent="bg-emerald-50 text-emerald-600" />
+                <KpiCard icon={PaperPlaneRight} label="Contacted" value={metricValue(stats?.contactedCount)} sub="Outreach sent" accent="bg-amber-50 text-amber-600" />
+                <KpiCard icon={TrendUp} label="In Pipeline" value={metricValue(stats?.inPipelineCount)} sub="Qualified leads" accent="bg-violet-50 text-violet-600" />
               </div>
+              {statsError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800" role="alert">
+                  LeadOS metrics are unavailable: {statsError}
+                </div>
+              )}
 
               {/* ICP Spotlight */}
               <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -1200,6 +1222,11 @@ export default function LeadOSAdmin({ defaultTab = 'overview' }: { defaultTab?: 
               </div>
             </div>
 
+            {libraryError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800" role="alert">
+                Lead Library error: {libraryError}
+              </div>
+            )}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               {loadingLibrary ? (
                 <div className="p-12 text-center text-slate-400 text-xs">

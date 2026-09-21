@@ -8,8 +8,8 @@
 // stay server-side. The browser talks to Himalayan Koh's own /api/salman-os/*
 // proxy routes instead.
 // ============================================================================
-export * from './types.js';
+export * from './types';
 export {
   salmanOsStatus, getProjectStatus, getIntelligence, getJobs, runJob, pauseJob, resumeJob,
   CONTRACT_VERSION, CONTRACT_DOC_VERSION, CONTRACT_DOC_PATH, PROJECT_SLUG,
-} from './contract.js';
+} from './contract';

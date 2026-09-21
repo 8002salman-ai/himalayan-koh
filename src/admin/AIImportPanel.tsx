@@ -390,7 +390,7 @@ export function AIImportPanel() {
       // Listing Playbook: brand rule (e.g. HimalayanKoh) + category rules.
       const rules = playbook ? rulesForCategory(playbook, catName) : null;
       const playbookBrand = supplierBrandForUrl(url, rules?.brand);
-      const brand = playbookBrand || ef.brand || extracted.brand || 'Luxedge';
+      const brand = playbookBrand || ef.brand || extracted.brand || 'Himalayan Koh';
 
       const finalRiskFlags = [...new Set([...(extracted.riskFlags || []), ...risk.warnings])];
       const created = await createProduct(buildImportProductInput({

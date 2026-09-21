@@ -207,7 +207,7 @@ export default function ShippingSetup() {
         <h2 className="font-bold text-gray-900 mb-2">Shipping Billing</h2>
         <p className="text-sm text-gray-600">
           Shipping label purchases and billing are managed directly in your Shippo account.
-          Luxedge does not store banking or payment credentials for Shippo shipping labels.
+          Himalayan Koh does not store banking or payment credentials for Shippo shipping labels.
         </p>
       </div>
     </div>

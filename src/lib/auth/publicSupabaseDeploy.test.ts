@@ -54,4 +54,15 @@ describe('public Supabase deploy configuration', () => {
       'VITE_SUPABASE_URL',
     ]);
   });
+
+  it('lets an explicitly selected env file override fallback files', () => {
+    const config = resolvePublicSupabaseEnv({
+      fileContents: [
+        'NEXT_PUBLIC_SUPABASE_URL=https://fallback.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=fallback-key',
+        'NEXT_PUBLIC_SUPABASE_URL=https://explicit.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=explicit-key',
+      ],
+    });
+    expect(config.NEXT_PUBLIC_SUPABASE_URL).toBe('https://explicit.supabase.co');
+    expect(config.NEXT_PUBLIC_SUPABASE_ANON_KEY).toBe('explicit-key');
+  });
 });

@@ -11,6 +11,8 @@ describe('LeadOS hardening boundaries', () => {
   it('blocks unsupported claims from outbound copy', () => {
     expect(validateOutboundCopy('Himalayan salt products for your store.').ok).toBe(true);
     expect(validateOutboundCopy('Third-party laboratory tested and 84+ essential trace minerals.').ok).toBe(false);
+    expect(validateOutboundCopy('We are a direct importer of food-grade salt with certified purity.').ok).toBe(false);
+    expect(validateOutboundCopy('Our products provide health benefits.').ok).toBe(false);
   });
 
   it('reports provider unavailable without claiming success', async () => {

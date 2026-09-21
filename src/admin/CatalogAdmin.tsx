@@ -1432,7 +1432,7 @@ export function CatalogProductsPage() {
       <Modal isOpen={!!listingModal} onClose={() => setListingModal(null)} title="Listing Duration">
         {listingModal && (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Optional eBay-style listing end date. This is seller visibility only — Luxedge never auto-archives a product when the date passes; you decide what to do. Default is no expiry (Good ’Til Cancelled).</p>
+            <p className="text-xs text-gray-500">Optional eBay-style listing end date. This is seller visibility only — Himalayan Koh never auto-archives a product when the date passes; you decide what to do. Default is no expiry (Good ’Til Cancelled).</p>
             <div className="grid grid-cols-3 gap-2">
               {([
                 ['No expiry', null],
@@ -1601,7 +1601,7 @@ function CsvImportModal({ open, onClose, existing, cats, notify, onImported }: {
           shippingCost: row.shippingCost,
           freeShipping: row.freeShipping,
           // Listing Playbook brand rule (e.g. HimalayanKoh) wins over row brand.
-          brand: supplierBrandForUrl(row.supplierUrl, undefined) || row.brand || 'Luxedge',
+          brand: supplierBrandForUrl(row.supplierUrl, undefined) || row.brand || 'Himalayan Koh',
           categoryId: catId,
           tags: row.tags,
           supplierSource: row.supplierSource || 'Zeedrop',
@@ -1797,7 +1797,7 @@ function AiIntelPanel({ product }: { product: CatalogProduct }) {
               {r.marketing_potential && <p className="text-[11px] text-gray-600 mt-0.5"><b>Marketing:</b> {r.marketing_potential}</p>}
               {r.risks && <p className="text-[11px] text-amber-700 mt-0.5"><b>Risks (research claim):</b> {r.risks}</p>}
               {r.source_url && <p className="text-[10px] mt-1"><a href={r.source_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{r.source_url}</a></p>}
-              <p className="text-[9px] text-gray-400 mt-1">Received {new Date(r.created_at).toLocaleString()} · research claims require Luxedge verification before use.</p>
+              <p className="text-[9px] text-gray-400 mt-1">Received {new Date(r.created_at).toLocaleString()} · research claims require Himalayan Koh verification before use.</p>
             </div>
           ))}
         </div>

@@ -3751,7 +3751,7 @@ export function ASEOEngine() {
 
   async function generateAll() {
     if (!selProduct) { notify('Select a product first', 'error'); return; }
-    const prompt = `You are a luxury e-commerce SEO expert for Luxedge (premium US dropshipping brand).
+    const prompt = `You are a Himalayan Koh e-commerce SEO expert. Use only approved Himalayan Koh brand facts.
 
 Generate complete SEO content for this product:
 Name: ${selProduct.name}

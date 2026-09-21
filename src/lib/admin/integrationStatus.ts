@@ -281,7 +281,7 @@ export async function readIntegrationStatuses(options: { probe?: boolean } = {})
   if (hasSalman) {
     if (options.probe) {
       try {
-        const { getProjectStatus } = await import('../../services/salmanOs/contract.js');
+        const { getProjectStatus } = await import('../../services/salmanOs/contract');
         const live = await getProjectStatus();
         salmanState = live.state === 'CONNECTED' ? 'CONNECTED' : 'OWNER ACTION REQUIRED';
         salmanDetail = live.reason;

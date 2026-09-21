@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSetting } from '@/lib/settings/serverSettings';
+import { getDeploymentEnvironment } from '@/lib/site/deploymentEnvironment';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function GET() {
   return NextResponse.json({
     status: ingestReady ? 'READY' : 'NOT CONFIGURED',
     project: projectSlug || 'himalayan-koh',
-    environment: process.env.NODE_ENV === 'production' ? 'production' : 'staging',
+    environment: getDeploymentEnvironment(),
     ingest: {
       url: '/api/hermes/ingest',
       method: 'POST',

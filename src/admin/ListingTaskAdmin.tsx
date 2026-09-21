@@ -115,7 +115,7 @@ export function ListingTaskAdmin() {
             if (dup) return { status: 'duplicate', title };
 
             const categoryId = cats.find((c) => c.name.toLowerCase() === t.category.toLowerCase())?.id || null;
-            const brand = supplierBrandForUrl(u, rules.brand) || scraped.brand || 'Luxedge';
+            const brand = supplierBrandForUrl(u, rules.brand) || scraped.brand || 'Himalayan Koh';
             const sellingPrice = applyPricingRule(scraped.costPrice || 0, t.pricing);
             if (sellingPrice <= 0) return { status: 'failed', url: u, reason: 'Could not determine a selling price (no supplier cost and no fixed price configured).' };
 

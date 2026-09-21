@@ -85,9 +85,9 @@ const explicitEnvFile = process.env.DEPLOY_PUBLIC_ENV_FILE
   ? resolve(process.env.DEPLOY_PUBLIC_ENV_FILE)
   : null;
 const envFilePaths = [
-  explicitEnvFile,
   join(ROOT, '.dev.vars'),
   join(ROOT, '.env.local'),
+  explicitEnvFile,
 ].filter((path, index, all) => path && all.indexOf(path) === index);
 const publicSupabaseEnv = requirePublicSupabaseEnv(resolvePublicSupabaseEnv({
   processEnv: process.env,

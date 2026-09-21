@@ -22,12 +22,12 @@
 import {
   SALMAN_OS_MODULE_IDS,
   SALMAN_OS_KIND_BY_MODULE,
-} from './types.js';
+} from './types';
 import type {
   SalmanOsStatus, SalmanOsLiveState, SalmanOsIntelligenceItem,
   SalmanOsIntelligenceKind, SalmanOsJob, SalmanOsJobKind,
   SalmanOsJobRunResult, SalmanOsJobToggleResult,
-} from './types.js';
+} from './types';
 
 // Backend machine value (salman-os src/lib/projects/registry.ts).
 export const CONTRACT_VERSION = 1;
@@ -64,7 +64,7 @@ export async function resolveCredentials(): Promise<{ baseUrl: string; token: st
   let token = env('SALMAN_OS_TOKEN');
   if (!baseUrl || !token) {
     try {
-      const { getSetting } = await import('../../lib/settings/serverSettings.js');
+      const { getSetting } = await import('../../lib/settings/serverSettings');
       if (!baseUrl) baseUrl = (await getSetting('salman_os', 'base_url'))?.trim() || '';
       if (!token) token = (await getSetting('salman_os', 'token'))?.trim() || '';
     } catch {
